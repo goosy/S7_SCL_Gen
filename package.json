@@ -1,0 +1,30 @@
+{
+    "name": "mt_loop_srcgen",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "S7 PLC modbusTCP 代码自动生成",
+    "main": "/src/index.js",
+    "engines": {
+        "node": ">=14.8.0"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "eslint": "^8.0.1",
+        "gooconverter": "^0.3.3",
+        "iconv-lite": "^0.6.3"
+    },
+    "directories": {
+        "dist": "dist",
+        "src": "src"
+    },
+    "scripts": {
+        "build": "node ./src/index.js"
+    },
+    "keywords": [
+        "modbusTCP",
+        "SCL",
+        "S7"
+    ],
+    "author": "goosy.jo@gmail.com",
+    "license": "MIT"
+}
