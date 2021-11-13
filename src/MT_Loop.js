@@ -4,9 +4,6 @@ import {
     MT_Loop,
     Poll_DB,
     recv_DBs,
-    fix_length_string,
-    fix_block_name,
-    additional_symbol
 } from "./gen_data.js";
 
 const conns = MT_connections.map(conn=>({
