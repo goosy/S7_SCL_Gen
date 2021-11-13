@@ -37,6 +37,7 @@ function makeup_conn(conn) { // 处理配置，形成完整数据
 
     conn.ID = push_num(conn_ID_List, ID, FIRSTID);
     conn.name ??= "conn_MT" + conn.ID;
+    conn.local_device_id ??= 2;
     conn.DB_NO = push_num(conn_DB_List, DB_NO, FIRSTDBNO);
     conn.port = push_num(port_list, port, FIRSTPORT);
     conn.interval_time = interval_time;
@@ -67,12 +68,12 @@ function fix_block_name(BName, NO) {
 }
 
 const MB_TCP_Poll = {
-    FB_NO: addition?.MB_TCP_Poll?.FB_NO ?? 521,
+    FB_NO: addition?.MB_TCP_Poll?.FB_NO ?? 343,
     name: addition?.MB_TCP_Poll?.name ?? 'MB_TCP_Poll',
 }
 MB_TCP_Poll.block_str = fix_block_name('FB', MB_TCP_Poll.FB_NO);
 const MT_Loop = {
-    FC_NO: addition?.MT_Loop?.FC_NO ?? 521,
+    FC_NO: addition?.MT_Loop?.FC_NO ?? 343,
     name: addition?.MT_Loop?.name ?? 'MT_Loop',
 }
 MT_Loop.block_str = fix_block_name('FC', MT_Loop.FC_NO);

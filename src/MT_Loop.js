@@ -13,10 +13,13 @@ const conns = MT_connections.map(conn=>({
     name: conn.name,
     comment: conn.comment,
     ID: conn.ID.toString(16),
+    local_device_id: conn.local_device_id.toString(16),
+    host: conn.host,
     IP1: conn.host[0].toString(16),
     IP2: conn.host[1].toString(16),
     IP3: conn.host[2].toString(16),
     IP4: conn.host[3].toString(16),
+    port: conn.port,
     port1: (conn.port >>> 8).toString(16),
     port2: (conn.port & 0xff).toString(16),
     poll_name: conn.poll_name,
@@ -45,22 +48,22 @@ export let rules = [{
 export let template = `{{#for conn in conns}}
 DATA_BLOCK "{{conn.name}}" "{{MB_TCP_Poll.name}}" // {{conn.comment}}
 BEGIN
-  TCON_Parameters.block_length := W#16#40;
-  TCON_Parameters.id := W#16#{{conn.ID}};
-  TCON_Parameters.connection_type := B#16#11;
-  TCON_Parameters.active_est := TRUE;
-  TCON_Parameters.local_device_id := B#16#8;
+  TCON_Parameters.block_length := W#16#40;     //固定为64
+  TCON_Parameters.id := W#16#{{conn.ID}};                //连接ID 每个连接必须不一样！
+  TCON_Parameters.connection_type := B#16#11;  //连接类型，
+  TCON_Parameters.active_est := TRUE;          //是否主动（本功能调用必须为TRUE）
+  TCON_Parameters.local_device_id := B#16#{{conn.local_device_id}};   //2:300CPU 5:400CPU左X5 15:400CPU右X5 8:400CPU左X8 18:400CPU右X8
   TCON_Parameters.local_tsap_id_len := B#16#0;
   TCON_Parameters.rem_subnet_id_len := B#16#0;
   TCON_Parameters.rem_staddr_len := B#16#4;
   TCON_Parameters.rem_tsap_id_len := B#16#2;
   TCON_Parameters.next_staddr_len := B#16#0;
-  TCON_Parameters.rem_staddr[1] := B#16#{{conn.IP1}};
-  TCON_Parameters.rem_staddr[2] := B#16#{{conn.IP2}};
-  TCON_Parameters.rem_staddr[3] := B#16#{{conn.IP3}};
-  TCON_Parameters.rem_staddr[4] := B#16#{{conn.IP4}};
-  TCON_Parameters.rem_tsap_id[1] := B#16#{{conn.port1}};
-  TCON_Parameters.rem_tsap_id[2] := B#16#{{conn.port2}};
+  TCON_Parameters.rem_staddr[1] := B#16#{{conn.IP1}};    //IP1 {{conn.host[0]}}
+  TCON_Parameters.rem_staddr[2] := B#16#{{conn.IP2}};    //IP2 {{conn.host[1]}}
+  TCON_Parameters.rem_staddr[3] := B#16#{{conn.IP3}};    //IP3 {{conn.host[2]}}
+  TCON_Parameters.rem_staddr[4] := B#16#{{conn.IP4}};     //IP4 {{conn.host[3]}}
+  TCON_Parameters.rem_tsap_id[1] := B#16#{{conn.port1}};    //PortH {{conn.port}}
+  TCON_Parameters.rem_tsap_id[2] := B#16#{{conn.port2}};   //PortL
   TCON_Parameters.spare := W#16#0;
 END_DATA_BLOCK
 {{#endfor}}

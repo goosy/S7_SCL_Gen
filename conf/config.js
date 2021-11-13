@@ -5,6 +5,7 @@ export const MT_connections = [
         // DB_NO: 891, // 连接DB绝对地址，这里表示第一个连接块为 DB891，省略时程序会从DB891向后自动填
         host: [192, 168, 27, 61], // modbusTCP 对方IP 必填
         port: 502, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        local_device_id: 2, // 2:300CPU 5:400CPU左X5 15:400CPU右X5 8:400CPU左X8 18:400CPU右X8
         // interval_time: 200, // 可省略，默认为200ms
         comment: '192.168.27.61:502 垦西交油点 1# 2# ', // 本连接的注释
         poll_name: 'poll_KX', // 查询名称，建议填写有可读性。可省略，默认为 "poll_"+连续序号
@@ -40,7 +41,8 @@ export const MT_connections = [
         name: "conn_GYD", // 连接名称，建议填写有可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
         // DB_NO: 891, // 连接DB绝对地址，这里表示第一个连接块为 DB891，省略时程序会从DB891向后自动填
         host: [192, 168, 27, 62], // modbusTCP 对方IP 必填
-        port: 502, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        port: 5001, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        local_device_id: 2, // 2:300CPU 5:400CPU左X5 15:400CPU右X5 8:400CPU左X8 18:400CPU右X8
         // interval_time: 200, // 可省略，默认为200ms
         comment: '192.168.27.62:502 孤永东 1# 2# 3#', // 本连接的注释
         poll_name: 'poll_GYD', // 查询名称，建议填写有可读性。可省略，默认为 "poll_"+连续序号
@@ -88,7 +90,8 @@ export const MT_connections = [
         name: "conn_GLD", // 连接名称，建议填写有可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
         // DB_NO: 891, // 连接DB绝对地址，这里表示第一个连接块为 DB891，省略时程序会从DB891向后自动填
         host: [192, 168, 27, 62], // modbusTCP 对方IP 必填
-        port: 503, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        port: 5002, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        local_device_id: 2, // 2:300CPU 5:400CPU左X5 15:400CPU右X5 8:400CPU左X8 18:400CPU右X8
         // interval_time: 200, // 可省略，默认为200ms
         comment: '192.168.27.62:503 孤罗东 1# 2# 3#', // 本连接的注释
         poll_name: 'poll_GLD', // 查询名称，建议填写有可读性。可省略，默认为 "poll_"+连续序号
@@ -136,7 +139,8 @@ export const MT_connections = [
         name: "conn_GDong", // 连接名称，建议填写有可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
         // DB_NO: 891, // 连接DB绝对地址，这里表示第一个连接块为 DB891，省略时程序会从DB891向后自动填
         host: [192, 168, 27, 62], // modbusTCP 对方IP 必填
-        port: 504, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        port: 5003, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        local_device_id: 2, // 2:300CPU 5:400CPU左X5 15:400CPU右X5 8:400CPU左X8 18:400CPU右X8
         // interval_time: 200, // 可省略，默认为200ms
         comment: '192.168.27.62:504 孤东来油 1# 2# 3#', // 本连接的注释
         poll_name: 'poll_GDong', // 查询名称，建议填写有可读性。可省略，默认为 "poll_"+连续序号
@@ -184,7 +188,8 @@ export const MT_connections = [
         name: "conn_GDao", // 连接名称，建议填写有可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
         // DB_NO: 891, // 连接DB绝对地址，这里表示第一个连接块为 DB891，省略时程序会从DB891向后自动填
         host: [192, 168, 27, 63], // modbusTCP 对方IP 必填
-        port: 502, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        port: 6001, // modbusTCP 对方端口，当省略时，对每个连接，默认从502开始。
+        local_device_id: 2, // 2:300CPU 5:400CPU左X5 15:400CPU右X5 8:400CPU左X8 18:400CPU右X8
         // interval_time: 200, // 可省略，默认为200ms
         comment: '192.168.27.61:502 孤岛来油 2# 3# ', // 本连接的注释
         poll_name: 'poll_GDao', // 查询名称，建议填写有可读性。可省略，默认为 "poll_"+连续序号
@@ -222,9 +227,9 @@ export const addition = { // 以下非必需，可以全部注释掉。
     // 额外的符号表
     symbols: ['126,JS_flow                 FB    801   FB    801                                                                                 '],
     // 额外的 modbusTCP 主FB块指定
-    MB_TCP_Poll: { FB_NO: 521, name: 'MB_TCP_Poll' },
+    MB_TCP_Poll: { FB_NO: 343, name: 'MB_TCP_Poll' },
     // 额外的循环调用指定
-    MT_Loop: { FC_NO: 521, name: 'MT_Loop' },
+    MT_Loop: { FC_NO: 343, name: 'MT_Loop' },
     // 额外的轮询块指定
     Poll_DB: { DB_NO: 800, name: 'Poll_DB' },
     // 额外加入循环的代码
