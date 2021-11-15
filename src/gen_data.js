@@ -61,7 +61,6 @@ const Poll_DB = {
     name: addition?.Poll_DB?.name ?? 'Poll_DB',
 }
 
-const additional_code = addition?.code ?? '';
 const additional_symbol = addition?.symbols ?? [];
 
 export {
@@ -70,6 +69,5 @@ export {
     MT_Loop,
     Poll_DB,
     recv_DBs,
-    additional_code,
     additional_symbol
 }

@@ -1,45 +1,46 @@
 import {
-    MT_connections,
-    MB_TCP_Poll,
-    MT_Loop,
-    Poll_DB,
-    recv_DBs,
+  MT_connections,
+  MB_TCP_Poll,
+  MT_Loop,
+  Poll_DB,
+  recv_DBs,
 } from "./gen_data.js";
 
-const conns = MT_connections.map(conn=>({
-    name: conn.name,
-    comment: conn.comment,
-    ID: conn.ID.toString(16),
-    local_device_id: conn.local_device_id.toString(16),
-    host: conn.host,
-    IP1: conn.host[0].toString(16),
-    IP2: conn.host[1].toString(16),
-    IP3: conn.host[2].toString(16),
-    IP4: conn.host[3].toString(16),
-    port: conn.port,
-    port1: (conn.port >>> 8).toString(16),
-    port2: (conn.port & 0xff).toString(16),
-    poll_name: conn.poll_name,
-    polls: conn.polls.map(poll=>({
-        deivce_ID: poll.deivce_ID.toString(16),
-        function: poll.function.toString(16),
-        addr: poll.started_addr.toString(16),
-        length: poll.length.toString(16),
-        recv_DB: poll.recv_DB.DB_NO,
-        recv_DBB: poll.recv_DB.start,
-        comment: poll.comment,
-    })),
+const conns = MT_connections.map(conn => ({
+  name: conn.name,
+  comment: conn.comment,
+  ID: conn.ID.toString(16),
+  local_device_id: conn.local_device_id.toString(16),
+  host: conn.host,
+  IP1: conn.host[0].toString(16),
+  IP2: conn.host[1].toString(16),
+  IP3: conn.host[2].toString(16),
+  IP4: conn.host[3].toString(16),
+  port: conn.port,
+  port1: (conn.port >>> 8).toString(16),
+  port2: (conn.port & 0xff).toString(16),
+  poll_name: conn.poll_name,
+  polls: conn.polls.map(poll => ({
+    deivce_ID: poll.deivce_ID.toString(16),
+    function: poll.function.toString(16),
+    addr: poll.started_addr.toString(16),
+    length: poll.length.toString(16),
+    recv_DB: poll.recv_DB.DB_NO,
+    recv_DBB: poll.recv_DB.start,
+    additional_code: poll.recv_DB.additional_code,
+    comment: poll.comment,
+  })),
 }))
 
 export let rules = [{
-    "name": `MT_Loop.scl`,
-    "tags": {
-        conns,
-        recv_DBs,
-        MB_TCP_Poll,
-        MT_Loop,
-        Poll_DB,
-    }
+  "name": `MT_Loop.scl`,
+  "tags": {
+    conns,
+    recv_DBs,
+    MB_TCP_Poll,
+    MT_Loop,
+    Poll_DB,
+  }
 }];
 
 export let template = `{{#for conn in conns}}
@@ -105,8 +106,8 @@ FUNCTION "{{MT_Loop.name}}" : VOID
 "{{MB_TCP_Poll.name}}"."{{conn.name}}" ( // {{conn.comment}}{{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
   DATA  := "{{Poll_DB.name}}".{{conn.poll_name}},
-  buff  := "{{Poll_DB.name}}".buff);{{#endfor conn}}
-
+  buff  := "{{Poll_DB.name}}".buff);{{#for poll in conn.polls}}
+{{poll.additional_code}}{{#endfor poll}}
+{{#endfor conn}}
 END_FUNCTION
-
 `;
