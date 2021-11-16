@@ -1,28 +1,23 @@
 import { configurations } from "./gen_data.js";
+import { str_padding_left, str_padding_right } from "./str_padding.js";
 
-const SYMB_LEN = 27;
-const BLOCK_LEN = 11;
-const TYPE_LEN = 9;
+const SYMN_LEN = 23;
+const BNAME_LEN = 4;
+const BNO_LEN = 7;
+const TNAME_LEN = 4;
+const TNO_LEN = 5;
 const BLANK_COMMENT_LEN = 80;
 
-function fix_length_string(str, length) {
-    if (str.length > length) return str.substr(0, length);
-    length -= str.length;
-    while (length--) {
-        str += ' ';
-    };
-    return str;
-}
-
 function get_symbol(name, block_name, block_no, type_name, type_no, comment) {
-    const head = fix_length_string('126,' + name, SYMB_LEN);
-    let block_no_str = block_no.toString();
-    block_no_str = (block_name == 'I' || block_name == 'Q') ? block_no_str : block_no_str + '  ';
-    const block_str = (block_name + '         ').substr(0, BLOCK_LEN - block_no_str.length) + block_no_str;
-    const type_no_str = type_no ? type_no.toString() : '';
-    const type_str = (type_name + '         ').substr(0, TYPE_LEN - type_no_str.length) + type_no_str;
-    const cm = fix_length_string(comment ?? '', BLANK_COMMENT_LEN);
-    return `${head} ${block_str} ${type_str} ${cm}`;
+    const symname = str_padding_right(name, SYMN_LEN);
+    const block_name_str = str_padding_right(block_name, BNAME_LEN);
+    block_no = (block_name == 'I' || block_name == 'Q') ? block_no : block_no + '  ';
+    const block_no_str = str_padding_left(block_no, BNO_LEN);
+    const type_str = str_padding_right(type_name, TNAME_LEN);
+    type_no ??= '';
+    const type_no_str = str_padding_left(type_no, TNO_LEN);
+    const cm = str_padding_right(comment ?? '', BLANK_COMMENT_LEN);
+    return `126,${symname} ${block_name_str}${block_no_str} ${type_str}${type_no_str} ${cm}`;
 }
 
 export const rules = [];
@@ -43,11 +38,9 @@ configurations.forEach(({ name, connections, MB_TCP_Poll, MT_Loop, polls_DB, rec
     name = name ? name + '_' : '';
     rules.push({
         "name": `${name}symbol.asc`,
-        "tags": {
-            symbol_list
-        }
+        "tags": { symbol_list }
     })
 });
 
-export const template = `{{#for sym in symbol_list}}
-{{sym}}{{#endfor sym}}`;
+export const template = `{{#for sym in symbol_list}}{{sym}}
+{{#endfor sym}}`;
