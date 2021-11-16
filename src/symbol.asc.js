@@ -1,11 +1,4 @@
-import {
-    MT_connections,
-    MB_TCP_Poll,
-    MT_Loop,
-    Poll_DB,
-    recv_DBs,
-    additional_symbol
-} from "./gen_data.js";
+import { configurations } from "./gen_data.js";
 
 const SYMB_LEN = 27;
 const BLOCK_LEN = 11;
@@ -32,25 +25,29 @@ function get_symbol(name, block_name, block_no, type_name, type_no, comment) {
     return `${head} ${block_str} ${type_str} ${cm}`;
 }
 
-const symbol_list = [
-    get_symbol(MB_TCP_Poll.name, 'FB', MB_TCP_Poll.FB_NO, 'FB', MB_TCP_Poll.FB_NO),
-    get_symbol(MT_Loop.name, 'FC', MT_Loop.FC_NO, 'FC', MT_Loop.FC_NO),
-    get_symbol(Poll_DB.name, 'DB', Poll_DB.DB_NO, 'DB', Poll_DB.DB_NO),
-    ...MT_connections.map(
-        conn => get_symbol(conn.name, 'DB', conn.DB_NO, 'FB', MB_TCP_Poll.FB_NO)
-    ),
-    ...recv_DBs.map(
-        db => get_symbol(db.name, 'DB', db.DB_NO, db.type[0] ?? 'DB', db.type[1] ?? db.DB_NO)
-    ),
-    ...additional_symbol,
-];
+export const rules = [];
+configurations.forEach(({ name, connections, MB_TCP_Poll, MT_Loop, polls_DB, recv_DBs, additional_symbol, output_dir }) => {
+    const symbol_list = [
+        get_symbol(MB_TCP_Poll.name, 'FB', MB_TCP_Poll.FB_NO, 'FB', MB_TCP_Poll.FB_NO),
+        get_symbol(MT_Loop.name, 'FC', MT_Loop.FC_NO, 'FC', MT_Loop.FC_NO),
+        get_symbol(polls_DB.name, 'DB', polls_DB.DB_NO, 'DB', polls_DB.DB_NO),
+        ...connections.map(
+            conn => get_symbol(conn.name, 'DB', conn.DB_NO, 'FB', MB_TCP_Poll.FB_NO)
+        ),
+        ...recv_DBs.map(
+            db => get_symbol(db.name, 'DB', db.DB_NO, db.type[0] ?? 'DB', db.type[1] ?? db.DB_NO)
+        ),
+        ...additional_symbol,
+    ];
 
-export const rules = [{
-    "name": `symbol.asc`,
-    "tags": {
-        symbol_list,
-    },
-}];
+    name = name ? name + '_' : '';
+    rules.push({
+        "name": `${name}symbol.asc`,
+        "tags": {
+            symbol_list
+        }
+    })
+});
 
 export const template = `{{#for sym in symbol_list}}
 {{sym}}{{#endfor sym}}`;

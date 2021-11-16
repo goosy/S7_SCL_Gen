@@ -1,12 +1,33 @@
-import { MT_connections, addition } from '../conf/config.js';
+// import { connections, addition } from '../conf/config.js';
+import yaml from "js-yaml";
+import { readdir, readFile } from 'fs/promises';
+import { basename } from 'path';
 
-const conn_ID_List = []; // 最终的ID列表
-const conn_DB_List = []; // 最终的连接块列表
-const conn_remote_List = {}; // 最终的连接地址列表
-
-const FIRSTID = 1,
-    FIRSTDBNO = 891,
-    FIRSTPORT = 502;
+const TCON_deivce_id = {
+    "IM151-8PN/DP": "B#16#01",
+    "CPU31x-2PN/DP": "B#16#02",
+    "CPU314C-2PN/DP": "B#16#02",
+    "IM154-8PN/DP": "B#16#02",
+    "CPU319-3PN/DP": "B#16#03",
+    "CPU315T-3PN/DP": "B#16#03",
+    "CPU317T-3PN/DP": "B#16#03",
+    "CPU317TF-3PN/DP": "B#16#03",
+    "CPU319-3PN/DP_X4": "B#16#04",
+    "CPU317-2PN/DP_X4": "B#16#04",
+    "CPU412-2PN": "B#16#05",
+    "CPU414-3PN/DP": "B#16#05",
+    "CPU416-3PN/DP": "B#16#05",
+    "CPU412-5H_PN/DP_X5": "B#16#05",
+    "CPU414-5H_PN/DP_X5": "B#16#05",
+    "CPU416-5H_PN/DP_X5": "B#16#05",
+    "CPU417-5H_PN/DP_X5": "B#16#05",
+    "CPU410-5H_X8": "B#16#08",
+    "CPU412-5H_PN/DP_X15": "B#16#15",
+    "CPU414-5H_PN/DP_X15": "B#16#15",
+    "CPU416-5H_PN/DP_X15": "B#16#15",
+    "CPU417-5H_PN/DP_X15": "B#16#15",
+    "CPU410-5H_X18": "B#16#18",
+}
 
 function push_num(list, num, default_start) {
     if (num) {
@@ -26,48 +47,68 @@ function push_num(list, num, default_start) {
     return num;
 }
 
-let poll_index = 0;
-const recv_DBs = [];
-function makeup_conn(conn) { // 处理配置，形成完整数据
+const FIRSTID = 1; // 默认的第一个连接ID
+const FIRSTPORT = 502; //默认的第一个端口号
+const FIRSTDBNO = 891; //默认的第一个连接块号
+const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
+function makeup_conn(conn, conf_paras) { // 处理配置，形成完整数据
     const { ID, DB_NO, port, interval_time = null } = conn;
+    const { conn_ID_List, conn_DB_List, conn_remote_List, recv_DBs } = conf_paras;
     const host = conn.host.join('.');
     conn_remote_List[host] ??= [];
     const port_list = conn_remote_List[host];
 
     conn.ID = push_num(conn_ID_List, ID, FIRSTID);
     conn.name ??= "conn_MT" + conn.ID;
-    conn.local_device_id ??= 2;
+    conn.local_device_id ??= TCON_deivce_id[conn.local_device] ?? DEFAULT_DEVICE_ID;
     conn.DB_NO = push_num(conn_DB_List, DB_NO, FIRSTDBNO);
     conn.port = push_num(port_list, port, FIRSTPORT);
-    conn.interval_time = interval_time;
-    conn.poll_name ??= "poll_" + poll_index++;
+    conn.interval_time = interval_time; // 由SCL程序负责默认的间隔时长
+    conn.polls_name ??= "polls_" + conf_paras.polls_index++;
     conn.polls.forEach(poll => {
         recv_DBs.push(poll.recv_DB);
     })
 }
 
-MT_connections.forEach(makeup_conn);
+export const configurations = [];
+const load_confs = [];
+try {
+    const conf_path = new URL('../conf/', import.meta.url);
+    for (const file of await readdir(conf_path)) {
+        const yaml_str = await readFile(new URL(file, conf_path), { encoding: 'utf8' });
+        const conf = yaml.load(yaml_str);
+        conf.file = basename(file, '.yml');
+        load_confs.push(conf);
+    }
+} catch (e) {
+    console.log(e);
+}
+load_confs.forEach(({ file, connections = [], options = {} }) => {
+    const recv_DBs = [];
+    const conf_paras = {
+        conn_ID_List: [], // 当前配置最终的ID列表
+        conn_DB_List: [], // 当前配置最终的连接块列表
+        conn_remote_List: {}, // 当前配置最终的连接地址列表
+        polls_index: 0, // 当前配置的当前查询计数
+        recv_DBs, // 当前配置的所有接收块
+    };
+    connections.forEach(conn => makeup_conn(conn, conf_paras));
 
-const MB_TCP_Poll = {
-    FB_NO: addition?.MB_TCP_Poll?.FB_NO ?? 343,
-    name: addition?.MB_TCP_Poll?.name ?? 'MB_TCP_Poll',
-}
-const MT_Loop = {
-    FC_NO: addition?.MT_Loop?.FC_NO ?? 343,
-    name: addition?.MT_Loop?.name ?? 'MT_Loop',
-}
-const Poll_DB = {
-    DB_NO: addition?.Poll_DB?.DB_NO ?? 800,
-    name: addition?.Poll_DB?.name ?? 'Poll_DB',
-}
+    const additional_symbol = options?.symbols ?? [];
+    const output_dir = options.output_dir;
 
-const additional_symbol = addition?.symbols ?? [];
-
-export {
-    MT_connections,
-    MB_TCP_Poll,
-    MT_Loop,
-    Poll_DB,
-    recv_DBs,
-    additional_symbol
-}
+    const MB_TCP_Poll = {
+        FB_NO: options?.MB_TCP_Poll?.FB_NO ?? 343,
+        name: options?.MB_TCP_Poll?.name ?? 'MB_TCP_Poll',
+    }
+    const MT_Loop = {
+        FC_NO: options?.MT_Loop?.FC_NO ?? 343,
+        name: options?.MT_Loop?.name ?? 'MT_Loop',
+    }
+    const polls_DB = {
+        DB_NO: options?.polls_DB?.DB_NO ?? 800,
+        name: options?.polls_DB?.name ?? 'polls_DB',
+    }
+    const name = options?.name ?? file;
+    configurations.push({ name, connections, MB_TCP_Poll, MT_Loop, polls_DB, recv_DBs, additional_symbol, output_dir });
+});

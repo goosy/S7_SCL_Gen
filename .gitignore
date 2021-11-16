@@ -70,4 +70,5 @@ yarn.lock
 # production
 build-include/
 dist/
+conf/
 .vscode/
