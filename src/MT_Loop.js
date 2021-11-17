@@ -1,51 +1,24 @@
 import { configurations } from "./gen_data.js";
-import { str_padding_left } from "./str_padding.js";
 
-function get_fixed_hex(num, length) {
-  return str_padding_left(num.toString(16), length, '0').toUpperCase();
-}
 export const rules = [];
-configurations.forEach(({ name, connections, MB_TCP_Poll, MT_Loop, polls_DB, recv_DBs, output_dir }) => {
-  const conns = connections.map(conn => ({
-    name: conn.name,
-    comment: conn.comment,
-    ID: get_fixed_hex(conn.ID, 4),
-    local_device: conn.local_device,
-    local_device_id: conn.local_device_id, // 已是SCL字面量
-    host: conn.host,
-    IP1: get_fixed_hex(conn.host[0], 2),
-    IP2: get_fixed_hex(conn.host[1], 2),
-    IP3: get_fixed_hex(conn.host[2], 2),
-    IP4: get_fixed_hex(conn.host[3], 2),
-    port: conn.port,
-    port1: get_fixed_hex((conn.port >>> 8), 2),
-    port2: get_fixed_hex((conn.port & 0xff), 2),
-    polls_name: conn.polls_name,
-    polls: conn.polls.map(poll => ({
-      deivce_ID: get_fixed_hex(poll.deivce_ID, 2),
-      function: get_fixed_hex(poll.function, 2),
-      addr: get_fixed_hex(poll.started_addr, 4),
-      length: get_fixed_hex(poll.length, 4),
-      recv_DB: poll.recv_DB.DB_NO, // SCL字面量为十进制
-      recv_DBB: poll.recv_DB.start, // SCL字面量为十进制
-      additional_code: poll.recv_DB.additional_code,
-      comment: poll.comment,
-    })),
-  }));
-  name = name ? name + '_' : '';
+configurations.forEach(({ name, connections, options }) => {
+  const { output_prefix, MB_TCP_Poll, MT_Loop, polls_DB, recv_DBs } = options;
   rules.push({
-    "name": `${name}MT_Loop.scl`,
+    "name": `${output_prefix}MT_Loop.scl`,
     "tags": {
-      conns,
-      recv_DBs,
+      name,
+      connections,
+      output_prefix,
       MB_TCP_Poll,
       MT_Loop,
       polls_DB,
+      recv_DBs,
     }
   })
 });
 
-export let template = `{{#for conn in conns}}
+export let template = `// 本代码由 MT_LOOP_SRCGEN® 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+{{#for conn in connections}}
 DATA_BLOCK "{{conn.name}}" "{{MB_TCP_Poll.name}}" // {{conn.comment}}
 BEGIN
   TCON_Parameters.block_length := W#16#40;     //固定为64
@@ -68,11 +41,11 @@ BEGIN
 END_DATA_BLOCK
 {{#endfor}}
 
-// 轮询定义数据块 "{{polls_DB.name}}" DB{{polls_DB.DB_NO}}
+// 轮询定义数据块 "{{polls_DB.name}}" DB{{polls_DB.block_no}}
 DATA_BLOCK "{{polls_DB.name}}"
 TITLE = "轮询定义"
 VERSION : 0.0
-STRUCT{{#for conn in conns}}
+STRUCT{{#for conn in connections}}
   {{conn.polls_name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
     MBAP_seq : WORD ; //事务号 PLC自动填写
     MBAP_protocol : WORD ;  //必须为0
@@ -93,10 +66,10 @@ STRUCT{{#for conn in conns}}
     data : ARRAY[0..251] OF BYTE ;    //数据
   END_STRUCT ;
 END_STRUCT ;
-BEGIN{{#for conn in conns}}{{#for no, poll in conn.polls}}
+BEGIN{{#for conn in connections}}{{#for no, poll in conn.polls}}
   {{conn.polls_name}}[{{no}}].MBAP_Addr := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
   {{conn.polls_name}}[{{no}}].MFunction := B#16#{{poll.function}};
-  {{conn.polls_name}}[{{no}}].Addr := W#16#{{poll.addr}};
+  {{conn.polls_name}}[{{no}}].Addr := W#16#{{poll.started_addr}};
   {{conn.polls_name}}[{{no}}].Number := W#16#{{poll.length}};
   {{conn.polls_name}}[{{no}}].recvDB := {{poll.recv_DB}};
   {{conn.polls_name}}[{{no}}].recvDBB := {{poll.recv_DBB}};{{#endfor poll}}{{#endfor conn}}
@@ -104,7 +77,7 @@ END_DATA_BLOCK
 
 // 调用
 FUNCTION "{{MT_Loop.name}}" : VOID
-{{#for conn in conns}}
+{{#for conn in connections}}
 "{{MB_TCP_Poll.name}}"."{{conn.name}}" ( // {{conn.comment}}{{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
   DATA  := "{{polls_DB.name}}".{{conn.polls_name}},

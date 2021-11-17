@@ -1,41 +1,65 @@
-# local_device 目前允许的值:
-# IM151-8PN/DP
-# CPU31x-2PN/DP
-# CPU314C-2PN/DP
-# IM154-8PN/DP
-# CPU319-3PN/DP
-# CPU315T-3PN/DP
-# CPU317T-3PN/DP
-# CPU317TF-3PN/DP
-# CPU319-3PN/DP_X4
-# CPU317-2PN/DP_X4
-# CPU412-2PN
-# CPU414-3PN/DP
-# CPU416-3PN/DP
-# CPU412-5H_PN/DP_X5
-# CPU414-5H_PN/DP_X5
-# CPU416-5H_PN/DP_X5
-# CPU417-5H_PN/DP_X5
-# CPU410-5H_X8
-# CPU412-5H_PN/DP_X15
-# CPU414-5H_PN/DP_X15
-# CPU416-5H_PN/DP_X15
-# CPU417-5H_PN/DP_X15
-# CPU410-5H_X18
+# 只支持单配置文件，即只有一个 ---
+---
+# 配置名称，可省略，默认为本配置文件名(默认仅适用单配置文件)
+name: "example" 
 
 connections :
-  - # connection 1 ################################################### 
-    # ID: 1  # 十进制，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
-    name: "conn_example" # 连接名称，建议填写增加可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
-    # DB_NO: 891 # 连接DB绝对地址，这里表示第一个连接块为 DB891，省略时程序会从DB891向后自动填
-    host: [192, 168, 10, 10] # modbusTCP 对方IP 必填
-    port: 502 # modbusTCP 对方端口，必填，注意host:port组合不得重复，否则报错
-    # local_device_id: 2 # 可直接指定id，建议用下一个local_device配置比较直观
-    local_device: CPU31x-2PN/DP # 最上方有 local_device 允许值的说明
+  # 第1个连接，
+  - # 必须缩进一次的 "-" 开头，请参看yaml语法 
+
+    # 十进制连接号，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
+    # ID: 1
+    
+    # 连接名称（用于生成背景连接块名），建议填写增加可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
+    name: "conn_example" 
+    
+    # 背景连接块绝对地址，下面的配置表示背景连接块为 DB891。可省略，程序会从上一个连接块号顺序填，第1个则默认为891
+    # DB_NO: 891 
+    
+    # modbusTCP 对方IP 必填
+    host: [192, 168, 10, 10] 
+    
+    # modbusTCP 对方端口，必填，注意host:port组合不得重复，否则报错
+    port: 502 
+    
+    # 可直接指定id，建议用下一个local_device配置比较直观
+    # local_device_id: 2 
+    
+    # local_device 用于PN通信的设备，目前允许的值:
+    # IM151-8PN/DP
+    # CPU31x-2PN/DP
+    # CPU314C-2PN/DP
+    # IM154-8PN/DP
+    # CPU319-3PN/DP
+    # CPU315T-3PN/DP
+    # CPU317T-3PN/DP
+    # CPU317TF-3PN/DP
+    # CPU319-3PN/DP_X4
+    # CPU317-2PN/DP_X4
+    # CPU412-2PN
+    # CPU414-3PN/DP
+    # CPU416-3PN/DP
+    # CPU412-5H_PN/DP_X5
+    # CPU414-5H_PN/DP_X5
+    # CPU416-5H_PN/DP_X5
+    # CPU417-5H_PN/DP_X5
+    # CPU410-5H_X8
+    # CPU412-5H_PN/DP_X15
+    # CPU414-5H_PN/DP_X15
+    # CPU416-5H_PN/DP_X15
+    # CPU417-5H_PN/DP_X15
+    # CPU410-5H_X18
+    local_device: CPU31x-2PN/DP 
+    
     # interval_time: 200 # 发出查询的时间间隔，可省略，默认为200，单位ms
     comment: 192.168.10.10:502 智能流量计 # 本连接的注释，可省略
-    # polls_name: 'polls_example' # 查询名称，建议填写增加可读性。可省略，默认为 "polls_"+连续序号
-    polls: # 该连接下的轮询定义，至少要有一个查询
+
+    # 查询名称，建议填写增加可读性。可省略，默认为 "polls_"+连续序号
+    # polls_name: 'polls_example' 
+    
+    # 该连接下的轮询定义，至少要有一个查询
+    polls: 
+    
       - # 查询1
         deivce_ID: 1 # 设备号，即RTU从站地址
         function: 4 # modbus 功能号
@@ -45,9 +69,10 @@ connections :
           name: "Flow01" # 名称，省略则为绝对地址，比如 DB801
           DB_NO: 801 # 绝对地址，必填
           start: 0 # 接收开始位置
-          type: ['FB', 801] # 正常省略，接收块类型和地址一致，或通过某个FB指定结构
+          type: { name: FB, no: 801 } # 正常省略，接收块类型和地址一致，或通过某个FB指定结构
           additional_code: '"JS_flow".Flow01();' # 正常省略，对接收块数据的额外处理
         comment: '垦西1#流量计' # 本查询的注释
+
       - # 查询2
         deivce_ID: 2 # 设备号，即RTU从站地址
         function: 4 # modbus 功能号
@@ -57,21 +82,30 @@ connections :
           name: "Flow02" # 名称，省略则为绝对地址，比如 DB801
           DB_NO: 802 # 绝对地址，必填
           start: 0 # 接收开始位置
-          type: ['FB', 801] # 正常省略，接收块类型和地址一致，或通过某个FB指定结构
+          type: { name: FB, no: 801 } # 正常省略，接收块类型和地址一致，或通过某个FB指定结构
           additional_code: '"JS_flow".Flow02();' # 正常省略，对接收块数据的额外处理
         comment: '垦西2#流量计' # 本查询的注释
-  # - # connection more 注意连接第一行以 "- " 两个字符开头
-    # 依照上方写第2个到第n个连接的配置
 
+  # 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级
+  # - 
 
-options : # 以下非必需，无需要时可以全部注释掉。
-  name: "example" # 配置名称，可省略，默认为文件名
-  symbols: # 额外的符号数组
-    - '126,JS_flow                 FB    801   FB    801                                                                                 '
-  # 额外的 modbusTCP 主FB块设定
-  MB_TCP_Poll: { FB_NO: 343, name: 'MB_TCP_Poll' }
-  # 额外的循环调用设定
-  MT_Loop: { FC_NO: 343, name: 'MT_Loop' }
-  # 额外的轮询块设定
-  polls_DB: { DB_NO: 800, name: 'polls_DB' }
-  # output_dir : './' # 生成源代码的文件夹，默认为当前文件夹，源码文件前缀加配置名称
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出前缀，生成的源码文件名称将加入这个前缀，可取消这个设置或设置为空，以不输出前缀
+  output_prefix : 'example_'
+
+  # 保留为生成源代码的文件夹，暂不实现。
+  # output_dir : './' 
+
+  # 额外的符号，数组
+  symbols: 
+    - {name: JS_flow, block_name: FB, block_no: 801, type_name: FB, type_no: 801}
+
+  # 额外的 modbusTCP 主FB块设定，默认为{name: MB_TCP_Poll, block_no: 343}
+  MB_TCP_Poll: {name: MB_TCP_Poll, block_no: 343}
+
+  # 额外的循环调用设定，默认为{ name: MT_Loop, block_no: 343}
+  MT_Loop: { name: MT_Loop, block_no: 343}
+
+  # 额外的轮询块设定，默认为{ name: Polls_DB, block_no: 800 }
+  polls_DB: { name: Polls_DB, block_no: 800 }
