@@ -1,4 +1,4 @@
-import { configurations } from "./gen_data.js";
+import { CPUs, symbols_dict } from "./gen_data.js";
 import { str_padding_left, str_padding_right } from "./str_padding.js";
 
 const SYMN_LEN = 23;
@@ -21,23 +21,11 @@ function get_symbol({ name, block_name, block_no, type_name, type_no, comment })
 }
 
 export const rules = [];
-configurations.forEach(({ connections, recv_DBs, options }) => {
-    const { output_prefix, MB_TCP_Poll, MT_Loop, polls_DB, symbols } = options;
-    const symbol_list = [
-        get_symbol(MB_TCP_Poll),
-        get_symbol(MT_Loop),
-        get_symbol(polls_DB),
-        ...connections.map(
-            conn => get_symbol({ name: conn.name, block_name: 'DB', block_no: conn.DB_NO, type_name: 'FB', type_no: MB_TCP_Poll.type_no })
-        ),
-        ...recv_DBs.map(
-            db => get_symbol({ name: db.name, block_name: 'DB', block_no: db.DB_NO, type_name: db.type.name ?? 'DB',  type_no: db.type.no ?? db.DB_NO })
-        ),
-        ...symbols.map(get_symbol),
-    ];
-
+Object.entries(symbols_dict).forEach(([cpu_name, symbols]) => {
+    const symbol_list = symbols.map(get_symbol);
+    const output_dir = CPUs[cpu_name].output_dir;
     rules.push({
-        "name": `${output_prefix}symbol.asc`,
+        "name": `${output_dir}/symbols.asc`,
         "tags": { symbol_list }
     })
 });

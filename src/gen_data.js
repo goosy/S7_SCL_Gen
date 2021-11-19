@@ -1,153 +1,91 @@
-// import { connections, addition } from '../conf/config.js';
-import yaml from "js-yaml";
-import { readdir, readFile } from 'fs/promises';
-import { basename } from 'path';
-import { str_padding_left } from "./str_padding.js";
+import { dump, loadAll } from "js-yaml";
+import { readdir, readFile, writeFile } from 'fs/promises';
+import { gen_MT_data } from './gen_MT_data.js';
+import { gen_symbols_data } from './gen_symbols_data.js';
+import { IncreaseHashTable } from './increase_hash_table.js';
 
-function get_fixed_hex(num, length) {
-    return str_padding_left(num.toString(16), length, '0').toUpperCase();
-}
-
-const TCON_deivce_id = {
-    "IM151-8PN/DP": "B#16#01",
-    "CPU31x-2PN/DP": "B#16#02",
-    "CPU314C-2PN/DP": "B#16#02",
-    "IM154-8PN/DP": "B#16#02",
-    "CPU319-3PN/DP": "B#16#03",
-    "CPU315T-3PN/DP": "B#16#03",
-    "CPU317T-3PN/DP": "B#16#03",
-    "CPU317TF-3PN/DP": "B#16#03",
-    "CPU319-3PN/DP_X4": "B#16#04",
-    "CPU317-2PN/DP_X4": "B#16#04",
-    "CPU412-2PN": "B#16#05",
-    "CPU414-3PN/DP": "B#16#05",
-    "CPU416-3PN/DP": "B#16#05",
-    "CPU412-5H_PN/DP_X5": "B#16#05",
-    "CPU414-5H_PN/DP_X5": "B#16#05",
-    "CPU416-5H_PN/DP_X5": "B#16#05",
-    "CPU417-5H_PN/DP_X5": "B#16#05",
-    "CPU410-5H_X8": "B#16#08",
-    "CPU412-5H_PN/DP_X15": "B#16#15",
-    "CPU414-5H_PN/DP_X15": "B#16#15",
-    "CPU416-5H_PN/DP_X15": "B#16#15",
-    "CPU417-5H_PN/DP_X15": "B#16#15",
-    "CPU410-5H_X18": "B#16#18",
-}
-
-function push_num(list, num, default_start) {
-    if (num) {
-        // num 有值时
-        // 不能非正数字
-        if (typeof num !== 'number' || isNaN(num) || num < 0) throw new Error(`${num} 不是数字!`);
-        // 不能重复
-        if (list.includes(num)) throw new Error(`存在重复的 ${num}!`);
-        num = parseInt(num);
-        list.push(num);
-    } else {
-        // num 无值时自动取下一个有效的数字
-        num = list.length > 0 ? list[list.length - 1] + 1 : default_start ?? 1;
-        while (list.includes(num)) num++;
-        list.push(num);
+export const AI_confs = []; // 模拟量配置
+export const valve_confs = []; // 阀门配置
+export const MT_confs = []; // modbus TCP 配置
+export const MB_confs = []; // modbus RTU 配置
+export const CPUs = {}; // CPU 配置
+export const symbols_dict = {}; // 符号定义字典
+const confs = { // 全局维护表
+    exist_dict: {}, // 保存列表
+    confs_map: {}, // 配置列表
+    exist(CPU, type) {
+        return !!confs.exist_dict[CPU + type];
+    },
+    set(CPU, type, conf) {
+        confs.exist_dict[CPU + type] = true;
+        confs.confs_map[CPU] ??= [];
+        confs.confs_map[CPU].push(conf);
+    },
+    get(CPU) {
+        return confs.confs_map[CPU];
+    },
+    get_all() {
+        return Object.entries(confs.confs_map);
     }
-    return num;
+};
+
+function add_conf(conf) {
+    const { name, CPU: CPU_name = name, type } = conf;
+    if (confs.exist(CPU_name, type)) throw new Error(`${CPU_name}:${type} has duplicate configurations`);
+    // 按名称压入配置
+    confs.set(CPU_name, type, conf);
+    // 如没有则建立一个初始资源数据
+    CPUs[CPU_name] ??= {
+        name: CPU_name,
+        conn_ID_list: new IncreaseHashTable(16), // 已用连接ID列表
+        DB_list: new IncreaseHashTable(100), // 已用数据块列表
+        FB_list: new IncreaseHashTable(256), // 已用函数块列表
+        FC_list: new IncreaseHashTable(256), // 已用函数列表
+        poll_list: new IncreaseHashTable(1), // 已用查询号
+        conn_host_list: {}, // 已用的连接地址列表
+        output_dir: 'dist', // 输出文件夹
+    }
+    const CPU = CPUs[CPU_name];
+
+    symbols_dict[CPU_name] ??= [];
+    const symbols = symbols_dict[CPU_name];
+    conf.symbols ??= [];
+    symbols.push(...conf.symbols);
+
+    if (type === 'CPU') { // CPU 调度
+        CPU.output_dir = conf.output_dir ?? CPU_name;
+    } else if (type === 'AI') { // AI 调度
+        AI_confs.push({ ...conf, CPU, symbols });
+    } else if (type === 'modbusTCP' || type === 'MT') { // modebusTCP 调度
+        const connections = conf.connections ?? [];
+        const options = conf.options ?? {};
+        MT_confs.push({ CPU, symbols, connections, options });
+    }
 }
 
-const FIRSTID = 1; // 默认的第一个连接ID
-const FIRSTPORT = 502; //默认的第一个端口号
-const FIRSTDBNO = 891; //默认的第一个连接块号
-const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
-function makeup_conn(conn, conf_paras) { // 处理配置，形成完整数据
-    const { ID, DB_NO, port, interval_time = null } = conn;
-    const { conn_ID_List, conn_DB_List, conn_remote_List, recv_DBs } = conf_paras;
-    const host = conn.host.join('.');
-    conn_remote_List[host] ??= [];
-    const port_list = conn_remote_List[host];
-
-    conn.ID = get_fixed_hex(push_num(conn_ID_List, ID, FIRSTID), 4);
-    conn.name ??= "conn_MT" + conn.ID;
-    conn.local_device_id ??= TCON_deivce_id[conn.local_device] ?? DEFAULT_DEVICE_ID; // 已是SCL字面量
-    conn.DB_NO = push_num(conn_DB_List, DB_NO, FIRSTDBNO);
-    conn.IP1 = get_fixed_hex(conn.host[0], 2);
-    conn.IP2 = get_fixed_hex(conn.host[1], 2);
-    conn.IP3 = get_fixed_hex(conn.host[2], 2);
-    conn.IP4 = get_fixed_hex(conn.host[3], 2);
-    conn.port = push_num(port_list, port, FIRSTPORT);
-    conn.port1 = get_fixed_hex((conn.port >>> 8), 2);
-    conn.port2 = get_fixed_hex((conn.port & 0xff), 2);
-    conn.interval_time = interval_time; // 由SCL程序负责默认的间隔时长
-    conn.polls_name ??= "polls_" + conf_paras.polls_index++;
-    conn.polls.forEach(poll => {
-        const db = poll.recv_DB;
-        recv_DBs.push(db);
-        poll.deivce_ID = get_fixed_hex(poll.deivce_ID, 2);
-        poll.function = get_fixed_hex(poll.function, 2);
-        poll.started_addr = get_fixed_hex(poll.started_addr, 4);
-        poll.length = get_fixed_hex(poll.length, 4);
-        poll.recv_DB = db.DB_NO; // SCL字面量为十进制
-        poll.recv_DBB = db.start; // SCL字面量为十进制
-        poll.additional_code = db.additional_code;
-    });
-
-}
-
-export const configurations = [];
+const conf_path = new URL('../conf/', import.meta.url);
+// load confs
 try {
-    const path = new URL('../conf/', import.meta.url);
-    for (const file of await readdir(path)) {
-        const basefilename = basename(file, '.yml');
-        const yaml_str = await readFile(new URL(file, path), { encoding: 'utf8' });
-        const { name = basefilename, connections = [], options = {} } = yaml.load(yaml_str);
-        options.path = path;
-        const recv_DBs = [];
-        configurations.push({ name, connections, recv_DBs, options });
+    for (const file of await readdir(conf_path)) {
+        if (file.endsWith('.yml')) {
+            const yaml_str = await readFile(new URL(file, conf_path), { encoding: 'utf8' });
+            loadAll(yaml_str, add_conf);
+        }
     }
 } catch (e) {
     console.log(e);
 }
-configurations.forEach(({ connections, recv_DBs, options }) => {
-    const conf_paras = { // 当前配置的参数
-        conn_ID_List: [], // 最终的ID列表
-        conn_DB_List: [], // 最终的连接块列表
-        conn_remote_List: {}, // 最终的连接地址列表
-        polls_index: 0, // 当前查询计数
-        recv_DBs, // 所有接收块
-    };
-    connections.forEach(conn => makeup_conn(conn, conf_paras));
 
-    options.output_prefix ??= '';
-    options.symbols ??= [];
+// 生成无注释的配置 for of 实现异步顺序执行
+for (const [name, conf_list] of confs.get_all()) {
+    const docs = conf_list.map(conf => `---\n${dump(conf)}...`).join('\n\n');
+    await writeFile(new URL(`${name}.zyml`, conf_path), docs);
+}
 
-    let name = options.MB_TCP_Poll.name ?? 'MB_TCP_Poll';
-    let block_no = options.MB_TCP_Poll.block_no ?? 343;
-    options.MB_TCP_Poll = {
-        name,
-        block_name: 'FB',
-        block_no,
-        type_name: 'FB',
-        type_no: block_no,
-        comment: 'modbus TCP poll main function block',
-    }
+// 检查并补全符号表
+Object.entries(symbols_dict).forEach(
+    ([cpu_name, symbols]) => gen_symbols_data(CPUs[cpu_name], symbols)
+);
 
-    name = options.MT_Loop.name ?? 'MT_Loop';
-    block_no = options.MT_Loop.block_no ?? 343;
-    options.MT_Loop = {
-        name,
-        block_name: 'FC',
-        block_no,
-        type_name: 'FC',
-        type_no: block_no,
-        comment: 'modbus TCP call function',
-    }
-
-    name = options.polls_DB.name ?? 'polls_DB';
-    block_no = options.polls_DB.block_no ?? 800;
-    options.polls_DB = {
-        name,
-        block_name: 'DB',
-        block_no,
-        type_name: 'DB',
-        type_no: block_no,
-        comment: 'modbus TCP poll data',
-    }
-
-});
+// 补全 modbusTCP 数据
+MT_confs.forEach(gen_MT_data);

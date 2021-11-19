@@ -1,0 +1,240 @@
+# YAML语法说明:
+#   大小写敏感
+#   使用缩进表示层级关系
+#   缩进不允许使用tab，只允许空格
+#   缩进的空格数不重要，只要相同层级的元素左对齐即可
+#   '#'表示注释
+# YAML 支持以下几种数据类型：
+#   对象：键值对的集合，语法中:后有空格,: 后可以换行写复杂的value，语法：
+#      key: value
+#   数组：一组按次序排列的值，语法中-后有空格, - 后可以换行写复杂的value，语法：
+#      - value
+#   纯量（scalars）：单个的、不可再分的值，key value 最终分解为 scalars
+# 用 --- 和 ... 包围的代码段为一个配置文档，配置文档之间互相独立
+# 一个文件可以有多个文档，只有一个文档时， --- 和 ... 可以省略
+
+
+# 转换代码说明：
+# 1个文档只能定义1种类型，@TODO 目前只实现了2种类型： CPU modbusTCP
+# 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
+# 配置文档必须有 type 和 name 字段，2个字段都相同的配置文档只能有一个
+# 本示例文件有3个配置文档： CPU modbusTCP AI
+
+# CPU 文档
+--- #文档开始
+
+# 指示这是一个CPU空间，所有属于这个名称下的配置文档都共用相同的配置
+# 输出至相同的代码文件夹中
+# 代码里在同一PLC资源下分配，程序自动合并符号表
+# 同一个CPU会有多种程序，比如AI、modbusRTU、modbusTCP，需要要其它文档中定义
+type: CPU 
+
+# 配置名称，自定义，
+# 其它文档如指示相同的name，生成的代码会检查并避免占用同一DB块、同一连接等
+# name 同时作为默认输出文件夹名称，可在 output_dir 中指定为其它输出文件夹
+CPU: AS1
+
+# 符号定义
+symbols:  # CPU文档下定义其它文档需要共同的符号
+  - {name: common_data, block_name: DB, block_no: 900}
+
+# 输出文件夹，默认为 <name>
+# output_dir : 'other_folder' 
+
+# IP地址，目前用不上
+IP: [192.168.10.10]
+... #文档结束
+
+
+# modbusTCP 文档
+---
+# 指示本配置为生成 modbusTCP 代码
+type: modbusTCP # 也可以写为 "type: MT"
+
+# 指示属于哪一个CPU
+CPU: AS1
+
+# 符号定义
+symbols:  # 以下除 JS_flow，符号对应的实际块由本程序自动生成
+  - # modbusTCP 主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
+    name: MB_TCP_Poll
+    block_name: FB
+    block_no: 343
+    type: MB_TCP_Poll # 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
+    comment: 'modbus TCP poll main function block' # 写入step7符号表中的注释
+  - # 主调用FC块，这个要加入到OB中
+    name: MT_Loop
+    block_name: FC
+    block_no: 343
+    comment: 'modbus TCP call function'
+  - {name: &poll_db MT_pools_data, block_name: DB, block_no: 800} # DB 块的类型不是UDT或FB时，也可以省略type
+  - {name: &P1 polls_example, block_name: DB, block_no: 891, type: MB_TCP_Poll} # 所有的modbusTCP连接块（有IP信息的）都是 MB_TCP_Poll 类型
+  # "JS_flow"FB 块定义了本配置中接收DB块的数据结构，这一部分不通用！
+  # 本程序中提供的该块仅用于一诺的智能流量表，可依照这个写其它的数据接收FB块，并对应更正这里的符号表
+  # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
+  # 本程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
+  - {name: JS_flow, block_name: FB, block_no: 801} 
+  - {name: &F1 Flow01, block_name: DB, block_no: 801, type: JS_flow} # 接收块1
+  - {name: &F2 Flow02, block_name: DB, block_no: ~, type: JS_flow} # 接收块2 注意，DB块的 block_no 为 ~ (YAML中为null)时，生成程序会自动用上一个DB号加1
+
+connections :
+  # 第1个连接，
+  - # 必须缩进一次的 "-" 开头，请参看yaml语法 
+
+    # 十进制连接号，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
+    # ID: 1
+    
+    # 连接名称（用于生成背景连接块名），建议填写增加可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
+    name: "conn_example" 
+    
+    # 背景连接块绝对地址，下面的配置表示背景连接块为 DB891。可省略，程序会从上一个连接块号顺序填，第1个则默认为100
+    DB_NO: 891 
+    
+    # modbusTCP 对方IP 必填
+    host: [192, 168, 10, 10] 
+    
+    # modbusTCP 对方端口，必填，注意host:port组合不得重复，否则报错
+    port: 502 
+    
+    # 可直接指定id，建议用下一个local_device配置比较直观
+    # local_device_id: 2 
+    
+    # local_device 用于PN通信的设备，目前允许的值:
+    # IM151-8PN/DP
+    # CPU31x-2PN/DP
+    # CPU314C-2PN/DP
+    # IM154-8PN/DP
+    # CPU319-3PN/DP
+    # CPU315T-3PN/DP
+    # CPU317T-3PN/DP
+    # CPU317TF-3PN/DP
+    # CPU319-3PN/DP_X4
+    # CPU317-2PN/DP_X4
+    # CPU412-2PN
+    # CPU414-3PN/DP
+    # CPU416-3PN/DP
+    # CPU412-5H_PN/DP_X5
+    # CPU414-5H_PN/DP_X5
+    # CPU416-5H_PN/DP_X5
+    # CPU417-5H_PN/DP_X5
+    # CPU410-5H_X8
+    # CPU412-5H_PN/DP_X15
+    # CPU414-5H_PN/DP_X15
+    # CPU416-5H_PN/DP_X15
+    # CPU417-5H_PN/DP_X15
+    # CPU410-5H_X18
+    local_device: CPU31x-2PN/DP 
+    
+    # interval_time: 200 # 发出查询的时间间隔，可省略，默认为200，单位ms
+    comment: 192.168.10.10:502 智能流量计 # 本连接的注释，可省略
+
+    # 查询名称，必填，建议直接引用符号表。
+    polls_name: 'polls_example' 
+    
+    # 该连接下的轮询定义，至少要有一个查询
+    polls: 
+    
+      - # 查询1
+        deivce_ID: 1 # 设备号，即RTU从站地址
+        function: 4 # modbus 功能号
+        started_addr: 0 # 查询起始地址
+        length: 28 # 查询长度
+        recv_DB: *F1 # 接收DB名称，必填，建议直接引用符号表，也可以为绝对地址，比如 DB801
+        recv_start: 0 # 接收开始位置
+        comment: '垦西1#流量计' # 本查询的注释，可省略
+
+      - # 查询2
+        deivce_ID: 2 # 设备号，即RTU从站地址
+        function: 4 # modbus 功能号
+        started_addr: 0 # 查询起始地址
+        length: 28 # 查询长度
+        recv_DB: *F2 # 接收DB名称，必填，建议直接引用符号表，也可以为绝对地址，比如 DB801
+        recv_start: 0 # 接收开始位置
+        comment: '垦西2#流量计' # 本查询的注释，可省略
+
+  # 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级
+  # - 
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+  # 指定哪一个块做为轮询命令数据块，要在 symbols 中定义它
+  # 注意同CPU下有其它的轮询块，要避免块名重复，否则生成程序会检出报错
+  # 省略时，默认为 Polls_DB ，必须也要在 symbols 中定义它
+  polls_db: *poll_db
+...
+
+---
+# 指示本配置为生成 AI 代码
+# @TODO 还未实现
+type: AI 
+CPU: "AS1" 
+
+symbols:  # 以下符号指示的块，其内容由本程序自动生成
+  - # modbusTCP 主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
+    name: AI_Proc
+    block_name: FB
+    block_no: 512
+    comment: 'AI process main function block'
+  - # 主调用FC块，这个要加入到OB中
+    name: AI_Loop
+    block_name: FC
+    block_no: 512
+    comment: 'main cyclic call function'
+  - {name: AI01-01, block_name: IW, block_no: 512, type: WORD} # AI通道定义
+  - {name: AI01-02, block_name: IW, block_no: 514, type: WORD} 
+  - {name: AI01-03, block_name: IW, block_no: 516, type: WORD} 
+  - {name: AI01-04, block_name: IW, block_no: 518, type: WORD} 
+  - {name: AI01-05, block_name: IW, block_no: 520, type: WORD} 
+  - {name: PIT001, block_name: DB, block_no: 100, type: AI_Proc} # AI数据块
+  - {name: PIT002, block_name: DB, block_no: ~, type: AI_Proc} 
+  - {name: TIT001, block_name: DB, block_no: ~, type: AI_Proc} 
+  - {name: TIT002, block_name: DB, block_no: ~, type: AI_Proc} 
+  - {name: LIT001, block_name: DB, block_no: ~, type: AI_Proc} 
+
+AI_list:
+  - name: "PIT001"
+    comment: 进站压力
+    AI: "AI01-01"
+    zero: -0.1
+    span: 0.6
+    AH_limit: 0.1
+    WH_limit: 0.1
+    WL_limit: -0.05
+    AL_limit: -0.1
+  - name: "PIT002"
+    comment: 出站压力
+    AI: "AI01-02"
+    zero: -0.1
+    span: 4.0
+    AH_limit: 0.1
+    WH_limit: 0.1
+    WL_limit: -0.05
+    AL_limit: -0.1
+  - name: "TIT001" 
+    comment: 进站压力
+    AI: "AI01-03"
+    zero: -40.0
+    span: 80.0
+    AH_limit: 60.0
+    WH_limit: 55.0
+    WL_limit: 30.0
+    AL_limit: 35.0
+  - name: "TIT002" 
+    comment: 进站压力
+    AI: "AI01-03"
+    zero: -40.0
+    span: 80.0
+    AH_limit: 60.0
+    WH_limit: 55.0
+    WL_limit: 30.0
+    AL_limit: 35.0
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...

@@ -7,8 +7,9 @@ import { basename, dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+import { MT_confs } from './gen_data.js';
 import * as symbol_asc from "./symbol.asc.js";
-import * as mt_loop from "./MT_Loop.js";
+import * as mt_loop from "./MT_Loop.scl.js";
 
 async function prepare_dir(dir) {
 	let parents = dirname(dir);
@@ -65,6 +66,10 @@ async function convert2file(entry, path, {
 		let buff = iconv.encode(content, OE);
 		await fs.writeFile(output_file, buff);
 	};
+}
+
+for (const { CPU: { output_dir } } of MT_confs) {
+	await copyFile('MB_TCP_Poll.SCL', `../dist/${output_dir}/`)
 }
 
 const OPT = { "OE": 'gbk', "lineEndings": "windows" };

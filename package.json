@@ -1,8 +1,8 @@
 {
-    "name": "mt_loop_srcgen",
-    "version": "0.3.0",
+    "name": "s7-scl-src-gen",
+    "version": "0.1.0",
     "type": "module",
-    "description": "S7 PLC modbusTCP 代码自动生成",
+    "description": "S7 PLC SCL 代码自动生成",
     "main": "/src/index.js",
     "engines": {
         "node": ">=14.8.0"
