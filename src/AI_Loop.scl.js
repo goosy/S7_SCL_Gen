@@ -30,7 +30,7 @@ END_DATA_BLOCK
 
 // 主循环调用
 FUNCTION "AI_Loop" : VOID{{#for AI_item in list}}
-{{#if AI_item.DB}}"AI_Proc"."{{AI_item.DB.name}}"(AI := "{{AI_item.input.name}}");  {{#endif}}// {{AI_item.comment}}{{#endfor AI_item}}
+{{#if AI_item.DB}}"AI_Proc"."{{AI_item.DB.name}}"(AI := {{AI_item.input.value}});  {{#endif}}// {{AI_item.comment}}{{#endfor AI_item}}
 
 END_FUNCTION
 `;

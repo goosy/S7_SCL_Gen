@@ -29,6 +29,21 @@ const confs = { // 全局维护表
     }
 };
 
+function push_symbol(symbols, item, default_block_name, default_type) {
+    if (item?.name && item.type != 'ref') { // 非ref并入符号表
+        item.block_name ??= default_block_name;
+        item.type ??= default_type;
+        item.value = `"${item.name}"`;
+        symbols.push(item);
+    }
+}
+function to_ref(item) {
+    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+        return { value: item, type: 'ref' };
+    }
+    return null;
+}
+
 function add_conf(conf) {
     const { name, CPU: CPU_name = name, type } = conf;
     if (confs.exist(CPU_name, type)) throw new Error(`${CPU_name}:${type} has duplicate configurations`);
@@ -57,13 +72,12 @@ function add_conf(conf) {
     } else if (type === 'AI') { // AI 调度
         list.forEach(AI => {
             if (!AI.DB) return; // 空AI不处理
-            if (AI.input != 'ref') { // 非ref并入符号表
-                AI.input.type = 'WORD';
-                symbols.push(AI.input);
+            if (AI.input?.name) {
+                push_symbol(symbols, AI.input, 'PIW', 'WORD');
+                push_symbol(symbols, AI.DB, 'DB', 'AI_Proc');
+            } else {
+                AI.input = to_ref(AI.input);
             }
-            AI.DB.type = 'AI_Proc';
-            AI.DB.block_name = 'DB';
-            symbols.push(AI.DB);
         });
         AI_confs.push(item);
     } else if (type === 'modbusTCP' || type === 'MT') { // modebusTCP 调度
@@ -80,6 +94,29 @@ function add_conf(conf) {
             })
         })
         MT_confs.push(item);
+    } else if (type === 'Valve' || type === 'valve') { // Valve 调度
+        list.forEach(valve => {
+            if (!valve.DB) return; // 空AI不处理
+            if (valve.AI) {
+                if (valve.AI?.name) {
+                    push_symbol(symbols, valve.AI, 'PIW', 'WORD');
+                } else {
+                    valve.AI = to_ref(valve.AI);
+                }
+            }
+            valve.error ??= false;
+            if (!valve.error?.name) valve.error = to_ref(valve.error);
+            push_symbol(symbols, valve.error ?? false, 'I', 'BOOL');
+            valve.remote ??= true;
+            if (!valve.remote?.name) valve.remote = to_ref(valve.remote);
+            push_symbol(symbols, valve.remote, 'I', 'BOOL');
+            push_symbol(symbols, valve.CP, 'I', 'BOOL');
+            push_symbol(symbols, valve.OP, 'I', 'BOOL');
+            push_symbol(symbols, valve.close_action, 'Q', 'BOOL');
+            push_symbol(symbols, valve.open_action, 'Q', 'BOOL');
+            push_symbol(symbols, valve.DB, 'DB', 'Valve_Proc');
+        });
+        valve_confs.push(item);
     }
 }
 

@@ -15,7 +15,7 @@
 
 
 # 转换代码说明：
-# 1个文档只能定义1种类型，@TODO 目前只实现了2种类型： CPU AI modbusTCP modbusRTU
+# 1个文档只能定义1种类型，目前只实现了3种类型： CPU AI modbusTCP Value @TODO 
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
 # 配置文档必须有 type 和 name 字段，2个字段都相同的配置文档只能有一个
 # 本示例文件有3个配置文档： CPU modbusTCP AI
@@ -201,7 +201,7 @@ list: # 模拟量列表
     input: {name: M485-1, block_name: MW, block_no: 100} # M区域
   - comment: 液位
     DB: {name: LIT001, block_no: ~} 
-    input: {name: '"RecvDB".Tank1', type: ref} # 引用，转换程序不检查正确性
+    input: '"RecvDB".Tank1' # 引用，转换程序不检查正确性
 
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。

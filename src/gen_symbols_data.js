@@ -23,6 +23,7 @@ export function gen_symbols_data(CPU, symbols) {
         }
         if (common_type.includes(symbol.type)) {
             symbol.type_name = symbol.type;
+            symbol.type_no = '';
         } else {
             const type_block = symbols[symbol.type];
             symbol.type_name = type_block.block_name;

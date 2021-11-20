@@ -7,10 +7,11 @@ import { basename, dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-import { MT_confs } from './gen_data.js';
+import { MT_confs, AI_confs, valve_confs } from './gen_data.js';
 import * as symbol_asc from "./symbol.asc.js";
 import * as mt_loop from "./MT_Loop.scl.js";
 import * as ai_loop from "./AI_Loop.scl.js";
+import * as valve_loop from "./Valve_Loop.scl.js";
 
 async function prepare_dir(dir) {
 	let parents = dirname(dir);
@@ -69,8 +70,14 @@ async function convert2file(entry, path, {
 	};
 }
 
+for (const { CPU: { output_dir } } of AI_confs) {
+	await copyFile('AI_Proc.scl', `../dist/${output_dir}/`)
+}
 for (const { CPU: { output_dir } } of MT_confs) {
 	await copyFile('MB_TCP_Poll.SCL', `../dist/${output_dir}/`)
+}
+for (const { CPU: { output_dir } } of valve_confs) {
+	await copyFile('Valve_Proc.scl', `../dist/${output_dir}/`)
 }
 
 const OPT = { "OE": 'gbk', "lineEndings": "windows" };
@@ -78,3 +85,4 @@ let output_dir = join(__dirname, '../dist/');
 await convert2file(symbol_asc, output_dir, OPT);
 await convert2file(mt_loop, output_dir, OPT);
 await convert2file(ai_loop, output_dir, OPT);
+await convert2file(valve_loop, output_dir, OPT);
