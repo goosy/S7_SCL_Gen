@@ -23,7 +23,8 @@ BEGIN{{#if AI_item.zero}}
     AH_limit := {{AI_item.AH_limit}};{{#endif}}{{#if AI_item.WH_limit}}
     WH_limit := {{AI_item.WH_limit}};{{#endif}}{{#if AI_item.WL_limit}}
     WL_limit := {{AI_item.WL_limit}};{{#endif}}{{#if AI_item.AL_limit}}
-    AL_limit := {{AI_item.AL_limit}};{{#endif}}
+    AL_limit := {{AI_item.AL_limit}};{{#endif}}{{#if AI_item.FT_time}}
+    FT_time := L#{{AI_item.FT_time}};{{#endif}}
 END_DATA_BLOCK
 {{#endif}}{{#endfor AI_item}}
 
