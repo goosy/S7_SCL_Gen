@@ -49,15 +49,37 @@ function add_conf(conf) {
     const symbols = symbols_dict[CPU_name] ??= [];
     symbols.push(...(conf.symbols ??= []));
     const options = conf.options ??= {};
+    const list = conf.list ??= [];
+    const item = { CPU, symbols, list, options };
 
     if (type === 'CPU') { // CPU 调度
         CPU.output_dir = conf.output_dir ?? CPU_name;
     } else if (type === 'AI') { // AI 调度
-        const AI_list = conf.AI_list ??= [];
-        AI_confs.push({ CPU, symbols, AI_list, options });
+        list.forEach(AI => {
+            if (!AI.DB) return; // 空AI不处理
+            if (AI.input != 'ref') { // 非ref并入符号表
+                AI.input.type = 'WORD';
+                symbols.push(AI.input);
+            }
+            AI.DB.type = 'AI_Proc';
+            AI.DB.block_name = 'DB';
+            symbols.push(AI.DB);
+        });
+        AI_confs.push(item);
     } else if (type === 'modbusTCP' || type === 'MT') { // modebusTCP 调度
-        const connections = conf.connections ??= [];
-        MT_confs.push({ CPU, symbols, connections, options });
+        options.MB_TCP_Poll = symbols.find((symbol) => symbol.comment === 'MB_TCP_Poll');
+        options.MT_Loop = symbols.find((symbol) => symbol.comment === 'MT_Loop');
+        options.polls_db = symbols.find((symbol) => symbol.comment === 'polls_db');
+        list.forEach(conn => {
+            conn.DB.type = options.MB_TCP_Poll.name;
+            conn.DB.block_name = 'DB';
+            symbols.push(conn.DB);
+            conn.polls.forEach(poll => {
+                poll.recv_DB.block_name = 'DB';
+                symbols.push(poll.recv_DB)
+            })
+        })
+        MT_confs.push(item);
     }
 }
 
@@ -87,4 +109,3 @@ Object.entries(symbols_dict).forEach(
 
 // 补全 modbusTCP 数据
 MT_confs.forEach(gen_MT_data);
-

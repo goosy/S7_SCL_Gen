@@ -18,7 +18,9 @@ export function gen_symbols_data(CPU, symbols) {
     });
     // 补全类型
     symbols.forEach(symbol => {
-        symbol.type ??= symbol.name;
+        if (symbol.block_name == "OB" || symbol.block_name == "FB" || symbol.block_name == "FC" || symbol.type == null){
+            symbol.type = symbol.name;
+        }
         if (common_type.includes(symbol.type)) {
             symbol.type_name = symbol.type;
         } else {

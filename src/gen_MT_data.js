@@ -33,8 +33,8 @@ const TCON_deivce_id = {
 const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
 
 export function gen_MT_data(conf) {
-    const { CPU, symbols, connections } = conf;
-    connections.forEach(conn => { // 处理配置，形成完整数据
+    const { CPU, list } = conf;
+    list.forEach(conn => { // 处理配置，形成完整数据
         const {
             conn_ID_list,
             conn_host_list,
@@ -56,7 +56,7 @@ export function gen_MT_data(conf) {
         conn_host_list[host_str] ??= new IncreaseHashTable(502);
         const port_list = conn_host_list[host_str];
         port_list.push(port);
-        conn.name ??= "conn_MT" + ID;
+        conn.DB.name ??= "conn_MT" + ID;
         conn.local_device_id = local_device_id;
         conn.IP1 = get_fixed_hex(host[0], 2);
         conn.IP2 = get_fixed_hex(host[1], 2);
@@ -66,13 +66,11 @@ export function gen_MT_data(conf) {
         conn.port2 = get_fixed_hex((port & 0xff), 2);
         conn.polls_name ??= "polls_" + poll_list.push_new();
         conn.polls.forEach(poll => {
-            const db_symbol = symbols[poll.recv_DB];
             poll.deivce_ID = get_fixed_hex(poll.deivce_ID, 2);
             poll.function = get_fixed_hex(poll.function, 2);
             poll.started_addr = get_fixed_hex(poll.started_addr, 4);
             poll.length = get_fixed_hex(poll.length, 4);
-            poll.recv_DBNO = db_symbol.block_no; // SCL字面量为十进制
-            poll.recv_DB_code = `"${db_symbol.type}"."${db_symbol.name}"();`;
+            poll.recv_DB_code = `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();`;
         });
     });
 }

@@ -1,22 +1,27 @@
 import { MT_confs } from "./gen_data.js";
 
 export const rules = [];
-MT_confs.forEach(({ CPU, connections, options }) => {
+MT_confs.forEach(({ CPU, list: connections, options }) => {
   const { name, output_dir } = CPU;
-  const { output_file = `MT_Loop`, polls_db = 'Polls_DB' } = options;
+  const { output_file = `MT_Loop`, MB_TCP_Poll, MT_Loop, polls_db } = options;
+  const mtp_name = MB_TCP_Poll.name ?? 'MB_TCP_Poll';
+  const mtl_name = MT_Loop.name ?? 'MT_Loop';
+  const pdb_name = polls_db?.name ?? 'Polls_DB';
   rules.push({
     "name": `${output_dir}/${output_file}.scl`,
     "tags": {
       name,
       connections,
-      polls_db,
+      mtp_name,
+      mtl_name,
+      pdb_name,
     }
   })
 });
 
 export let template = `// 本代码由 S7_SCL_SRC_GEN ™ 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{#for conn in connections}}
-DATA_BLOCK "{{conn.name}}" "MB_TCP_Poll" // {{conn.comment}}
+DATA_BLOCK "{{conn.DB.name}}" "MB_TCP_Poll" // {{conn.comment}}
 BEGIN
   TCON_Parameters.block_length := W#16#40;     //固定为64
   TCON_Parameters.id := W#16#{{conn.ID}};             //连接ID 每个连接必须不一样！
@@ -38,8 +43,8 @@ BEGIN
 END_DATA_BLOCK
 {{#endfor}}
 
-// 轮询定义数据块 "{{polls_db}}"
-DATA_BLOCK "{{polls_db}}"
+// 轮询定义数据块 "{{pdb_name}}"
+DATA_BLOCK "{{pdb_name}}"
 TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT{{#for conn in connections}}
@@ -68,17 +73,17 @@ BEGIN{{#for conn in connections}}{{#for no, poll in conn.polls}}
   {{conn.polls_name}}[{{no}}].MFunction := B#16#{{poll.function}};
   {{conn.polls_name}}[{{no}}].Addr := W#16#{{poll.started_addr}};
   {{conn.polls_name}}[{{no}}].Number := W#16#{{poll.length}};
-  {{conn.polls_name}}[{{no}}].recvDB := {{poll.recv_DBNO}};
+  {{conn.polls_name}}[{{no}}].recvDB := {{poll.recv_DB.block_no}};
   {{conn.polls_name}}[{{no}}].recvDBB := {{poll.recv_start}};{{#endfor poll}}{{#endfor conn}}
 END_DATA_BLOCK
 
 // 调用
-FUNCTION "MT_Loop" : VOID
+FUNCTION "{{mtl_name}}" : VOID
 {{#for conn in connections}}
-"MB_TCP_Poll"."{{conn.name}}" ( // {{conn.comment}}{{#if conn.interval_time}}
+"{{mtp_name}}"."{{conn.DB.name}}" ( // {{conn.comment}}{{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
-  DATA  := "{{polls_db}}".{{conn.polls_name}},
-  buff  := "{{polls_db}}".buff);{{#for poll in conn.polls}}
+  DATA  := "{{pdb_name}}".{{conn.polls_name}},
+  buff  := "{{pdb_name}}".buff);{{#for poll in conn.polls}}
 {{poll.recv_DB_code}}{{#endfor poll}}
 {{#endfor conn}}
 END_FUNCTION

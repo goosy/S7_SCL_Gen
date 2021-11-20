@@ -56,39 +56,34 @@ CPU: AS1
 
 # 符号定义
 symbols:  # 以下除 JS_flow，符号对应的实际块由本程序自动生成
-  - # modbusTCP 主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
+  - comment: MB_TCP_Poll # comment为MB_TCP_Poll，是通信主处理函数，如果不是为了重名重地址的原因，不用更改定义值
     name: MB_TCP_Poll
     block_name: FB
     block_no: 343
-    type: MB_TCP_Poll # 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
-    comment: 'modbus TCP poll main function block' # 写入step7符号表中的注释
-  - # 主调用FC块，这个要加入到OB中
+  - comment: MT_Loop # comment为 MT_Loop 是主调用FC块，这个要加入到OB中。如不为了重名重地址的原因，不用更改定义值
     name: MT_Loop
     block_name: FC
     block_no: 343
-    comment: 'modbus TCP call function'
-  - {name: &poll_db MT_pools_data, block_name: DB, block_no: 800} # DB 块的类型不是UDT或FB时，也可以省略type
-  - {name: &P1 polls_example, block_name: DB, block_no: 891, type: MB_TCP_Poll} # 所有的modbusTCP连接块（有IP信息的）都是 MB_TCP_Poll 类型
-  # "JS_flow"FB 块定义了本配置中接收DB块的数据结构，这一部分不通用！
-  # 本程序中提供的该块仅用于一诺的智能流量表，可依照这个写其它的数据接收FB块，并对应更正这里的符号表
+  - comment: polls_db # 注释为polls_db的符号，将用于保存轮询命令数据，块内容自动生成
+    name: &poll_db MT_pools_data
+    block_name: DB
+    block_no: 800
   # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
-  # 本程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
-  - {name: JS_flow, block_name: FB, block_no: 801} 
-  - {name: &F1 Flow01, block_name: DB, block_no: 801, type: JS_flow} # 接收块1
-  - {name: &F2 Flow02, block_name: DB, block_no: ~, type: JS_flow} # 接收块2 注意，DB块的 block_no 为 ~ (YAML中为null)时，生成程序会自动用上一个DB号加1
+  # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
+  # 这类FB不通用，需要另外单独写块本身。可依照本例提供的 "JS_flow"FB 块写其它场景的FB块，要对应符号表
+  # JS_flow定义了本例所有接收DB块的数据结构，用于一诺的智能流量表
+  - {name: JS_flow, block_name: FB, block_no: 801}  # 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
+  # 其它的连接块和接收块将由程序自动生成符号表
 
-connections :
+list : # modbus TCP 连接列表
   # 第1个连接，
   - # 必须缩进一次的 "-" 开头，请参看yaml语法 
 
     # 十进制连接号，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
     # ID: 1
     
-    # 连接名称（用于生成背景连接块名），建议填写增加可读性。可省略，默认为 "conn_MT"+ID，本例为"conn_MT16"
-    name: "conn_example" 
-    
-    # 背景连接块绝对地址，下面的配置表示背景连接块为 DB891。可省略，程序会从上一个连接块号顺序填，第1个则默认为100
-    DB_NO: 891 
+    # 背景连接块。不必填写type，会自动指定为 MB_TCP_Poll
+    DB: {name: conn_example, block_no: 891} 
     
     # modbusTCP 对方IP 必填
     host: [192, 168, 10, 10] 
@@ -128,7 +123,7 @@ connections :
     # interval_time: 200 # 发出查询的时间间隔，可省略，默认为200，单位ms
     comment: 192.168.10.10:502 智能流量计 # 本连接的注释，可省略
 
-    # 查询名称，必填，建议直接引用符号表。
+    # 自定义查询名称，必填，不可与其它连接的重名。
     polls_name: 'polls_example' 
     
     # 该连接下的轮询定义，至少要有一个查询
@@ -139,7 +134,7 @@ connections :
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
         length: 28 # 查询长度
-        recv_DB: *F1 # 接收DB名称，必填，建议直接引用符号表，也可以为绝对地址，比如 DB801
+        recv_DB: {name: Flow01, block_no: 801, type: JS_flow} # 接收块1
         recv_start: 0 # 接收开始位置
         comment: '垦西1#流量计' # 本查询的注释，可省略
 
@@ -148,7 +143,7 @@ connections :
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
         length: 28 # 查询长度
-        recv_DB: *F2 # 接收DB名称，必填，建议直接引用符号表，也可以为绝对地址，比如 DB801
+        recv_DB: {name: Flow02, block_no: ~, type: JS_flow} # 接收块2
         recv_start: 0 # 接收开始位置
         comment: '垦西2#流量计' # 本查询的注释，可省略
 
@@ -182,38 +177,31 @@ symbols:  # 以下符号指示的块，其内容由本程序自动生成
     block_name: FC
     block_no: 512
     comment: 'main cyclic call function'
-  - {name: AI01-01, block_name: IW, block_no: 512, type: WORD} # AI通道定义
-  - {name: AI01-02, block_name: IW, block_no: 514, type: WORD} 
-  - {name: AI01-03, block_name: IW, block_no: 516, type: WORD} 
-  - {name: AI01-04, block_name: IW, block_no: 518, type: WORD} 
-  - {name: AI01-05, block_name: IW, block_no: 520, type: WORD} 
-  - {name: PIT001, block_name: DB, block_no: 100, type: AI_Proc} # AI数据块
-  - {name: PIT002, block_name: DB, block_no: ~, type: AI_Proc} 
-  - {name: TIT001, block_name: DB, block_no: ~, type: AI_Proc} 
-  - {name: TIT002, block_name: DB, block_no: ~, type: AI_Proc} 
-  - {name: LIT001, block_name: DB, block_no: ~, type: AI_Proc} 
 
-AI_list:
-  - name: "PIT001"
-    comment: 进站压力
-    AI: "AI01-01"
+list: # 模拟量列表
+  - comment: 进站压力
+    DB: {name: PIT001, block_no: 100} # AI数据块
+    input: {name: AI01-01, block_name: IW, block_no: 512} # AI通道
     zero: "-0.2"
     span: "2.6"
     AH_limit: "2.5"
     WH_limit: "2.0"
     WL_limit: "-0.05"
     AL_limit: "-0.1"
-  - name: "PIT002"
-    comment: 过滤压力
-    AI: "AI01-02"
-  - name: "TIT001" 
-    comment: 进站温度
-    AI: "AI01-03"
+  - comment: 过滤压力
+    DB: {name: PIT002, block_no: ~} 
+    input: {name: AI01-02, block_name: IW, block_no: 514} # AI通道
+  - comment: 进站温度
+    DB: {name: TIT001, block_no: ~} 
+    input: {name: AI01-03, block_name: IW, block_no: 516} # AI通道
     zero: "-40.0"
     span: "80.0"
-  - name: "TIT002" 
-    comment: 气温
-    AI: "AI01-03"
+  - comment: 气温
+    DB: {name: TIT002, block_no: ~} 
+    input: {name: M485-1, block_name: MW, block_no: 100} # M区域
+  - comment: 液位
+    DB: {name: LIT001, block_no: ~} 
+    input: {name: '"RecvDB".Tank1', type: ref} # 引用，转换程序不检查正确性
 
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
