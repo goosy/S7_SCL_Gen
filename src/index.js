@@ -10,6 +10,7 @@ const __dirname = dirname(__filename);
 import { MT_confs } from './gen_data.js';
 import * as symbol_asc from "./symbol.asc.js";
 import * as mt_loop from "./MT_Loop.scl.js";
+import * as ai_loop from "./AI_Loop.scl.js";
 
 async function prepare_dir(dir) {
 	let parents = dirname(dir);
@@ -76,3 +77,4 @@ const OPT = { "OE": 'gbk', "lineEndings": "windows" };
 let output_dir = join(__dirname, '../dist/');
 await convert2file(symbol_asc, output_dir, OPT);
 await convert2file(mt_loop, output_dir, OPT);
+await convert2file(ai_loop, output_dir, OPT);

@@ -46,19 +46,17 @@ function add_conf(conf) {
         output_dir: 'dist', // 输出文件夹
     }
     const CPU = CPUs[CPU_name];
-
-    symbols_dict[CPU_name] ??= [];
-    const symbols = symbols_dict[CPU_name];
-    conf.symbols ??= [];
-    symbols.push(...conf.symbols);
+    const symbols = symbols_dict[CPU_name] ??= [];
+    symbols.push(...(conf.symbols ??= []));
+    const options = conf.options ??= {};
 
     if (type === 'CPU') { // CPU 调度
         CPU.output_dir = conf.output_dir ?? CPU_name;
     } else if (type === 'AI') { // AI 调度
-        AI_confs.push({ ...conf, CPU, symbols });
+        const AI_list = conf.AI_list ??= [];
+        AI_confs.push({ CPU, symbols, AI_list, options });
     } else if (type === 'modbusTCP' || type === 'MT') { // modebusTCP 调度
-        const connections = conf.connections ?? [];
-        const options = conf.options ?? {};
+        const connections = conf.connections ??= [];
         MT_confs.push({ CPU, symbols, connections, options });
     }
 }
@@ -89,3 +87,4 @@ Object.entries(symbols_dict).forEach(
 
 // 补全 modbusTCP 数据
 MT_confs.forEach(gen_MT_data);
+

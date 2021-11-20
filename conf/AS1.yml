@@ -15,7 +15,7 @@
 
 
 # 转换代码说明：
-# 1个文档只能定义1种类型，@TODO 目前只实现了2种类型： CPU modbusTCP
+# 1个文档只能定义1种类型，@TODO 目前只实现了2种类型： CPU AI modbusTCP modbusRTU
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
 # 配置文档必须有 type 和 name 字段，2个字段都相同的配置文档只能有一个
 # 本示例文件有3个配置文档： CPU modbusTCP AI
@@ -168,7 +168,6 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
 ---
 # 指示本配置为生成 AI 代码
-# @TODO 还未实现
 type: AI 
 CPU: "AS1" 
 
@@ -198,39 +197,24 @@ AI_list:
   - name: "PIT001"
     comment: 进站压力
     AI: "AI01-01"
-    zero: -0.1
-    span: 0.6
-    AH_limit: 0.1
-    WH_limit: 0.1
-    WL_limit: -0.05
-    AL_limit: -0.1
+    zero: "-0.2"
+    span: "2.6"
+    AH_limit: "2.5"
+    WH_limit: "2.0"
+    WL_limit: "-0.05"
+    AL_limit: "-0.1"
   - name: "PIT002"
-    comment: 出站压力
+    comment: 过滤压力
     AI: "AI01-02"
-    zero: -0.1
-    span: 4.0
-    AH_limit: 0.1
-    WH_limit: 0.1
-    WL_limit: -0.05
-    AL_limit: -0.1
   - name: "TIT001" 
-    comment: 进站压力
+    comment: 进站温度
     AI: "AI01-03"
-    zero: -40.0
-    span: 80.0
-    AH_limit: 60.0
-    WH_limit: 55.0
-    WL_limit: 30.0
-    AL_limit: 35.0
+    zero: "-40.0"
+    span: "80.0"
   - name: "TIT002" 
-    comment: 进站压力
+    comment: 气温
     AI: "AI01-03"
-    zero: -40.0
-    span: 80.0
-    AH_limit: 60.0
-    WH_limit: 55.0
-    WL_limit: 30.0
-    AL_limit: 35.0
+
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
