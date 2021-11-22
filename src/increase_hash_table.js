@@ -7,8 +7,8 @@ export class IncreaseHashTable {
         this.next = no;
     }
 
-    push(num){
-        if(num == null) return this.push_new();
+    push(num) {
+        if (num == null) return this.push_new();
         // 不能非正数字
         if (typeof num !== 'number' || isNaN(num) || num <= 0) throw new Error(`${num} 不是正整数!`);
         // 不能重复
@@ -18,7 +18,7 @@ export class IncreaseHashTable {
         return num
     }
 
-    push_new(){
+    push_new() {
         // 自动取下一个有效的数字
         let num = this.next;
         while (this.list.includes(num)) num++;

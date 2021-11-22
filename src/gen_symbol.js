@@ -1,4 +1,5 @@
-import { CPUs, symbols_dict } from "./gen_data.js";
+import { CPUs } from "./gen_data.js";
+import {get_symbols} from './symbols.js'
 import { str_padding_left, str_padding_right } from "./str_padding.js";
 
 const SYMN_LEN = 23;
@@ -21,7 +22,9 @@ function get_symbol({ name, block_name, block_no, type_name, type_no, comment })
 }
 
 export const rules = [];
-Object.entries(symbols_dict).forEach(([cpu_name, symbols]) => {
+
+Object.keys(CPUs).forEach((cpu_name) => {
+    const symbols = get_symbols(cpu_name);
     const symbol_list = symbols.map(get_symbol);
     const output_dir = CPUs[cpu_name].output_dir;
     rules.push({

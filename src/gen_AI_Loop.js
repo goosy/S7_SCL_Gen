@@ -13,7 +13,7 @@ AI_confs.forEach(({ CPU, list, options }) => {
     })
 });
 
-export let template = `// 本代码由 S7_SCL_SRC_GEN ™ 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+export let template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{#for AI_item in list}}{{#if AI_item.DB}}
 // AI背景块：{{AI_item.comment}}
 DATA_BLOCK "{{AI_item.DB.name}}" "AI_Proc"

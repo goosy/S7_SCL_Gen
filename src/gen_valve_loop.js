@@ -17,7 +17,7 @@ valve_confs.forEach(({ CPU, list, options }) => {
     })
 });
 
-export let template = `// 本代码由 S7_SCL_SRC_GEN ™ 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+export let template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 
 // 主循环调用
 FUNCTION "Valve_Loop" : VOID

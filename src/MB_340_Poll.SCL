@@ -1,0 +1,168 @@
+FUNCTION_BLOCK "MB340_Poll"
+TITLE='modbus 轮询'
+VERSION:'0.1'
+KNOW_HOW_PROTECT
+AUTHOR:Goosy
+NAME:MB_Poll
+FAMILY:GooLib
+
+VAR_INPUT
+    customTrigger : BOOL; //默认为false,即顺序轮询。当本参数为true时，由参数REQ定义轮询方式。
+    REQ : BOOL; // 当customTrigger置位时起作用，在REQ的上升沿发出当次轮询。比如可以把一个秒脉冲赋值给REQ
+    Laddr : INT; // 模块地址
+    timeout : TIME := T#2S;   // 单次询问的最大等待时间
+    overTimes : INT := 5; // 单次询问的回应时间大于间隔时间的 overTimes 倍，判定超时，标记该设备数据无效
+    DATA : ANY; // 轮询定义系列数据区
+    Pointer_S AT DATA : STRUCT  // Define ANY structure
+        SyntaxID: BYTE;
+        DataType: BYTE;
+        DataCount: WORD;
+        DB_Nummer: WORD;
+        Byte_Pointer: DWORD;
+    END_STRUCT;
+END_VAR
+
+VAR_OUTPUT
+    OnReceive : BOOL; // 已接收指示
+    receiveDB : INT; // 已接收DB号
+    receiveDBB : INT; // 已接收DB偏移量
+    receiveLEN : INT; // 已接收数据的长度
+END_VAR
+
+VAR_IN_OUT
+END_VAR
+
+VAR
+    trigger : BOOL; // 内部控制CP341发送
+    transmitting : BOOL; // 当前轮询进行中
+    initialized : BOOL; // 输入已初始化
+    Index : INT; // 第几轮
+    baseOffset : INT;
+    transLength : INT;
+    Poll_DB : INT; // 轮询DB号
+    sendDBB : INT;
+    recvDB : INT;    //接收DB块号
+    recvDBB : INT;    //接收DB起始地址
+    CP_SEND : P_SEND;
+    CP_RCV : P_RCV;
+    TimeOver : TON;
+    waitCount : ARRAY[0..31] OF INT;
+END_VAR
+
+VAR_TEMP
+    w_Poll_DB : WORD;
+    sendDevice : BYTE;
+    sendFunction : BYTE;
+    w_Recv_DB : WORD;
+    recvDevice : BYTE;
+    recvFunction : BYTE;
+    recvLen : INT;
+END_VAR
+
+BEGIN
+
+    IF NOT initialized THEN
+        IF (Pointer_S.DB_Nummer = 0)
+            OR (Pointer_S.DataType <> B#16#2)
+            OR ((Pointer_S.Byte_Pointer AND DW#16#ff000000) <> DW#16#84000000) THEN
+            RETURN;   
+        END_IF;
+        Poll_DB := WORD_TO_INT(Pointer_S.DB_Nummer);
+        baseOffset := DWORD_TO_INT(SHR(IN := Pointer_S.Byte_Pointer, N := 3));
+        transLength := WORD_TO_INT(Pointer_S.DataCount)/12;
+        initialized := TRUE;
+    END_IF;
+
+    // 范围检查
+    IF Index < 0 OR Index >= transLength THEN
+        Index := 0;
+    END_IF;
+   
+    // 发送参数
+    w_Poll_DB := Pointer_S.DB_Nummer;
+    sendDBB := Index * 12 + baseOffset;
+    // 接收参数
+    w_Recv_DB := WORD_TO_BLOCK_DB(Pointer_S.DB_Nummer).DW[sendDBB+8];
+    recvDB := WORD_TO_INT(w_Recv_DB);
+    recvDBB := WORD_TO_INT(WORD_TO_BLOCK_DB(Pointer_S.DB_Nummer).DW[sendDBB+10]);
+   
+    // to-do: 写入CRC16
+
+    // 发送数据
+    CP_SEND (
+        REQ                      := trigger,
+        LADDR                    := Laddr,
+        DB_NO                    := Poll_DB,
+        DBB_NO                   := sendDBB,
+        LEN                      := 8);
+    IF CP_SEND.DONE OR CP_SEND.ERROR THEN
+        trigger := FALSE; //取消触发
+    END_IF;
+
+    //接收功能
+    CP_RCV (
+        EN_R                     := TRUE,
+        LADDR                    := Laddr,
+        DB_NO                    := recvDB,
+        DBB_NO                   := recvDBB + 1);
+
+    OnReceive := CP_RCV.NDR;
+    // 接收成功时处理
+    IF CP_RCV.NDR THEN
+        sendDevice := WORD_TO_BLOCK_DB(w_Poll_DB).DB[sendDBB];
+        sendFunction := WORD_TO_BLOCK_DB(w_Poll_DB).DB[sendDBB + 1];
+        recvDevice :=  WORD_TO_BLOCK_DB(w_Recv_DB).DB[recvDBB + 1];
+        recvFunction := WORD_TO_BLOCK_DB(w_Recv_DB).DB[recvDBB + 2];
+        recvLen := BYTE_TO_INT(WORD_TO_BLOCK_DB(w_Recv_DB).DB[recvDBB + 3]) + 4;
+        IF sendDevice = recvDevice AND recvFunction = sendFunction AND recvLen > 4 THEN
+            waitCount[Index] := 0;
+            WORD_TO_BLOCK_DB(w_Recv_DB).DX[recvDBB,0] := TRUE; // 设备正常标志
+            WORD_TO_BLOCK_DB(w_Recv_DB).DX[recvDBB,1] := FALSE; // 设备错误标志
+            // 记录最后一次接收位置
+            receiveDB := recvDB;
+            receiveDBB := recvDBB;
+            receiveLEN := recvLen;
+        ELSE
+            WORD_TO_BLOCK_DB(w_Recv_DB).DX[recvDBB,0] := FALSE; // 设备正常标志
+            WORD_TO_BLOCK_DB(w_Recv_DB).DX[recvDBB,1] := TRUE; // 设备错误标志;
+        END_IF;
+    END_IF;
+    IF waitCount[Index] > overTimes THEN // 超时处理
+        WORD_TO_BLOCK_DB(w_Recv_DB).DX[recvDBB,0] := FALSE;// 设备正常标志
+        WORD_TO_BLOCK_DB(w_Recv_DB).DX[recvDBB,1] := TRUE;// 设备错误标志
+    END_IF;
+
+    // 启动超时
+    TimeOver(
+           IN := transmitting,
+           PT := timeout);
+
+    // 处理 transmitting
+    IF customTrigger THEN
+        IF NOT REQ THEN
+            // -REQ
+            trigger := FALSE;
+            transmitting := FALSE;
+        ELSIF NOT transmitting THEN
+            // REQ & -transmitting
+            // 在 REQ 上升沿启动新一轮计数增加
+            Index := Index + 1;
+            transmitting := TRUE;
+            trigger := TRUE;
+            waitCount[Index] := waitCount[Index] + 1;
+        END_IF;
+    ELSE
+        IF CP_RCV.NDR OR TimeOver.Q THEN
+            // 当前询问结束，计数增加
+            Index := Index + 1;
+            transmitting := FALSE;
+            trigger := FALSE;
+            waitCount[Index] := waitCount[Index] + 1;
+        ELSIF NOT transmitting THEN
+            // 启动新一轮
+            transmitting := TRUE;
+            trigger := TRUE;
+        END_IF;
+    END_IF;
+
+END_FUNCTION_BLOCK

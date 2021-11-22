@@ -4,7 +4,7 @@ export const rules = [];
 MT_confs.forEach(({ CPU, list: connections, options }) => {
   const { name, output_dir } = CPU;
   const { output_file = `MT_Loop`, MB_TCP_Poll, MT_Loop, polls_db } = options;
-  const mtp_name = MB_TCP_Poll.name ?? 'MB_TCP_Poll';
+  const mtp_name = MB_TCP_Poll.name ?? 'MT_TCP_Poll';
   const mtl_name = MT_Loop.name ?? 'MT_Loop';
   const pdb_name = polls_db?.name ?? 'Polls_DB';
   rules.push({
@@ -19,7 +19,7 @@ MT_confs.forEach(({ CPU, list: connections, options }) => {
   })
 });
 
-export let template = `// 本代码由 S7_SCL_SRC_GEN ™ 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+export let template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{#for conn in connections}}
 DATA_BLOCK "{{conn.DB.name}}" "MB_TCP_Poll" // {{conn.comment}}
 BEGIN

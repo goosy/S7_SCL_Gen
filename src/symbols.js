@@ -1,5 +1,13 @@
+
 const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'REAL'];
-export function gen_symbols_data(CPU, symbols) {
+const global_symbols = {};
+
+export function get_symbols(cpu_name){
+    global_symbols[cpu_name] ??= [];
+    return global_symbols[cpu_name];
+}
+
+function gen_symbols_data(CPU, symbols) {
     const exist_name = {};
     const exist_bno = {};
     const { DB_list } = CPU;
@@ -18,7 +26,7 @@ export function gen_symbols_data(CPU, symbols) {
     });
     // 补全类型
     symbols.forEach(symbol => {
-        if (symbol.block_name == "OB" || symbol.block_name == "FB" || symbol.block_name == "FC" || symbol.type == null){
+        if (symbol.block_name == "OB" || symbol.block_name == "FB" || symbol.block_name == "FC" || symbol.type == null) {
             symbol.type = symbol.name;
         }
         if (common_type.includes(symbol.type)) {
@@ -30,4 +38,11 @@ export function gen_symbols_data(CPU, symbols) {
             symbol.type_no = type_block.block_no;
         }
     });
+}
+
+// 检查并补全符号表
+export function rebuild(CPUs) {
+    Object.entries(global_symbols).forEach(
+        ([cpu_name, symbols]) => gen_symbols_data(CPUs[cpu_name], symbols)
+    );
 }

@@ -15,7 +15,7 @@
 
 
 # 转换代码说明：
-# 1个文档只能定义1种类型，目前只实现了3种类型： CPU AI modbusTCP Value @TODO 
+# 1个文档只能定义1种类型，目前只实现了4种类型： CPU AI modbusTCP modbusRTU Valve
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
 # 配置文档必须有 type 和 name 字段，2个字段都相同的配置文档只能有一个
 # 本示例文件有3个配置文档： CPU modbusTCP AI
@@ -46,6 +46,147 @@ IP: [192.168.10.10]
 ... #文档结束
 
 
+---
+# 指示本配置为生成 AI 代码
+type: AI 
+CPU: "AS1" 
+
+symbols:  # 以下符号指示的块，其内容由本程序自动生成
+  - # modbusTCP 主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
+    name: AI_Proc
+    block_name: FB
+    block_no: 512
+    comment: 'AI process main function block'
+  - # 主调用FC块，这个要加入到OB中
+    name: AI_Loop
+    block_name: FC
+    block_no: 512
+    comment: 'main cyclic call function'
+
+list: # 模拟量列表
+  - comment: 进站压力
+    DB: {name: PIT001, block_no: 100} # AI数据块
+    input: {name: AI01-01, block_name: IW, block_no: 512} # AI通道
+    zero: "-0.2"
+    span: "2.6"
+    AH_limit: "2.5"
+    WH_limit: "2.0"
+    WL_limit: "-0.05"
+    AL_limit: "-0.1"
+  - comment: 过滤压力
+    DB: {name: PIT002, block_no: ~} 
+    input: {name: AI01-02, block_name: IW, block_no: 514} # AI通道
+  - comment: 进站温度
+    DB: {name: TIT001, block_no: ~} 
+    input: {name: AI01-03, block_name: IW, block_no: 516} # AI通道
+    zero: "-40.0"
+    span: "80.0"
+  - comment: 气温
+    DB: {name: TIT002, block_no: ~} 
+    input: {name: M485-1, block_name: MW, block_no: 100} # M区域
+  - comment: 液位
+    DB: {name: LIT001, block_no: ~} 
+    input: '"RecvDB".Tank1' # 引用，转换程序不检查正确性
+
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...
+
+
+---
+type: modbusRTU # 指示是modbus转换
+name: AS1
+
+symbols:  
+  - comment: MB340_FB # comment为MB340_FB，表示该符号对应MB340通信主处理函数，如果没有MB340模块，可以不用定义
+    name: MB_340_Poll.SCL
+    block_name: FB
+    block_no: 340
+  - comment: MB341_FB # comment为CP341_FB，表示该符号对应CP341通信主处理函数，如果没有CP341模块，可以不用定义
+    name: MB_341_Poll.SCL
+    block_name: FB
+    block_no: 342
+  - comment: MB_Loop # comment为 MB_Loop 是主调用FC块，这个要加入到OB中。如不为了重名重地址的原因，不用更改定义值
+    name: MB_Loop
+    block_name: FC
+    block_no: 342
+  - comment: MB_polls_DB # 注释为MB_polls_DB的符号，将用于保存轮询命令数据，块内容自动生成
+    name: MB_polls_DB
+    block_name: DB
+    block_no: 880
+  - comment: MT_polls_DB # 注释为MT_polls_DB的符号，将用于保存轮询命令数据，块内容自动生成
+    name: MT_polls_DB
+    block_name: DB
+    block_no: 890
+  - {name: GAS_flow, block_name: FB, block_no: 803} 
+  - {name: STBL, block_name: FB, block_no: 805} 
+  - {name: launcher_data, block_name: FB, block_no: 806} 
+  - {name: PE01_Proc, block_name: FB, block_no: 807} 
+
+list : # modbus 模块列表
+  # CP01 752
+  - comment: CP01 Module752 河口流量 30# 31#
+    type: CP340
+    Laddr: 752
+    DB: {name: CP_01, block_no: 881}
+    polls_name: 'polls_HK'
+    polls:
+      - comment: '河口1#流量计 30'
+        deivce_ID: 30 
+        function: 4 
+        started_addr: 0 
+        length: 28 
+        CRC: F3AC # 用2字节16进制字符串表示
+        recv_DB: {name: Flow30, block_no: 830, type: JS_flow} 
+        recv_start: 0
+      - comment: '河口2#流量计 31' 
+        deivce_ID: 31 
+        function: 4 
+        started_addr: 0 
+        length: 28 
+        CRC: F27D # 用2字节16进制字符串表示
+        recv_DB: {name: Flow31, block_no: 831, type: JS_flow} 
+        recv_start: 0
+  # CP03 784
+  - comment: CP03 Module 784 天然气流量计 1# 2# 3#
+    type: CP341
+    coutomTrigger: TRUE # 指示由外部定义发送时间
+    REQ: M0.5 # 指定时间存储器 1HZ 发送轮询
+    Laddr: 784
+    DB: {name: CP_02, block_no: 883}
+    polls_name: 'polls_GAS'
+    polls:
+      - comment: '天然气1#流量计 1' 
+        deivce_ID: 1 
+        function: 3 
+        started_addr: 4 
+        length: 26 
+        CRC: 85C0
+        recv_DB: {name: GAS01, block_no: 841, type: GAS_flow} 
+        recv_start: 0
+      - comment: '天然气2#流量计 2' 
+        deivce_ID: 2 
+        function: 3 
+        started_addr: 4 
+        length: 26
+        CRC: 85F3 
+        recv_DB: {name: GAS02, block_no: 842, type: GAS_flow} 
+        recv_start: 0
+      - comment: '天然气总 10#' 
+        deivce_ID: 10 
+        function: 3 
+        started_addr: 4 
+        length: 26
+        CRC: 84BB 
+        recv_DB: {name: GAS03, block_no: 843, type: GAS_flow} 
+        recv_start: 0
+...
+
+
 # modbusTCP 文档
 ---
 # 指示本配置为生成 modbusTCP 代码
@@ -65,7 +206,7 @@ symbols:  # 以下除 JS_flow，符号对应的实际块由本程序自动生成
     block_name: FC
     block_no: 343
   - comment: polls_db # 注释为polls_db的符号，将用于保存轮询命令数据，块内容自动生成
-    name: &poll_db MT_pools_data
+    name: MT_pools_data
     block_name: DB
     block_no: 800
   # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
@@ -154,59 +295,4 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
   # 输出文件名，系统自动加后缀。
   # output_file : 'example'
-
-  # 指定哪一个块做为轮询命令数据块，要在 symbols 中定义它
-  # 注意同CPU下有其它的轮询块，要避免块名重复，否则生成程序会检出报错
-  # 省略时，默认为 Polls_DB ，必须也要在 symbols 中定义它
-  polls_db: *poll_db
-...
-
----
-# 指示本配置为生成 AI 代码
-type: AI 
-CPU: "AS1" 
-
-symbols:  # 以下符号指示的块，其内容由本程序自动生成
-  - # modbusTCP 主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
-    name: AI_Proc
-    block_name: FB
-    block_no: 512
-    comment: 'AI process main function block'
-  - # 主调用FC块，这个要加入到OB中
-    name: AI_Loop
-    block_name: FC
-    block_no: 512
-    comment: 'main cyclic call function'
-
-list: # 模拟量列表
-  - comment: 进站压力
-    DB: {name: PIT001, block_no: 100} # AI数据块
-    input: {name: AI01-01, block_name: IW, block_no: 512} # AI通道
-    zero: "-0.2"
-    span: "2.6"
-    AH_limit: "2.5"
-    WH_limit: "2.0"
-    WL_limit: "-0.05"
-    AL_limit: "-0.1"
-  - comment: 过滤压力
-    DB: {name: PIT002, block_no: ~} 
-    input: {name: AI01-02, block_name: IW, block_no: 514} # AI通道
-  - comment: 进站温度
-    DB: {name: TIT001, block_no: ~} 
-    input: {name: AI01-03, block_name: IW, block_no: 516} # AI通道
-    zero: "-40.0"
-    span: "80.0"
-  - comment: 气温
-    DB: {name: TIT002, block_no: ~} 
-    input: {name: M485-1, block_name: MW, block_no: 100} # M区域
-  - comment: 液位
-    DB: {name: LIT001, block_no: ~} 
-    input: '"RecvDB".Tank1' # 引用，转换程序不检查正确性
-
-
-options : # 选项，非必需，无需要时可以全部删除或注释掉。
-
-  # 输出文件名，系统自动加后缀。
-  # output_file : 'example'
-
 ...
