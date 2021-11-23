@@ -26,7 +26,7 @@ export let template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" �
 // 轮询DB块，含modbus发送指令，
 DATA_BLOCK "{{pdb_name}}"
 STRUCT{{#for module in modules}}
-    {{module.polls_name}}: ARRAY[0..{{module.polls.length - 1}}] OF STRUCT //轮询命令数据，在修改数组定义决定轮询个数
+    {{module.polls_name}}: ARRAY[0..{{module.polls.length - 1}}] OF STRUCT //{{module.comment}} 轮询命令数据
         DeviceID : BYTE;    //子站地址
         MFunction : BYTE;    //modbus 功能号
         StartAddress : WORD;    //起始地址
@@ -37,8 +37,8 @@ STRUCT{{#for module in modules}}
     END_STRUCT;{{#endfor module}}
 END_STRUCT;
 BEGIN{{#for module in modules}}
-    // {{module.polls_name}}轮询数据{{#for no, poll in module.polls}}
-    {{module.polls_name}}[{{no}}].DeviceID := B#16#{{poll.deivce_ID}};
+    // --- {{module.comment}} 轮询数据{{#for no, poll in module.polls}}
+    {{module.polls_name}}[{{no}}].DeviceID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
     {{module.polls_name}}[{{no}}].MFunction := B#16#{{poll.function}};
     {{module.polls_name}}[{{no}}].StartAddress := W#16#{{poll.started_addr}};
     {{module.polls_name}}[{{no}}].Number := W#16#{{poll.length}};
@@ -50,12 +50,13 @@ END_DATA_BLOCK
 // 主调用
 FUNCTION "MB_Loop" : VOID
 {{#for no, module in modules}}
-// 第{{no}}个{{module.type}}的调用
+// 第{{no+1}}个模块：{{module.type}}
+// {{module.comment}}
 "{{#if module.type == 'CP341'}}{{mbfb341_name}}{{#else}}{{mbfb340_name}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
     Laddr         := {{module.Laddr}},  // CP模块地址
-    DATA          := "Poll_DB".List0);
+    DATA          := "Poll_DB".{{module.polls_name}});
 {{#endfor module}}
 END_FUNCTION
 `;

@@ -68,7 +68,8 @@ STRUCT{{#for conn in connections}}
     data : ARRAY[0..251] OF BYTE ;    //数据
   END_STRUCT ;
 END_STRUCT ;
-BEGIN{{#for conn in connections}}{{#for no, poll in conn.polls}}
+BEGIN{{#for conn in connections}}
+  // --- {{conn.comment}}{{#for no, poll in conn.polls}}
   {{conn.polls_name}}[{{no}}].MBAP_Addr := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
   {{conn.polls_name}}[{{no}}].MFunction := B#16#{{poll.function}};
   {{conn.polls_name}}[{{no}}].Addr := W#16#{{poll.started_addr}};
@@ -80,7 +81,8 @@ END_DATA_BLOCK
 // 调用
 FUNCTION "{{mtl_name}}" : VOID
 {{#for conn in connections}}
-"{{mtp_name}}"."{{conn.DB.name}}" ( // {{conn.comment}}{{#if conn.interval_time}}
+// {{conn.comment}}
+"{{mtp_name}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
   DATA  := "{{pdb_name}}".{{conn.polls_name}},
   buff  := "{{pdb_name}}".buff);{{#for poll in conn.polls}}

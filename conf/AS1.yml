@@ -17,7 +17,7 @@
 # 转换代码说明：
 # 1个文档只能定义1种类型，目前只实现了4种类型： CPU AI modbusTCP modbusRTU Valve
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
-# 配置文档必须有 type 和 name 字段，2个字段都相同的配置文档只能有一个
+# 配置文档必须有 type 和 CPU 字段，2个字段都相同的配置文档只能有一个
 # 本示例文件有3个配置文档： CPU modbusTCP AI
 
 # CPU 文档
@@ -49,12 +49,12 @@ IP: [192.168.10.10]
 ---
 # 指示本配置为生成 AI 代码
 type: AI 
-CPU: "AS1" 
+CPU: AS1 
 
 symbols:  # 以下符号指示的块，其内容由本程序自动生成
   # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-  - [AI_Proc, FB512, FB512, 'AI process main function block'] # modbusTCP 主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
-  - [AI_Loop, FC512, FC512, 'main cyclic call function'] # 主调用FC块，这个要加入到OB中
+  - [AI_Proc, FB512, ~, 'AI process main function block'] # AI主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
+  - [AI_Loop, FC512, ~, 'main cyclic call function'] # 主调用FC块，这个要加入到OB中
 
 list: # 模拟量列表
   - comment: 进站压力
@@ -105,7 +105,6 @@ symbols:
   - [PE01_Proc, FB807]
 
 list : # modbus 模块列表
-  # CP01 752
   - comment: CP01 Module752 河口流量 30# 31#
     type: CP340
     Laddr: 752
@@ -128,8 +127,7 @@ list : # modbus 模块列表
         CRC: F27D # 用2字节16进制字符串表示
         recv_DB: [Flow31,  DB831, JS_flow]
         recv_start: 0
-  # CP03 784
-  - comment: CP03 Module 784 天然气流量计 1# 2# 3#
+  - comment: CP02 Module784 天然气流量计 1# 2# 3#
     type: CP341
     coutomTrigger: TRUE # 指示由外部定义发送时间
     REQ: M0.5 # 指定时间存储器 1HZ 发送轮询
@@ -263,4 +261,50 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
   # 输出文件名，系统自动加后缀。
   # output_file : 'example'
+...
+
+---
+# 指示本配置为生成 Valve 代码
+type: Valve 
+CPU: AS1
+
+symbols:  
+  - [Valve_Proc, FB516]
+  - [Valve_Loop, FC516]
+
+list :
+  - comment: MGV-1201A
+    DB: [MGV-1201A, DB111]
+    AI: [AI11-1, PIW672]
+    CP: [DI01-01, I0.0]
+    OP: [DI01-02, I0.1]
+    error: [DI01-03, I0.2]
+    remote: [DI01-04, I0.3]
+    close_action: [DO01-01, Q0.0]
+    open_action: [DO01-02, Q0.1]
+
+  # 没有阀位时，直接设置为断线值 
+  # 没有远程信号时，必须分别置为 true
+  # 没有故障信号时，必须分别置为 false
+  # 以下常量可以直接使用
+  # S7_ZERO := 0;
+  # S7_SPAN := 27648;
+  # S7_AI_MIN := -32768;
+  # S7_AI_MIN_WORD := W#16#8000;
+  # S7_AI_MAX := 32767;
+  # S7_AI_MAX_WORD := W#16#7FFF;
+  - comment: MGV-1201
+    DB: [MGV-1201, DB120]
+    AI: S7_AI_MIN_WORD
+    CP: [DI03-01, I6.0]
+    OP: [DI03-02, I6.1]
+    error: FALSE
+    remote: TRUE
+    close_action: [DO02-01, Q4.0]
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
 ...
