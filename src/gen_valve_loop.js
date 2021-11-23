@@ -5,9 +5,6 @@ export const rules = [];
 valve_confs.forEach(({ CPU, list, options }) => {
     const { name, output_dir } = CPU;
     const { output_file = `Valve_Loop` } = options;
-    const valves = list.map(({ valve }) =>{
-        // const value = valve.type === 'ref' ? valve.name : `"${valve.name}"`;
-    })
     rules.push({
         "name": `${output_dir}/${output_file}.scl`,
         "tags": {

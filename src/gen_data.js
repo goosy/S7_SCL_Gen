@@ -2,7 +2,7 @@ import { dump, loadAll } from "js-yaml";
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { gen_MT_data } from './gen_MT_data.js';
 import { gen_MB_data } from './gen_MB_data.js';
-import { rebuild, get_symbols} from './symbols.js';
+import { rebuild_symbols, add_symbol, add_symbols } from './symbols.js';
 import { IncreaseHashTable } from './increase_hash_table.js';
 
 export const AI_confs = []; // 模拟量配置
@@ -29,14 +29,6 @@ const confs = { // 全局维护表
     }
 };
 
-function push_symbol(symbols, item, default_block_name, default_type) {
-    if (item?.name && item.type != 'ref') { // 非ref并入符号表
-        item.block_name ??= default_block_name;
-        item.type ??= default_type;
-        item.value = `"${item.name}"`;
-        symbols.push(item);
-    }
-}
 function to_ref(item) {
     if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
         return { value: item, type: 'ref' };
@@ -52,6 +44,7 @@ function add_conf(conf) {
     // 如没有则建立一个初始资源数据
     CPUs[CPU_name] ??= {
         name: CPU_name,
+        symbols: [], // 符号表
         conn_ID_list: new IncreaseHashTable(16), // 已用连接ID列表
         module_addr_list: new IncreaseHashTable(256), // 模块地址列表
         DB_list: new IncreaseHashTable(100), // 已用数据块列表
@@ -62,21 +55,20 @@ function add_conf(conf) {
         output_dir: 'dist', // 输出文件夹
     }
     const CPU = CPUs[CPU_name];
-    const symbols = get_symbols(CPU_name); 
-    symbols.push(...(conf.symbols ??= []));
+    const symbols = CPU.symbols;
+    add_symbols(symbols, conf.symbols ??= []);
     const options = conf.options ??= {};
     const list = conf.list ??= [];
-    const item = { CPU, symbols, list, options };
+    const item = { CPU, list, options };
 
     if (type === 'CPU') { // CPU 调度
         CPU.output_dir = conf.output_dir ?? CPU_name;
     } else if (type === 'AI') { // AI 调度
         list.forEach(AI => {
             if (!AI.DB) return; // 空AI不处理
-            push_symbol(symbols, AI.DB, 'DB', 'AI_Proc');
-            if (AI.input?.name) {
-                push_symbol(symbols, AI.input, 'PIW', 'WORD');
-            } else {
+            AI.DB = add_symbol(symbols, AI.DB, 'AI_Proc');
+            AI.input = add_symbol(symbols, AI.input, 'WORD');
+            if (typeof AI.input === 'string') {
                 AI.input = to_ref(AI.input);
             }
         });
@@ -88,12 +80,11 @@ function add_conf(conf) {
         options.polls_db = symbols.find((symbol) => symbol.comment === 'MB_polls_DB');
         list.forEach(module => {
             const FB = module.type === 'CP340' ? options.MB340_FB : options.MB341_FB;
-            if(!FB) throw new Error(`${module.type}'s poll FB is not defined`);
-            module.DB.type = FB.name;
-            module.DB.block_name = 'DB';
-            symbols.push(module.DB);
+            if (!FB) throw new Error(`${module.type}'s poll FB is not defined`);
+            module.DB[2] = FB.name; // DB type
+            module.DB = add_symbol(symbols, module.DB);
             module.polls.forEach(poll => {
-                push_symbol(symbols, poll.recv_DB, 'DB', poll.recv_DB);
+                poll.recv_DB = add_symbol(symbols, poll.recv_DB, poll.recv_DB[0]);
             })
         })
         MB_confs.push(item);
@@ -102,35 +93,27 @@ function add_conf(conf) {
         options.MT_Loop = symbols.find((symbol) => symbol.comment === 'MT_Loop');
         options.polls_db = symbols.find((symbol) => symbol.comment === 'MT_polls_DB');
         list.forEach(conn => {
-            conn.DB.type = options.MB_TCP_Poll.name;
-            conn.DB.block_name = 'DB';
-            symbols.push(conn.DB);
+            conn.DB[2] = options.MB_TCP_Poll.name; // DB type
+            conn.DB = add_symbol(symbols, conn.DB);
             conn.polls.forEach(poll => {
-                push_symbol(symbols, poll.recv_DB, 'DB', poll.recv_DB);
+                poll.recv_DB = add_symbol(symbols, poll.recv_DB, poll.recv_DB[0]);
             })
         })
         MT_confs.push(item);
     } else if (type === 'Valve' || type === 'valve') { // Valve 调度
         list.forEach(valve => {
             if (!valve.DB) return; // 空AI不处理
-            if (valve.AI) {
-                if (valve.AI?.name) {
-                    push_symbol(symbols, valve.AI, 'PIW', 'WORD');
-                } else {
-                    valve.AI = to_ref(valve.AI);
-                }
-            }
-            valve.error ??= false;
-            if (!valve.error?.name) valve.error = to_ref(valve.error);
-            push_symbol(symbols, valve.error ?? false, 'I', 'BOOL');
-            valve.remote ??= true;
-            if (!valve.remote?.name) valve.remote = to_ref(valve.remote);
-            push_symbol(symbols, valve.remote, 'I', 'BOOL');
-            push_symbol(symbols, valve.CP, 'I', 'BOOL');
-            push_symbol(symbols, valve.OP, 'I', 'BOOL');
-            push_symbol(symbols, valve.close_action, 'Q', 'BOOL');
-            push_symbol(symbols, valve.open_action, 'Q', 'BOOL');
-            push_symbol(symbols, valve.DB, 'DB', 'Valve_Proc');
+            valve.AI = add_symbol(symbols, valve.AI, 'WORD');
+            if (!valve.AI?.name) valve.AI = to_ref(valve.AI); // 输入非符号
+            valve.error = add_symbol(symbols, valve.error ?? false, 'BOOL');
+            if (!valve.error?.name) valve.error = to_ref(valve.error); // 输入非符号
+            valve.remote = add_symbol(symbols, valve.remote ?? true, 'BOOL');
+            if (!valve.remote?.name) valve.remote = to_ref(valve.remote); // 输入非符号
+            valve.CP = add_symbol(symbols, valve.CP, 'BOOL');
+            valve.OP = add_symbol(symbols, valve.OP, 'BOOL');
+            valve.close_action = add_symbol(symbols, valve.close_action, 'BOOL');
+            valve.open_action = add_symbol(symbols, valve.open_action, 'BOOL');
+            valve.DB = add_symbol(symbols, valve.DB, 'Valve_Proc');
         });
         valve_confs.push(item);
     }
@@ -156,7 +139,9 @@ for (const [name, conf_list] of confs.get_all()) {
 }
 
 // 检查并补全符号表
-rebuild(CPUs);
+Object.values(CPUs).forEach(
+    CPU => rebuild_symbols(CPU)
+);
 
 // 补全 modbusTCP 数据
 MT_confs.forEach(gen_MT_data);

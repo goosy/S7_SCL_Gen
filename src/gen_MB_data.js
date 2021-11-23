@@ -9,7 +9,6 @@ export function gen_MB_data(conf) {
     list.forEach(module => { // 处理配置，形成完整数据
         if(!module.DB) throw Error(`${CPU.name} modbus definition is wrong!`);
         module.Laddr = CPU.module_addr_list.push(module.Laddr);
-        module.DB.name ??= "conn_MB" + ID;
         module.polls_name ??= "polls_" + CPU.poll_list.push_new();
         module.polls.forEach(poll => {
             poll.deivce_ID = get_fixed_hex(poll.deivce_ID, 2);

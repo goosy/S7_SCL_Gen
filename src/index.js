@@ -75,8 +75,14 @@ for (const { CPU: { output_dir } } of AI_confs) {
 	await copyFile('AI_Proc.scl', `../dist/${output_dir}/`)
 }
 for (const { CPU: { output_dir }, options: { MB340_FB, MB341_FB } } of MB_confs) {
-	if (MB340_FB) await copyFile(MB340_FB?.name ?? 'MB_340_Poll.SCL', `../dist/${output_dir}/`)
-	if (MB341_FB) await copyFile(MB341_FB?.name ?? 'MB_341_Poll.SCL', `../dist/${output_dir}/`)
+	if (MB340_FB) {
+		const name = MB340_FB?.name ?? 'MB_340_Poll';
+		await copyFile(name + '.SCL', `../dist/${output_dir}/`)
+	}
+	if (MB341_FB) {
+		const name = MB341_FB?.name ?? 'MB_341_Poll';
+		await copyFile(name + '.SCL', `../dist/${output_dir}/`)
+	}
 }
 for (const { CPU: { output_dir }, options: { MB_TCP_Poll } } of MT_confs) {
 	const name = MB_TCP_Poll?.name ?? 'MB_TCP_Poll';
