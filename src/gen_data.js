@@ -52,7 +52,7 @@ function add_conf(conf) {
         FC_list: new IncreaseHashTable(256), // 已用函数列表
         poll_list: new IncreaseHashTable(1), // 已用查询号
         conn_host_list: {}, // 已用的连接地址列表
-        output_dir: 'dist', // 输出文件夹
+        output_dir: CPU_name, // 输出文件夹
     }
     const CPU = CPUs[CPU_name];
     const symbols = CPU.symbols;

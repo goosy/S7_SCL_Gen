@@ -18,7 +18,7 @@
 # 1个文档只能定义1种类型，目前只实现了4种类型： CPU AI modbusTCP modbusRTU Valve
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
 # 配置文档必须有 type 和 CPU 字段，2个字段都相同的配置文档只能有一个
-# 本示例文件有3个配置文档： CPU modbusTCP AI
+# 本示例文件有5个配置文档： CPU modbusTCP AI modbusRTU Valve
 
 # CPU 文档
 --- #文档开始
@@ -42,9 +42,8 @@ symbols:  # CPU文档下定义其它文档需要共同的符号
 # output_dir : 'other_folder' 
 
 # IP地址，目前用不上
-IP: [192.168.10.10]
+IP: [192, 168, 10, 10]
 ... #文档结束
-
 
 ---
 # 指示本配置为生成 AI 代码
@@ -57,18 +56,21 @@ symbols:  # 以下符号指示的块，其内容由本程序自动生成
   - [AI_Loop, FC512, ~, 'main cyclic call function'] # 主调用FC块，这个要加入到OB中
 
 list: # 模拟量列表
-  - comment: 进站压力
+  - &tubepress # 设置引用锚点，该锚点表示 & 符号左侧的项目（- 或 key）指定的内容（即右侧的value）可以被引用
+    comment: 进站压力
     DB: [PIT001,  DB100] # AI数据块
     input: [AI01-01, PIW512] # AI通道
-    zero: "-0.2"
+    zero: "-0.2" # 以下都为初始值，即不会在运行时赋值
     span: "2.6"
     AH_limit: "2.5"
     WH_limit: "2.0"
     WL_limit: "-0.05"
     AL_limit: "-0.1"
-  - comment: 过滤压力
+  - <<: *tubepress # 语法"<<:" 表示将锚点tubepress的内容合并在这里
+    comment: 来油压力 # 引用如果是对象，可以对部分属性进行更改，替换引用部分
     DB: [PIT002, DB+] 
-    input: [AI01-02, PIW514] # AI通道
+    input: [AI01-02, PIW514] 
+    AL_limit: ~ # 引用对象无法删除某个属性，只能将其该属性设置为null
   - comment: 进站温度
     DB: [TIT001, DB+] 
     input: [AI01-03, PIW516] # AI通道
@@ -77,6 +79,7 @@ list: # 模拟量列表
   - comment: 气温
     DB: [TIT002, DB+]
     input: [M485-1, MW100] # M区域
+    enable_alarm: TRUE # 初始值取消报警
   - comment: 液位
     DB: [LIT001, DB+]
     input: '"RecvDB".Tank1' # 引用，转换程序不检查正确性
@@ -95,7 +98,7 @@ type: modbusRTU # 指示是modbus转换
 name: AS1
 
 symbols:  
-  - [MB_340_Poll, FB340, FB340, MB340_FB] # comment为MB340_FB，表示该符号对应MB340通信主处理函数，如果没有MB340模块，可以不用定义
+  - [MB_340_Poll, FB340, FB340, MB340_FB] # comment为MB340_FB，表示该符号对应CP340通信主处理函数，如果没有MB340模块，可以不用定义
   - [MB_341_Poll, FB342, FB342, MB341_FB] # comment为CP341_FB，表示该符号对应CP341通信主处理函数，如果没有CP341模块，可以不用定义
   - [MB_Loop, FC342, FC342, MB_Loop] # comment为 MB_Loop 是主调用FC块，这个要加入到OB中。如不为了重名重地址的原因，不用更改定义值
   - [MB_polls_DB, DB880, DB880, MB_polls_DB] # 注释为MB_polls_DB的符号，将用于保存轮询命令数据，块内容自动生成
