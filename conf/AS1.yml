@@ -18,6 +18,14 @@
 # 1个文档只能定义1种类型，目前只实现了4种类型： CPU AI modbusTCP modbusRTU Valve
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
 # 配置文档必须有 type 和 CPU 字段，2个字段都相同的配置文档只能有一个
+
+# 程序内置了一些函数，它们有默认的内置符号，这些符号通常不需配置里设置：
+# * [AI_Proc, FB512, FB512, AI process main function block] 模拟量主处理函数
+# * [MB_340_Poll, FB345, FB345, MB340_FB] CP340通信主处理函数
+# * [MB_341_Poll, FB346, FB346, MB340_FB] CP341通信主处理函数
+# 但如果存在冲突，可以通过含 buildin 属性的对象，指示对内置符号更改，主要是更改地址和注释
+# 如果不是为了重名重地址的原因，不用更改定义值
+
 # 本示例文件有5个配置文档： CPU modbusTCP AI modbusRTU Valve
 
 # CPU 文档
@@ -52,8 +60,10 @@ CPU: AS1
 
 symbols:  # 以下符号指示的块，其内容由本程序自动生成
   # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-  - [AI_Proc, FB512, ~, 'AI process main function block'] # AI主处理函数，该FB块在另一文件中，目前是 MB_TCP_Poll.SCL
-  - [AI_Loop, FC512, ~, 'main cyclic call function'] # 主调用FC块，这个要加入到OB中
+  # 当用对象时，指示这不是一个要新建的符号
+  # 比如用含 buildin 属性的对象，指示对内置AI_Proc函数块进行更改，主要是更改地址和注释
+  - {buildin: AI_Proc, addr: FB600, comment: 'AI主处理函数'} # 可省略，地址默认为FB512
+  - [AI_Loop, FC600, ~, 'main cyclic call function'] # 当名称为AI_Loop，指示这是AI主调用FC块，这个要加入到OB中
 
 list: # 模拟量列表
   - &tubepress # 设置引用锚点，该锚点表示 & 符号左侧的项目（- 或 key）指定的内容（即右侧的value）可以被引用
@@ -97,11 +107,12 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 type: modbusRTU # 指示是modbus转换
 name: AS1
 
-symbols:  
-  - [MB_340_Poll, FB340, FB340, MB340_FB] # comment为MB340_FB，表示该符号对应CP340通信主处理函数，如果没有MB340模块，可以不用定义
-  - [MB_341_Poll, FB342, FB342, MB341_FB] # comment为CP341_FB，表示该符号对应CP341通信主处理函数，如果没有CP341模块，可以不用定义
-  - [MB_Loop, FC342, FC342, MB_Loop] # comment为 MB_Loop 是主调用FC块，这个要加入到OB中。如不为了重名重地址的原因，不用更改定义值
-  - [MB_polls_DB, DB880, DB880, MB_polls_DB] # 注释为MB_polls_DB的符号，将用于保存轮询命令数据，块内容自动生成
+symbols:
+  # 可以在这里对内置符号 MB_340_Poll(FB345) MB_341_Poll(FB346) 进行更改
+  - {buildin: MB_341_Poll, addr: FB342} # 修改内置地址
+  - [MB_Loop, FC342, FC342] #MB_Loop 是主调用FC块，这个要加入到OB中
+  - [MB_polls_DB, DB880, DB880] # MB_polls_DB符号，将用于保存轮询命令数据
+  # 以下为自定义符号
   - [GAS_flow, FB803]
   - [STBL, FB805]
   - [launcher_data, FB806]
@@ -175,9 +186,9 @@ CPU: AS1
 
 # 符号定义
 symbols:  # 以下除 JS_flow，符号对应的实际块由本程序自动生成
-  - [MB_TCP_Poll, FB343, ~,MB_TCP_Poll] # comment为MB_TCP_Poll，是通信主处理函数，如果不是为了重名重地址的原因，不用更改定义值
-  - [MT_Loop, FC343, ~, MT_Loop] # comment为 MT_Loop 是主调用FC块，这个要加入到OB中。如不为了重名重地址的原因，不用更改定义值
-  - [MT_polls_DB, DB890, ~, MT_polls_DB] # 注释为MT_polls_DB的符号，将用于保存轮询命令数据，块内容自动生成
+  - {buildin: MB_TCP_Poll, FB343} # 修改内置FB：MB_TCP_Poll
+  - [MT_Loop, FC343] # MT_Loop 是主调用FC块，这个要加入到OB中
+  - [MT_polls_DB, DB890] # MT_polls_DB 块将用于保存轮询命令数据，块内容自动生成
   # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
   # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
   # 这类FB不通用，需要另外单独写块本身。可依照本例提供的 "JS_flow"FB 块写其它场景的FB块，要对应符号表

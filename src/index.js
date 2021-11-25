@@ -5,8 +5,8 @@ import iconv from 'iconv-lite';
 import { gen_data } from './gen_data.js';
 import { gen_AI } from "./AI.js";
 import { gen_symbol } from "./symbols.js";
-import { gen_MB } from "./MB.js";
-import { gen_MT } from "./MT.js";
+import { gen_MB, MB340_name, MB341_name } from "./MB.js";
+import { gen_MT, MT_name } from "./MT.js";
 import { gen_valve } from "./valve.js";
 
 import { fileURLToPath } from 'url';
@@ -16,17 +16,17 @@ const __dirname = dirname(__filename);
 const conf_path = './conf/';
 
 async function prepare_dir(dir) {
-	let parents = dirname(dir);
-	await access(parents).catch(async () => {
-		await prepare_dir(parents);
-	});
-	await access(dir).catch(async () => {
-		await mkdir(dir).catch(
-			err => {
-				if (err.code !== 'EEXIST') console.log(err);
-			}
-		);
-	});
+  let parents = dirname(dir);
+  await access(parents).catch(async () => {
+    await prepare_dir(parents);
+  });
+  await access(dir).catch(async () => {
+    await mkdir(dir).catch(
+      err => {
+        if (err.code !== 'EEXIST') console.log(err);
+      }
+    );
+  });
 }
 
 /**
@@ -55,21 +55,21 @@ async function copy(file, dstList) {
 }
 
 async function convert2file(entry, path, {
-	"OE": OE = "utf8",
-	"lineEndings": lineEndings = "linux"
+  "OE": OE = "utf8",
+  "lineEndings": lineEndings = "linux"
 } = {
-		"OE": "utf8",
-		"lineEndings": "linux"
-	}) {
-	let { rules, template } = entry;
-	// for-of 实现异步顺序执行
-	for (let { name, content } of convertRules(rules, template)) {
-		let output_file = join(path, `./${name}`);
-		await prepare_dir(dirname(output_file));
-		if (lineEndings == "windows") content = content.replace(/\n/g, "\r\n");
-		let buff = iconv.encode(content, OE);
-		await writeFile(output_file, buff);
-	};
+    "OE": "utf8",
+    "lineEndings": "linux"
+  }) {
+  let { rules, template } = entry;
+  // for-of 实现异步顺序执行
+  for (let { name, content } of convertRules(rules, template)) {
+    let output_file = join(path, `./${name}`);
+    await prepare_dir(dirname(output_file));
+    if (lineEndings == "windows") content = content.replace(/\n/g, "\r\n");
+    let buff = iconv.encode(content, OE);
+    await writeFile(output_file, buff);
+  };
 }
 
 const { CPUs, MB_confs, MT_confs, AI_confs, valve_confs } = await gen_data(conf_path);
@@ -79,26 +79,23 @@ const symbol_asc = gen_symbol(CPUs);
 const mt = gen_MT(MT_confs);
 const valve = gen_valve(valve_confs);
 
-for (const { CPU: { output_dir } } of AI_confs) {
-	await copy('AI_Proc.scl', `../dist/${output_dir}/`)
-}
-for (const { CPU: { output_dir }, options: { MB340_FB, MB341_FB } } of MB_confs) {
-	if (MB340_FB) {
-		const name = MB340_FB?.name ?? 'MB_340_Poll';
-		await copy(name + '.SCL', `../dist/${output_dir}/`)
-	}
-	if (MB341_FB) {
-		const name = MB341_FB?.name ?? 'MB_341_Poll';
-		await copy(name + '.SCL', `../dist/${output_dir}/`)
-	}
-}
-for (const { CPU: { output_dir }, options: { MB_TCP_Poll } } of MT_confs) {
-	const name = MB_TCP_Poll?.name ?? 'MB_TCP_Poll';
-	await copy(name + '.SCL', `../dist/${output_dir}/`)
-}
-for (const { CPU: { output_dir } } of valve_confs) {
-	await copy('Valve_Proc.scl', `../dist/${output_dir}/`)
-}
+  for (const { CPU: { output_dir } } of AI_confs) {
+    await copy('AI_Proc.scl', `../dist/${output_dir}/`)
+  }
+  for (const { CPU: { output_dir }, options: { has_CP341, has_CP340 } } of MB_confs) {
+    if (has_CP340) {
+      await copy(MB340_name + '.SCL', `../dist/${output_dir}/`)
+    }
+    if (has_CP341) {
+      await copy(MB341_name + '.SCL', `../dist/${output_dir}/`)
+    }
+  }
+  for (const { CPU: { output_dir } } of MT_confs) {
+    await copy(MT_name + '.SCL', `../dist/${output_dir}/`)
+  }
+  for (const { CPU: { output_dir } } of valve_confs) {
+    await copy('Valve_Proc.scl', `../dist/${output_dir}/`)
+  }
 
 const OPT = { "OE": 'gbk', "lineEndings": "windows" };
 let output_dir = join(__dirname, '../dist/');

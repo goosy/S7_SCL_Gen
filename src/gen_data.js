@@ -1,7 +1,7 @@
 import { dump, loadAll } from "js-yaml";
 import { readdir, readFile, writeFile } from 'fs/promises';
-import { gen_MT_data } from './MT.js';
-import { gen_MB_data } from './MB.js';
+import { gen_MT_data, MT_name } from './MT.js';
+import { MB340_name, MB341_name, gen_MB_data } from './MB.js';
 import { rebuild_symbols, add_symbol, add_symbols } from './symbols.js';
 import { IntIncHL, S7IncHL } from './increase_hash_table.js';
 
@@ -16,7 +16,7 @@ const confs = { // 全局维护表
     CPUs: {}, // CPU 资源
 };
 
-function get_cpu(CPU_name){
+function get_cpu(CPU_name) {
     // 如没有则建立一个初始资源数据
     return confs.CPUs[CPU_name] ??= {
         name: CPU_name,
@@ -27,7 +27,7 @@ function get_cpu(CPU_name){
         FC_list: new IntIncHL(256), // 已用函数列表
         poll_list: new IntIncHL(1), // 已用查询号
         symbols: [], // 符号表
-        MA_list: new S7IncHL([0,0]), // 已用M地址
+        MA_list: new S7IncHL([0, 0]), // 已用M地址
         conn_host_list: {}, // 已用的连接地址列表
         output_dir: CPU_name, // 输出文件夹
     }
@@ -56,17 +56,19 @@ function add_conf(conf) {
     if (exist(CPU_name, type)) throw new Error(`${CPU_name}:${type} has duplicate configurations`);
     // 按名称压入配置
     set_conf(CPU_name, type, conf);
-
     const CPU = get_cpu(CPU_name);
     const symbols = CPU.symbols;
-    add_symbols(symbols, conf.symbols ??= []);
     const options = conf.options ??= {};
     const list = conf.list ??= [];
     const item = { CPU, list, options };
 
     if (type === 'CPU') { // CPU 调度
+        add_symbols(symbols, conf.symbols ??= []);
         CPU.output_dir = conf.output_dir ?? CPU_name;
     } else if (type === 'AI') { // AI 调度
+        // 内置符号
+        add_symbol(symbols, ['AI_Proc', 'FB512', 'FB512', 'AI main FB']);
+        add_symbols(symbols, conf.symbols ??= []);
         list.forEach(AI => {
             if (!AI.DB) return; // 空AI不处理
             AI.DB = add_symbol(symbols, AI.DB, 'AI_Proc');
@@ -77,14 +79,26 @@ function add_conf(conf) {
         });
         confs.AI_confs.push(item);
     } else if (type === 'modbusRTU' || type === 'MB') { // modebusTCP 调度
-        options.MB340_FB = symbols.find((symbol) => symbol.comment === 'MB340_FB');
-        options.MB341_FB = symbols.find((symbol) => symbol.comment === 'MB341_FB');
-        options.MB_Loop = symbols.find((symbol) => symbol.comment === 'MB_Loop');
-        options.polls_db = symbols.find((symbol) => symbol.comment === 'MB_polls_DB');
+        // 内置符号
+        add_symbol(symbols, [MB340_name, 'FB345', 'FB345', 'CP340 main modbus FB']);
+        add_symbol(symbols, [MB341_name, 'FB346', 'FB346', 'CP341 main modbus FB']);
+        // 配置符号
+        add_symbols(symbols, conf.symbols ??= []);
         list.forEach(module => {
-            const FB = module.type === 'CP340' ? options.MB340_FB : options.MB341_FB;
-            if (!FB) throw new Error(`${module.type}'s poll FB is not defined`);
-            module.DB[2] = FB.name; // DB type
+            let valid_type = false;
+            let type;
+            if (module.type === 'CP341') {
+                options.has_CP341 = true;
+                valid_type = true;
+                type = MB341_name;
+            } else if (module.type === 'CP340') {
+                options.has_CP340 = true;
+                valid_type = true;
+                type = MB340_name;
+            }
+            if (!valid_type) throw new Error(`${module.type}'s poll FB is not defined`);
+            // CP DB
+            module.DB[2] = type;
             module.DB = add_symbol(symbols, module.DB);
             module.polls.forEach(poll => {
                 poll.recv_DB = add_symbol(symbols, poll.recv_DB, poll.recv_DB[0]);
@@ -92,11 +106,11 @@ function add_conf(conf) {
         })
         confs.MB_confs.push(item);
     } else if (type === 'modbusTCP' || type === 'MT') { // modebusTCP 调度
-        options.MB_TCP_Poll = symbols.find((symbol) => symbol.comment === 'MB_TCP_Poll');
-        options.MT_Loop = symbols.find((symbol) => symbol.comment === 'MT_Loop');
-        options.polls_db = symbols.find((symbol) => symbol.comment === 'MT_polls_DB');
+        // 内置符号
+        add_symbol(symbols, [MT_name, 'FB347', 'FB347', 'main modbusTCP FB']);
+        add_symbols(symbols, conf.symbols ??= []);
         list.forEach(conn => {
-            conn.DB[2] = options.MB_TCP_Poll.name; // DB type
+            conn.DB[2] = MT_name; // DB type
             conn.DB = add_symbol(symbols, conn.DB);
             conn.polls.forEach(poll => {
                 poll.recv_DB = add_symbol(symbols, poll.recv_DB, poll.recv_DB[0]);
@@ -104,6 +118,7 @@ function add_conf(conf) {
         })
         confs.MT_confs.push(item);
     } else if (type === 'Valve' || type === 'valve') { // Valve 调度
+        add_symbols(symbols, conf.symbols ??= []);
         list.forEach(valve => {
             if (!valve.DB) return; // 空AI不处理
             valve.AI = add_symbol(symbols, valve.AI, 'WORD');

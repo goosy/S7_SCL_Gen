@@ -3,14 +3,21 @@ const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'REAL'];
 
 export function add_symbol(symbols, symbol_raw, default_type) {
     // 返回引用符号
-    if (Object.prototype.toString.call(symbol_raw) === '[object Object]'
-        && symbol_raw?.ref) {
-        const ref = symbols.find(symbol => symbol.name === symbol_raw.ref);
-        return ref ?? symbol_raw;
+    if (Object.prototype.toString.call(symbol_raw) === '[object Object]') {
+        const ref_name = symbol_raw.buildin ?? symbol_raw.ref;
+        if (ref_name) {
+            const ref = symbols.find(symbol => symbol.name === ref_name);
+            // 修改内置符号
+            if (ref && symbol_raw.buildin){
+                ref.addr = symbol_raw.addr;
+                ref.comment = symbol_raw.comment;
+            }
+            return ref ?? symbol_raw;
+        }
     }
-     // todo 非 array 不处理
+    // todo 非 array 不处理
     if (!Array.isArray(symbol_raw)) return symbol_raw;
-    
+
     const
         name = symbol_raw[0],
         addr = symbol_raw[1],

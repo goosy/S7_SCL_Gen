@@ -1,4 +1,8 @@
 import { str_padding_left } from "./str_padding.js";
+export const MB340_name = 'MB_340_Poll';
+export const MB341_name = 'MB_341_Poll';
+export const MB_loop_name = 'MB_Loop';
+export const MB_polls_name = 'MB_polls_DB';
 
 function get_fixed_hex(num, length) {
     return str_padding_left(num.toString(16), length, '0').toUpperCase();
@@ -24,20 +28,16 @@ export function gen_MB(MB_confs) {
     const rules = [];
     MB_confs.forEach(({ CPU, list: modules, options }) => {
         const { name, output_dir } = CPU;
-        const { output_file = `MB_Loop`, MB340_FB, MB341_FB, MB_Loop, polls_db } = options;
-        const mbfb340_name = MB340_FB?.name ?? 'MB_340_Poll';
-        const mbfb341_name = MB341_FB?.name ?? 'MP_341_FB';
-        const mbl_name = MB_Loop.name ?? 'MB_Loop';
-        const pdb_name = polls_db?.name ?? 'Polls_DB';
+        const { output_file = 'MB_Loop' } = options;
         rules.push({
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
                 name,
                 modules,
-                mbfb340_name,
-                mbfb341_name,
-                mbl_name,
-                pdb_name,
+                MB340_name,
+                MB341_name,
+                MB_loop_name,
+                MB_polls_name,
             }
         })
     });
@@ -47,7 +47,7 @@ export function gen_MB(MB_confs) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 
 // 轮询DB块，含modbus发送指令，
-DATA_BLOCK "{{pdb_name}}"
+DATA_BLOCK "{{MB_polls_name}}"
 STRUCT{{#for module in modules}}
     {{module.polls_name}}: ARRAY[0..{{module.polls.length - 1}}] OF STRUCT //{{module.comment}} 轮询命令数据
         DeviceID : BYTE;    //子站地址
@@ -71,11 +71,11 @@ BEGIN{{#for module in modules}}
 END_DATA_BLOCK
 
 // 主调用
-FUNCTION "MB_Loop" : VOID
+FUNCTION "{{MB_loop_name}}" : VOID
 {{#for no, module in modules}}
 // 第{{no+1}}个模块：{{module.type}}
 // {{module.comment}}
-"{{#if module.type == 'CP341'}}{{mbfb341_name}}{{#else}}{{mbfb340_name}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
+"{{#if module.type == 'CP341'}}{{MB341_name}}{{#else}}{{MB340_name}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
     Laddr         := {{module.Laddr}},  // CP模块地址
