@@ -1,0 +1,10 @@
+# source
+src/
+node_modules/
+
+# test & production
+.vscode/
+conf/
+dist/
+public/
+test/

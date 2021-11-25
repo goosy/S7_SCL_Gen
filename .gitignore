@@ -71,4 +71,5 @@ yarn.lock
 build-include/
 dist/
 conf/
+lib/
 .vscode/

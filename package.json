@@ -1,32 +1,50 @@
 {
-    "name": "s7-scl-gen",
-    "version": "0.2.1",
-    "type": "module",
-    "description": "S7 PLC SCL 代码自动生成",
-    "main": "/src/index.js",
-    "engines": {
-        "node": ">=14.8.0"
-    },
-    "dependencies": {
-        "gooconverter": "^0.3.5",
-        "iconv-lite": "^0.6.3",
-        "js-yaml": "^4.1.0"
-    },
-    "devDependencies": {
-        "eslint": "^8.3.0"
-    },
-    "directories": {
-        "dist": "dist",
-        "src": "src"
-    },
-    "scripts": {
-        "build": "node ./src/index.js"
-    },
-    "keywords": [
-        "modbusTCP",
-        "SCL",
-        "S7"
-    ],
-    "author": "goosy.jo@gmail.com",
-    "license": "MIT"
+  "name": "s7-scl-gen",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "S7 PLC SCL 代码自动生成",
+  "main": "/src/index.js",
+  "exports": {
+    ".": [
+      {
+        "import": "./lib/index.js",
+        "require": "./lib/index.cjs",
+        "default": "./lib/acorn.js"
+      },
+      "./lib/index.js"
+    ]
+  },
+  "engines": {
+    "node": ">=14.8.0"
+  },
+  "dependencies": {
+    "gooconverter": "^0.3.5",
+    "iconv-lite": "^0.6.3",
+    "js-yaml": "^4.1.0",
+    "rollup-plugin-copy": "^3.4.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^19.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "eslint": "^8.3.0",
+    "rollup": "^2.52.3"
+  },
+  "directories": {
+    "lib": "lib",
+    "src": "src"
+  },
+  "bin": {
+    "s7scl": "cli.js"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w"
+  },
+  "keywords": [
+    "modbusTCP",
+    "SCL",
+    "S7"
+  ],
+  "author": "goosy.jo@gmail.com",
+  "license": "MIT"
 }

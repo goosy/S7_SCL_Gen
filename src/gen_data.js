@@ -1,9 +1,11 @@
 import { dump, loadAll } from "js-yaml";
 import { readdir, readFile, writeFile } from 'fs/promises';
+import { AI_name } from './AI.js';
 import { gen_MT_data, MT_name } from './MT.js';
 import { MB340_name, MB341_name, gen_MB_data } from './MB.js';
 import { rebuild_symbols, add_symbol, add_symbols } from './symbols.js';
 import { IntIncHL, S7IncHL } from './increase_hash_table.js';
+import { join } from 'path';
 
 const exist_dict = {}; // 保存列表
 const confs_map = {}; // 配置列表
@@ -67,7 +69,7 @@ function add_conf(conf) {
         CPU.output_dir = conf.output_dir ?? CPU_name;
     } else if (type === 'AI') { // AI 调度
         // 内置符号
-        add_symbol(symbols, ['AI_Proc', 'FB512', 'FB512', 'AI main FB']);
+        add_symbol(symbols, [AI_name, 'FB512', 'FB512', 'AI main FB']);
         add_symbols(symbols, conf.symbols ??= []);
         list.forEach(AI => {
             if (!AI.DB) return; // 空AI不处理
@@ -142,7 +144,9 @@ export async function gen_data(path) {
     try {
         for (const file of await readdir(path)) {
             if (file.endsWith('.yml')) {
-                const yaml_str = await readFile(path + file, { encoding: 'utf8' });
+                const filename = join(path, file);
+                console.log(`readding ${filename}`)
+                const yaml_str = await readFile(filename, { encoding: 'utf8' });
                 loadAll(yaml_str, add_conf);
             }
         }
@@ -153,7 +157,8 @@ export async function gen_data(path) {
     // 生成无注释的配置 for of 实现异步顺序执行
     for (const [name, conf_list] of Object.entries(confs_map)) {
         const docs = conf_list.map(conf => `---\n${dump(conf)}...`).join('\n\n');
-        await writeFile(`${path}${name}.zyml`, docs);
+        const filename = `${join(path, name)}.zyml`;
+        await writeFile(filename, docs);
     }
 
     // 检查并补全符号表
