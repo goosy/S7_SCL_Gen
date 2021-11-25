@@ -1,19 +1,4 @@
-import { AI_confs } from "./gen_data.js";
-
-export const rules = [];
-AI_confs.forEach(({ CPU, list, options }) => {
-    const { name, output_dir } = CPU;
-    const { output_file = `AI_Loop` } = options;
-    rules.push({
-        "name": `${output_dir}/${output_file}.scl`,
-        "tags": {
-            name,
-            list,
-        }
-    })
-});
-
-export let template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{#for AI_item in list}}{{#if AI_item.DB}}
 // AI背景块：{{AI_item.comment}}
 DATA_BLOCK "{{AI_item.DB.name}}" "AI_Proc"
@@ -35,3 +20,19 @@ FUNCTION "AI_Loop" : VOID{{#for AI_item in list}}
 
 END_FUNCTION
 `;
+
+export function gen_AI(AI_confs) {
+    const rules = [];
+    AI_confs.forEach(({ CPU, list, options }) => {
+        const { name, output_dir } = CPU;
+        const { output_file = `AI_Loop` } = options;
+        rules.push({
+            "name": `${output_dir}/${output_file}.scl`,
+            "tags": {
+                name,
+                list,
+            }
+        })
+    });
+    return { rules, template }
+}

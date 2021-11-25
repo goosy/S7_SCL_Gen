@@ -1,26 +1,27 @@
 import { convertRules } from 'gooconverter';
-import fs from 'fs/promises';
+import { access, mkdir, copyFile, writeFile } from 'fs/promises';
 import iconv from 'iconv-lite';
+
+import { gen_data } from './gen_data.js';
+import { gen_AI } from "./AI.js";
+import { gen_symbol } from "./symbols.js";
+import { gen_MB } from "./MB.js";
+import { gen_MT } from "./MT.js";
+import { gen_valve } from "./valve.js";
 
 import { fileURLToPath } from 'url';
 import { basename, dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-import { MB_confs, MT_confs, AI_confs, valve_confs } from './gen_data.js';
-import * as symbol_asc from "./gen_symbol.js";
-import * as mt_loop from "./gen_MT_Loop.js";
-import * as mb_loop from "./gen_MB_Loop.js";
-import * as ai_loop from "./gen_AI_Loop.js";
-import * as valve_loop from "./gen_valve_loop.js";
+const conf_path = './conf/';
 
 async function prepare_dir(dir) {
 	let parents = dirname(dir);
-	await fs.access(parents).catch(async () => {
+	await access(parents).catch(async () => {
 		await prepare_dir(parents);
 	});
-	await fs.access(dir).catch(async () => {
-		await fs.mkdir(dir).catch(
+	await access(dir).catch(async () => {
+		await mkdir(dir).catch(
 			err => {
 				if (err.code !== 'EEXIST') console.log(err);
 			}
@@ -35,8 +36,8 @@ async function prepare_dir(dir) {
  * @param {string} file
  * @param {string|string[]} dstList
  */
-async function copyFile(file, dstList) {
-	async function copy(src, dst) {
+async function copy(file, dstList) {
+	async function _copy(src, dst) {
 		if (typeof src != 'string') return;
 		if (typeof dst != 'string') return;
 		if (dst.endsWith('/')) {
@@ -45,11 +46,11 @@ async function copyFile(file, dstList) {
 		let srcPath = join(__dirname, src);
 		let dstPath = join(__dirname, dst);
 		await prepare_dir(dirname(dstPath));
-		await fs.copyFile(srcPath, dstPath);
+		await copyFile(srcPath, dstPath);
 	}
 	if (!Array.isArray(dstList)) dstList = [dstList];
 	for (const dst of dstList) { // for-of 实现异步顺序执行
-		await copy(file, dst);
+		await _copy(file, dst);
 	}
 }
 
@@ -67,35 +68,42 @@ async function convert2file(entry, path, {
 		await prepare_dir(dirname(output_file));
 		if (lineEndings == "windows") content = content.replace(/\n/g, "\r\n");
 		let buff = iconv.encode(content, OE);
-		await fs.writeFile(output_file, buff);
+		await writeFile(output_file, buff);
 	};
 }
 
+const { CPUs, MB_confs, MT_confs, AI_confs, valve_confs } = await gen_data(conf_path);
+const ai = gen_AI(AI_confs);
+const mb = gen_MB(MB_confs);
+const symbol_asc = gen_symbol(CPUs);
+const mt = gen_MT(MT_confs);
+const valve = gen_valve(valve_confs);
+
 for (const { CPU: { output_dir } } of AI_confs) {
-	await copyFile('AI_Proc.scl', `../dist/${output_dir}/`)
+	await copy('AI_Proc.scl', `../dist/${output_dir}/`)
 }
 for (const { CPU: { output_dir }, options: { MB340_FB, MB341_FB } } of MB_confs) {
 	if (MB340_FB) {
 		const name = MB340_FB?.name ?? 'MB_340_Poll';
-		await copyFile(name + '.SCL', `../dist/${output_dir}/`)
+		await copy(name + '.SCL', `../dist/${output_dir}/`)
 	}
 	if (MB341_FB) {
 		const name = MB341_FB?.name ?? 'MB_341_Poll';
-		await copyFile(name + '.SCL', `../dist/${output_dir}/`)
+		await copy(name + '.SCL', `../dist/${output_dir}/`)
 	}
 }
 for (const { CPU: { output_dir }, options: { MB_TCP_Poll } } of MT_confs) {
 	const name = MB_TCP_Poll?.name ?? 'MB_TCP_Poll';
-	await copyFile(name + '.SCL', `../dist/${output_dir}/`)
+	await copy(name + '.SCL', `../dist/${output_dir}/`)
 }
 for (const { CPU: { output_dir } } of valve_confs) {
-	await copyFile('Valve_Proc.scl', `../dist/${output_dir}/`)
+	await copy('Valve_Proc.scl', `../dist/${output_dir}/`)
 }
 
 const OPT = { "OE": 'gbk', "lineEndings": "windows" };
 let output_dir = join(__dirname, '../dist/');
+await convert2file(ai, output_dir, OPT);
 await convert2file(symbol_asc, output_dir, OPT);
-await convert2file(mt_loop, output_dir, OPT);
-await convert2file(mb_loop, output_dir, OPT);
-await convert2file(ai_loop, output_dir, OPT);
-await convert2file(valve_loop, output_dir, OPT);
+await convert2file(mb, output_dir, OPT);
+await convert2file(mt, output_dir, OPT);
+await convert2file(valve, output_dir, OPT);

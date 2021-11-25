@@ -1,20 +1,4 @@
-import { valve_confs } from "./gen_data.js";
-
-export const rules = [];
-
-valve_confs.forEach(({ CPU, list, options }) => {
-    const { name, output_dir } = CPU;
-    const { output_file = `Valve_Loop` } = options;
-    rules.push({
-        "name": `${output_dir}/${output_file}.scl`,
-        "tags": {
-            name,
-            list,
-        }
-    })
-});
-
-export let template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 
 // 主循环调用
 FUNCTION "Valve_Loop" : VOID
@@ -44,3 +28,20 @@ Valve_Proc.{{valve.DB.value}}({{#if valve.AI}}
 {{#endif}}{{#endfor valve}}
 END_FUNCTION
 `;
+
+export function gen_valve(valve_confs) {
+    const rules = [];
+
+    valve_confs.forEach(({ CPU, list, options }) => {
+        const { name, output_dir } = CPU;
+        const { output_file = `Valve_Loop` } = options;
+        rules.push({
+            "name": `${output_dir}/${output_file}.scl`,
+            "tags": {
+                name,
+                list,
+            }
+        })
+    });
+    return { rules, template };
+}

@@ -244,7 +244,7 @@ list : # modbus TCP 连接列表
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
         length: 28 # 查询长度
-        recv_DB: [Flow01, DB801, JS_flow] # 接收块1
+        recv_DB: [Flow01, DB803, JS_flow] # 接收块1
         recv_start: 0 # 接收开始位置
         comment: '垦西1#流量计' # 本查询的注释，可省略
 
@@ -253,9 +253,18 @@ list : # modbus TCP 连接列表
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
         length: 28 # 查询长度
-        recv_DB: [Flow02, DB+, JS_flow] # 接收块2
+        recv_DB: [Flow02, DB802, JS_flow] # 接收块2
         recv_start: 0 # 接收开始位置
         comment: '垦西2#流量计' # 本查询的注释，可省略
+
+      - # 查询3
+        deivce_ID: 3 # 设备号，即RTU从站地址
+        function: 4 # modbus 功能号
+        started_addr: 0 # 查询起始地址
+        length: 28 # 查询长度
+        recv_DB: [Flow03, DB+, JS_flow] # 接收块2
+        recv_start: 0 # 接收开始位置
+        comment: '垦西3#流量计' # 本查询的注释，可省略
 
   # 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级
   # - code
