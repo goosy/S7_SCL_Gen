@@ -144,7 +144,7 @@ list : # modbus 模块列表
         started_addr: 4 
         length: 26 
         CRC: 85C0
-        recv_DB: [GAS01, DB841, GAS_flow]
+        recv_DB: [GAS, DB841, GAS_flow]
         recv_start: 0
       - comment: '天然气2#流量计 2' 
         deivce_ID: 2 
@@ -152,16 +152,16 @@ list : # modbus 模块列表
         started_addr: 4 
         length: 26
         CRC: 85F3 
-        recv_DB:  [GAS02, DB842, GAS_flow]
-        recv_start: 0
+        recv_DB: {ref: GAS} # 这个对象表示引用上一个名称为GAS符号定义的块，因为一个符号只能定义一次，所以这里引用
+        recv_start: 20 # 同一个接收块，要注意开始地址不一样
       - comment: '天然气总 10#' 
         deivce_ID: 10 
         function: 3 
         started_addr: 4 
         length: 26
         CRC: 84BB 
-        recv_DB:  [GAS03, DB843, GAS_flow]
-        recv_start: 0
+        recv_DB: {ref: GAS}
+        recv_start: 40
 ...
 
 

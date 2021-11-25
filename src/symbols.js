@@ -2,7 +2,15 @@ import { str_padding_left, str_padding_right } from "./str_padding.js";
 const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'REAL'];
 
 export function add_symbol(symbols, symbol_raw, default_type) {
-    if (!Array.isArray(symbol_raw)) return symbol_raw; // todo 非 array 不处理
+    // 返回引用符号
+    if (Object.prototype.toString.call(symbol_raw) === '[object Object]'
+        && symbol_raw?.ref) {
+        const ref = symbols.find(symbol => symbol.name === symbol_raw.ref);
+        return ref ?? symbol_raw;
+    }
+     // todo 非 array 不处理
+    if (!Array.isArray(symbol_raw)) return symbol_raw;
+    
     const
         name = symbol_raw[0],
         addr = symbol_raw[1],
@@ -12,7 +20,7 @@ export function add_symbol(symbols, symbol_raw, default_type) {
     const reg = /^(MW|MD|M|FB|FC|DB|PIW|IW|I|PQW|QW|Q)(\d+|\+)(\.(\d))?$/;
     if (!typeof addr === 'string') throw new Error(`${symbol_raw} is wrong!`);
     let [, block_name, block_no, , block_bit] = reg.exec(addr.toUpperCase()) ?? [];
-    if(!block_name || !block_no) return symbol_raw;
+    if (!block_name || !block_no) return symbol_raw;
     if (block_name === 'FB' || block_name === 'FC') {
         // FB FC 的类型是自己
         type = name;
@@ -21,15 +29,15 @@ export function add_symbol(symbols, symbol_raw, default_type) {
         // DB的默认类型是自己
         type = name;
     }
-    if (!type && /^MD$/.test(block_name) ) {
+    if (!type && /^MD$/.test(block_name)) {
         // MD 的默认类型是 DWORD
         type = 'DWORD';
     }
-    if (!type && /^MW|PIW$/.test(block_name) ) {
+    if (!type && /^MW|PIW$/.test(block_name)) {
         // MW PIW 的默认类型是 WORD
         type = 'WORD';
     }
-    if (!type && /^I|Q$/.test(block_name) ) {
+    if (!type && /^I|Q$/.test(block_name)) {
         // I Q 的默认类型是 BOOL
         type = 'BOOL';
     }
@@ -58,7 +66,7 @@ export function rebuild_symbols(CPU) {
             else symbol.block_no = parseInt(symbol.block_no);
             symbol.block_bit = "";
             symbol.block_no = DB_list.push(symbol.block_no);
-            symbol.addr = 'DB'+symbol.block_no;
+            symbol.addr = 'DB' + symbol.block_no;
         }
         if (exist_bno[symbol.addr]) throw new Error(`存在重复的地址 ${name} ${symbol.addr}!`)
         exist_bno[symbol.addr] = true;
