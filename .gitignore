@@ -69,7 +69,8 @@ yarn.lock
 
 # production
 build-include/
+conf/**/
+conf/*.zyml
 dist/
-conf/
 lib/
 .vscode/

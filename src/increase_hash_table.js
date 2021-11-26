@@ -57,7 +57,7 @@ function dec2foct(num) {
 }
 
 function foct2dec(byte, bit) {
-    return byte * 8 + bit;
+    return (byte == null || bit == null) ? null : byte * 8 + bit;
 }
 
 export class S7IncHL extends IncreaseHL {
@@ -87,10 +87,13 @@ export class S7IncHL extends IncreaseHL {
     }
 
     push(item, size = 1.0) {
-        let num;
-        num = item == null ? null : foct2dec(item);
+        let num = foct2dec(...(item ?? []));
         num = this.check(num, size);
-        super.push(num, convert_size(size));
+        let remainder = num % 8;
+        if (size == 1.0 && remainder > 0) num += 8 - remainder;
+        remainder = num % 16;
+        if (size >= 2.0 && remainder > 0) num += 16 - remainder;
+        super.push(num, this.convert_size(size));
         this.#list[num + ':' + size] = true;
         return dec2foct(num);
     }

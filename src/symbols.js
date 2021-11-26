@@ -8,7 +8,7 @@ export function add_symbol(symbols, symbol_raw, default_type) {
         if (ref_name) {
             const ref = symbols.find(symbol => symbol.name === ref_name);
             // 修改内置符号
-            if (ref && symbol_raw.buildin){
+            if (ref && symbol_raw.buildin) {
                 ref.addr = symbol_raw.addr;
                 ref.comment = symbol_raw.comment;
             }
@@ -26,7 +26,7 @@ export function add_symbol(symbols, symbol_raw, default_type) {
     if (type === addr) type = name;
     const reg = /^(MW|MD|M|FB|FC|DB|PIW|IW|I|PQW|QW|Q)(\d+|\+)(\.(\d))?$/;
     if (!typeof addr === 'string') throw new Error(`${symbol_raw} is wrong!`);
-    let [, block_name, block_no, , block_bit] = reg.exec(addr.toUpperCase()) ?? [];
+    let [, block_name, block_no, , block_bit = 0] = reg.exec(addr.toUpperCase()) ?? [];
     if (!block_name || !block_no) return symbol_raw;
     if (block_name === 'FB' || block_name === 'FC') {
         // FB FC 的类型是自己
@@ -57,26 +57,45 @@ export function add_symbol(symbols, symbol_raw, default_type) {
 export function add_symbols(symbols, symbol_raw_list) {
     symbol_raw_list.forEach(symbol_raw => add_symbol(symbols, symbol_raw));
 }
-
+const MA_size = {
+    M: 0.1,
+    MB: 1.0,
+    MW: 2.0,
+    MD: 4.0
+}
 // 检查并补全符号表
 export function rebuild_symbols(CPU) {
     const exist_name = {};
     const exist_bno = {};
-    const { DB_list, symbols } = CPU;
+    const { MA_list, symbols } = CPU;
     // 检查重复并建立索引
     symbols.forEach(symbol => {
         const name = symbol.name;
         if (exist_name[name]) throw new Error(`存在重复的符号名称 ${name}!`)
         exist_name[name] = true;
-        if (symbol.block_name === 'DB') { // 仅 DB 自动分配块号
+        if (['DB', 'FB', 'FC'].includes(symbol.block_name)) { // DB FB FC 自动分配块号
             if (symbol.block_no === '+') symbol.block_no = null;
-            else symbol.block_no = parseInt(symbol.block_no);
+            else symbol.block_no = parseInt(symbol.block_no); //取整
             symbol.block_bit = "";
-            symbol.block_no = DB_list.push(symbol.block_no);
-            symbol.addr = 'DB' + symbol.block_no;
+            symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
+            symbol.addr = symbol.block_name + symbol.block_no;
+        } else if (['MD', 'MW', 'M'].includes(symbol.block_name)) { // MA 自动分配地址
+            if (symbol.block_no === '+') {
+                symbol.block_no = null;
+                symbol.block_bit = 0;
+            } else {
+                symbol.block_no = parseInt(symbol.block_no);
+                symbol.block_bit = parseInt(symbol.block_bit);
+            }
+            const addr = MA_list.push([symbol.block_no, symbol.block_bit], MA_size[symbol.block_name]);
+            symbol.block_no = addr[0];
+            symbol.block_bit = addr[1];
+
+        } else if (exist_bno[symbol.addr]) { // 其它情况下检查是否重复
+            throw new Error(`存在重复的地址 ${name} ${symbol.addr}!`)
+        } else { // 不重复则标识该地址已存在
+            exist_bno[symbol.addr] = true;
         }
-        if (exist_bno[symbol.addr]) throw new Error(`存在重复的地址 ${name} ${symbol.addr}!`)
-        exist_bno[symbol.addr] = true;
         symbols[name] = symbol;
     });
     // 补全类型

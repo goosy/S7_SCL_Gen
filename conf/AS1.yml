@@ -110,8 +110,8 @@ name: AS1
 symbols:
   # 可以在这里对内置符号 MB_340_Poll(FB345) MB_341_Poll(FB346) 进行更改
   - {buildin: MB_341_Poll, addr: FB342} # 修改内置地址
-  - [MB_Loop, FC342, FC342] #MB_Loop 是主调用FC块，这个要加入到OB中
-  - [MB_polls_DB, DB880, DB880] # MB_polls_DB符号，将用于保存轮询命令数据
+  - [MB_Loop, FC342] #MB_Loop 是主调用FC块，这个要加入到OB中
+  - [MB_polls_DB, DB880] # MB_polls_DB符号，将用于保存轮询命令数据
   # 以下为自定义符号
   - [GAS_flow, FB803]
   - [STBL, FB805]
