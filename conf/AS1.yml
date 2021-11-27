@@ -13,7 +13,6 @@
 # 用 --- 和 ... 包围的代码段为一个配置文档，配置文档之间互相独立
 # 一个文件可以有多个文档，只有一个文档时， --- 和 ... 可以省略
 
-
 # 转换代码说明：
 # 1个文档只能定义1种类型，目前只实现了4种类型： CPU AI modbusTCP modbusRTU Valve
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
@@ -40,11 +39,20 @@ type: CPU
 # 配置名称，自定义，
 # 其它文档如指示相同的name，生成的代码会检查并避免占用同一DB块、同一连接等
 # name 同时作为默认输出文件夹名称，可在 output_dir 中指定为其它输出文件夹
-CPU: AS1
+name: AS1
 
 # 符号定义
-symbols:  # CPU文档下定义其它文档需要共同的符号
-  - [common_data, DB1000]
+# 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
+# 注意，符号只能定义一次，如果要使用同一个符号，应当用 {ref: name} 对象去引用
+symbols:  # CPU文档下定义其它文档需要共同的符号，addr 与 内置type 不分大小写
+   # 必须缩进一次的 "-" 开头，请参看yaml语法
+  - [vw1, MW1000] # 测试MW
+  - [vd1, Md1000, Real] # 测试同地址 MD
+  - [auto_data1, mw+] # 测试自动地址
+  - [auto_data2, M+]
+  - [auto_data3, M+]
+  - [auto_data4, M+]
+  - [auto_data5, MD+, dint]
 
 # 输出文件夹，默认为 <name>
 # output_dir : 'other_folder' 
@@ -60,10 +68,13 @@ CPU: AS1
 
 symbols:  # 以下符号指示的块，其内容由本程序自动生成
   # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-  # 当用对象时，指示这不是一个要新建的符号
-  # 比如用含 buildin 属性的对象，指示对内置AI_Proc函数块进行更改，主要是更改地址和注释
-  - {buildin: AI_Proc, addr: FB600, comment: 'AI主处理函数'} # 可省略，地址默认为FB512
-  - [AI_Loop, FC600, ~, 'main cyclic call function'] # 当名称为AI_Loop，指示这是AI主调用FC块，这个要加入到OB中
+  # 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
+  # 系统已有2个内置符号：
+  #   AI_Proc FB512 : AI处理主FB
+  #   AI_Loop FC512 : 主循环调用FC，将这个加入OB1中
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+  - [AI_Proc, FB600] # 可省略，修改内置AI_Proc地址默认为FB512
+  - [AI_Loop, FC600] # 可省略，当名称为AI_Loop，指示这是AI主调用FC块，这个要加入到OB中
 
 list: # 模拟量列表
   - &tubepress # 设置引用锚点，该锚点表示 & 符号左侧的项目（- 或 key）指定的内容（即右侧的value）可以被引用
@@ -108,11 +119,21 @@ type: modbusRTU # 指示是modbus转换
 name: AS1
 
 symbols:
-  # 可以在这里对内置符号 MB_340_Poll(FB345) MB_341_Poll(FB346) 进行更改
-  - {buildin: MB_341_Poll, addr: FB342} # 修改内置地址
-  - [MB_Loop, FC342] #MB_Loop 是主调用FC块，这个要加入到OB中
-  - [MB_polls_DB, DB880] # MB_polls_DB符号，将用于保存轮询命令数据
-  # 以下为自定义符号
+  # 系统已有4个内置符号：
+  #   MB_340_Poll FB345 : CP340 的modbus通信处理主FB
+  #   MB_341_Poll FB346 : CP341 的modbus通信处理主FB 
+  #   MB_Loop FC345 : 表示主循环调用FC，将这个加入OB1中
+  #   MB_polls_DB DB880 : 将用于保存轮询命令数据
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+  - [MB_Loop, FC342] # 更改主调用FC块 MB_Loop 地址，可省略
+  - [MB_polls_DB, DB880] # 更改MB_polls_DB地址，可省略
+
+  # 以下为自定义符号，这里是接收块
+  # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
+  # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
+  # 这类FB不通用，需要另外单独写块本身。可依照本例提供的 "JS_flow"FB 块写其它场景的FB块，要对应符号表
+  # JS_flow定义了本例流量接收DB块的数据结构，用于一诺的智能流量表
+  - [JS_flow, FB801] 
   - [GAS_flow, FB803]
   - [STBL, FB805]
   - [launcher_data, FB806]
@@ -185,20 +206,21 @@ type: modbusTCP # 也可以写为 "type: MT"
 CPU: AS1
 
 # 符号定义
-symbols:  # 以下除 JS_flow，符号对应的实际块由本程序自动生成
-  - {buildin: MB_TCP_Poll, FB343} # 修改内置FB：MB_TCP_Poll
-  - [MT_Loop, FC343] # MT_Loop 是主调用FC块，这个要加入到OB中
-  - [MT_polls_DB, DB890] # MT_polls_DB 块将用于保存轮询命令数据，块内容自动生成
-  # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
-  # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
-  # 这类FB不通用，需要另外单独写块本身。可依照本例提供的 "JS_flow"FB 块写其它场景的FB块，要对应符号表
-  # JS_flow定义了本例所有接收DB块的数据结构，用于一诺的智能流量表
-  - [JS_flow, FB801]  # 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
-  # 其它的连接块和接收块将由程序自动生成符号表
+symbols: 
+  # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
+  # 系统已有2个内置符号，其内容由本程序自动生成：
+  #   MB_TCP_Poll FB344 : AI处理主FB
+  #   MT_Loop FC344 : 主循环调用FC，将这个加入OB1中
+  #   MT_polls_DB DB881 : 用于保存轮询命令数据
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+  - [MT_polls_DB, DB901] # 修改内置DB：MT_polls_DB 地址
+
+  # 以下为自定义符号
+  # - [JS_flow, FB801]  # JS_Flow 已在 MB 文档中定义，这里不要重复定义
 
 list : # modbus TCP 连接列表
   # 第1个连接，
-  - # 必须缩进一次的 "-" 开头，请参看yaml语法 
+  - comment: 192.168.10.10:502 智能流量计 # 本连接的注释，可省略
 
     # 十进制连接号，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
     # ID: 1
@@ -241,8 +263,8 @@ list : # modbus TCP 连接列表
     # CPU410-5H_X18
     local_device: CPU31x-2PN/DP 
     
-    # interval_time: 200 # 发出查询的时间间隔，可省略，默认为200，单位ms
-    comment: 192.168.10.10:502 智能流量计 # 本连接的注释，可省略
+    # 发出查询的时间间隔，可省略，默认为200，单位ms
+    # interval_time: 200
 
     # 自定义查询名称，必填，不可与其它连接的重名。
     polls_name: 'polls_example' 
@@ -250,32 +272,32 @@ list : # modbus TCP 连接列表
     # 该连接下的轮询定义，至少要有一个查询
     polls: 
     
-      - # 查询1
+      # 查询1
+      - comment: '垦西1#流量计' # 本查询的注释，可省略
         deivce_ID: 1 # 设备号，即RTU从站地址
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
         length: 28 # 查询长度
         recv_DB: [Flow01, DB803, JS_flow] # 接收块1
         recv_start: 0 # 接收开始位置
-        comment: '垦西1#流量计' # 本查询的注释，可省略
 
-      - # 查询2
+      # 查询2
+      - comment: '垦西2#流量计' # 本查询的注释，可省略
         deivce_ID: 2 # 设备号，即RTU从站地址
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
         length: 28 # 查询长度
         recv_DB: [Flow02, DB802, JS_flow] # 接收块2
         recv_start: 0 # 接收开始位置
-        comment: '垦西2#流量计' # 本查询的注释，可省略
 
-      - # 查询3
+      # 查询3
+      - comment: '垦西3#流量计' # 本查询的注释，可省略
         deivce_ID: 3 # 设备号，即RTU从站地址
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
         length: 28 # 查询长度
         recv_DB: [Flow03, DB+, JS_flow] # 接收块2
         recv_start: 0 # 接收开始位置
-        comment: '垦西3#流量计' # 本查询的注释，可省略
 
   # 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级
   # - code
@@ -296,7 +318,19 @@ symbols:
   - [Valve_Loop, FC516]
 
 list :
-  - comment: MGV-1201A
+  # 没有阀位时，AI 直接设置为断线值 
+  # 没有远程信号时，remote 必须分别置为 true
+  # 没有故障信号时，error 必须分别置为 false
+  # 以下常量可以直接使用
+  # S7_ZERO := 0;
+  # S7_SPAN := 27648;
+  # S7_AI_MIN := -32768;
+  # S7_AI_MIN_WORD := W#16#8000;
+  # S7_AI_MAX := 32767;
+  # S7_AI_MAX_WORD := W#16#7FFF;
+
+  # 阀门1
+  - comment: A阀门
     DB: [MGV-1201A, DB111]
     AI: [AI11-1, PIW672]
     CP: [DI01-01, I0.0]
@@ -306,17 +340,8 @@ list :
     close_action: [DO01-01, Q0.0]
     open_action: [DO01-02, Q0.1]
 
-  # 没有阀位时，直接设置为断线值 
-  # 没有远程信号时，必须分别置为 true
-  # 没有故障信号时，必须分别置为 false
-  # 以下常量可以直接使用
-  # S7_ZERO := 0;
-  # S7_SPAN := 27648;
-  # S7_AI_MIN := -32768;
-  # S7_AI_MIN_WORD := W#16#8000;
-  # S7_AI_MAX := 32767;
-  # S7_AI_MAX_WORD := W#16#7FFF;
-  - comment: MGV-1201
+  # 阀门2
+  - comment: B阀门
     DB: [MGV-1201, DB120]
     AI: S7_AI_MIN_WORD
     CP: [DI03-01, I6.0]

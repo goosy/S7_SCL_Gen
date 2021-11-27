@@ -1,7 +1,9 @@
+import {VALVE_NAME, VALVE_LOOP_NAME} from './symbols.js';
+
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 
 // 主循环调用
-FUNCTION "{{valve_loop_name}}" : VOID
+FUNCTION "{{VALVE_LOOP_NAME}}" : VOID
 
 CONST
     S7_ZERO := 0;
@@ -17,7 +19,7 @@ CONST
 END_CONST
 {{#for valve in list}}
 // {{valve.comment}}{{#if valve.DB}}
-"{{valve_name}}".{{valve.DB.value}}({{#if valve.AI}}
+"{{VALVE_NAME}}".{{valve.DB.value}}({{#if valve.AI}}
     AI := {{valve.AI.value}},{{#endif}}
     CP := {{valve.CP.value}},
     OP := {{valve.OP.value}},
@@ -29,19 +31,17 @@ END_CONST
 END_FUNCTION
 `;
 
-export const valve_name = `Valve_Proc`;
-export const valve_loop_name = `Valve_Loop`;
 export function gen_valve(valve_confs) {
     const rules = [];
 
     valve_confs.forEach(({ CPU, list }) => {
         const { name, output_dir } = CPU;
         rules.push({
-            "name": `${output_dir}/${valve_loop_name}.scl`,
+            "name": `${output_dir}/${VALVE_LOOP_NAME}.scl`,
             "tags": {
                 name,
-                valve_name,
-                valve_loop_name,
+                VALVE_NAME,
+                VALVE_LOOP_NAME,
                 list,
             }
         })

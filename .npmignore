@@ -5,7 +5,5 @@ node_modules/
 # test & production
 .vscode/
 dist/
-conf/**/
-conf/*.zyml
 public/
 test/

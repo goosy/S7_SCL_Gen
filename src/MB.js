@@ -1,8 +1,5 @@
 import { str_padding_left } from "./str_padding.js";
-export const MB340_name = 'MB_340_Poll';
-export const MB341_name = 'MB_341_Poll';
-export const MB_loop_name = 'MB_Loop';
-export const MB_polls_name = 'MB_polls_DB';
+import { MB340_NAME, MB341_NAME, MB_LOOP_NAME, MB_POLLS_NAME } from './symbols.js';
 
 function get_fixed_hex(num, length) {
     return str_padding_left(num.toString(16), length, '0').toUpperCase();
@@ -34,20 +31,20 @@ export function gen_MB(MB_confs) {
             "tags": {
                 name,
                 modules,
-                MB340_name,
-                MB341_name,
-                MB_loop_name,
-                MB_polls_name,
+                MB340_NAME,
+                MB341_NAME,
+                MB_LOOP_NAME,
+                MB_POLLS_NAME,
             }
         })
     });
-    return {rules, template};
+    return { rules, template };
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 
 // 轮询DB块，含modbus发送指令，
-DATA_BLOCK "{{MB_polls_name}}"
+DATA_BLOCK "{{MB_POLLS_NAME}}"
 STRUCT{{#for module in modules}}
     {{module.polls_name}}: ARRAY[0..{{module.polls.length - 1}}] OF STRUCT //{{module.comment}} 轮询命令数据
         DeviceID : BYTE;    //子站地址
@@ -71,11 +68,11 @@ BEGIN{{#for module in modules}}
 END_DATA_BLOCK
 
 // 主调用
-FUNCTION "{{MB_loop_name}}" : VOID
+FUNCTION "{{MB_LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
 // 第{{no+1}}个模块：{{module.type}}
 // {{module.comment}}
-"{{#if module.type == 'CP341'}}{{MB341_name}}{{#else}}{{MB340_name}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
+"{{#if module.type == 'CP341'}}{{MB341_NAME}}{{#else}}{{MB340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
     Laddr         := {{module.Laddr}},  // CP模块地址

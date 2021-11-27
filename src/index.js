@@ -3,11 +3,11 @@ import { access, mkdir, copyFile, writeFile } from 'fs/promises';
 import iconv from 'iconv-lite';
 
 import { gen_data } from './gen_data.js';
-import { gen_AI, AI_name } from "./AI.js";
-import { gen_symbol } from "./symbols.js";
-import { gen_MB, MB340_name, MB341_name } from "./MB.js";
-import { gen_MT, MT_name } from "./MT.js";
-import { gen_valve, valve_name } from "./valve.js";
+import { gen_symbol, AI_NAME, MB340_NAME, MB341_NAME, MT_NAME, VALVE_NAME } from "./symbols.js";
+import { gen_AI } from "./AI.js";
+import { gen_MB } from "./MB.js";
+import { gen_MT } from "./MT.js";
+import { gen_valve } from "./valve.js";
 
 import { fileURLToPath } from 'url';
 import { basename, dirname, join } from 'path';
@@ -76,10 +76,10 @@ async function convert2file(entry, path, {
 export async function convert(conf_path) {
   work_path = conf_path ?? work_path;
   console.log(`${work_path}:`);
-  const { CPUs, MB_confs, MT_confs, AI_confs, valve_confs } = await gen_data(work_path);
+  const { symbols_confs, MB_confs, MT_confs, AI_confs, valve_confs } = await gen_data(work_path);
+  const symbol_asc = gen_symbol(symbols_confs);
   const ai = gen_AI(AI_confs);
   const mb = gen_MB(MB_confs);
-  const symbol_asc = gen_symbol(CPUs);
   const mt = gen_MT(MT_confs);
   const valve = gen_valve(valve_confs);
 

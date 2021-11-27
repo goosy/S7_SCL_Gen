@@ -1,8 +1,6 @@
 import { str_padding_left } from "./str_padding.js";
 import { IntIncHL } from './increase_hash_table.js';
-export const MT_name = 'MB_TCP_Poll';
-export const MT_loop_name = 'MT_Loop';
-export const MT_polls_name = 'MT_polls_DB';
+import { MT_NAME,MT_LOOP_NAME,MT_POLLS_NAME } from './symbols.js';
 
 function get_fixed_hex(num, length) {
   return str_padding_left(num.toString(16), length, '0').toUpperCase();
@@ -88,9 +86,9 @@ export function gen_MT(MT_confs) {
       "tags": {
         name,
         connections,
-        MT_name,
-        MT_loop_name,
-        MT_polls_name,
+        MT_NAME,
+        MT_LOOP_NAME,
+        MT_POLLS_NAME,
       }
     })
   });
@@ -121,8 +119,8 @@ BEGIN
 END_DATA_BLOCK
 {{#endfor}}
 
-// 轮询定义数据块 "{{MT_polls_name}}"
-DATA_BLOCK "{{MT_polls_name}}"
+// 轮询定义数据块 "{{MT_POLLS_NAME}}"
+DATA_BLOCK "{{MT_POLLS_NAME}}"
 TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT{{#for conn in connections}}
@@ -157,13 +155,13 @@ BEGIN{{#for conn in connections}}
 END_DATA_BLOCK
 
 // 调用
-FUNCTION "{{MT_loop_name}}" : VOID
+FUNCTION "{{MT_LOOP_NAME}}" : VOID
 {{#for conn in connections}}
 // {{conn.comment}}
-"{{MT_name}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
+"{{MT_NAME}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
-  DATA  := "{{MT_polls_name}}".{{conn.polls_name}},
-  buff  := "{{MT_polls_name}}".buff);{{#for poll in conn.polls}}
+  DATA  := "{{MT_POLLS_NAME}}".{{conn.polls_name}},
+  buff  := "{{MT_POLLS_NAME}}".buff);{{#for poll in conn.polls}}
 {{poll.recv_DB_code}}{{#endfor poll}}
 {{#endfor conn}}
 END_FUNCTION

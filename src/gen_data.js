@@ -1,26 +1,31 @@
 import { dump, loadAll } from "js-yaml";
 import { readdir, readFile, writeFile } from 'fs/promises';
-import { AI_name } from './AI.js';
-import { gen_MT_data, MT_name } from './MT.js';
-import { MB340_name, MB341_name, gen_MB_data } from './MB.js';
-import { rebuild_symbols, add_symbol, add_symbols } from './symbols.js';
+import { gen_MT_data } from './MT.js';
+import { gen_MB_data } from './MB.js';
+import {
+    rebuild_symbols, add_symbol, add_symbols,
+    AI_NAME, AI_BUILDIN,
+    MT_NAME, MT_BUILDIN,
+    MB340_NAME, MB341_NAME, MB_BUILDIN,
+    VALVE_NAME, VALVE_BUILDIN
+} from './symbols.js';
 import { IntIncHL, S7IncHL } from './increase_hash_table.js';
+import { lazyassign } from './lazyassign.js';
 import { join } from 'path';
 
-const exist_dict = {}; // 保存列表
-const confs_map = {}; // 配置列表
-const confs = { // 全局维护表
-    AI_confs: [], // 模拟量列表 {CPU,list,options}[]
-    valve_confs: [], // 阀门列表 {CPU,list,options}[]
-    MT_confs: [], // modbus RTU 列表 {CPU,list,options}[]
-    MB_confs: [], // modbus TCP 列表 {CPU,list,options}[]
-    symbols_confs: [], // symbols 列表 {CPU,list,options}[]
-    CPUs: {}, // CPU 资源
-};
+// 目前支持的类型
+const TYPES = ['CPU', 'modbusRTU', 'modbusTCP', 'valve', 'AI'];
 
+const AI_confs = []; // 模拟量列表 {CPU, list, options}[]
+const valve_confs = []; // 阀门列表 {CPU, list, options}[]
+const MT_confs = []; // modbus TCP 列表 {CPU, list, options}[]
+const MB_confs = []; // modbus RTU 列表 {CPU, list, options}[]
+const symbols_confs = []; // symbols 列表 {CPU, list, options}[]
+
+const CPUs = {}; // CPU 资源
 function get_cpu(CPU_name) {
     // 如没有则建立一个初始资源数据
-    return confs.CPUs[CPU_name] ??= {
+    return CPUs[CPU_name] ??= {
         name: CPU_name,
         conn_ID_list: new IntIncHL(16), // 已用连接ID列表
         module_addr_list: new IntIncHL(256), // 模块地址列表
@@ -28,10 +33,14 @@ function get_cpu(CPU_name) {
         FB_list: new IntIncHL(256), // 已用函数块列表
         FC_list: new IntIncHL(256), // 已用函数列表
         poll_list: new IntIncHL(1), // 已用查询号
-        symbols: [], // 符号表
         MA_list: new S7IncHL([0, 0]), // 已用M地址
+        symbols_dict: {}, // 符号表
         conn_host_list: {}, // 已用的连接地址列表
         output_dir: CPU_name, // 输出文件夹
+        push_conf(type, conf) {
+            this[type] ??= [];
+            this[type].push(conf);
+        }
     }
 }
 
@@ -39,103 +48,97 @@ function to_ref(item) {
     if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
         return { value: item, type: 'ref' };
     }
-    return null;
+    return item;
 }
-function exist(CPU, type) {
-    return !!exist_dict[CPU + type];
-}
-function set_conf(CPU, type, conf) {
-    exist_dict[CPU + type] = true;
-    confs_map[CPU] ??= [];
-    confs_map[CPU].push(conf);
-}
-function get_conf(CPU) {
-    return confs_map[CPU];
+
+function make_prop_symbolic(obj, prop, symbols_dict, mtype) {
+    if (Array.isArray(obj[prop]) && typeof mtype === 'string') {
+        obj[prop][2] = mtype; // mandatory type
+    }
+    obj[prop] = to_ref(obj[prop]);
+    // 全部符号未加载完，需要惰性赋值
+    lazyassign(obj, prop, add_symbol(symbols_dict, obj[prop]));
 }
 
 function add_conf(conf) {
+    // 检查重复
     const { name, CPU: CPU_name = name, type } = conf;
-    if (exist(CPU_name, type)) throw new Error(`${CPU_name}:${type} has duplicate configurations`);
-    // 按名称压入配置
-    set_conf(CPU_name, type, conf);
+    let doctype = '';
+    if (type.toUpperCase() === 'AI') doctype = 'AI';
+    if (type.toUpperCase() === 'CPU') doctype = 'CPU';
+    if (type.toUpperCase() === 'MB' || type.toLowerCase() === 'modbusrtu') doctype = 'modbusRTU';
+    if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
+    if (type.toLowerCase() === 'valve') doctype = 'valve';
+    if (!TYPES.includes(doctype)) throw new Error(`type:${type} has not supported`);
     const CPU = get_cpu(CPU_name);
-    const symbols = CPU.symbols;
-    const options = conf.options ??= {};
-    const list = conf.list ??= [];
-    const item = { CPU, list, options };
+    if (CPU[doctype]) throw new Error(`${CPU_name}:${doctype}${doctype == type ? '(' + type + ')' : ''} has duplicate configurations`);
+    CPU.push_conf(doctype, dump(conf)); // 按名称压入无注释配置文本
 
-    if (type === 'CPU') { // CPU 调度
-        add_symbols(symbols, conf.symbols ??= []);
+    // conf 存在属性为 null 但不是 undefined 的情况，不能解构赋值
+    const options = conf.options ?? {};
+    const list = conf.list ?? [];
+    const symbols = conf.symbols ?? [];
+    const symbols_dict = CPU.symbols_dict;
+    const item = { CPU, list, options };
+    if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN); // 加入AI内置符号
+    if (doctype === 'modbusRTU') add_symbols(symbols_dict, MB_BUILDIN); // 加入MB内置符号
+    if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN); // 加入MT内置符号
+    if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN); // 加入Valve内置符号
+    add_symbols(symbols_dict, symbols); // 加入前置符号
+
+    // 调度配置
+    if (doctype === 'CPU') { // CPU 调度
         CPU.output_dir = conf.output_dir ?? CPU_name;
-    } else if (type === 'AI') { // AI 调度
-        // 内置符号
-        add_symbol(symbols, [AI_name, 'FB512', 'FB512', 'AI main FB']);
-        add_symbols(symbols, conf.symbols ??= []);
+    } else if (doctype === 'AI') { // AI 调度
+        // 配置
         list.forEach(AI => {
             if (!AI.DB) return; // 空AI不处理
-            AI.DB = add_symbol(symbols, AI.DB, 'AI_Proc');
-            AI.input = add_symbol(symbols, AI.input, 'WORD');
-            if (typeof AI.input === 'string') {
-                AI.input = to_ref(AI.input);
-            }
+            make_prop_symbolic(AI, 'DB', symbols_dict, AI_NAME);
+            make_prop_symbolic(AI, 'input', symbols_dict, 'WORD');
         });
-        confs.AI_confs.push(item);
-    } else if (type === 'modbusRTU' || type === 'MB') { // modebusTCP 调度
-        // 内置符号
-        add_symbol(symbols, [MB340_name, 'FB345', 'FB345', 'CP340 main modbus FB']);
-        add_symbol(symbols, [MB341_name, 'FB346', 'FB346', 'CP341 main modbus FB']);
-        // 配置符号
-        add_symbols(symbols, conf.symbols ??= []);
+        AI_confs.push(item);
+    } else if (doctype === 'modbusRTU') { // modebusTCP 调度
         list.forEach(module => {
             let valid_type = false;
             let type;
             if (module.type === 'CP341') {
                 options.has_CP341 = true;
                 valid_type = true;
-                type = MB341_name;
+                type = MB341_NAME;
             } else if (module.type === 'CP340') {
                 options.has_CP340 = true;
                 valid_type = true;
-                type = MB340_name;
+                type = MB340_NAME;
             }
             if (!valid_type) throw new Error(`${module.type}'s poll FB is not defined`);
             // CP DB
-            module.DB[2] = type;
-            module.DB = add_symbol(symbols, module.DB);
+            make_prop_symbolic(module, 'DB', symbols_dict, type);
             module.polls.forEach(poll => {
-                poll.recv_DB = add_symbol(symbols, poll.recv_DB, poll.recv_DB[0]);
+                make_prop_symbolic(poll, 'recv_DB', symbols_dict);
             })
         })
-        confs.MB_confs.push(item);
-    } else if (type === 'modbusTCP' || type === 'MT') { // modebusTCP 调度
-        // 内置符号
-        add_symbol(symbols, [MT_name, 'FB347', 'FB347', 'main modbusTCP FB']);
-        add_symbols(symbols, conf.symbols ??= []);
+        MB_confs.push(item);
+    } else if (doctype === 'modbusTCP' || doctype === 'MT') { // modebusTCP 调度
         list.forEach(conn => {
-            conn.DB[2] = MT_name; // DB type
-            conn.DB = add_symbol(symbols, conn.DB);
+            make_prop_symbolic(conn, 'DB', symbols_dict, MT_NAME);
             conn.polls.forEach(poll => {
-                poll.recv_DB = add_symbol(symbols, poll.recv_DB, poll.recv_DB[0]);
+                make_prop_symbolic(poll, 'recv_DB', symbols_dict);
             })
         })
-        confs.MT_confs.push(item);
-    } else if (type === 'Valve' || type === 'valve') { // Valve 调度
-        add_symbols(symbols, conf.symbols ??= []);
+        MT_confs.push(item);
+    } else if (doctype === 'Valve' || doctype === 'valve') { // Valve 调度
         list.forEach(valve => {
             if (!valve.DB) return; // 空AI不处理
-            valve.AI = add_symbol(symbols, valve.AI, 'WORD');
-            if (!valve.AI?.name) valve.AI = to_ref(valve.AI); // 输入非符号
-            valve.error = add_symbol(symbols, valve.error ?? false, 'BOOL');
-            if (!valve.error?.name) valve.error = to_ref(valve.error); // 输入非符号
-            valve.remote = add_symbol(symbols, valve.remote ?? true, 'BOOL');
-            if (!valve.remote?.name) valve.remote = to_ref(valve.remote); // 输入非符号
-            valve.CP = add_symbol(symbols, valve.CP, 'BOOL');
-            valve.OP = add_symbol(symbols, valve.OP, 'BOOL');
-            valve.close_action = add_symbol(symbols, valve.close_action, 'BOOL');
-            valve.open_action = add_symbol(symbols, valve.open_action, 'BOOL');
-            valve.DB = add_symbol(symbols, valve.DB, 'Valve_Proc');
+            make_prop_symbolic(valve, 'AI', symbols_dict, 'WORD');
+            make_prop_symbolic(valve, 'CP', symbols_dict, 'BOOL');
+            make_prop_symbolic(valve, 'OP', symbols_dict, 'BOOL');
+            make_prop_symbolic(valve, 'remote', symbols_dict, 'BOOL');
+            make_prop_symbolic(valve, 'error', symbols_dict, 'BOOL');
+            make_prop_symbolic(valve, 'close_action', symbols_dict, 'BOOL');
+            make_prop_symbolic(valve, 'open_action', symbols_dict, 'BOOL');
+            make_prop_symbolic(valve, 'DB', symbols_dict, VALVE_NAME);
         });
-        confs.valve_confs.push(item);
+        valve_confs.push(item);
     }
 }
 
@@ -154,23 +157,22 @@ export async function gen_data(path) {
         console.log(e);
     }
 
-    // 生成无注释的配置 for of 实现异步顺序执行
-    for (const [name, conf_list] of Object.entries(confs_map)) {
-        const docs = conf_list.map(conf => `---\n${dump(conf)}...`).join('\n\n');
+    for (const [name, CPU] of Object.entries(CPUs)) {
+        // 生成无注释的配置
+        const docs = TYPES.map(type => `---\n${CPU[type]}...`).join('\n\n');
         const filename = `${join(path, name)}.zyml`;
         await writeFile(filename, docs);
+        console.log(`output the no comment configuration file: ${filename}`);
+        // 检查并补全符号表
+        const symbol_conf = rebuild_symbols(CPU);
+        symbols_confs.push(symbol_conf)
     }
 
-    // 检查并补全符号表
-    Object.values(confs.CPUs).forEach(
-        CPU => rebuild_symbols(CPU)
-    );
+    // 补全 modbusTCP 数据
+    MT_confs.forEach(gen_MT_data);
 
     // 补全 modbusTCP 数据
-    confs.MT_confs.forEach(gen_MT_data);
+    MB_confs.forEach(gen_MB_data);
 
-    // 补全 modbusTCP 数据
-    confs.MB_confs.forEach(gen_MB_data);
-
-    return confs;
+    return { symbols_confs, MB_confs, MT_confs, AI_confs, valve_confs };
 }

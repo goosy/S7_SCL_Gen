@@ -1,31 +1,63 @@
 import { str_padding_left, str_padding_right } from "./str_padding.js";
-const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'REAL'];
+const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
+export const AI_NAME = 'AI_Proc';
+export const AI_LOOP_NAME = 'AI_Loop';
+export const MB340_NAME = 'MB_340_Poll';
+export const MB341_NAME = 'MB_341_Poll';
+export const MB_LOOP_NAME = 'MB_Loop';
+export const MB_POLLS_NAME = 'MB_polls_DB';
+export const MT_NAME = 'MB_TCP_Poll';
+export const MT_LOOP_NAME = 'MT_Loop';
+export const MT_POLLS_NAME = 'MT_polls_DB';
+export const VALVE_NAME = `Valve_Proc`;
+export const VALVE_LOOP_NAME = 'Valve_Loop';
+export const AI_BUILDIN = [
+    [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
+    [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
+];
+export const MB_BUILDIN = [
+    [MB340_NAME, 'FB345', MB340_NAME, 'CP340 modbusRTU communicate main process'],
+    [MB341_NAME, 'FB346', MB341_NAME, 'CP341 modbusRTU communicate main process'],
+    [MB_LOOP_NAME, "FC345", MB_LOOP_NAME, 'main modbusRTU cyclic call function'],
+    [MB_POLLS_NAME, "DB880", MB_POLLS_NAME, 'modbusRTU polls data'],
+];
+export const MT_BUILDIN = [
+    [MT_NAME, 'FB344', MT_NAME, 'modbusTCP OUC main process'],
+    [MT_LOOP_NAME, "FC344", MT_LOOP_NAME, 'main modbusTCP cyclic call function'],
+    [MT_POLLS_NAME, "DB881", MT_POLLS_NAME, 'modbusTCP polls data'],
+];
+export const VALVE_BUILDIN = [
+    [VALVE_NAME, 'FB513', VALVE_NAME, 'VALVE main AI FB'],
+    [VALVE_LOOP_NAME, "FC513", VALVE_LOOP_NAME, 'main AI cyclic call function'],
+];
+export const buildin_symbols = [
+    ...AI_BUILDIN,
+    ...MB_BUILDIN,
+    ...MT_BUILDIN,
+    ...VALVE_BUILDIN,
+];
 
-export function add_symbol(symbols, symbol_raw, default_type) {
-    // 返回引用符号
-    if (Object.prototype.toString.call(symbol_raw) === '[object Object]') {
-        const ref_name = symbol_raw.buildin ?? symbol_raw.ref;
-        if (ref_name) {
-            const ref = symbols.find(symbol => symbol.name === ref_name);
-            // 修改内置符号
-            if (ref && symbol_raw.buildin) {
-                ref.addr = symbol_raw.addr;
-                ref.comment = symbol_raw.comment;
-            }
-            return ref ?? symbol_raw;
-        }
-    }
+function parse(symbol_raw, default_type) {
     // todo 非 array 不处理
     if (!Array.isArray(symbol_raw)) return symbol_raw;
-
     const
         name = symbol_raw[0],
-        addr = symbol_raw[1],
+        addr = symbol_raw[1]?.toUpperCase(),
         comment = symbol_raw[3];
+    if (typeof addr !== 'string' || typeof name !== 'string') {
+        throw new Error(`${symbol_raw} is wrong!`);
+    }
     let type = symbol_raw[2] ?? default_type;
+    if (typeof type === "string") {
+        const UC = type.toUpperCase();
+        if (common_type.includes(UC)) {
+            type = UC;
+        }
+    } else {
+        type = null;
+    }
     if (type === addr) type = name;
     const reg = /^(MW|MD|M|FB|FC|DB|PIW|IW|I|PQW|QW|Q)(\d+|\+)(\.(\d))?$/;
-    if (!typeof addr === 'string') throw new Error(`${symbol_raw} is wrong!`);
     let [, block_name, block_no, , block_bit = 0] = reg.exec(addr.toUpperCase()) ?? [];
     if (!block_name || !block_no) return symbol_raw;
     if (block_name === 'FB' || block_name === 'FC') {
@@ -44,19 +76,51 @@ export function add_symbol(symbols, symbol_raw, default_type) {
         // MW PIW 的默认类型是 WORD
         type = 'WORD';
     }
-    if (!type && /^I|Q$/.test(block_name)) {
+    if (!type && /^I|Q|M$/.test(block_name)) {
         // I Q 的默认类型是 BOOL
         type = 'BOOL';
     }
     let [, type_name, type_no] = reg.exec(type.toUpperCase()) ?? [type];
     const value = `"${name}"`;
-    const symbol = { name, addr, type, value, block_name, block_no, block_bit, type_name, type_no, comment };
-    symbols.push(symbol);
+    return { name, addr, type, value, block_name, block_no, block_bit, type_name, type_no, comment };
+}
+
+function check_buildin_and_modify(symbols_dict, symbol) {
+    if (!buildin_symbols.map(raw => raw[0]).includes(symbol.name)) return false;
+    const ref = symbols_dict[symbol.name];
+    if (!ref) return false;
+    // modify address
+    ref.addr = symbol.addr;
+    ref.block_no = symbol.block_no;
+    ref.block_bit = symbol.block_bit;
+    return true;
+}
+
+export function add_symbol(symbols_dict, symbol_raw, default_type) {
+    // 引用，要么返回惰性求值，要么返回本身
+    if (Object.prototype.toString.call(symbol_raw) === '[object Object]') {
+        const ref_name = symbol_raw.buildin ?? symbol_raw.ref;
+        const ref = ref_name && symbols_dict[ref_name];
+        return ref ?? (() => { // 返回符号，或当前无此符号情况下则返回惰性求值函数
+            return (ref_name && symbols_dict.find(symbol => symbol.name === ref_name)) ?? symbol_raw;
+        });
+    }
+    const symbol = parse(symbol_raw, default_type);
+    // 非有效符号返回原值 
+    if (symbol === symbol_raw) return symbol_raw;
+
+    // 内置符号则应用新地址
+    const is_buildin = check_buildin_and_modify(symbols_dict, symbol);
+
+    // 新符号则保存
+    if (!is_buildin) symbols_dict[symbol.name] = symbol;
     return symbol;
 }
-export function add_symbols(symbols, symbol_raw_list) {
-    symbol_raw_list.forEach(symbol_raw => add_symbol(symbols, symbol_raw));
+
+export function add_symbols(symbols_dict, symbol_raw_list) {
+    return symbol_raw_list.map(symbol_raw => add_symbol(symbols_dict, symbol_raw));
 }
+
 const MA_size = {
     M: 0.1,
     MB: 1.0,
@@ -67,9 +131,10 @@ const MA_size = {
 export function rebuild_symbols(CPU) {
     const exist_name = {};
     const exist_bno = {};
-    const { MA_list, symbols } = CPU;
+    const { MA_list, symbols_dict } = CPU;
+    const list = Object.values(symbols_dict);
     // 检查重复并建立索引
-    symbols.forEach(symbol => {
+    list.forEach(symbol => {
         const name = symbol.name;
         if (exist_name[name]) throw new Error(`存在重复的符号名称 ${name}!`)
         exist_name[name] = true;
@@ -90,16 +155,16 @@ export function rebuild_symbols(CPU) {
             const addr = MA_list.push([symbol.block_no, symbol.block_bit], MA_size[symbol.block_name]);
             symbol.block_no = addr[0];
             symbol.block_bit = addr[1];
-
+            symbol.addr = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
         } else if (exist_bno[symbol.addr]) { // 其它情况下检查是否重复
             throw new Error(`存在重复的地址 ${name} ${symbol.addr}!`)
         } else { // 不重复则标识该地址已存在
             exist_bno[symbol.addr] = true;
         }
-        symbols[name] = symbol;
+        symbols_dict[name] = symbol;
     });
     // 补全类型
-    symbols.forEach(symbol => {
+    list.forEach(symbol => {
         if (symbol.block_name == "OB" || symbol.block_name == "FB" || symbol.block_name == "FC" || symbol.type == null) {
             symbol.type = symbol.name;
         }
@@ -107,37 +172,38 @@ export function rebuild_symbols(CPU) {
             symbol.type_name = symbol.type;
             symbol.type_no = '';
         } else {
-            const type_block = symbols[symbol.type];
+            const type_block = symbols_dict[symbol.type];
             if (!type_block) throw new Error(`${symbol.type} is required, but not defined`);
             symbol.type_name ??= type_block.block_name;
             symbol.type_no ??= type_block.block_no;
         }
     });
+    return {CPU, list};
 }
 
 const SYMN_LEN = 23;
 const NAME_LEN = 4;
 const NO_LEN = 5;
 const BLANK_COMMENT_LEN = 80;
-
-function get_symbol({ name, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
+function get_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
     const symname = str_padding_right(name, SYMN_LEN);
     const block_name_str = str_padding_right(block_name, NAME_LEN);
     const block_no_str = str_padding_left(block_no, NO_LEN);
-    const block_bit_str = block_bit ? '.' + block_bit : '  ';
-    const type_str = str_padding_right(type_name, NAME_LEN);
-    const type_no_str = str_padding_left(type_no, NO_LEN);
+    const block_bit_str = type === 'BOOL' ? '.' + block_bit : '  ';
+    const type_len = type_no === '' ? NAME_LEN + NO_LEN : NAME_LEN;
+    const type_str = str_padding_right(type_name, type_len);
+    const type_no_str = type_no === '' ? '' : str_padding_left(type_no, NO_LEN);
     const cm = str_padding_right(comment ?? '', BLANK_COMMENT_LEN);
     return `126,${symname} ${block_name_str}${block_no_str}${block_bit_str} ${type_str}${type_no_str} ${cm}`;
 }
 
 const template = `{{#for sym in symbol_list}}{{sym}}
 {{#endfor sym}}`;
-export function gen_symbol(CPUs) {
+export function gen_symbol(symbols_confs) {
     const rules = [];
-    Object.values(CPUs).forEach(CPU => {
-        const symbol_list = CPU.symbols.map(get_symbol);
+    symbols_confs.forEach(({CPU, list}) => {
         const output_dir = CPU.output_dir;
+        const symbol_list = list.map(get_symbol);
         rules.push({
             "name": `${output_dir}/symbols.asc`,
             "tags": { symbol_list }
