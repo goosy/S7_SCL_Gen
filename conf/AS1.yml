@@ -342,13 +342,22 @@ list :
 
   # 阀门2
   - comment: B阀门
-    DB: [MGV-1201, DB120]
+    DB: [MGV-1201B, DB120]
     AI: S7_AI_MIN_WORD
     CP: [DI03-01, I6.0]
     OP: [DI03-02, I6.1]
     error: FALSE
     remote: TRUE
     close_action: [DO02-01, Q4.0]
+
+  - comment: C阀门
+    DB: [MGV-1201C, DB+]
+    AI: [AI11-2, PIW674]
+    CP: [DI01-05, I0.4]
+    OP: [DI01-06, I+]
+    error: FALSE
+    remote: TRUE
+    close_action: {ref: DO01-01}
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 

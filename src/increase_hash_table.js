@@ -14,7 +14,7 @@ class IncreaseHL { // abstract class
             num = this.get_new();
         } else {
             // 不能非正数字
-            if (typeof num !== 'number' || isNaN(num) || num <= 0) throw new Error(`${num} 不是正整数!`);
+            if (typeof num !== 'number' || isNaN(num) || num < 0) throw new Error(`${num} 不是正整数!`);
         }
         return num;
     }
@@ -37,7 +37,7 @@ export class IntIncHL extends IncreaseHL {
         return num
     }
     check(num) {
-        if (num == null) {
+        if (num == null || num === 0) {
             do {
                 num = super.check(null);
             } while (this.#list.includes(num));
@@ -81,7 +81,7 @@ export class S7IncHL extends IncreaseHL {
         } else {
             num = super.check(num);
             // 不能重复
-            if (this.#list[num + ':' + size]) throw new Error(`存在重复的 ${dec2foct(num)}:${size}!`);
+            if (this.#list[num + ':' + size]) throw new Error(`存在重复的 ${dec2foct(num).join('.')} (size:${size})!`);
         }
         return num;
     }
@@ -89,12 +89,12 @@ export class S7IncHL extends IncreaseHL {
     push(item, size = 1.0) {
         let num = foct2dec(...(item ?? []));
         num = this.check(num, size);
+        this.#list[num + ':' + size] = true;
         let remainder = num % 8;
         if (size == 1.0 && remainder > 0) num += 8 - remainder;
         remainder = num % 16;
         if (size >= 2.0 && remainder > 0) num += 16 - remainder;
         super.push(num, this.convert_size(size));
-        this.#list[num + ':' + size] = true;
         return dec2foct(num);
     }
 }

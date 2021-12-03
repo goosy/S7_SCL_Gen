@@ -34,6 +34,8 @@ function get_cpu(CPU_name) {
         FC_list: new IntIncHL(256), // 已用函数列表
         poll_list: new IntIncHL(1), // 已用查询号
         MA_list: new S7IncHL([0, 0]), // 已用M地址
+        IA_list: new S7IncHL([0, 0]), // 已用I地址
+        QA_list: new S7IncHL([0, 0]), // 已用I地址
         symbols_dict: {}, // 符号表
         conn_host_list: {}, // 已用的连接地址列表
         output_dir: CPU_name, // 输出文件夹

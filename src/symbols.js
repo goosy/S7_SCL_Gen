@@ -113,6 +113,7 @@ export function add_symbol(symbols_dict, symbol_raw, default_type) {
     const is_buildin = check_buildin_and_modify(symbols_dict, symbol);
 
     // 新符号则保存
+    if (!is_buildin && symbols_dict[symbol.name]) throw new Error(`symbol:${symbol.name} has already existed!`);
     if (!is_buildin) symbols_dict[symbol.name] = symbol;
     return symbol;
 }
@@ -121,17 +122,27 @@ export function add_symbols(symbols_dict, symbol_raw_list) {
     return symbol_raw_list.map(symbol_raw => add_symbol(symbols_dict, symbol_raw));
 }
 
-const MA_size = {
+const area_size = {
     M: 0.1,
     MB: 1.0,
     MW: 2.0,
-    MD: 4.0
+    MD: 4.0,
+    I: 0.1,
+    IW: 2.0,
+    PIW: 2.0,
+    ID: 4.0,
+    PID: 4.0,
+    Q: 0.1,
+    QW: 2.0,
+    PQW: 2.0,
+    QD: 4.0,
+    PQD: 4.0,
 }
 // 检查并补全符号表
 export function rebuild_symbols(CPU) {
     const exist_name = {};
     const exist_bno = {};
-    const { MA_list, symbols_dict } = CPU;
+    const { MA_list, IA_list, QA_list, symbols_dict } = CPU;
     const list = Object.values(symbols_dict);
     // 检查重复并建立索引
     list.forEach(symbol => {
@@ -144,7 +155,9 @@ export function rebuild_symbols(CPU) {
             symbol.block_bit = "";
             symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
             symbol.addr = symbol.block_name + symbol.block_no;
-        } else if (['MD', 'MW', 'M'].includes(symbol.block_name)) { // MA 自动分配地址
+        } else if (
+            ['MD', 'MW', 'M', 'I', 'IW', 'PIW', 'ID', 'PID', 'Q', 'QW', 'PQW', 'QD', 'PQD'].includes(symbol.block_name)
+        ) { // Area 自动分配地址
             if (symbol.block_no === '+') {
                 symbol.block_no = null;
                 symbol.block_bit = 0;
@@ -152,7 +165,11 @@ export function rebuild_symbols(CPU) {
                 symbol.block_no = parseInt(symbol.block_no);
                 symbol.block_bit = parseInt(symbol.block_bit);
             }
-            const addr = MA_list.push([symbol.block_no, symbol.block_bit], MA_size[symbol.block_name]);
+            let list;
+            if (symbol.block_name.includes('M')) list = MA_list;
+            if (symbol.block_name.includes('I')) list = IA_list;
+            if (symbol.block_name.includes('Q')) list = QA_list;
+            const addr = list.push([symbol.block_no, symbol.block_bit], area_size[symbol.block_name]);
             symbol.block_no = addr[0];
             symbol.block_bit = addr[1];
             symbol.addr = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
@@ -178,7 +195,7 @@ export function rebuild_symbols(CPU) {
             symbol.type_no ??= type_block.block_no;
         }
     });
-    return {CPU, list};
+    return { CPU, list };
 }
 
 const SYMN_LEN = 23;
@@ -201,7 +218,7 @@ const template = `{{#for sym in symbol_list}}{{sym}}
 {{#endfor sym}}`;
 export function gen_symbol(symbols_confs) {
     const rules = [];
-    symbols_confs.forEach(({CPU, list}) => {
+    symbols_confs.forEach(({ CPU, list }) => {
         const output_dir = CPU.output_dir;
         const symbol_list = list.map(get_symbol);
         rules.push({
