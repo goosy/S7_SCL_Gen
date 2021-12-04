@@ -101,12 +101,12 @@ function check_buildin_and_modify(symbols_dict, symbol) {
 export function add_symbol(symbols_dict, symbol_raw, default_type) {
     // 引用，要么返回惰性求值，要么返回本身
     if (Object.prototype.toString.call(symbol_raw) === '[object Object]') {
-        const ref_name = symbol_raw.buildin ?? symbol_raw.ref;
+        const ref_name = symbol_raw.ref;
+        if (!ref_name) return symbol_raw;
         const ref = ref_name && symbols_dict[ref_name];
-        return ref // 返回符号
-            ?? (() => { // 当前无此符号情况下则返回惰性求值函数
-                return (ref_name && symbols_dict.find(symbol => symbol.name === ref_name)) ?? symbol_raw;
-            });
+        if (ref) return ref; // 返回符号
+        // 当前无此符号情况下则返回惰性求值函数
+        return () => symbols_dict[ref_name] ?? symbol_raw;
     }
     const symbol = parse(symbol_raw, default_type);
     // 非有效符号返回原值 
