@@ -1,5 +1,6 @@
 import { str_padding_left, str_padding_right } from "./str_padding.js";
-const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
+import { IncHLError } from "./increase_hash_table.js";
+
 export const AI_NAME = 'AI_Proc';
 export const AI_LOOP_NAME = 'AI_Loop';
 export const MB340_NAME = 'MB_340_Poll';
@@ -36,18 +37,19 @@ export const buildin_symbols = [
     ...MT_BUILDIN,
     ...VALVE_BUILDIN,
 ];
+const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
 
-function parse(symbol_raw, default_type) {
+function parse(raw, default_type) {
     // todo 非 array 不处理
-    if (!Array.isArray(symbol_raw)) return symbol_raw;
+    if (!Array.isArray(raw)) return raw;
     const
-        name = symbol_raw[0],
-        addr = symbol_raw[1]?.toUpperCase(),
-        comment = symbol_raw[3];
+        name = raw[0],
+        addr = raw[1]?.toUpperCase(),
+        comment = raw[3];
     if (typeof addr !== 'string' || typeof name !== 'string') {
-        throw new Error(`${symbol_raw} is wrong!`);
+        throw new Error(`${raw} is wrong!`);
     }
-    let type = symbol_raw[2] ?? default_type;
+    let type = raw[2] ?? default_type;
     if (typeof type === "string") {
         const UC = type.toUpperCase();
         if (common_type.includes(UC)) {
@@ -59,7 +61,7 @@ function parse(symbol_raw, default_type) {
     if (type === addr) type = name;
     const reg = /^(MW|MD|M|FB|FC|DB|PIW|IW|I|PQW|QW|Q)(\d+|\+)(\.(\d))?$/;
     let [, block_name, block_no, , block_bit = 0] = reg.exec(addr.toUpperCase()) ?? [];
-    if (!block_name || !block_no) return symbol_raw;
+    if (!block_name || !block_no) return raw;
     if (block_name === 'FB' || block_name === 'FC') {
         // FB FC 的类型是自己
         type = name;
@@ -82,7 +84,7 @@ function parse(symbol_raw, default_type) {
     }
     let [, type_name, type_no] = reg.exec(type.toUpperCase()) ?? [type];
     const value = `"${name}"`;
-    return { name, addr, type, value, block_name, block_no, block_bit, type_name, type_no, comment };
+    return { name, addr, type, value, block_name, block_no, block_bit, type_name, type_no, comment, raw };
 }
 
 function check_buildin_and_modify(symbols_dict, symbol) {
@@ -101,9 +103,10 @@ export function add_symbol(symbols_dict, symbol_raw, default_type) {
     if (Object.prototype.toString.call(symbol_raw) === '[object Object]') {
         const ref_name = symbol_raw.buildin ?? symbol_raw.ref;
         const ref = ref_name && symbols_dict[ref_name];
-        return ref ?? (() => { // 返回符号，或当前无此符号情况下则返回惰性求值函数
-            return (ref_name && symbols_dict.find(symbol => symbol.name === ref_name)) ?? symbol_raw;
-        });
+        return ref // 返回符号
+            ?? (() => { // 当前无此符号情况下则返回惰性求值函数
+                return (ref_name && symbols_dict.find(symbol => symbol.name === ref_name)) ?? symbol_raw;
+            });
     }
     const symbol = parse(symbol_raw, default_type);
     // 非有效符号返回原值 
@@ -113,7 +116,7 @@ export function add_symbol(symbols_dict, symbol_raw, default_type) {
     const is_buildin = check_buildin_and_modify(symbols_dict, symbol);
 
     // 新符号则保存
-    if (!is_buildin && symbols_dict[symbol.name]) throw new Error(`symbol:${symbol.name} has already existed!`);
+    if (!is_buildin && symbols_dict[symbol.name]) throw new Error(`存在重复的符号名称 ${symbol.name}!\n${symbols_dict[symbol.name].raw}\n${symbol.raw}`);
     if (!is_buildin) symbols_dict[symbol.name] = symbol;
     return symbol;
 }
@@ -140,20 +143,26 @@ const area_size = {
 }
 // 检查并补全符号表
 export function rebuild_symbols(CPU) {
-    const exist_name = {};
     const exist_bno = {};
     const { MA_list, IA_list, QA_list, symbols_dict } = CPU;
     const list = Object.values(symbols_dict);
     // 检查重复并建立索引
     list.forEach(symbol => {
         const name = symbol.name;
-        if (exist_name[name]) throw new Error(`存在重复的符号名称 ${name}!`)
-        exist_name[name] = true;
         if (['DB', 'FB', 'FC'].includes(symbol.block_name)) { // DB FB FC 自动分配块号
             if (symbol.block_no === '+') symbol.block_no = null;
             else symbol.block_no = parseInt(symbol.block_no); //取整
             symbol.block_bit = "";
-            symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
+            try {
+                symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
+            } catch (e) {
+                if (e instanceof TypeError) {
+                    throw new TypeError(e.message, { cause: e });
+                } else if (e instanceof IncHLError) {
+                    const prev_symbol = list.find(sym => sym.block_no === symbol.block_no);
+                    throw new Error(`${e.message}\n${prev_symbol.raw}\n${symbol.raw}`, { cause: e });
+                }
+            }
             symbol.addr = symbol.block_name + symbol.block_no;
         } else if (
             ['MD', 'MW', 'M', 'I', 'IW', 'PIW', 'ID', 'PID', 'Q', 'QW', 'PQW', 'QD', 'PQD'].includes(symbol.block_name)
