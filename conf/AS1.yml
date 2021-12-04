@@ -14,26 +14,26 @@
 # 一个文件可以有多个文档，只有一个文档时， --- 和 ... 可以省略
 
 # 转换代码说明：
-# 1个文档只能定义1种类型，目前只实现了4种类型： CPU AI modbusTCP modbusRTU Valve
+# 1个文档只能定义1种类型，目前只实现了4种类型： CPU AI modbusTCP SC Valve
 # 每种类型(CPU除外)都有默认的输出文件名称，可以在该文档的 option.output_file 中改变输出文件名
 # 配置文档必须有 type 和 CPU 字段，2个字段都相同的配置文档只能有一个
 
 # 程序内置了一些函数，它们有默认的内置符号，这些符号通常不需配置里设置：
-# * [AI_Proc, FB512, FB512, AI process main function block] 模拟量主处理函数
-# * [MB_340_Poll, FB345, FB345, MB340_FB] CP340通信主处理函数
-# * [MB_341_Poll, FB346, FB346, MB340_FB] CP341通信主处理函数
+# * [AI_Proc, FB512] 模拟量主处理函数
+# * [CP340_Poll, FB340] CP340通信主处理函数
+# * [CP341_Poll, FB341] CP341通信主处理函数
+# * [MT_Poll, FB344] modbusTCP通信主处理函数
+# * [Valve_Proc, FB513] 阀门主处理函数
 # 但如果存在冲突，可以通过含 buildin 属性的对象，指示对内置符号更改，主要是更改地址和注释
 # 如果不是为了重名重地址的原因，不用更改定义值
 
-# 本示例文件有5个配置文档： CPU modbusTCP AI modbusRTU Valve
+# 本示例文件有5个配置文档： CPU modbusTCP AI SC Valve
 
-# CPU 文档
---- #文档开始
-
-# 指示这是一个CPU空间，所有属于这个名称下的配置文档都共用相同的配置
+--- # CPU文档开始
+# type: CPU 指示这是一个CPU空间，所有属于这个名称下的配置文档都共用相同的配置
 # 输出至相同的代码文件夹中
 # 代码里在同一PLC资源下分配，程序自动合并符号表
-# 同一个CPU会有多种程序，比如AI、modbusRTU、modbusTCP，需要要其它文档中定义
+# 同一个CPU会有多种程序，比如AI、SC、modbusTCP，需要要其它文档中定义
 type: CPU 
 
 # 配置名称，自定义，
@@ -43,9 +43,9 @@ name: AS1
 
 # 符号定义
 # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
+# 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
 # 注意，符号只能定义一次，如果要使用同一个符号，应当用 {ref: name} 对象去引用
 symbols:  # CPU文档下定义其它文档需要共同的符号，addr 与 内置type 不分大小写
-   # 必须缩进一次的 "-" 开头，请参看yaml语法
   - [vw1, MW1000] # 测试MW
   - [vd1, Md1000, Real] # 测试同地址 MD
   - [auto_data1, mw+] # 测试自动地址
@@ -59,21 +59,20 @@ symbols:  # CPU文档下定义其它文档需要共同的符号，addr 与 内�
 
 # IP地址，目前用不上
 IP: [192, 168, 10, 10]
+
 ... #文档结束
 
----
+--- # AI文档开始
 # 指示本配置为生成 AI 代码
 type: AI 
 CPU: AS1 
 
-symbols:  # 以下符号指示的块，其内容由本程序自动生成
-  # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-  # 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
-  # 系统已有2个内置符号：
+symbols: 
+  # AI文档已有2个内置符号，其内容由本程序自动生成：
   #   AI_Proc FB512 : AI处理主FB
   #   AI_Loop FC512 : 主循环调用FC，将这个加入OB1中
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
-  - [AI_Proc, FB600] # 可省略，修改内置AI_Proc地址默认为FB512
+  - [AI_Proc, FB600] # 可省略，修改内置AI_Proc地址
   - [AI_Loop, FC600] # 可省略，当名称为AI_Loop，指示这是AI主调用FC块，这个要加入到OB中
 
 list: # 模拟量列表
@@ -88,7 +87,7 @@ list: # 模拟量列表
     WL_limit: "-0.05"
     AL_limit: "-0.1"
   - <<: *tubepress # 语法"<<:" 表示将锚点tubepress的内容合并在这里
-    comment: 来油压力 # 引用如果是对象，可以对部分属性进行更改，替换引用部分
+    comment: 来油压力 # 可以对合并内容的部分属性进行更改
     DB: [PIT002, DB+] 
     input: [AI01-02, PIW514] 
     AL_limit: ~ # 引用对象无法删除某个属性，只能将其该属性设置为null
@@ -115,35 +114,32 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
 
 ---
-type: modbusRTU # 指示是modbus转换
+type: SC # 指示是CP340或CP341通信
 name: AS1
 
 symbols:
   # 系统已有4个内置符号：
-  #   MB_340_Poll FB345 : CP340 的modbus通信处理主FB
-  #   MB_341_Poll FB346 : CP341 的modbus通信处理主FB 
-  #   MB_Loop FC345 : 表示主循环调用FC，将这个加入OB1中
-  #   MB_polls_DB DB880 : 将用于保存轮询命令数据
+  #   [CP340_Poll FB345] : CP340 的modbus通信处理主FB
+  #   [CP341_Poll FB346] : CP341 的modbus通信处理主FB 
+  #   [CP_Loop FC345] : 表示主循环调用FC，将这个加入OB1中
+  #   [CP_polls_DB DB880] : 将用于保存轮询命令数据
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
-  - [MB_Loop, FC342] # 更改主调用FC块 MB_Loop 地址，可省略
-  - [MB_polls_DB, DB880] # 更改MB_polls_DB地址，可省略
 
   # 以下为自定义符号，这里是接收块
   # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
   # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
-  # 这类FB不通用，需要另外单独写块本身。可依照本例提供的 "JS_flow"FB 块写其它场景的FB块，要对应符号表
-  # JS_flow定义了本例流量接收DB块的数据结构，用于一诺的智能流量表
-  - [JS_flow, FB801] 
+  # 这类FB不通用，需要另外单独写块本身。
+  - [JS_flow, FB801] # JS_flow定义了本例流量接收DB块的数据结构，用于一诺的智能流量表
   - [GAS_flow, FB803]
   - [STBL, FB805]
   - [launcher_data, FB806]
   - [PE01_Proc, FB807]
 
-list : # modbus 模块列表
+list : # CP 模块列表
   - comment: CP01 Module752 河口流量 30# 31#
     type: CP340
     Laddr: 752
-    DB: [CP_01, DB881]
+    DB: [CP01, DB881]
     polls_name: 'polls_HK'
     polls:
       - comment: '河口1#流量计 30'
@@ -167,32 +163,24 @@ list : # modbus 模块列表
     coutomTrigger: TRUE # 指示由外部定义发送时间
     REQ: M0.5 # 指定时间存储器 1HZ 发送轮询
     Laddr: 784
-    DB: [CP_02, DB883]
+    DB: [CP02, DB883]
     polls_name: 'polls_GAS'
     polls:
-      - comment: '天然气1#流量计 1' 
-        deivce_ID: 1 
-        function: 3 
-        started_addr: 4 
-        length: 26 
-        CRC: 85C0
-        recv_DB: [GAS, DB841, GAS_flow]
+      - comment: 天然气2#流量计 
+        send_data: 2 3 0 0 18 4E 60
+        recv_DB: {ref: GAS}
         recv_start: 0
-      - comment: '天然气2#流量计 2' 
-        deivce_ID: 2 
-        function: 3 
-        started_addr: 4 
-        length: 26
-        CRC: 85F3 
+      - comment: 天然气3#流量计 # 非modbus发送，不要有deivce_ID属性，直接在send_data属性上写16进制发送数据
+        send_data: 3 3 0 0 18 8E 5D
         recv_DB: {ref: GAS} # 这个对象表示引用上一个名称为GAS符号定义的块，因为一个符号只能定义一次，所以这里引用
         recv_start: 20 # 同一个接收块，要注意开始地址不一样
-      - comment: '天然气总 10#' 
+      - comment: 天然气总 10# 
         deivce_ID: 10 
         function: 3 
-        started_addr: 4 
-        length: 26
-        CRC: 84BB 
-        recv_DB: {ref: GAS}
+        started_addr: 0 
+        length: 12
+        CRC: "44B4" 
+        recv_DB: [GAS, DB841, GAS_flow]
         recv_start: 40
 ...
 
@@ -209,7 +197,7 @@ CPU: AS1
 symbols: 
   # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
   # 系统已有2个内置符号，其内容由本程序自动生成：
-  #   MB_TCP_Poll FB344 : AI处理主FB
+  #   MT_Poll FB344 : modbusTCP 处理主 FB
   #   MT_Loop FC344 : 主循环调用FC，将这个加入OB1中
   #   MT_polls_DB DB881 : 用于保存轮询命令数据
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
@@ -225,7 +213,7 @@ list : # modbus TCP 连接列表
     # 十进制连接号，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
     # ID: 1
     
-    # 背景连接块。不必填写type，会自动指定为 MB_TCP_Poll
+    # 背景连接块。不必填写type，会自动指定为 MT_Poll
     DB: [conn_example, DB891]
     
     # modbusTCP 对方IP 必填

@@ -97,7 +97,7 @@ export function gen_MT(MT_confs) {
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{#for conn in connections}}
-DATA_BLOCK "{{conn.DB.name}}" "MB_TCP_Poll" // {{conn.comment}}
+DATA_BLOCK "{{conn.DB.name}}" "MT_Poll" // {{conn.comment}}
 BEGIN
   TCON_Parameters.block_length := W#16#40;     //固定为64
   TCON_Parameters.id := W#16#{{conn.ID}};             //连接ID 每个连接必须不一样！

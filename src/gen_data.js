@@ -1,12 +1,12 @@
 import { dump, loadAll } from "js-yaml";
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { gen_MT_data } from './MT.js';
-import { gen_MB_data } from './MB.js';
+import { gen_CP_data } from './CP.js';
 import {
     rebuild_symbols, add_symbol, add_symbols,
     AI_NAME, AI_BUILDIN,
     MT_NAME, MT_BUILDIN,
-    MB340_NAME, MB341_NAME, MB_BUILDIN,
+    CP340_NAME, CP341_NAME, CP_BUILDIN,
     VALVE_NAME, VALVE_BUILDIN
 } from './symbols.js';
 import { IntIncHL, S7IncHL } from './increase_hash_table.js';
@@ -14,12 +14,12 @@ import { lazyassign } from './lazyassign.js';
 import { join } from 'path';
 
 // 目前支持的类型
-const TYPES = ['CPU', 'modbusRTU', 'modbusTCP', 'valve', 'AI'];
+const TYPES = ['CPU', 'SC', 'modbusTCP', 'valve', 'AI'];
 
 const AI_confs = []; // 模拟量列表 {CPU, list, options}[]
 const valve_confs = []; // 阀门列表 {CPU, list, options}[]
-const MT_confs = []; // modbus TCP 列表 {CPU, list, options}[]
-const MB_confs = []; // modbus RTU 列表 {CPU, list, options}[]
+const MT_confs = []; // modbusTCP 列表 {CPU, list, options}[]
+const CP_confs = []; // 串行通信列表 {CPU, list, options}[]
 const symbols_confs = []; // symbols 列表 {CPU, list, options}[]
 
 const CPUs = {}; // CPU 资源
@@ -68,7 +68,7 @@ function add_conf(conf) {
     let doctype = '';
     if (type.toUpperCase() === 'AI') doctype = 'AI';
     if (type.toUpperCase() === 'CPU') doctype = 'CPU';
-    if (type.toUpperCase() === 'MB' || type.toLowerCase() === 'modbusrtu') doctype = 'modbusRTU';
+    if (type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC') doctype = 'SC';
     if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
     if (type.toLowerCase() === 'valve') doctype = 'valve';
     if (!TYPES.includes(doctype)) throw new Error(`type:${type} has not supported`);
@@ -83,7 +83,7 @@ function add_conf(conf) {
     const symbols_dict = CPU.symbols_dict;
     const item = { CPU, list, options };
     if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN); // 加入AI内置符号
-    if (doctype === 'modbusRTU') add_symbols(symbols_dict, MB_BUILDIN); // 加入MB内置符号
+    if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN); // 加入SC内置符号
     if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN); // 加入MT内置符号
     if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN); // 加入Valve内置符号
     add_symbols(symbols_dict, symbols); // 加入前置符号
@@ -99,18 +99,18 @@ function add_conf(conf) {
             make_prop_symbolic(AI, 'input', symbols_dict, 'WORD');
         });
         AI_confs.push(item);
-    } else if (doctype === 'modbusRTU') { // modebusTCP 调度
+    } else if (doctype === 'SC') { // SC 调度
         list.forEach(module => {
             let valid_type = false;
             let type;
             if (module.type === 'CP341') {
                 options.has_CP341 = true;
                 valid_type = true;
-                type = MB341_NAME;
+                type = CP341_NAME;
             } else if (module.type === 'CP340') {
                 options.has_CP340 = true;
                 valid_type = true;
-                type = MB340_NAME;
+                type = CP340_NAME;
             }
             if (!valid_type) throw new Error(`${module.type}'s poll FB is not defined`);
             // CP DB
@@ -119,7 +119,7 @@ function add_conf(conf) {
                 make_prop_symbolic(poll, 'recv_DB', symbols_dict);
             })
         })
-        MB_confs.push(item);
+        CP_confs.push(item);
     } else if (doctype === 'modbusTCP' || doctype === 'MT') { // modebusTCP 调度
         list.forEach(conn => {
             make_prop_symbolic(conn, 'DB', symbols_dict, MT_NAME);
@@ -174,7 +174,7 @@ export async function gen_data(path) {
     MT_confs.forEach(gen_MT_data);
 
     // 补全 modbusTCP 数据
-    MB_confs.forEach(gen_MB_data);
+    CP_confs.forEach(gen_CP_data);
 
-    return { symbols_confs, MB_confs, MT_confs, AI_confs, valve_confs };
+    return { symbols_confs, CP_confs, MT_confs, AI_confs, valve_confs };
 }

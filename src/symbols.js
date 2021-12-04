@@ -3,11 +3,11 @@ import { IncHLError } from "./increase_hash_table.js";
 
 export const AI_NAME = 'AI_Proc';
 export const AI_LOOP_NAME = 'AI_Loop';
-export const MB340_NAME = 'MB_340_Poll';
-export const MB341_NAME = 'MB_341_Poll';
-export const MB_LOOP_NAME = 'MB_Loop';
-export const MB_POLLS_NAME = 'MB_polls_DB';
-export const MT_NAME = 'MB_TCP_Poll';
+export const CP340_NAME = 'CP340_Poll';
+export const CP341_NAME = 'CP341_Poll';
+export const CP_LOOP_NAME = 'CP_Loop';
+export const CP_POLLS_NAME = 'CP_polls_DB';
+export const MT_NAME = 'MT_Poll';
 export const MT_LOOP_NAME = 'MT_Loop';
 export const MT_POLLS_NAME = 'MT_polls_DB';
 export const VALVE_NAME = `Valve_Proc`;
@@ -16,11 +16,11 @@ export const AI_BUILDIN = [
     [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
     [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
 ];
-export const MB_BUILDIN = [
-    [MB340_NAME, 'FB345', MB340_NAME, 'CP340 modbusRTU communicate main process'],
-    [MB341_NAME, 'FB346', MB341_NAME, 'CP341 modbusRTU communicate main process'],
-    [MB_LOOP_NAME, "FC345", MB_LOOP_NAME, 'main modbusRTU cyclic call function'],
-    [MB_POLLS_NAME, "DB880", MB_POLLS_NAME, 'modbusRTU polls data'],
+export const CP_BUILDIN = [
+    [CP340_NAME, 'FB340', CP340_NAME, 'CP340 SC communicate main process'],
+    [CP341_NAME, 'FB341', CP341_NAME, 'CP341 SC communicate main process'],
+    [CP_LOOP_NAME, "FC341", CP_LOOP_NAME, 'main SC cyclic call function'],
+    [CP_POLLS_NAME, "DB880", CP_POLLS_NAME, 'SC polls data'],
 ];
 export const MT_BUILDIN = [
     [MT_NAME, 'FB344', MT_NAME, 'modbusTCP OUC main process'],
@@ -33,7 +33,7 @@ export const VALVE_BUILDIN = [
 ];
 export const buildin_symbols = [
     ...AI_BUILDIN,
-    ...MB_BUILDIN,
+    ...CP_BUILDIN,
     ...MT_BUILDIN,
     ...VALVE_BUILDIN,
 ];

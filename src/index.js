@@ -3,9 +3,9 @@ import { access, mkdir, copyFile, writeFile } from 'fs/promises';
 import iconv from 'iconv-lite';
 
 import { gen_data } from './gen_data.js';
-import { gen_symbol, AI_NAME, MB340_NAME, MB341_NAME, MT_NAME, VALVE_NAME } from "./symbols.js";
+import { gen_symbol, AI_NAME, CP340_NAME, CP341_NAME, MT_NAME, VALVE_NAME } from "./symbols.js";
 import { gen_AI } from "./AI.js";
-import { gen_MB } from "./MB.js";
+import { gen_MB } from "./CP.js";
 import { gen_MT } from "./MT.js";
 import { gen_valve } from "./valve.js";
 
@@ -76,33 +76,33 @@ async function convert2file(entry, path, {
 export async function convert(conf_path) {
   work_path = conf_path ?? work_path;
   console.log(`${work_path}:`);
-  const { symbols_confs, MB_confs, MT_confs, AI_confs, valve_confs } = await gen_data(work_path);
+  const { symbols_confs, CP_confs, MT_confs, AI_confs, valve_confs } = await gen_data(work_path);
   const symbol_asc = gen_symbol(symbols_confs);
   const ai = gen_AI(AI_confs);
-  const mb = gen_MB(MB_confs);
+  const mb = gen_MB(CP_confs);
   const mt = gen_MT(MT_confs);
   const valve = gen_valve(valve_confs);
 
   for (const { CPU: { output_dir } } of AI_confs) {
-    await copy(AI_name + '.scl', `${output_dir}/`)
+    await copy(AI_NAME + '.scl', `${output_dir}/`)
     console.log(`output file ${join(output_dir, AI_name)}.scl`)
   }
-  for (const { CPU: { output_dir }, options: { has_CP341, has_CP340 } } of MB_confs) {
+  for (const { CPU: { output_dir }, options: { has_CP341, has_CP340 } } of CP_confs) {
     if (has_CP340) {
-      await copy(MB340_name + '.scl', `${output_dir}/`)
-      console.log(`output file ${join(output_dir, MB340_name)}.scl`)
+      await copy(`${CP340_NAME}.scl`, `${output_dir}/`)
+      console.log(`output file ${join(output_dir, CP340_NAME)}.scl`)
     }
     if (has_CP341) {
-      await copy(MB341_name + '.scl', `${output_dir}/`)
-      console.log(`output file ${join(output_dir, MB341_name)}.scl`)
+      await copy(`${CP341_NAME}.scl`, `${output_dir}/`)
+      console.log(`output file ${join(output_dir, CP341_NAME)}.scl`)
     }
   }
   for (const { CPU: { output_dir } } of MT_confs) {
-    await copy(MT_name + '.scl', `${output_dir}/`)
+    await copy(MT_NAME + '.scl', `${output_dir}/`)
     console.log(`output file ${join(output_dir, MT_name)}.scl`)
   }
   for (const { CPU: { output_dir } } of valve_confs) {
-    await copy(valve_name + '.scl', `${output_dir}/`)
+    await copy(VALVE_NAME + '.scl', `${output_dir}/`)
     console.log(`output file ${join(output_dir, valve_name)}.scl`)
   }
 
