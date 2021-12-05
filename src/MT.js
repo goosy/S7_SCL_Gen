@@ -1,5 +1,4 @@
-import { str_padding_left } from "./str_padding.js";
-import { IntIncHL } from './increase_hash_table.js';
+import { IntIncHL, str_padding_left } from './util.js';
 import { MT_NAME,MT_LOOP_NAME,MT_POLLS_NAME } from './symbols.js';
 
 function get_fixed_hex(num, length) {

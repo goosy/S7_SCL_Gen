@@ -1,5 +1,4 @@
-import { str_padding_left, str_padding_right } from "./str_padding.js";
-import { IncHLError } from "./increase_hash_table.js";
+import { IncHLError, str_padding_left, str_padding_right } from "./util.js";
 
 export const AI_NAME = 'AI_Proc';
 export const AI_LOOP_NAME = 'AI_Loop';

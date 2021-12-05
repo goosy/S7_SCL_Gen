@@ -1,5 +1,5 @@
 import { convert } from './src/index.js';
 
-const path = './conf';
-await convert(path);
+process.chdir('./conf');
+await convert();
 console.log("converted all YAML to SCL!")

@@ -1,9 +1,5 @@
-import { str_padding_left } from "./str_padding.js";
+import { fixed_hex } from "./util.js";
 import { CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME } from './symbols.js';
-
-function get_fixed_hex(num, length) {
-    return str_padding_left(num.toString(16), length, '0').toUpperCase();
-}
 
 export function gen_CP_data(conf) {
     const { CPU, list } = conf;
@@ -13,14 +9,14 @@ export function gen_CP_data(conf) {
         module.polls_name ??= "polls_" + CPU.poll_list.push_new();
         module.polls.forEach(poll => {
             if (poll.deivce_ID && !poll.send_data) {
-                poll.deivce_ID = get_fixed_hex(poll.deivce_ID, 2);
-                poll.function = get_fixed_hex(poll.function, 2);
-                poll.started_addr = get_fixed_hex(poll.started_addr, 4);
-                poll.length = get_fixed_hex(poll.length, 4);
+                poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
+                poll.function = fixed_hex(poll.function, 2);
+                poll.started_addr = fixed_hex(poll.started_addr, 4);
+                poll.length = fixed_hex(poll.length, 4);
             } else if (!poll.deivce_ID && poll.send_data) {
                 const send_data = poll.send_data.trim().split(/ +/);
-                poll.send_data = send_data.map(byte=>get_fixed_hex(byte, 2));
-                poll.send_length = get_fixed_hex(send_data.length, 2);
+                poll.send_data = send_data.map(byte => fixed_hex(byte, 2));
+                poll.send_length = fixed_hex(send_data.length, 2);
             } else { // poll.deivce_ID 和 poll.send_data 只能且必须有其中一个
                 throw new Error(`poll configuration wrong!
                 deivce_ID:${poll.deivce_ID}
@@ -31,7 +27,7 @@ export function gen_CP_data(conf) {
     });
 }
 
-export function gen_MB(CP_confs) {
+export function gen_CP(CP_confs) {
     const rules = [];
     CP_confs.forEach(({ CPU, list: modules, options }) => {
         const { name, output_dir } = CPU;

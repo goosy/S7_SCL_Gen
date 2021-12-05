@@ -5,7 +5,8 @@ import { copyFile, readFile } from 'fs/promises';
 const [, , cmd = 'convert', path = '.'] = process.argv;
 
 if (cmd === 'convert' || cmd === 'conv') {
-    await convert(path);
+    process.chdir(path);
+    await convert();
     console.log("converted all YAML to SCL!")
 } else if (cmd === 'init' || cmd === 'template') {
     await copyFile(new URL('./conf/AS1.yml', import.meta.url), 'AS1.yml');

@@ -1,5 +1,5 @@
 import { dump, loadAll } from "js-yaml";
-import { readdir, readFile, writeFile } from 'fs/promises';
+import { readdir, writeFile } from 'fs/promises';
 import { gen_MT_data } from './MT.js';
 import { gen_CP_data } from './CP.js';
 import {
@@ -9,8 +9,7 @@ import {
     CP340_NAME, CP341_NAME, CP_BUILDIN,
     VALVE_NAME, VALVE_BUILDIN
 } from './symbols.js';
-import { IntIncHL, S7IncHL } from './increase_hash_table.js';
-import { lazyassign } from './lazyassign.js';
+import { IntIncHL, S7IncHL, lazyassign, read_file } from './util.js';
 import { join } from 'path';
 
 // 目前支持的类型
@@ -90,7 +89,7 @@ function add_conf(conf) {
 
     // 调度配置
     if (doctype === 'CPU') { // CPU 调度
-        CPU.output_dir = conf.output_dir ?? CPU_name;
+        CPU.output_dir = conf?.options?.output_dir ?? CPU_name;
     } else if (doctype === 'AI') { // AI 调度
         // 配置
         list.forEach(AI => {
@@ -147,24 +146,23 @@ function add_conf(conf) {
 export async function gen_data(path) {
     // load confs
     try {
+        console.log('readding file:');
         for (const file of await readdir(path)) {
             if (file.endsWith('.yml')) {
-                const filename = join(path, file);
-                console.log(`readding ${filename}`)
-                const yaml_str = await readFile(filename, { encoding: 'utf8' });
-                loadAll(yaml_str, add_conf);
+                loadAll(await read_file(join(path, file)), add_conf);
             }
         }
     } catch (e) {
         console.log(e);
     }
 
+    console.log('output the no comment configuration file:');
     for (const [name, CPU] of Object.entries(CPUs)) {
         // 生成无注释的配置
         const docs = TYPES.map(type => `---\n${CPU[type]}...`).join('\n\n');
         const filename = `${join(path, name)}.zyml`;
         await writeFile(filename, docs);
-        console.log(`output the no comment configuration file: ${filename}`);
+        console.log(`\t${filename}`);
         // 检查并补全符号表
         const symbol_conf = rebuild_symbols(CPU);
         symbols_confs.push(symbol_conf)

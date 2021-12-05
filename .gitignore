@@ -71,6 +71,7 @@ yarn.lock
 build-include/
 conf/**/
 conf/*.zyml
+conf/*.scl
 dist/
 lib/
 .vscode/

@@ -1,3 +1,9 @@
+import { access, mkdir, copyFile, readFile, writeFile } from 'fs/promises';
+import { basename, dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import iconv from 'iconv-lite';
+const module_path = join(fileURLToPath(import.meta.url), "../../");
+
 export class IncHLError extends Error {
     num;
     size;
@@ -123,4 +129,113 @@ export class S7IncHL extends IncreaseHL {
         }
         return dec2foct(num);
     }
+}
+
+/**
+ * 将item左侧用占位符填充至指定长度
+ * @date 2021-11-17
+ * @param {number|string} item
+ * @param {number} length
+ * @param {string} placeholder=''
+ * @returns {string}
+ */
+export function str_padding_left(item, length, placeholder = ' ') {
+    const str = Array(length).join(placeholder) + placeholder + item;
+    return str.slice(-length);
+}
+/**
+ * 将item右侧用占位符填充至指定长度
+ * @date 2021-11-17
+ * @param {number|string} item
+ * @param {number} length
+ * @param {string} placeholder=''
+ * @returns {string}
+ */
+export function str_padding_right(item, length, placeholder = ' ') {
+    const str = item + placeholder + Array(length).join(placeholder);
+    return str.slice(0, length);
+}
+
+export function lazyassign(obj, prop, lazyvalue, options) {
+    const { writable = false, enumerable = false, configurable = false } = options ?? {};
+    if (typeof lazyvalue === 'function') {
+        Object.defineProperty(obj, prop, {
+            get() {
+                const value = lazyvalue();
+                if (value == null) throw new Error(`lazyvalue not ready`);
+                lazyassign(obj, prop, value, options);
+                return value;
+            },
+            enumerable,
+            configurable: true
+        });
+    } else {
+        Object.defineProperty(obj, prop, {
+            value: lazyvalue,
+            writable,
+            enumerable,
+            configurable,
+        });
+    }
+}
+
+export async function prepare_dir(dir) {
+    let parents = dirname(dir);
+    await access(parents).catch(async () => {
+        await prepare_dir(parents);
+    });
+    await access(dir).catch(async () => {
+        await mkdir(dir).catch(
+            err => {
+                if (err.code !== 'EEXIST') console.log(err);
+            }
+        );
+    });
+}
+
+/**
+ * 复制文件
+ * 目标为文件夹时，以'/'结尾
+ * @date 2021-09-28
+ * @param {string} file
+ * @param {string|string[]} dstList
+ */
+export async function copy(file, dstList) {
+    async function _copy(src, dst) {
+        if (typeof src != 'string') return;
+        if (typeof dst != 'string') return;
+        if (dst.endsWith('/')) {
+            dst += basename(file);
+        }
+        let srcPath = join(module_path, src);
+        let dstPath = join(work_path, dst);
+        await prepare_dir(dirname(dstPath));
+        await copyFile(srcPath, dstPath);
+    }
+    if (!Array.isArray(dstList)) dstList = [dstList];
+    const work_path = process.cwd();
+    for (const dst of dstList) { // for-of 实现异步顺序执行
+        await _copy(file, dst);
+    }
+}
+
+export async function read_file(filename, options={}) {
+    options.encoding ??= "utf8";
+    let exist = true;
+    await access(filename).catch(() => {
+        exist = false;
+    });
+    if (exist) {
+        console.log(`\t${filename}`);
+        return await readFile(filename, options);
+    }
+    console.log(`warnning: ${filename} file not found`);
+    return '';
+}
+
+export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux"}) {
+    await prepare_dir(dirname(filename));
+    if (lineEndings == "windows") content = content.replace(/\n/g, "\r\n");
+    let buff = iconv.encode(content, encoding);
+    await writeFile(filename, buff);
 }
