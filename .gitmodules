@@ -1,0 +1,12 @@
+[submodule "AI_Proc"]
+	path = AI_Proc
+	url = git@github.com:goosy/AI_Proc.git
+[submodule "CP_Poll"]
+	path = CP_Poll
+	url = git@github.com:goosy/CP_Poll.git
+[submodule "MT_Poll"]
+	path = MT_Poll
+	url = git@github.com:goosy/MT_Poll.git
+[submodule "Valve_Proc"]
+	path = Valve_Proc
+	url = git@github.com:goosy/Valve_Proc.git
