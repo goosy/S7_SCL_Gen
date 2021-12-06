@@ -1,5 +1,6 @@
 import { IncHLError, str_padding_left, str_padding_right } from "./util.js";
 
+export const COMMON_NAME = 'common';
 export const AI_NAME = 'AI_Proc';
 export const AI_LOOP_NAME = 'AI_Loop';
 export const CP340_NAME = 'CP340_Poll';
@@ -224,9 +225,9 @@ function get_symbol({ name, type, block_name, block_no, block_bit, type_name, ty
 
 const template = `{{#for sym in symbol_list}}{{sym}}
 {{#endfor sym}}`;
-export function gen_symbol(symbols_confs) {
+export function gen_symbol(symbols_list) {
     const rules = [];
-    symbols_confs.forEach(({ CPU, list }) => {
+    symbols_list.forEach(({ CPU, list }) => {
         const output_dir = CPU.output_dir;
         const symbol_list = list.map(get_symbol);
         rules.push({

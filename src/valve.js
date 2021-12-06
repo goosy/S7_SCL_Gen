@@ -1,6 +1,7 @@
 import {VALVE_NAME, VALVE_LOOP_NAME} from './symbols.js';
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+{{includes}}
 
 // 主循环调用
 FUNCTION "{{VALVE_LOOP_NAME}}" : VOID
@@ -31,15 +32,16 @@ END_CONST
 END_FUNCTION
 `;
 
-export function gen_valve(valve_confs) {
+export function gen_valve(valve_list) {
     const rules = [];
 
-    valve_confs.forEach(({ CPU, list }) => {
+    valve_list.forEach(({ CPU, includes, list }) => {
         const { name, output_dir } = CPU;
         rules.push({
             "name": `${output_dir}/${VALVE_LOOP_NAME}.scl`,
             "tags": {
                 name,
+                includes,
                 VALVE_NAME,
                 VALVE_LOOP_NAME,
                 list,

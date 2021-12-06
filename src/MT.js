@@ -75,15 +75,16 @@ export function gen_MT_data(conf) {
   });
 }
 
-export function gen_MT(MT_confs) {
+export function gen_MT(MT_list) {
   const rules = [];
-  MT_confs.forEach(({ CPU, list: connections, options }) => {
+  MT_list.forEach(({ CPU, includes, list: connections, options }) => {
     const { name, output_dir } = CPU;
     const { output_file = 'MT_Loop' } = options;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
         name,
+        includes,
         connections,
         MT_NAME,
         MT_LOOP_NAME,
@@ -95,6 +96,7 @@ export function gen_MT(MT_confs) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+{{includes}}
 {{#for conn in connections}}
 DATA_BLOCK "{{conn.DB.name}}" "MT_Poll" // {{conn.comment}}
 BEGIN

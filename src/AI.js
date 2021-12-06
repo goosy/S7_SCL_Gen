@@ -1,6 +1,7 @@
 import { AI_NAME, AI_LOOP_NAME } from "./symbols.js";
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+{{includes}}
 {{#for AI_item in list}}{{#if AI_item.DB}}
 // AI背景块：{{AI_item.comment}}
 DATA_BLOCK "{{AI_item.DB.name}}" "{{AI_NAME}}"
@@ -24,9 +25,9 @@ FUNCTION "AI_Loop" : VOID{{#for AI_item in list}}
 END_FUNCTION
 `;
 
-export function gen_AI(AI_confs) {
+export function gen_AI(AI_list) {
     const rules = [];
-    AI_confs.forEach(({ CPU, list, options={} }) => {
+    AI_list.forEach(({ CPU, includes, list, options={} }) => {
         const { name, output_dir } = CPU;
         const { output_file = AI_LOOP_NAME } = options;
         rules.push({
@@ -34,6 +35,7 @@ export function gen_AI(AI_confs) {
             "tags": {
                 AI_NAME,
                 name,
+                includes,
                 list,
             }
         })

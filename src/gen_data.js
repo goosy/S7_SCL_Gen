@@ -1,9 +1,12 @@
 import { dump, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
-import { gen_MT_data } from './MT.js';
-import { gen_CP_data } from './CP.js';
+import { gen_AI } from "./AI.js";
+import { gen_MT, gen_MT_data } from './MT.js';
+import { gen_CP, gen_CP_data } from './CP.js';
+import { gen_valve } from "./valve.js";
+import { gen_common } from "./common.js";
 import {
-    rebuild_symbols, add_symbol, add_symbols,
+    gen_symbol, rebuild_symbols, add_symbol, add_symbols,
     AI_NAME, AI_BUILDIN,
     MT_NAME, MT_BUILDIN,
     CP340_NAME, CP341_NAME, CP_BUILDIN,
@@ -15,11 +18,12 @@ import { join } from 'path';
 // 目前支持的类型
 const TYPES = ['CPU', 'SC', 'modbusTCP', 'valve', 'AI'];
 
-const AI_confs = []; // 模拟量列表 {CPU, list, options}[]
-const valve_confs = []; // 阀门列表 {CPU, list, options}[]
-const MT_confs = []; // modbusTCP 列表 {CPU, list, options}[]
-const CP_confs = []; // 串行通信列表 {CPU, list, options}[]
-const symbols_confs = []; // symbols 列表 {CPU, list, options}[]
+const AI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
+const valve_list = []; // 阀门列表 {CPU， includes, list, options}[]
+const MT_list = []; // modbusTCP 列表 {CPU， includes, list, options}[]
+const CP_list = []; // 串行通信列表 {CPU， includes, list, options}[]
+const symbols_list = []; // symbols 列表 {CPU， includes, list, options}[]
+const common_list = []; // 通用列表 {CPU， includes, list, options}[]
 
 const CPUs = {}; // CPU 资源
 function get_cpu(CPU_name) {
@@ -80,7 +84,8 @@ function add_conf(conf) {
     const list = conf.list ?? [];
     const symbols = conf.symbols ?? [];
     const symbols_dict = CPU.symbols_dict;
-    const item = { CPU, list, options };
+    const includes = conf.includes ?? [];
+    const item = { CPU, list, includes, options };
     if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN); // 加入AI内置符号
     if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN); // 加入SC内置符号
     if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN); // 加入MT内置符号
@@ -90,6 +95,7 @@ function add_conf(conf) {
     // 调度配置
     if (doctype === 'CPU') { // CPU 调度
         CPU.output_dir = conf?.options?.output_dir ?? CPU_name;
+        common_list.push(item);
     } else if (doctype === 'AI') { // AI 调度
         // 配置
         list.forEach(AI => {
@@ -97,7 +103,7 @@ function add_conf(conf) {
             make_prop_symbolic(AI, 'DB', symbols_dict, AI_NAME);
             make_prop_symbolic(AI, 'input', symbols_dict, 'WORD');
         });
-        AI_confs.push(item);
+        AI_list.push(item);
     } else if (doctype === 'SC') { // SC 调度
         list.forEach(module => {
             let valid_type = false;
@@ -118,7 +124,7 @@ function add_conf(conf) {
                 make_prop_symbolic(poll, 'recv_DB', symbols_dict);
             })
         })
-        CP_confs.push(item);
+        CP_list.push(item);
     } else if (doctype === 'modbusTCP' || doctype === 'MT') { // modebusTCP 调度
         list.forEach(conn => {
             make_prop_symbolic(conn, 'DB', symbols_dict, MT_NAME);
@@ -126,7 +132,7 @@ function add_conf(conf) {
                 make_prop_symbolic(poll, 'recv_DB', symbols_dict);
             })
         })
-        MT_confs.push(item);
+        MT_list.push(item);
     } else if (doctype === 'Valve' || doctype === 'valve') { // Valve 调度
         list.forEach(valve => {
             if (!valve.DB) return; // 空AI不处理
@@ -139,7 +145,7 @@ function add_conf(conf) {
             make_prop_symbolic(valve, 'open_action', symbols_dict, 'BOOL');
             make_prop_symbolic(valve, 'DB', symbols_dict, VALVE_NAME);
         });
-        valve_confs.push(item);
+        valve_list.push(item);
     }
 }
 
@@ -149,7 +155,9 @@ export async function gen_data(path) {
         console.log('readding file:');
         for (const file of await readdir(path)) {
             if (file.endsWith('.yml')) {
-                loadAll(await read_file(join(path, file)), add_conf);
+                const filename = join(path, file);
+                loadAll(await read_file(filename), add_conf);
+                console.log(`\t${filename}`);
             }
         }
     } catch (e) {
@@ -159,20 +167,69 @@ export async function gen_data(path) {
     console.log('output the no comment configuration file:');
     for (const [name, CPU] of Object.entries(CPUs)) {
         // 生成无注释的配置
-        const docs = TYPES.map(type => `---\n${CPU[type]}...`).join('\n\n');
+        const head = `# CPU ${name} configuration`;
+        const yaml = TYPES.reduce(
+            (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type]}...` : docs,
+            head
+        );
         const filename = `${join(path, name)}.zyml`;
-        await writeFile(filename, docs);
+        await writeFile(filename, yaml);
         console.log(`\t${filename}`);
         // 检查并补全符号表
         const symbol_conf = rebuild_symbols(CPU);
-        symbols_confs.push(symbol_conf)
+        symbols_list.push(symbol_conf)
     }
 
-    // 补全 modbusTCP 数据
-    MT_confs.forEach(gen_MT_data);
 
-    // 补全 modbusTCP 数据
-    CP_confs.forEach(gen_CP_data);
+    const work_path = process.cwd();
+    const copy_list = [];
+    // 补全数据
+    CP_list.forEach(gen_CP_data);
+    MT_list.forEach(gen_MT_data);
+    async function gen_includes(includes) {
+        let code = '';
+        for (const file of includes) {
+            code += await read_file(file) + '\n';
+        }
+        return code;
+    }
+    
+    for (const common of common_list) {
+        common.includes = await gen_includes(common.includes);
+    }
+    for (const AI of AI_list) {
+        AI.includes = await gen_includes(AI.includes);
+        const output_dir = AI.CPU.output_dir;
+        copy_list.push([`AI_Proc/${AI_NAME}(step7).scl`, `${output_dir}/${AI_NAME}.scl`, `${join(work_path, output_dir, AI_NAME)}.scl`]);
+    }
+    for (const CP of CP_list) {
+        CP.includes = await gen_includes(CP.includes);
+        const output_dir = CP.CPU.output_dir;
+        if (CP.options.has_CP340) {
+            copy_list.push([`CP_Poll/${CP340_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, CP340_NAME)}.scl`]);
+        }
+        if (CP.options.has_CP341) {
+            copy_list.push([`CP_Poll/${CP341_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, CP341_NAME)}.scl`]);
+        }
+    }
+    for (const MT of MT_list) {
+        MT.includes = await gen_includes(MT.includes);
+        const output_dir = MT.CPU.output_dir;
+        copy_list.push([`MT_Poll/${MT_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, MT_NAME)}.scl`]);
+    }
+    for (const valve of valve_list) {
+        valve.includes = await gen_includes(valve.includes);
+        const output_dir = valve.CPU.output_dir;
+        copy_list.push([`Valve_Proc/${VALVE_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, VALVE_NAME)}.scl`]);
+    }
 
-    return { symbols_confs, CP_confs, MT_confs, AI_confs, valve_confs };
+    const convert_list = [
+        gen_common(common_list),
+        gen_symbol(symbols_list),
+        gen_AI(AI_list),
+        gen_CP(CP_list),
+        gen_MT(MT_list),
+        gen_valve(valve_list)
+    ];
+    return [copy_list, convert_list];
 }

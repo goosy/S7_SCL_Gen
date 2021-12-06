@@ -2,7 +2,7 @@ import { fixed_hex } from "./util.js";
 import { CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME } from './symbols.js';
 
 export function gen_CP_data(conf) {
-    const { CPU, list } = conf;
+    const { CPU, includes, list } = conf;
     list.forEach(module => { // 处理配置，形成完整数据
         if (!module.DB) throw Error(`${CPU.name} modbus definition is wrong!`);
         module.Laddr = CPU.module_addr_list.push(module.Laddr);
@@ -27,9 +27,9 @@ export function gen_CP_data(conf) {
     });
 }
 
-export function gen_CP(CP_confs) {
+export function gen_CP(CP_list) {
     const rules = [];
-    CP_confs.forEach(({ CPU, list: modules, options }) => {
+    CP_list.forEach(({ CPU, includes, list: modules, options }) => {
         const { name, output_dir } = CPU;
         const { output_file = CP_LOOP_NAME } = options;
         rules.push({
@@ -37,6 +37,7 @@ export function gen_CP(CP_confs) {
             "tags": {
                 name,
                 modules,
+                includes,
                 MB340_NAME: CP340_NAME,
                 MB341_NAME: CP341_NAME,
                 CP_LOOP_NAME,
@@ -48,6 +49,7 @@ export function gen_CP(CP_confs) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+{{includes}}
 
 // 轮询DB块，含485发送数据，
 DATA_BLOCK "{{CP_POLLS_NAME}}"

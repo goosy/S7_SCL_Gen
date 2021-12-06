@@ -200,7 +200,7 @@ export async function prepare_dir(dir) {
  * @param {string} file
  * @param {string|string[]} dstList
  */
-export async function copy(file, dstList) {
+export async function copy_file(file, dstList) {
     async function _copy(src, dst) {
         if (typeof src != 'string') return;
         if (typeof dst != 'string') return;
@@ -226,7 +226,6 @@ export async function read_file(filename, options={}) {
         exist = false;
     });
     if (exist) {
-        console.log(`\t${filename}`);
         return await readFile(filename, options);
     }
     console.log(`warnning: ${filename} file not found`);
