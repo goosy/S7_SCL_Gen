@@ -1,11 +1,60 @@
-import { fixed_hex } from "./util.js";
-import { CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME } from './symbols.js';
+/**
+ * 串行处理
+ * 依照3阶段提供3个函数， get_symbols_CP build_CP gen_CP
+ * @file SC
+ */
 
-export function gen_CP_data(conf) {
-    const { CPU, includes, list } = conf;
+import { fixed_hex } from "./util.js";
+import { add_symbol, make_prop_symbolic, CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME } from './symbols.js';
+
+/**
+ * @typedef {object} S7Item
+ * @property {Object} CPU
+ * @property {Array} list
+ * @property {Object} Options
+ * @property {Array|string} includes
+ */
+
+/**
+ * 第一遍扫描 提取符号
+ * @date 2021-12-07
+ * @param {S7Item} SC_area
+ * @returns {void}
+ */
+export function parse_symbols_CP(SC_area) {
+    const symbols_dict = SC_area.CPU.symbols_dict;
+    const options = SC_area.options;
+    SC_area.list.forEach(module => {
+        if (!module?.DB) throw Error(`${SC_area.CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
+        module.type ??= 'CP341';
+        let type = 'notype';
+        if (module.type === 'CP341') {
+            options.has_CP341 = true;
+            type = CP341_NAME;
+        } else if (module.type === 'CP340') {
+            options.has_CP340 = true;
+            type = CP340_NAME;
+        }
+        if (type === 'notype') throw new Error(`${SC_area.CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
+        module.module_addr = [module?.DB[0] + '_module_addr', 'IW' + module.module_addr];
+        make_prop_symbolic(module, 'module_addr', symbols_dict, 'WORD');
+        make_prop_symbolic(module, 'DB', symbols_dict, type);
+        module.polls.forEach(poll => {
+            make_prop_symbolic(poll, 'recv_DB', symbols_dict);
+        });
+    })
+}
+
+/**
+ * 第二遍扫描 建立数据并查错
+ * @date 2021-12-07
+ * @param {S7Item} SC
+ * @returns {void}
+ */
+export function build_CP(SC) {
+    const { CPU, list } = SC;
     list.forEach(module => { // 处理配置，形成完整数据
-        if (!module.DB) throw Error(`${CPU.name} modbus definition is wrong!`);
-        module.Laddr = CPU.module_addr_list.push(module.Laddr);
+        if (Array.isArray(module.module_addr)) throw Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
         module.polls_name ??= "polls_" + CPU.poll_list.push_new();
         module.polls.forEach(poll => {
             if (poll.deivce_ID && !poll.send_data) {
@@ -91,7 +140,7 @@ FUNCTION "{{CP_LOOP_NAME}}" : VOID
 "{{#if module.type == 'CP341'}}{{MB341_NAME}}{{#else}}{{MB340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
-    Laddr         := {{module.Laddr}},  // CP模块地址
+    Laddr         := {{module.module_addr.block_no}},  // CP模块地址
     DATA          := "Poll_DB".{{module.polls_name}});
 {{#endfor module}}
 END_FUNCTION

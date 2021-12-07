@@ -1,4 +1,4 @@
-import { AI_NAME, AI_LOOP_NAME } from "./symbols.js";
+import { make_prop_symbolic, AI_NAME, AI_LOOP_NAME } from "./symbols.js";
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
@@ -24,6 +24,21 @@ FUNCTION "AI_Loop" : VOID{{#for AI_item in list}}
 
 END_FUNCTION
 `;
+
+/**
+ * 第一遍扫描 提取符号
+ * @date 2021-12-07
+ * @param {S7Item} VItem
+ * @returns {void}
+ */
+export function parse_symbols_AI(AI_area) {
+    const symbols_dict = AI_area.CPU.symbols_dict;
+    AI_area.list.forEach(AI => {
+        if (!AI.DB) return; // 空AI不处理
+        make_prop_symbolic(AI, 'DB', symbols_dict, AI_NAME);
+        make_prop_symbolic(AI, 'input', symbols_dict, 'WORD');
+    });
+}
 
 export function gen_AI(AI_list) {
     const rules = [];

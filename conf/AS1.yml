@@ -65,7 +65,7 @@ IP: [192, 168, 10, 10]
 
 --- # AI文档开始
 # 指示本配置为生成 AI 代码
-type: AI 
+type: AI
 CPU: AS1 
 
 symbols: 
@@ -79,7 +79,7 @@ symbols:
 list: # 模拟量列表
   - &tubepress # 设置引用锚点，该锚点表示 & 符号左侧的项目（- 或 key）指定的内容（即右侧的value）可以被引用
     comment: 进站压力
-    DB: [PIT001,  DB100] # AI数据块
+    DB: [PIT001,  DB100] # AI数据块，没有该项则忽略转换，只输出 comment
     input: [AI01-01, PIW512] # AI通道
     zero: "-0.2" # 以下都为初始值，即不会在运行时赋值
     span: "2.6"
@@ -139,7 +139,7 @@ symbols:
 list : # CP 模块列表
   - comment: CP01 Module752 河口流量 30# 31#
     type: CP340
-    Laddr: 752
+    module_addr: 752
     DB: [CP01, DB881]
     polls_name: 'polls_HK'
     polls:
@@ -163,7 +163,7 @@ list : # CP 模块列表
     type: CP341
     coutomTrigger: TRUE # 指示由外部定义发送时间
     REQ: M0.5 # 指定时间存储器 1HZ 发送轮询
-    Laddr: 784
+    module_addr: 784
     DB: [CP02, DB883]
     polls_name: 'polls_GAS'
     polls:

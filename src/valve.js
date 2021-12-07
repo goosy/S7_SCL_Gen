@@ -1,4 +1,4 @@
-import {VALVE_NAME, VALVE_LOOP_NAME} from './symbols.js';
+import { make_prop_symbolic, VALVE_NAME, VALVE_LOOP_NAME } from './symbols.js';
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
@@ -31,6 +31,28 @@ END_CONST
 {{#endif}}{{#endfor valve}}
 END_FUNCTION
 `;
+
+
+/**
+ * 第一遍扫描 提取符号
+ * @date 2021-12-07
+ * @param {S7Item} valve_area
+ * @returns {void}
+ */
+export function parse_symbols_valve(valve_area) {
+    const symbols_dict = valve_area.CPU.symbols_dict;
+    valve_area.list.forEach(valve => {
+        if (!valve.DB) return; // 空AI不处理
+        make_prop_symbolic(valve, 'AI', symbols_dict, 'WORD');
+        make_prop_symbolic(valve, 'CP', symbols_dict, 'BOOL');
+        make_prop_symbolic(valve, 'OP', symbols_dict, 'BOOL');
+        make_prop_symbolic(valve, 'remote', symbols_dict, 'BOOL');
+        make_prop_symbolic(valve, 'error', symbols_dict, 'BOOL');
+        make_prop_symbolic(valve, 'close_action', symbols_dict, 'BOOL');
+        make_prop_symbolic(valve, 'open_action', symbols_dict, 'BOOL');
+        make_prop_symbolic(valve, 'DB', symbols_dict, VALVE_NAME);
+    });
+}
 
 export function gen_valve(valve_list) {
     const rules = [];

@@ -81,6 +81,7 @@ function dec2foct(num) {
 }
 
 function foct2dec(byte, bit) {
+    if (typeof byte !== 'number' || isNaN(byte) || byte < 0) throw new TypeError(`${byte} 不是正整数!`);
     return (byte == null || bit == null) ? null : byte * 8 + bit;
 }
 
@@ -111,8 +112,9 @@ export class S7IncHL extends IncreaseHL {
     }
 
     push(item, size = 1.0) {
-        let num = foct2dec(...(item ?? []));
+        let num;
         try {
+            if(item[0] != null) num = foct2dec(...(item ?? []));
             num = this.check(num, size);
             this.#list[num + ':' + size] = true;
             let remainder = num % 8;
@@ -121,11 +123,10 @@ export class S7IncHL extends IncreaseHL {
             if (size >= 2.0 && remainder > 0) num += 16 - remainder;
             super.push(num, this.convert_size(size));
         } catch (e) {
-            if (e instanceof TypeError) {
-                throw new TypeError(e.message, { cause: num });
-            } else if (e instanceof IncHLError) {
+            if (e instanceof IncHLError) {
                 throw new IncHLError(e.message, { num, size });
             }
+            throw new TypeError(e.message, { cause: num });
         }
         return dec2foct(num);
     }
@@ -155,6 +156,11 @@ export function str_padding_right(item, length, placeholder = ' ') {
     const str = item + placeholder + Array(length).join(placeholder);
     return str.slice(0, length);
 }
+
+export function fixed_hex(num, length) {
+    return str_padding_left(num.toString(16), length, '0').toUpperCase();
+}
+
 
 export function lazyassign(obj, prop, lazyvalue, options) {
     const { writable = false, enumerable = false, configurable = false } = options ?? {};

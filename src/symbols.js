@@ -1,4 +1,4 @@
-import { IncHLError, str_padding_left, str_padding_right } from "./util.js";
+import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
 
 export const COMMON_NAME = 'common';
 export const AI_NAME = 'AI_Proc';
@@ -74,11 +74,11 @@ function parse(raw, default_type) {
         // MD 的默认类型是 DWORD
         type = 'DWORD';
     }
-    if (!type && /^MW|PIW$/.test(block_name)) {
+    if (!type && /^(MW|IW|PIW|QW|PQW)$/.test(block_name)) {
         // MW PIW 的默认类型是 WORD
         type = 'WORD';
     }
-    if (!type && /^I|Q|M$/.test(block_name)) {
+    if (!type && /^(I|Q|M)$/.test(block_name)) {
         // I Q 的默认类型是 BOOL
         type = 'BOOL';
     }
@@ -125,6 +125,23 @@ export function add_symbols(symbols_dict, symbol_raw_list) {
     return symbol_raw_list.map(symbol_raw => add_symbol(symbols_dict, symbol_raw));
 }
 
+
+function to_ref(item) {
+    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+        return { value: item, type: 'ref' };
+    }
+    return item;
+}
+
+export function make_prop_symbolic(obj, prop, symbols_dict, mtype) {
+    if (Array.isArray(obj[prop]) && typeof mtype === 'string') {
+        obj[prop][2] = mtype; // mandatory type
+    }
+    obj[prop] = to_ref(obj[prop]);
+    // 全部符号未加载完，需要惰性赋值
+    lazyassign(obj, prop, add_symbol(symbols_dict, obj[prop]));
+}
+
 const area_size = {
     M: 0.1,
     MB: 1.0,
@@ -142,50 +159,51 @@ const area_size = {
     PQD: 4.0,
 }
 // 检查并补全符号表
-export function rebuild_symbols(CPU) {
+export function build_symbols(CPU) {
     const exist_bno = {};
     const { MA_list, IA_list, QA_list, symbols_dict } = CPU;
     const list = Object.values(symbols_dict);
     // 检查重复并建立索引
     list.forEach(symbol => {
         const name = symbol.name;
-        if (['DB', 'FB', 'FC'].includes(symbol.block_name)) { // DB FB FC 自动分配块号
-            if (symbol.block_no === '+') symbol.block_no = null;
-            else symbol.block_no = parseInt(symbol.block_no); //取整
-            symbol.block_bit = "";
-            try {
+        try {
+            if (['DB', 'FB', 'FC'].includes(symbol.block_name)) { // DB FB FC 自动分配块号
+                if (symbol.block_no === '+') symbol.block_no = null;
+                else symbol.block_no = parseInt(symbol.block_no); //取整
+                symbol.block_bit = "";
                 symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
-            } catch (e) {
-                if (e instanceof TypeError) {
-                    throw new TypeError(e.message, { cause: e });
-                } else if (e instanceof IncHLError) {
-                    const prev_symbol = list.find(sym => sym.block_no === symbol.block_no);
-                    throw new Error(`${e.message}\n${prev_symbol.raw}\n${symbol.raw}`, { cause: e });
+                symbol.addr = symbol.block_name + symbol.block_no;
+            } else if (
+                ['MD', 'MW', 'M', 'I', 'IW', 'PIW', 'ID', 'PID', 'Q', 'QW', 'PQW', 'QD', 'PQD'].includes(symbol.block_name)
+            ) { // Area 自动分配地址
+                if (symbol.block_no === '+') {
+                    symbol.block_no = null;
+                    symbol.block_bit = 0;
+                } else {
+                    symbol.block_no = parseInt(symbol.block_no);
+                    symbol.block_bit = parseInt(symbol.block_bit);
                 }
+                let list;
+                if (symbol.block_name.includes('M')) list = MA_list;
+                if (symbol.block_name.includes('I')) list = IA_list;
+                if (symbol.block_name.includes('Q')) list = QA_list;
+                const addr = list.push([symbol.block_no, symbol.block_bit], area_size[symbol.block_name]);
+                symbol.block_no = addr[0];
+                symbol.block_bit = addr[1];
+                symbol.addr = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
+            } else if (exist_bno[symbol.addr]) { // 其它情况下检查是否重复
+                throw new RangeError(`存在重复的地址 ${name} ${symbol.addr}!`)
+            } else { // 不重复则标识该地址已存在
+                exist_bno[symbol.addr] = true;
             }
-            symbol.addr = symbol.block_name + symbol.block_no;
-        } else if (
-            ['MD', 'MW', 'M', 'I', 'IW', 'PIW', 'ID', 'PID', 'Q', 'QW', 'PQW', 'QD', 'PQD'].includes(symbol.block_name)
-        ) { // Area 自动分配地址
-            if (symbol.block_no === '+') {
-                symbol.block_no = null;
-                symbol.block_bit = 0;
-            } else {
-                symbol.block_no = parseInt(symbol.block_no);
-                symbol.block_bit = parseInt(symbol.block_bit);
+        } catch (e) {
+            if (e instanceof TypeError) {
+                throw new TypeError(e.message, { cause: e });
+            } else if (e instanceof IncHLError || e instanceof RangeError) {
+                const prev_symbol = list.find(sym => sym.block_no === symbol.block_no);
+                throw new Error(`${e.message}\n${prev_symbol.raw}\n${symbol.raw}`, { cause: e });
             }
-            let list;
-            if (symbol.block_name.includes('M')) list = MA_list;
-            if (symbol.block_name.includes('I')) list = IA_list;
-            if (symbol.block_name.includes('Q')) list = QA_list;
-            const addr = list.push([symbol.block_no, symbol.block_bit], area_size[symbol.block_name]);
-            symbol.block_no = addr[0];
-            symbol.block_bit = addr[1];
-            symbol.addr = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
-        } else if (exist_bno[symbol.addr]) { // 其它情况下检查是否重复
-            throw new Error(`存在重复的地址 ${name} ${symbol.addr}!`)
-        } else { // 不重复则标识该地址已存在
-            exist_bno[symbol.addr] = true;
+            console.log(e.message);
         }
         symbols_dict[name] = symbol;
     });

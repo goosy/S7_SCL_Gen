@@ -1,10 +1,5 @@
-import { IntIncHL, str_padding_left } from './util.js';
-import { MT_NAME,MT_LOOP_NAME,MT_POLLS_NAME } from './symbols.js';
-
-function get_fixed_hex(num, length) {
-  return str_padding_left(num.toString(16), length, '0').toUpperCase();
-}
-
+import { IntIncHL, fixed_hex } from './util.js';
+import { make_prop_symbolic, MT_NAME,MT_LOOP_NAME,MT_POLLS_NAME } from './symbols.js';
 const TCON_deivce_id = {
   "IM151-8PN/DP": "B#16#01",
   "CPU31x-2PN/DP": "B#16#02",
@@ -32,7 +27,25 @@ const TCON_deivce_id = {
 }
 const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
 
-export function gen_MT_data(conf) {
+
+/**
+ * 第一遍扫描 提取符号
+ * @date 2021-12-07
+ * @param {S7Item} MT_area
+ * @returns {void}
+ */
+export function parse_symbols_MT(MT_area) {
+  const symbols_dict = MT_area.CPU.symbols_dict;
+  const conn_list = MT_area.list;
+  conn_list.forEach(conn => {
+    make_prop_symbolic(conn, 'DB', symbols_dict, MT_NAME);
+    conn.polls.forEach(poll => {
+      make_prop_symbolic(poll, 'recv_DB', symbols_dict);
+    })
+  });
+}
+
+export function build_MT(conf) {
   const { CPU, list } = conf;
   list.forEach(conn => { // 处理配置，形成完整数据
     const {
@@ -49,7 +62,7 @@ export function gen_MT_data(conf) {
       // interval_time, // 由SCL程序负责默认的间隔时长
     } = conn;
 
-    conn.ID = get_fixed_hex(conn_ID_list.push(ID), 4);
+    conn.ID = fixed_hex(conn_ID_list.push(ID), 4);
 
     // port_list
     const host_str = conn.host.join('.');
@@ -58,18 +71,18 @@ export function gen_MT_data(conf) {
     port_list.push(port);
     conn.DB.name ??= "conn_MT" + ID;
     conn.local_device_id = local_device_id;
-    conn.IP1 = get_fixed_hex(host[0], 2);
-    conn.IP2 = get_fixed_hex(host[1], 2);
-    conn.IP3 = get_fixed_hex(host[2], 2);
-    conn.IP4 = get_fixed_hex(host[3], 2);
-    conn.port1 = get_fixed_hex((port >>> 8), 2);
-    conn.port2 = get_fixed_hex((port & 0xff), 2);
+    conn.IP1 = fixed_hex(host[0], 2);
+    conn.IP2 = fixed_hex(host[1], 2);
+    conn.IP3 = fixed_hex(host[2], 2);
+    conn.IP4 = fixed_hex(host[3], 2);
+    conn.port1 = fixed_hex((port >>> 8), 2);
+    conn.port2 = fixed_hex((port & 0xff), 2);
     conn.polls_name ??= "polls_" + poll_list.push_new();
     conn.polls.forEach(poll => {
-      poll.deivce_ID = get_fixed_hex(poll.deivce_ID, 2);
-      poll.function = get_fixed_hex(poll.function, 2);
-      poll.started_addr = get_fixed_hex(poll.started_addr, 4);
-      poll.length = get_fixed_hex(poll.length, 4);
+      poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
+      poll.function = fixed_hex(poll.function, 2);
+      poll.started_addr = fixed_hex(poll.started_addr, 4);
+      poll.length = fixed_hex(poll.length, 4);
       poll.recv_DB_code = `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();`;
     });
   });

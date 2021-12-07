@@ -20,7 +20,7 @@ async function convert2file(
 export async function convert() {
   const work_path = process.cwd();
   console.log(`${work_path}:`);
-  const [copy_list, convert_list] = await gen_data(work_path);
+  const [copy_list, convert_list] = await gen_data();
   console.log("copy file to:");
   for (const [src, dst, desc] of copy_list) {
     await copy_file(src, dst);
