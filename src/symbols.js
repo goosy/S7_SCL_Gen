@@ -98,19 +98,11 @@ function check_buildin_and_modify(symbols_dict, symbol) {
     return true;
 }
 
-export function add_symbol(symbols_dict, symbol_raw, default_type) {
-    // 引用，要么返回惰性求值，要么返回本身
-    if (Object.prototype.toString.call(symbol_raw) === '[object Object]') {
-        const ref_name = symbol_raw.ref;
-        if (!ref_name) return symbol_raw;
-        const ref = ref_name && symbols_dict[ref_name];
-        if (ref) return ref; // 返回符号
-        // 当前无此符号情况下则返回惰性求值函数
-        return () => symbols_dict[ref_name] ?? symbol_raw;
-    }
+function add_symbol(symbols_dict, symbol_raw, default_type) {
+    if (typeof default_type !== 'string') default_type = null; 
     const symbol = parse(symbol_raw, default_type);
-    // 非有效符号返回原值 
-    if (symbol === symbol_raw) return symbol_raw;
+    // 非有效符号
+    if (symbol === symbol_raw) throw new TypeError("符号必须是一个数组");
 
     // 内置符号则应用新地址
     const is_buildin = check_buildin_and_modify(symbols_dict, symbol);
@@ -126,20 +118,28 @@ export function add_symbols(symbols_dict, symbol_raw_list) {
 }
 
 
-function to_ref(item) {
+function ref(item) {
     if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
         return { value: item, type: 'ref' };
     }
     return item;
 }
 
-export function make_prop_symbolic(obj, prop, symbols_dict, mtype) {
-    if (Array.isArray(obj[prop]) && typeof mtype === 'string') {
-        obj[prop][2] = mtype; // mandatory type
+export function make_prop_symbolic(obj, prop, symbols_dict, default_type) {
+    const value = obj[prop];
+    if (Array.isArray(value)) {
+        // 如是数组，则返回符号
+        obj[prop] = add_symbol(symbols_dict, value, default_type);
+    } else if (typeof value === 'string') {
+        // 如是字符串，则返回求符号函数
+        // 全部符号未加载完，需要惰性赋值，所以是函数
+        // 函数最终返回符号或字串值引用对象
+        lazyassign(obj, prop, () => symbols_dict[value] ?? ref(value));
+    } else {
+        // 数字或布尔值返回引用对象
+        // 其它直接值返回本身
+        obj[prop] = ref(value);
     }
-    obj[prop] = to_ref(obj[prop]);
-    // 全部符号未加载完，需要惰性赋值
-    lazyassign(obj, prop, add_symbol(symbols_dict, obj[prop]));
 }
 
 const area_size = {

@@ -45,11 +45,13 @@ symbols:  # CPU文档下定义其它文档需要共享的符号
   - [auto_data3, M+]
   - [auto_data4, M+]
   - [auto_data5, MD+, dint]
+  - [JS_flow, FB801] # JS_flow 符号，其代码需要手动增加，本例在 includes."JSFlow.SCL" 文件中
 
 # 包含内容
-# include指示的文件名，其内容将合并输出在目标文件夹的 common.SCL 文件中
+# includes指示的文件名，其内容将合并输出在目标文件夹的 common.SCL 文件中
+# 所有includes列出的文件需要用户自己写，因为不通用。本例展示了 JS_flow FB块的写法，可参照这个写其它接收块函数。
 includes: 
-  - JSFlow.SCL # 该文件包含 JS_flow 符号的定义与FB实现，可参照这个写其它接收块函数
+  - JSFlow.SCL # 该文件包含 JS_flow 符号的FB实现，JS_flow 定义了流量接收DB块的数据结构，用于一诺的智能流量表。
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 输出文件夹，默认为 <name>
@@ -103,7 +105,7 @@ list: # 模拟量列表
     enable_alarm: TRUE # 初始值取消报警
   - comment: 液位
     DB: [LIT001, DB+]
-    input: '"RecvDB".Tank1' # 引用，转换程序不检查正确性
+    input: '"RecvDB".Tank1' # 纯字符串时为引用，引用非符号名称时，转换程序不检查正确性
 
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
@@ -130,7 +132,6 @@ symbols:
   # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
   # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
   # 这类FB不通用，需要另外单独写块本身。可通过指定 includes ，系统自动添加对应代码进 CP_Loop.scl 中。
-  - [JS_flow, FB801] # JS_flow定义了本例流量接收DB块的数据结构，用于一诺的智能流量表
   - [GAS_flow, FB803]
   - [STBL, FB805]
   - [launcher_data, FB806]
@@ -169,19 +170,20 @@ list : # CP 模块列表
     polls:
       - comment: 天然气2#流量计 
         send_data: 2 3 0 0 18 4E 60
-        recv_DB: {ref: GAS}
+        # 如果一个应当符号定义的地方（正当时应当提供一个符号数组），提供值为字符串时，表示已有符号，如不存在则表示使用原值
+        recv_DB: GAS # 表示引用GAS符号，因为一个符号只能定义一次，而GAS已在其它地方定义，所以这里必须使用字符串来引用
         recv_start: 0
       - comment: 天然气3#流量计 # 非modbus发送，不要有deivce_ID属性，直接在send_data属性上写16进制发送数据
         send_data: 3 3 0 0 18 8E 5D
-        recv_DB: {ref: GAS} # 这个对象表示引用上一个名称为GAS符号定义的块，因为一个符号只能定义一次，所以这里引用
-        recv_start: 20 # 同一个接收块，要注意开始地址不一样
+        recv_DB: GAS # 同一个接收块
+        recv_start: 20 # 要注意开始地址不一样
       - comment: 天然气总 10# 
         deivce_ID: 10 
         function: 3 
         started_addr: 0 
         length: 12
         CRC: "44B4" 
-        recv_DB: [GAS, DB841, GAS_flow]
+        recv_DB: [GAS, DB841, GAS_flow] # GAS符号的定义处，其它地方的引用可以在本定义后，也可以在本定义前。
         recv_start: 40
 ...
 
@@ -309,8 +311,24 @@ symbols:
   # - [Valve_Loop, FC516]
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
+  # 以下为自定义符号
+  - [AI11-1, PIW672]
+  - [AI11-2, PIW674]
+  - [DI01-01, I0.0]
+  - [DI01-02, I+]
+  - [DI01-03, I+]
+  - [DI01-04, I+]
+  - [DI01-05, I+]
+  - [DI01-06, I+]
+  - [DI01-07, I+]
+  - [DI01-08, I+]
+  - [DO01-01, Q0.0]
+  - [DO01-02, Q+]
+  - [DO02-01, Q2.0]
+  - [DO02-02, Q+]
+
 list :
-  # 没有阀位时，AI 直接设置为断线值 
+  # 没有阀位时，AI 可直接设置为断线值S7_AI_MIN_WORD
   # 没有远程信号时，remote 必须分别置为 true
   # 没有故障信号时，error 必须分别置为 false
   # 以下常量可以直接使用
@@ -324,32 +342,32 @@ list :
   # 阀门1
   - comment: A阀门
     DB: [MGV-1201A, DB111]
-    AI: [AI11-1, PIW672]
-    CP: [DI01-01, I0.0]
-    OP: [DI01-02, I0.1]
-    error: [DI01-03, I0.2]
-    remote: [DI01-04, I0.3]
-    close_action: [DO01-01, Q0.0]
-    open_action: [DO01-02, Q0.1]
+    AI: AI11-1
+    CP: DI01-01
+    OP: DI01-02
+    error: DI01-03
+    remote: DI01-04
+    close_action: DO01-01
+    open_action: DO01-02
 
   # 阀门2
   - comment: B阀门
-    DB: [MGV-1201B, DB120]
+    DB: [MGV-1201B, DB+]
     AI: S7_AI_MIN_WORD
-    CP: [DI03-01, I6.0]
-    OP: [DI03-02, I6.1]
+    CP: DI01-05
+    OP: DI01-06
     error: FALSE
     remote: TRUE
-    close_action: [DO02-01, Q4.0]
+    open_action: DO02-01 # 只能开阀
 
   - comment: C阀门
     DB: [MGV-1201C, DB+]
-    AI: [AI11-2, PIW674]
-    CP: [DI01-05, I0.4]
-    OP: [DI01-06, I+]
+    AI: AI11-2
+    CP: DI01-07
+    OP: DI01-08
     error: FALSE
     remote: TRUE
-    close_action: {ref: DO02-01} # 与B阀门共用一个关阀线圈
+    close_action: DO02-02 # 只能关阀
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
