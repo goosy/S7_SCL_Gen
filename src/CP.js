@@ -5,7 +5,7 @@
  */
 
 import { fixed_hex } from "./util.js";
-import { add_symbol, make_prop_symbolic, CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME } from './symbols.js';
+import { make_prop_symbolic, CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME } from './symbols.js';
 
 /**
  * @typedef {object} S7Item
@@ -24,6 +24,7 @@ import { add_symbol, make_prop_symbolic, CP340_NAME, CP341_NAME, CP_LOOP_NAME, C
 export function parse_symbols_CP(SC_area) {
     const symbols_dict = SC_area.CPU.symbols_dict;
     const options = SC_area.options;
+    let index = 0;
     SC_area.list.forEach(module => {
         if (!module?.DB) throw Error(`${SC_area.CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
         module.type ??= 'CP341';
@@ -36,7 +37,7 @@ export function parse_symbols_CP(SC_area) {
             type = CP340_NAME;
         }
         if (type === 'notype') throw new Error(`${SC_area.CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
-        module.module_addr = [module?.DB[0] + '_module_addr', 'IW' + module.module_addr];
+        module.module_addr = [`module${++index}_addr`, 'IW' + module.module_addr];
         make_prop_symbolic(module, 'module_addr', symbols_dict, 'WORD');
         make_prop_symbolic(module, 'DB', symbols_dict, type);
         module.polls.forEach(poll => {
@@ -71,7 +72,7 @@ export function build_CP(SC) {
                 deivce_ID:${poll.deivce_ID}
                 send_data:${poll.send_data}`);
             }
-            poll.recv_DB_code = `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();`;
+            poll.recv_code = `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();`;
         });
     });
 }
@@ -141,7 +142,8 @@ FUNCTION "{{CP_LOOP_NAME}}" : VOID
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
     Laddr         := {{module.module_addr.block_no}},  // CP模块地址
-    DATA          := "Poll_DB".{{module.polls_name}});
+    DATA          := "{{CP_POLLS_NAME}}".{{module.polls_name}});{{#for poll in module.polls}}
+{{poll.recv_code}}{{#endfor poll}}
 {{#endfor module}}
 END_FUNCTION
 `;

@@ -6,7 +6,7 @@ import { parse_symbols_CP, build_CP, gen_CP } from './CP.js';
 import { parse_symbols_valve, gen_valve } from "./valve.js";
 import { gen_common } from "./common.js";
 import {
-    gen_symbol, build_symbols, make_prop_symbolic, add_symbols,
+    gen_symbol, build_symbols, add_symbols,
     AI_NAME, AI_BUILDIN,
     MT_NAME, MT_BUILDIN,
     CP340_NAME, CP341_NAME, CP_BUILDIN,
@@ -42,10 +42,19 @@ function get_cpu(CPU_name) {
         conn_host_list: {}, // 已用的连接地址列表
         output_dir: CPU_name, // 输出文件夹
         push_conf(type, conf) {
-            this[type] ??= [];
-            this[type].push(conf);
+            this[type] = {
+                source: conf,
+            };
         }
     }
+}
+
+async function gen_includes(includes) {
+    let code = '';
+    for (const file of includes) {
+        code += await read_file(file) + '\n';
+    }
+    return code;
 }
 
 // 第一遍扫描，仅提取符号
@@ -72,25 +81,27 @@ function add_conf(conf) {
     const symbols_dict = CPU.symbols_dict;
     const includes = conf.includes ?? [];
     const area = { CPU, list, includes, options };
-    if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN); // 加入AI内置符号
-    if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN); // 加入SC内置符号
-    if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN); // 加入MT内置符号
-    if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN); // 加入Valve内置符号
+
+    // 加入内置符号
+    if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN);
+    if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN);
+    if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
+    if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
     add_symbols(symbols_dict, symbols); // 加入前置符号
 
-    if (doctype === 'CPU') { // CPU 调度
+    if (doctype === 'CPU') {
         CPU.output_dir = conf?.options?.output_dir ?? CPU_name;
         common_list.push(area);
-    } else if (doctype === 'AI') { // AI 调度
+    } else if (doctype === 'AI') {
         parse_symbols_AI(area);
         AI_list.push(area);
-    } else if (doctype === 'SC') { // SC 调度
+    } else if (doctype === 'SC') {
         parse_symbols_CP(area);
         CP_list.push(area);
-    } else if (doctype === 'modbusTCP' || doctype === 'MT') { // modebusTCP 调度
+    } else if (doctype === 'modbusTCP' || doctype === 'MT') { 
         parse_symbols_MT(area);
         MT_list.push(area);
-    } else if (doctype === 'Valve' || doctype === 'valve') { // Valve 调度
+    } else if (doctype === 'Valve' || doctype === 'valve') {
         parse_symbols_valve(area);
         valve_list.push(area);
     }
@@ -129,7 +140,7 @@ export async function gen_data() {
         // 生成无注释的配置
         const head = `# CPU ${name} configuration`;
         const yaml = TYPES.reduce(
-            (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type]}...` : docs,
+            (docs, type) => CPU[type]?.source ? `${docs}\n\n---\n${CPU[type].source}...` : docs,
             head
         );
         const filename = `${join(work_path, name)}.zyml`;
@@ -143,13 +154,6 @@ export async function gen_data() {
     const copy_list = [];
     CP_list.forEach(build_CP);
     MT_list.forEach(build_MT);
-    async function gen_includes(includes) {
-        let code = '';
-        for (const file of includes) {
-            code += await read_file(file) + '\n';
-        }
-        return code;
-    }
 
     // 第三遍扫描 生成最终待转换数据
     for (const common of common_list) {

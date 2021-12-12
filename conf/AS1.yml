@@ -141,9 +141,9 @@ list : # CP 模块列表
     type: CP340
     module_addr: 752
     DB: [CP01, DB881]
-    polls_name: 'polls_HK'
+    polls_name: polls_HK
     polls:
-      - comment: '河口1#流量计 30'
+      - comment: 河口1#流量计 30
         deivce_ID: 30 
         function: 4 
         started_addr: 0 
@@ -151,7 +151,7 @@ list : # CP 模块列表
         CRC: F3AC # 用2字节16进制字符串表示
         recv_DB: [Flow30,  DB830, JS_flow]
         recv_start: 0
-      - comment: '河口2#流量计 31' 
+      - comment: 河口2#流量计 31
         deivce_ID: 31 
         function: 4 
         started_addr: 0 
@@ -165,7 +165,7 @@ list : # CP 模块列表
     REQ: M0.5 # 指定时间存储器 1HZ 发送轮询
     module_addr: 784
     DB: [CP02, DB883]
-    polls_name: 'polls_GAS'
+    polls_name: polls_GAS
     polls:
       - comment: 天然气2#流量计 
         send_data: 2 3 0 0 18 4E 60
@@ -197,7 +197,7 @@ CPU: AS1
 # 符号定义
 symbols: 
   # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-  # 系统已有2个内置符号，其内容由本程序自动生成：
+  # 系统已有3个内置符号，其内容由本程序自动生成：
   #   MT_Poll FB344 : modbusTCP 处理主 FB
   #   MT_Loop FC344 : 主循环调用FC，将这个加入OB1中
   #   MT_polls_DB DB881 : 用于保存轮询命令数据
@@ -256,13 +256,13 @@ list : # modbus TCP 连接列表
     # interval_time: 200
 
     # 自定义查询名称，必填，不可与其它连接的重名。
-    polls_name: 'polls_example' 
+    polls_name: polls_example 
     
     # 该连接下的轮询定义，至少要有一个查询
     polls: 
     
       # 查询1
-      - comment: '垦西1#流量计' # 本查询的注释，可省略
+      - comment: 垦西1#流量计 # 本查询的注释，可省略
         deivce_ID: 1 # 设备号，即RTU从站地址
         function: 4 # modbus 功能号
         started_addr: 0 # 查询起始地址
@@ -303,8 +303,11 @@ type: Valve
 CPU: AS1
 
 symbols:  
-  - [Valve_Proc, FB516]
-  - [Valve_Loop, FC516]
+  # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
+  # 系统已有2个内置符号，其内容由本程序自动生成：
+  # - [Valve_Proc, FB516]
+  # - [Valve_Loop, FC516]
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
 list :
   # 没有阀位时，AI 直接设置为断线值 
@@ -346,7 +349,7 @@ list :
     OP: [DI01-06, I+]
     error: FALSE
     remote: TRUE
-    close_action: {ref: DO01-01}
+    close_action: {ref: DO02-01} # 与B阀门共用一个关阀线圈
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 

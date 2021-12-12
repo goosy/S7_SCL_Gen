@@ -6,12 +6,12 @@ import { gen_data } from './gen_data.js';
 
 async function convert2file(
   { rules, template },
-  path,
+  output_dir,
   options = { encoding: "utf8", lineEndings: "linux" }
 ) {
   // for-of 实现异步顺序执行
   for (let { name, content } of convertRules(rules, template)) {
-    const output_file = join(path, `./${name}`);
+    const output_file = join(output_dir, `./${name}`);
     await write_file(output_file, content, options)
     console.log(`\t${output_file}`)
   };

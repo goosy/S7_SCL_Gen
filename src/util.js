@@ -238,9 +238,16 @@ export async function read_file(filename, options={}) {
     return '';
 }
 
+function unix2dos(str) {
+    return str.replaceAll('\r', '').replaceAll('\n', '\r\n');
+}
+
+function dos2unix(str) {
+    return str.split('\r\n').join('\n');
+}
+
 export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux"}) {
     await prepare_dir(dirname(filename));
-    if (lineEndings == "windows") content = content.replace(/\n/g, "\r\n");
-    let buff = iconv.encode(content, encoding);
+    let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(str), encoding);
     await writeFile(filename, buff);
 }
