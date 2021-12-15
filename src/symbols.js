@@ -3,6 +3,9 @@ import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./u
 export const COMMON_NAME = 'common';
 export const AI_NAME = 'AI_Proc';
 export const AI_LOOP_NAME = 'AI_Loop';
+export const PI_NAME = 'PI_Proc';
+export const PI_LOOP_NAME = 'PI_Loop';
+export const FM3502_CNT_NAME = 'FM350-2';
 export const CP340_NAME = 'CP340_Poll';
 export const CP341_NAME = 'CP341_Poll';
 export const CP_LOOP_NAME = 'CP_Loop';
@@ -15,6 +18,11 @@ export const VALVE_LOOP_NAME = 'Valve_Loop';
 export const AI_BUILDIN = [
     [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
     [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
+];
+export const PI_BUILDIN = [
+    [PI_NAME, 'FB350', PI_NAME, 'PI main FB'],
+    [PI_LOOP_NAME, "FC350", PI_LOOP_NAME, 'main PI cyclic call function'],
+    [FM3502_CNT_NAME, "UDT350", FM3502_CNT_NAME, 'FM350-2 count DB'],
 ];
 export const CP_BUILDIN = [
     [CP340_NAME, 'FB340', CP340_NAME, 'CP340 SC communicate main process'],
@@ -59,11 +67,11 @@ function parse(raw, default_type) {
         type = null;
     }
     if (type === addr) type = name;
-    const reg = /^(MW|MD|M|FB|FC|DB|PIW|IW|I|PQW|QW|Q)(\d+|\+)(\.(\d))?$/;
+    const reg = /^(MW|MD|M|FB|FC|DB|PIW|IW|I|PQW|QW|Q|UDT)(\d+|\+)(\.(\d))?$/;
     let [, block_name, block_no, , block_bit = 0] = reg.exec(addr.toUpperCase()) ?? [];
     if (!block_name || !block_no) return raw;
-    if (block_name === 'FB' || block_name === 'FC') {
-        // FB FC 的类型是自己
+    if (block_name === 'FB' || block_name === 'FC' || block_name === 'UDT') {
+        // FB FC UDT 的类型是自己
         type = name;
     }
     if (!type && block_name === 'DB') {

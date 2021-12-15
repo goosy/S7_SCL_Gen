@@ -1,17 +1,18 @@
 # 配置文件采用YAML语法，可以多个文档集中在一个文件里，也可以分散在多个文件中。
 
 # 转换代码说明：
-# 1个文档只能定义1种类型，目前只实现了5种类型： CPU 文档和4种功能文档 —— AI modbusTCP SC Valve
+# 1个文档只能定义1种类型，目前只实现了6种类型： CPU 文档和5种功能文档 —— AI PI SC modbusTCP Valve
 # 配置文档必须有 type 和 CPU(name) 字段，2个字段都相同的配置文档只能有一个
 # CPU配置文件指示该CPU下共用的信息，比如输出文件夹，共用的符号和包含等
 # 其它功能文档都有 list 属性，指示该PLC功能的列表
 # 每种类型文档都可选的属性为：
 #   options     选项，比如 options.output_file 中改变输出文件名
 #   symbols     符号定义
-#   includes    输出文件内容中要附加指定文件的SCL内容（）
+#   includes    输出文件内容中要附加指定文件内容
 
 # 程序内置了一些函数，它们有默认的内置符号，这些符号通常不需配置里设置：
 #   [AI_Proc, FB512] 模拟量主处理函数
+#   [PI_Proc, FB350] 计数与测量量主处理函数
 #   [CP340_Poll, FB340] CP340通信主处理函数
 #   [CP341_Poll, FB341] CP341通信主处理函数
 #   [MT_Poll, FB344] modbusTCP通信主处理函数
@@ -19,7 +20,7 @@
 # 但如果存在冲突，可以通过含 buildin 属性的对象，指示对内置符号更改，主要是更改地址和注释
 # 如果不是为了重名重地址的原因，不用更改定义值
 
-# 本示例文件有5个配置文档： CPU modbusTCP AI SC Valve
+# 本示例文件有6个配置文档： CPU AI PI SC modbusTCP Valve
 
 --- # CPU文档开始
 # type: CPU 指示这是一个CPU空间，所有属于这个名称下的配置文档都共用相同的配置
@@ -115,6 +116,31 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
 ...
 
+---
+type: PI # 指示是FM350计数
+name: AS1
+
+symbols:
+  # 系统已有4个内置符号：
+  #   [PI_Proc FB350] : FM350-2 的modbus计数处理主FB
+  #   [PI_Loop FC350] : 表示主循环调用FC，将这个加入OB1中
+  #   [FM350-2, UDT350] : FM350-2 模块专用数据类型
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+  # 以下为自定义符号，这里是PI FM专用块和数据输出块
+
+list : # FM350-2 模块列表
+  - comment: 模块1
+    # type: FM350-2 # 目前只支持350-2模块
+    module_addr: 992
+    count_DB: [PI01_CNT, DB31] # 专用计数块
+    DB: [PI01, DB+] # 背景块，存放最终结果
+  - comment: 模块2
+    type: FM350-2 # 目前只支持350-2模块
+    module_addr: 1008
+    count_DB: [PI02_CNT, DB+] # 专用计数块
+    DB: [PI02, DB+] # 背景块，存放最终结果
+...
 
 ---
 type: SC # 指示是CP340或CP341通信

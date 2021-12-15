@@ -37,7 +37,7 @@ export function parse_symbols_CP(SC_area) {
             type = CP340_NAME;
         }
         if (type === 'notype') throw new Error(`${SC_area.CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
-        module.module_addr = [`module${++index}_addr`, 'IW' + module.module_addr];
+        module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
         make_prop_symbolic(module, 'module_addr', symbols_dict, 'WORD');
         make_prop_symbolic(module, 'DB', symbols_dict, type);
         module.polls.forEach(poll => {
@@ -136,8 +136,7 @@ END_DATA_BLOCK
 // 主调用
 FUNCTION "{{CP_LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
-// 第{{no+1}}个模块：{{module.type}}
-// {{module.comment}}
+// {{no+1}}. {{module.type}} {{module.comment}}
 "{{#if module.type == 'CP341'}}{{MB341_NAME}}{{#else}}{{MB340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}

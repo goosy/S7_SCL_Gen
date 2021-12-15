@@ -10,3 +10,6 @@
 [submodule "Valve_Proc"]
 	path = Valve_Proc
 	url = git@github.com:goosy/Valve_Proc.git
+[submodule "PI_Proc"]
+	path = PI_Proc
+	url = git@github.com:goosy/PI_Proc.git

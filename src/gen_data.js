@@ -1,6 +1,7 @@
 import { dump, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
 import { parse_symbols_AI, gen_AI } from "./AI.js";
+import { parse_symbols_PI, gen_PI, build_PI } from "./PI.js";
 import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
 import { parse_symbols_CP, build_CP, gen_CP } from './CP.js';
 import { parse_symbols_valve, gen_valve } from "./valve.js";
@@ -8,6 +9,7 @@ import { gen_common } from "./common.js";
 import {
     gen_symbol, build_symbols, add_symbols,
     AI_NAME, AI_BUILDIN,
+    PI_NAME, PI_BUILDIN,
     MT_NAME, MT_BUILDIN,
     CP340_NAME, CP341_NAME, CP_BUILDIN,
     VALVE_NAME, VALVE_BUILDIN
@@ -16,9 +18,10 @@ import { IntIncHL, S7IncHL,  read_file } from './util.js';
 import { join } from 'path';
 
 // 目前支持的类型
-const TYPES = ['CPU', 'AI', 'SC', 'modbusTCP', 'valve'];
+const TYPES = ['CPU', 'AI', 'PI', 'SC', 'modbusTCP', 'valve'];
 
 const AI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
+const PI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
 const valve_list = []; // 阀门列表 {CPU， includes, list, options}[]
 const MT_list = []; // modbusTCP 列表 {CPU， includes, list, options}[]
 const CP_list = []; // 串行通信列表 {CPU， includes, list, options}[]
@@ -34,6 +37,7 @@ function get_cpu(CPU_name) {
         DB_list: new IntIncHL(100), // 已用数据块列表
         FB_list: new IntIncHL(256), // 已用函数块列表
         FC_list: new IntIncHL(256), // 已用函数列表
+        UDT_list: new IntIncHL(256), // 已用自定义类型列表
         poll_list: new IntIncHL(1), // 已用查询号
         MA_list: new S7IncHL([0, 0]), // 已用M地址
         IA_list: new S7IncHL([0, 0]), // 已用I地址
@@ -65,6 +69,7 @@ function add_conf(conf) {
     if (typeof type !== 'string') throw new SyntaxError(' type 必须提供！');
     let doctype = '';
     if (type.toUpperCase() === 'AI') doctype = 'AI';
+    if (type.toUpperCase() === 'PI') doctype = 'PI';
     if (type.toUpperCase() === 'CPU') doctype = 'CPU';
     if (type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC') doctype = 'SC';
     if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
@@ -84,6 +89,7 @@ function add_conf(conf) {
 
     // 加入内置符号
     if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN);
+    if (doctype === 'PI') add_symbols(symbols_dict, PI_BUILDIN);
     if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN);
     if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
     if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
@@ -95,6 +101,9 @@ function add_conf(conf) {
     } else if (doctype === 'AI') {
         parse_symbols_AI(area);
         AI_list.push(area);
+    } else if (doctype === 'PI') {
+        parse_symbols_PI(area);
+        PI_list.push(area);
     } else if (doctype === 'SC') {
         parse_symbols_CP(area);
         CP_list.push(area);
@@ -152,6 +161,7 @@ export async function gen_data() {
     }
 
     const copy_list = [];
+    PI_list.forEach(build_PI);
     CP_list.forEach(build_CP);
     MT_list.forEach(build_MT);
 
@@ -163,6 +173,11 @@ export async function gen_data() {
         AI.includes = await gen_includes(AI.includes);
         const output_dir = AI.CPU.output_dir;
         copy_list.push([`AI_Proc/${AI_NAME}(step7).scl`, `${output_dir}/${AI_NAME}.scl`, `${join(work_path, output_dir, AI_NAME)}.scl`]);
+    }
+    for (const PI of PI_list) {
+        PI.includes = await gen_includes(PI.includes);
+        const output_dir = PI.CPU.output_dir;
+        copy_list.push([`PI_Proc/${PI_NAME}.scl`, `${output_dir}/${PI_NAME}.scl`, `${join(work_path, output_dir, PI_NAME)}.scl`]);
     }
     for (const CP of CP_list) {
         CP.includes = await gen_includes(CP.includes);
@@ -189,9 +204,10 @@ export async function gen_data() {
         gen_common(common_list),
         gen_symbol(symbols_list),
         gen_AI(AI_list),
+        gen_PI(PI_list),
         gen_CP(CP_list),
         gen_MT(MT_list),
         gen_valve(valve_list)
     ];
-    return [copy_list, convert_list];
+    return [copy_list, convert_list]; 
 }
