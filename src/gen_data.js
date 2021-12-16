@@ -1,5 +1,6 @@
 import { dump, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
+
 import { parse_symbols_AI, gen_AI } from "./AI.js";
 import { parse_symbols_PI, gen_PI, build_PI } from "./PI.js";
 import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
@@ -14,7 +15,8 @@ import {
     CP340_NAME, CP341_NAME, CP_BUILDIN,
     VALVE_NAME, VALVE_BUILDIN
 } from './symbols.js';
-import { IntIncHL, S7IncHL,  read_file } from './util.js';
+import { IntIncHL, S7IncHL, read_file } from './util.js';
+import { trace_info } from './trace_info.js'
 import { join } from 'path';
 
 // 目前支持的类型
@@ -46,9 +48,7 @@ function get_cpu(CPU_name) {
         conn_host_list: {}, // 已用的连接地址列表
         output_dir: CPU_name, // 输出文件夹
         push_conf(type, conf) {
-            this[type] = {
-                source: conf,
-            };
+            this[type] = conf;
         }
     }
 }
@@ -66,20 +66,30 @@ function add_conf(conf) {
     // 检查重复
     const { name, CPU: CPU_name = name, type } = conf;
     if (typeof CPU_name !== 'string') throw new SyntaxError(' name(CPU) 必须提供！');
+    trace_info.CPU = CPU_name;
     if (typeof type !== 'string') throw new SyntaxError(' type 必须提供！');
     let doctype = '';
     if (type.toUpperCase() === 'AI') doctype = 'AI';
-    if (type.toUpperCase() === 'PI') doctype = 'PI';
-    if (type.toUpperCase() === 'CPU') doctype = 'CPU';
-    if (type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC') doctype = 'SC';
-    if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
-    if (type.toLowerCase() === 'valve') doctype = 'valve';
-    if (!TYPES.includes(doctype)) throw new SyntaxError(`type:${type} has not supported`);
+    else if (type.toUpperCase() === 'PI') doctype = 'PI';
+    else if (type.toUpperCase() === 'CPU') doctype = 'CPU';
+    else if (type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC') doctype = 'SC';
+    else if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
+    else if (type.toLowerCase() === 'valve') doctype = 'valve';
+    else {
+        console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
+        process.exit(1);
+    }
+    trace_info.doc_index++;
     const CPU = get_cpu(CPU_name);
-    if (CPU[doctype]) throw new SyntaxError(`${CPU_name}:${doctype}${doctype == type ? '(' + type + ')' : ''} has duplicate configurations`);
+    if (CPU[doctype]) {
+        console.error(`${CPU_name}:${doctype}${doctype == type ? '(' + type + ')' : ''} 有重复的配置 has duplicate configurations`);
+        process.exit(2);
+    }
     CPU.push_conf(doctype, dump(conf)); // 按名称压入无注释配置文本
+    trace_info.type = doctype;
+    trace_info.push_doc();
 
-    // conf 存在属性为 null 但不是 undefined 的情况，不能解构赋值
+    // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
     const options = conf.options ?? {};
     const list = conf.list ?? [];
     const symbols = conf.symbols ?? [];
@@ -89,10 +99,10 @@ function add_conf(conf) {
 
     // 加入内置符号
     if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN);
-    if (doctype === 'PI') add_symbols(symbols_dict, PI_BUILDIN);
-    if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN);
-    if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
-    if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
+    else if (doctype === 'PI') add_symbols(symbols_dict, PI_BUILDIN);
+    else if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN);
+    else if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
+    else if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
     add_symbols(symbols_dict, symbols); // 加入前置符号
 
     if (doctype === 'CPU') {
@@ -107,10 +117,10 @@ function add_conf(conf) {
     } else if (doctype === 'SC') {
         parse_symbols_CP(area);
         CP_list.push(area);
-    } else if (doctype === 'modbusTCP' || doctype === 'MT') { 
+    } else if (doctype === 'modbusTCP') {
         parse_symbols_MT(area);
         MT_list.push(area);
-    } else if (doctype === 'Valve' || doctype === 'valve') {
+    } else if (doctype === 'valve') {
         parse_symbols_valve(area);
         valve_list.push(area);
     }
@@ -119,26 +129,22 @@ function add_conf(conf) {
 export async function gen_data() {
     const work_path = process.cwd();
 
-    // 第一遍扫描 加载配置并提取符号
+    // 第一遍扫描 加载配置\提取符号\建立诊断信息
     try {
         console.log('readding file:');
         for (const file of await readdir(work_path)) {
             if (file.endsWith('.yml')) {
                 const filename = join(work_path, file);
+                trace_info.filename = filename;
                 const docs = loadAll(await read_file(filename));
                 for (const [index, doc] of docs.entries()) {
-                    try {
-                        add_conf(doc);
-                    } catch (err) {
-                        if (err instanceof SyntaxError) {
-                            throw new Error(`${filename} 第${index + 1}个文档：${err.message}`, { cause: err });
-                        }
-                        throw new Error(err.message, { cause: err });
-                    }
+                    trace_info.doc_index = index + 1;
+                    add_conf(doc);
                 }
                 console.log(`\t${filename}`);
             }
         }
+        trace_info.clear();
     } catch (e) {
         console.log(e);
     }
@@ -147,10 +153,9 @@ export async function gen_data() {
     console.log('output the no comment configuration file:');
     for (const [name, CPU] of Object.entries(CPUs)) {
         // 生成无注释的配置
-        const head = `# CPU ${name} configuration`;
         const yaml = TYPES.reduce(
-            (docs, type) => CPU[type]?.source ? `${docs}\n\n---\n${CPU[type].source}...` : docs,
-            head
+            (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type]}...` : docs,
+            `# CPU ${name} configuration`
         );
         const filename = `${join(work_path, name)}.zyml`;
         await writeFile(filename, yaml);
@@ -209,5 +214,5 @@ export async function gen_data() {
         gen_MT(MT_list),
         gen_valve(valve_list)
     ];
-    return [copy_list, convert_list]; 
+    return [copy_list, convert_list];
 }

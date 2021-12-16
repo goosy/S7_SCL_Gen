@@ -1,4 +1,5 @@
 import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
+import { trace_info } from './trace_info.js'
 
 export const COMMON_NAME = 'common';
 export const AI_NAME = 'AI_Proc';
@@ -46,6 +47,18 @@ export const buildin_symbols = [
     ...VALVE_BUILDIN,
 ];
 const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
+
+
+function throw_symbol_error(message, curr_symbol, prev_symbol) {
+    const get_msg = symbol => {
+        const sInfo = trace_info.get_symbol(symbol);
+        return `${sInfo.CPU}:${sInfo.type} symbol:[${symbol.raw}] (文件"${sInfo.filename}"第${sInfo.doc_index}个文档)`;
+    };
+    const prev_msg = prev_symbol ? `之前：${get_msg(prev_symbol)}\n` : '';
+    const curr_msg = curr_symbol ? `当前：${get_msg(curr_symbol)}\n` : '';
+    console.error(`${message}\n${prev_msg}${curr_msg}`);
+    process.exit(10);
+}
 
 function parse(raw, default_type) {
     // todo 非 array 不处理
@@ -107,17 +120,23 @@ function check_buildin_and_modify(symbols_dict, symbol) {
 }
 
 function add_symbol(symbols_dict, symbol_raw, default_type) {
-    if (typeof default_type !== 'string') default_type = null; 
+    if (typeof default_type !== 'string') default_type = null;
     const symbol = parse(symbol_raw, default_type);
     // 非有效符号
-    if (symbol === symbol_raw) throw new TypeError("符号必须是一个数组");
+    if (symbol === symbol_raw) throw_symbol_error(`符号必须是一个数组！ 原始值:"${symbol_raw}"`);
 
     // 内置符号则应用新地址
     const is_buildin = check_buildin_and_modify(symbols_dict, symbol);
 
+    trace_info.push_symbol(symbol);
+    // 不允许重复
+    if (!is_buildin && symbols_dict[symbol.name]) {
+        throw_symbol_error(`符号"${symbol.name}"名称重复!`, symbol, symbols_dict[symbol.name]);
+    }
     // 新符号则保存
-    if (!is_buildin && symbols_dict[symbol.name]) throw new Error(`存在重复的符号名称 ${symbol.name}!\n${symbols_dict[symbol.name].raw}\n${symbol.raw}`);
-    if (!is_buildin) symbols_dict[symbol.name] = symbol;
+    if (!is_buildin) {
+        symbols_dict[symbol.name] = symbol;
+    }
     return symbol;
 }
 
@@ -200,7 +219,7 @@ export function build_symbols(CPU) {
                 symbol.block_bit = addr[1];
                 symbol.addr = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
             } else if (exist_bno[symbol.addr]) { // 其它情况下检查是否重复
-                throw new RangeError(`存在重复的地址 ${name} ${symbol.addr}!`)
+                throw new RangeError(`重复地址 ${name} ${symbol.addr}!`)
             } else { // 不重复则标识该地址已存在
                 exist_bno[symbol.addr] = true;
             }
@@ -208,8 +227,7 @@ export function build_symbols(CPU) {
             if (e instanceof TypeError) {
                 throw new TypeError(e.message, { cause: e });
             } else if (e instanceof IncHLError || e instanceof RangeError) {
-                const prev_symbol = list.find(sym => sym.block_no === symbol.block_no);
-                throw new Error(`${e.message}\n${prev_symbol.raw}\n${symbol.raw}`, { cause: e });
+                throw_symbol_error(`符号地址错误：${e.message}`, symbol, list.find(sym => sym.block_no === symbol.block_no));
             }
             console.log(e.message);
         }
