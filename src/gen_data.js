@@ -6,6 +6,7 @@ import { parse_symbols_PI, gen_PI, build_PI } from "./PI.js";
 import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
 import { parse_symbols_CP, build_CP, gen_CP } from './CP.js';
 import { parse_symbols_valve, gen_valve } from "./valve.js";
+import { parse_symbols_motor, build_motor, gen_motor } from "./motor.js";
 import { gen_common } from "./common.js";
 import {
     gen_symbol, build_symbols, add_symbols,
@@ -13,18 +14,20 @@ import {
     PI_NAME, PI_BUILDIN,
     MT_NAME, MT_BUILDIN,
     CP340_NAME, CP341_NAME, CP_BUILDIN,
-    VALVE_NAME, VALVE_BUILDIN
+    VALVE_NAME, VALVE_BUILDIN,
+    MOTOR_NAME, MOTOR_BUILDIN,
 } from './symbols.js';
 import { IntIncHL, S7IncHL, read_file } from './util.js';
 import { trace_info } from './trace_info.js'
 import { join } from 'path';
 
 // 目前支持的类型
-const TYPES = ['CPU', 'AI', 'PI', 'SC', 'modbusTCP', 'valve'];
+const TYPES = ['CPU', 'AI', 'PI', 'SC', 'modbusTCP', 'valve', 'motor'];
 
 const AI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
 const PI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
 const valve_list = []; // 阀门列表 {CPU， includes, list, options}[]
+const motor_list = []; // 电机列表 {CPU， includes, list, options}[]
 const MT_list = []; // modbusTCP 列表 {CPU， includes, list, options}[]
 const CP_list = []; // 串行通信列表 {CPU， includes, list, options}[]
 const symbols_list = []; // symbols 列表 {CPU， includes, list, options}[]
@@ -75,6 +78,7 @@ function add_conf(conf) {
     else if (type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC') doctype = 'SC';
     else if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
     else if (type.toLowerCase() === 'valve') doctype = 'valve';
+    else if (type.toLowerCase() === 'motor') doctype = 'motor';
     else {
         console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
         process.exit(1);
@@ -103,6 +107,7 @@ function add_conf(conf) {
     else if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN);
     else if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
     else if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
+    else if (doctype === 'motor') add_symbols(symbols_dict, MOTOR_BUILDIN);
     add_symbols(symbols_dict, symbols); // 加入前置符号
 
     if (doctype === 'CPU') {
@@ -123,6 +128,9 @@ function add_conf(conf) {
     } else if (doctype === 'valve') {
         parse_symbols_valve(area);
         valve_list.push(area);
+    } else if (doctype === 'motor') {
+        parse_symbols_motor(area);
+        motor_list.push(area);
     }
 }
 
@@ -169,6 +177,7 @@ export async function gen_data() {
     PI_list.forEach(build_PI);
     CP_list.forEach(build_CP);
     MT_list.forEach(build_MT);
+    motor_list.forEach(build_motor);
 
     // 第三遍扫描 生成最终待转换数据
     for (const common of common_list) {
@@ -204,6 +213,11 @@ export async function gen_data() {
         const output_dir = valve.CPU.output_dir;
         copy_list.push([`Valve_Proc/${VALVE_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, VALVE_NAME)}.scl`]);
     }
+    for (const motor of motor_list) {
+        motor.includes = await gen_includes(motor.includes);
+        const output_dir = motor.CPU.output_dir;
+        copy_list.push([`Motor_Proc/${MOTOR_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, MOTOR_NAME)}.scl`]);
+    }
 
     const convert_list = [
         gen_common(common_list),
@@ -212,7 +226,8 @@ export async function gen_data() {
         gen_PI(PI_list),
         gen_CP(CP_list),
         gen_MT(MT_list),
-        gen_valve(valve_list)
+        gen_valve(valve_list),
+        gen_motor(motor_list),
     ];
     return [copy_list, convert_list];
 }

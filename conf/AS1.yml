@@ -1,7 +1,7 @@
 # 配置文件采用YAML语法，可以多个文档集中在一个文件里，也可以分散在多个文件中。
 
 # 转换代码说明：
-# 1个文档只能定义1种类型，目前只实现了6种类型： CPU 文档和5种功能文档 —— AI PI SC modbusTCP Valve
+# 1个文档只能定义1种类型，目前只实现了7种类型： CPU文档和6种功能文档 —— AI PI SC modbusTCP Valve Motor
 # 配置文档必须有 type 和 CPU(name) 字段，2个字段都相同的配置文档只能有一个
 # CPU配置文件指示该CPU下共用的信息，比如输出文件夹，共用的符号和包含等
 # 其它功能文档都有 list 属性，指示该PLC功能的列表
@@ -17,10 +17,11 @@
 #   [CP341_Poll, FB341] CP341通信主处理函数
 #   [MT_Poll, FB344] modbusTCP通信主处理函数
 #   [Valve_Proc, FB513] 阀门主处理函数
+#   [Motor_Proc, FB513] 电机主处理函数
 # 但如果存在冲突，可以通过含 buildin 属性的对象，指示对内置符号更改，主要是更改地址和注释
 # 如果不是为了重名重地址的原因，不用更改定义值
 
-# 本示例文件有6个配置文档： CPU AI PI SC modbusTCP Valve
+# 本示例文件有7个配置文档： CPU AI PI SC modbusTCP Valve Motor
 
 --- # CPU文档开始
 # type: CPU 指示这是一个CPU空间，所有属于这个名称下的配置文档都共用相同的配置
@@ -338,8 +339,8 @@ symbols:
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
   # 以下为自定义符号
-  - [AI11-1, PIW672]
-  - [AI11-2, PIW674]
+  - [AI11-01, PIW672]
+  - [AI11-02, PIW674]
   - [DI01-01, I0.0]
   - [DI01-02, I+]
   - [DI01-03, I+]
@@ -355,8 +356,8 @@ symbols:
 
 list :
   # 没有阀位时，AI 可直接设置为断线值S7_AI_MIN_WORD
-  # 没有远程信号时，remote 必须分别置为 true
-  # 没有故障信号时，error 必须分别置为 false
+  # 没有远程信号时，remote可不赋值，其值默认为TRUE，如果要避免其它过程改变它，可以显式赋值为 true
+  # 没有故障信号时，error可不赋值，其值默认为FALSE，如果要避免其它过程改变它，可以显式赋值为 false
   # 以下常量可以直接使用
   # S7_ZERO := 0;
   # S7_SPAN := 27648;
@@ -368,7 +369,7 @@ list :
   # 阀门1
   - comment: A阀门
     DB: [MGV-1201A, DB111]
-    AI: AI11-1
+    AI: AI11-01
     CP: DI01-01
     OP: DI01-02
     error: DI01-03
@@ -379,7 +380,7 @@ list :
   # 阀门2
   - comment: B阀门
     DB: [MGV-1201B, DB+]
-    AI: S7_AI_MIN_WORD
+    AI: S7_AI_MIN_WORD # 没有AI过程值时，可省略或直接赋值断线值，省略时得保证PLC运行时不被改变
     CP: DI01-05
     OP: DI01-06
     error: FALSE
@@ -388,12 +389,82 @@ list :
 
   - comment: C阀门
     DB: [MGV-1201C, DB+]
-    AI: AI11-2
+    AI: AI11-02
     CP: DI01-07
     OP: DI01-08
-    error: FALSE
-    remote: TRUE
+    error: FALSE # 没有error过程值时，可省略或赋值FALSE，省略时得保证PLC运行时不被改变
+    remote: TRUE # 没有remote过程值时，可省略或赋值TRUE，省略时得保证PLC运行时不被改变
     close_action: DO02-02 # 只能关阀
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...
+---
+# 指示本配置为生成 Valve 代码
+type: Motor 
+CPU: AS1
+
+symbols:  
+  # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
+  # 系统已有2个内置符号，其内容由本程序自动生成：
+  # - [Motor_Proc, FB516]
+  # - [Motor_Loop, FC516]
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+  # 以下为自定义符号
+  - [DI03-01, I4.0]
+  - [DI03-02, I+]
+  - [DI03-03, I+]
+  - [DI03-04, I+]
+  - [DI03-05, I+]
+  - [DI03-06, I+]
+  - [DI03-07, I+]
+  - [DI03-08, I+]
+  - [DO03-01, Q4.0]
+  - [DO03-02, Q+]
+  - [DO03-03, Q+]
+  - [DO03-04, Q+]
+
+list :
+  # 没有远程信号时，enable可不赋值，其值默认为TRUE，如果要避免其它过程改变它，可以显式赋值为 true
+  # 没有远程信号时，remote可不赋值，其值默认为TRUE，如果要避免其它过程改变它，可以显式赋值为 true
+  # 没有故障信号时，error可不赋值，其值默认为FALSE，如果要避免其它过程改变它，可以显式赋值为 false
+
+  # 最全输入输出
+  - comment: A电机
+    DB: [PUMP-001A, DB91]          # DB块
+    enable: DI03-01                # 允许运行，（比如已蓄能、高压到位等）
+    run_state: DI03-02             # 运行状态
+    error: DI03-03                 # 电机故障输入
+    remote: DI03-04                # 电机远程就地操作模式
+    start_action: DO03-01          # 启电机线路
+    stop_action: DO03-02           # 停电机线路
+    estop_action: DO03-03          # 紧急停机线路
+    Time_Pulse: M0.5               # 计时脉冲（这里用周期存储器）
+    anti_interference_delay: 200   # 防误操作延时，值0表示不延时消颤
+    run_command: '"HMI-DB".run_cmd'
+    stop_command: '"HMI-DB".stop_cmd'
+    estop_command: '"HMI-DB".estop_cmd'
+
+  # 常用输入输出
+  - comment: B电机
+    DB: [PUMP-001B, DB+]
+    enable: DI03-05
+    run_state: DI03-06
+    error: DI03-07
+    remote: DI03-08
+    start_action: DO03-05
+    stop_action: DO03-06
+
+  # 最少输入输出
+  - comment: C电机
+    DB: [PUMP-001C, DB+]
+    # 没有error过程值时，可省略或赋值FALSE，省略时得保证PLC运行时不被改变
+    # 没有remote过程值时，可省略或赋值TRUE，省略时得保证PLC运行时不被改变
+    stop_action: DO03-08 # 只能关阀
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 

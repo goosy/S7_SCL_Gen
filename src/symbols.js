@@ -16,6 +16,8 @@ export const MT_LOOP_NAME = 'MT_Loop';
 export const MT_POLLS_NAME = 'MT_polls_DB';
 export const VALVE_NAME = `Valve_Proc`;
 export const VALVE_LOOP_NAME = 'Valve_Loop';
+export const MOTOR_NAME = `Motor_Proc`;
+export const MOTOR_LOOP_NAME = 'Motor_Loop';
 export const AI_BUILDIN = [
     [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
     [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
@@ -38,13 +40,19 @@ export const MT_BUILDIN = [
 ];
 export const VALVE_BUILDIN = [
     [VALVE_NAME, 'FB513', VALVE_NAME, 'VALVE main AI FB'],
-    [VALVE_LOOP_NAME, "FC513", VALVE_LOOP_NAME, 'main AI cyclic call function'],
+    [VALVE_LOOP_NAME, "FC513", VALVE_LOOP_NAME, 'main valve cyclic call function'],
+];
+export const MOTOR_BUILDIN = [
+    [MOTOR_NAME, 'FB514', MOTOR_NAME, 'MOTOR main AI FB'],
+    [MOTOR_LOOP_NAME, "FC514", MOTOR_LOOP_NAME, 'main motor cyclic call function'],
 ];
 export const buildin_symbols = [
     ...AI_BUILDIN,
+    ...PI_BUILDIN,
     ...CP_BUILDIN,
     ...MT_BUILDIN,
     ...VALVE_BUILDIN,
+    ...MOTOR_BUILDIN,
 ];
 const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
 

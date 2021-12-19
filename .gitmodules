@@ -13,3 +13,6 @@
 [submodule "PI_Proc"]
 	path = PI_Proc
 	url = git@github.com:goosy/PI_Proc.git
+[submodule "Motor_Proc"]
+	path = Motor_Proc
+	url = git@github.com:goosy/Motor_Proc.git

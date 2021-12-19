@@ -45,8 +45,7 @@ export function parse_symbols_MT(MT_area) {
   });
 }
 
-export function build_MT(conf) {
-  const { CPU, list } = conf;
+export function build_MT({ CPU, list }) {
   list.forEach(conn => { // 处理配置，形成完整数据
     const {
       conn_ID_list,
