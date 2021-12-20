@@ -1,8 +1,8 @@
-import { dump, loadAll } from "js-yaml";
+import { dump, load, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
 
 import { parse_symbols_AI, gen_AI } from "./AI.js";
-import { parse_symbols_PI, gen_PI, build_PI } from "./PI.js";
+import { parse_symbols_PI, build_PI, gen_PI } from "./PI.js";
 import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
 import { parse_symbols_CP, build_CP, gen_CP } from './CP.js';
 import { parse_symbols_valve, gen_valve } from "./valve.js";
@@ -56,7 +56,7 @@ function get_cpu(CPU_name) {
   }
 }
 
-async function parse_includes(files) {
+async function fetch_includes(files) {
   if (typeof files == 'string') return files;
   if (!Array.isArray(files)) return '';
   let code = '';
@@ -99,14 +99,26 @@ async function add_conf(conf) {
   trace_info.type = doctype;
   trace_info.push_doc();
 
+  function parse_symbols_in_SCL(SCL) {
+    const code = SCL.replace(/(^|\n)\s*\(\*(symbols:\s+[\s\S]*?)\*\)/g, (m, m1, yaml) => {
+      const symbols = load(yaml)['symbols']?.map(symbol => {
+        symbol[3] ??= 'symbol from files of includes';
+        return symbol;
+      })
+      add_symbols(symbols_dict, symbols ?? []);
+      return '';
+    })
+    return code;
+  }
+
   // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
   const options = conf.options ?? {};
   const list = conf.list ?? [];
   const symbols = conf.symbols ?? [];
   const symbols_dict = CPU.symbols_dict;
-  let includes = await parse_includes(conf.includes);
-  let loop_additional_code = await parse_includes(conf.loop_additional_code);
-
+  const loop_additional_code = await fetch_includes(conf.loop_additional_code);
+  // 加入 includes 符号
+  const includes = parse_symbols_in_SCL(await fetch_includes(conf.includes));
   // 加入内置符号
   if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN);
   else if (doctype === 'PI') add_symbols(symbols_dict, PI_BUILDIN);
@@ -114,8 +126,6 @@ async function add_conf(conf) {
   else if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
   else if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
   else if (doctype === 'motor') add_symbols(symbols_dict, MOTOR_BUILDIN);
-  // 加入includes符号
-  // @TODO
   // 加入前置符号
   add_symbols(symbols_dict, symbols);
 

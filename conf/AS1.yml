@@ -41,6 +41,14 @@ type: CPU
 # name 同时作为默认输出文件夹名称，可在 output_dir 中指定为其它输出文件夹
 name: AS1 # 用 CPU: AS1 效果一样
 
+# 额外包含代码
+# 数组值指示一组外部文件，文件内容将合并输出在 common.SCL 文件中
+# includes的内容需要用户自己写，生成程序不检查其中的错误。
+includes: 
+  - JSFlow.SCL  # 该文件包含 JS_flow 符号的定义与FB实现
+                # JS_flow 定义了流量接收DB块的数据结构，用于一诺的智能流量表。
+                # 可参照这个文件写其它接收块函数。
+
 # 符号定义
 # 每类功能文档都内置了一些函数，它们有默认的内置符号，这些符号通常不需配置里设置
 # 但如果存在地址冲突，可以在 symbols 属性下重写内置符号以更改地址和注释，名称不可变
@@ -56,13 +64,6 @@ symbols:  # CPU文档下定义其它文档需要共享的符号
   - [auto_data3, M+]
   - [auto_data4, M+]
   - [auto_data5, MD+, dint]
-  - [JS_flow, FB801] # JS_flow 符号，其代码需要手动增加，本例在 includes."JSFlow.SCL" 文件中
-
-# 包含内容
-# includes指示的文件名，其内容将合并输出在目标文件夹的 common.SCL 文件中
-# 所有includes列出的文件需要用户自己写，因为不通用。本例展示了 JS_flow FB块的写法，可参照这个写其它接收块函数。
-includes: 
-  - JSFlow.SCL # 该文件包含 JS_flow 符号的FB实现，JS_flow 定义了流量接收DB块的数据结构，用于一诺的智能流量表。
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 输出文件夹，默认为 <name>
