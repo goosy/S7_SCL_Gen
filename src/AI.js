@@ -21,7 +21,8 @@ END_DATA_BLOCK
 // 主循环调用
 FUNCTION "AI_Loop" : VOID{{#for AI_item in list}}
 {{#if AI_item.DB}}"{{AI_NAME}}"."{{AI_item.DB.name}}"(AI := {{AI_item.input.value}});  {{#endif}}// {{AI_item.comment}}{{#endfor AI_item}}
-
+{{#if loop_additional_code}}
+{{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -42,7 +43,7 @@ export function parse_symbols_AI(AI_area) {
 
 export function gen_AI(AI_list) {
     const rules = [];
-    AI_list.forEach(({ CPU, includes, list, options={} }) => {
+    AI_list.forEach(({ CPU, includes, loop_additional_code, list, options={} }) => {
         const { name, output_dir } = CPU;
         const { output_file = AI_LOOP_NAME } = options;
         rules.push({
@@ -51,6 +52,7 @@ export function gen_AI(AI_list) {
                 AI_NAME,
                 name,
                 includes,
+                loop_additional_code,
                 list,
             }
         })

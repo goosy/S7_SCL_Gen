@@ -11,7 +11,8 @@ FUNCTION "{{MOTOR_LOOP_NAME}}" : VOID
 {{motor.start_action.value}} := {{motor.DB.value}}.Run_Coil;{{#endif}}{{#if motor.stop_action}}
 {{motor.stop_action.value}} := {{motor.DB.value}}.Stop_Coil;{{#endif}}{{#if motor.estop_action}}
 {{motor.estop_action.value}} := {{motor.DB.value}}.EStop_Coil;{{#endif}}
-{{#endif}}{{#endfor motor}}
+{{#endif}}{{#endfor motor}}{{#if loop_additional_code}}
+{{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -76,13 +77,14 @@ export function build_motor({ list }) {
 
 export function gen_motor(motor_list) {
     const rules = [];
-    motor_list.forEach(({ CPU, includes, list }) => {
+    motor_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
         const { name, output_dir } = CPU;
         rules.push({
             "name": `${output_dir}/${MOTOR_LOOP_NAME}.scl`,
             "tags": {
                 name,
                 includes,
+                loop_additional_code,
                 MOTOR_NAME,
                 MOTOR_LOOP_NAME,
                 list,

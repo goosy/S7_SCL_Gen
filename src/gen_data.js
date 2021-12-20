@@ -56,6 +56,21 @@ function get_cpu(CPU_name) {
   }
 }
 
+async function parse_includes(files) {
+  if (typeof files == 'string') return files;
+  if (!Array.isArray(files)) return '';
+  let code = '';
+  try {
+    for (const file of files) {
+      code += await read_file(file) + '\n';
+    };
+  } catch (err) {
+    code = '';
+    log.error(err.message);
+  }
+  return code;
+}
+
 // 第一遍扫描，仅提取符号
 async function add_conf(conf) {
   // 检查重复
@@ -89,10 +104,8 @@ async function add_conf(conf) {
   const list = conf.list ?? [];
   const symbols = conf.symbols ?? [];
   const symbols_dict = CPU.symbols_dict;
-  let includes = '';
-  for (const file of conf.includes ?? []) {
-    includes += await read_file(file) + '\n';
-  };
+  let includes = await parse_includes(conf.includes);
+  let loop_additional_code = await parse_includes(conf.loop_additional_code);
 
   // 加入内置符号
   if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN);
@@ -106,7 +119,7 @@ async function add_conf(conf) {
   // 加入前置符号
   add_symbols(symbols_dict, symbols);
 
-  const area = { CPU, list, includes, options };
+  const area = { CPU, list, includes, loop_additional_code, options };
   if (doctype === 'CPU') {
     CPU.output_dir = conf?.options?.output_dir ?? CPU_name;
     common_list.push(area);

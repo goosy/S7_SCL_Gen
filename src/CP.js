@@ -79,7 +79,7 @@ export function build_CP(SC) {
 
 export function gen_CP(CP_list) {
     const rules = [];
-    CP_list.forEach(({ CPU, includes, list: modules, options }) => {
+    CP_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
         const { name, output_dir } = CPU;
         const { output_file = CP_LOOP_NAME } = options;
         rules.push({
@@ -88,6 +88,7 @@ export function gen_CP(CP_list) {
                 name,
                 modules,
                 includes,
+                loop_additional_code,
                 MB340_NAME: CP340_NAME,
                 MB341_NAME: CP341_NAME,
                 CP_LOOP_NAME,
@@ -143,6 +144,7 @@ FUNCTION "{{CP_LOOP_NAME}}" : VOID
     Laddr         := {{module.module_addr.block_no}},  // CP模块地址
     DATA          := "{{CP_POLLS_NAME}}".{{module.polls_name}});{{#for poll in module.polls}}
 {{poll.recv_code}}{{#endfor poll}}
-{{#endfor module}}
+{{#endfor module}}{{#if loop_additional_code}}
+{{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;

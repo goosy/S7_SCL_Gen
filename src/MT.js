@@ -89,7 +89,7 @@ export function build_MT({ CPU, list }) {
 
 export function gen_MT(MT_list) {
   const rules = [];
-  MT_list.forEach(({ CPU, includes, list: connections, options }) => {
+  MT_list.forEach(({ CPU, includes, loop_additional_code, list: connections, options }) => {
     const { name, output_dir } = CPU;
     const { output_file = 'MT_Loop' } = options;
     rules.push({
@@ -97,6 +97,7 @@ export function gen_MT(MT_list) {
       "tags": {
         name,
         includes,
+        loop_additional_code,
         connections,
         MT_NAME,
         MT_LOOP_NAME,
@@ -176,6 +177,7 @@ FUNCTION "{{MT_LOOP_NAME}}" : VOID
   DATA  := "{{MT_POLLS_NAME}}".{{conn.polls_name}},
   buff  := "{{MT_POLLS_NAME}}".buff);{{#for poll in conn.polls}}
 {{poll.recv_code}}{{#endfor poll}}
-{{#endfor conn}}
+{{#endfor conn}}{{#if loop_additional_code}}
+{{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;

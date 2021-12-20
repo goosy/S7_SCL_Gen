@@ -59,7 +59,7 @@ export function build_PI(PI) {
 
 export function gen_PI(PI_list) {
     const rules = [];
-    PI_list.forEach(({ CPU, includes, list: modules, options }) => {
+    PI_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
         const { name, output_dir } = CPU;
         const { output_file = PI_LOOP_NAME } = options;
         rules.push({
@@ -68,6 +68,7 @@ export function gen_PI(PI_list) {
                 name,
                 modules,
                 includes,
+                loop_additional_code,
                 PI_NAME,
                 PI_LOOP_NAME,
                 FM3502_CNT_NAME,
@@ -93,6 +94,7 @@ FUNCTION "{{PI_LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
 // {{no+1}}. {{module.type}} {{module.comment}}
 "{{PI_NAME}}"."{{module.DB.name}}"(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向"{{module.count_DB.name}}"
-{{#endfor module}}
+{{#endfor module}}{{#if loop_additional_code}}
+{{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;

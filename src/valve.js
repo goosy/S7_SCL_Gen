@@ -28,7 +28,8 @@ END_CONST
     remote := {{valve.remote.value}});{{#if valve.close_action}}
 {{valve.close_action.value}} := "{{valve.DB.name}}".close_action;{{#endif}}{{#if valve.open_action}}
 {{valve.open_action.value}} := "{{valve.DB.name}}".open_action;{{#endif}}
-{{#endif}}{{#endfor valve}}
+{{#endif}}{{#endfor valve}}{{#if loop_additional_code}}
+{{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -57,13 +58,14 @@ export function parse_symbols_valve(valve_area) {
 export function gen_valve(valve_list) {
     const rules = [];
 
-    valve_list.forEach(({ CPU, includes, list }) => {
+    valve_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
         const { name, output_dir } = CPU;
         rules.push({
             "name": `${output_dir}/${VALVE_LOOP_NAME}.scl`,
             "tags": {
                 name,
                 includes,
+                loop_additional_code,
                 VALVE_NAME,
                 VALVE_LOOP_NAME,
                 list,

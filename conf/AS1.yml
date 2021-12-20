@@ -1,27 +1,33 @@
 # 配置文件采用YAML语法，可以多个文档集中在一个文件里，也可以分散在多个文件中。
 
 # 转换代码说明：
-# 1个文档只能定义1种类型，目前只实现了7种类型： CPU文档和6种功能文档 —— AI PI SC modbusTCP Valve Motor
-# 配置文档必须有 type 和 CPU(name) 字段，2个字段都相同的配置文档只能有一个
-# CPU配置文件指示该CPU下共用的信息，比如输出文件夹，共用的符号和包含等
-# 其它功能文档都有 list 属性，指示该PLC功能的列表
-# 每种类型文档都可选的属性为：
+# 配置文档必须有 type 和 CPU(name) 属性，2个属性都相同的配置文档只能有一个
+# 目前只实现了7种类型文档——CPU文档加6种功能文档，由type属性值指示，大小写无关：
+#   - CPU          指示该CPU下共用的信息
+#                  比如输出文件夹，共用的符号和包含等
+#   - AI           模拟量转换
+#   - PI           脉冲量转换
+#   - SC           串行轮询，用在RS232 RS422 RS485通信中
+#                  (功能包括了 modbus RTU 轮询，故类型值也可以为 modbusRTU)
+#   - modbusTCP    modbus TCP 轮询，类型名称也可以用 MT
+#   - Valve        阀门控制
+#   - Motor        电机控制
+# 本文件示例了以上的文档
+#
+# 每种文档都可选的属性为：
 #   options     选项，比如 options.output_file 中改变输出文件名
-#   symbols     符号定义
-#   includes    输出文件内容中要附加指定文件内容
-
-# 程序内置了一些函数，它们有默认的内置符号，这些符号通常不需配置里设置：
-#   [AI_Proc, FB512] 模拟量主处理函数
-#   [PI_Proc, FB350] 计数与测量量主处理函数
-#   [CP340_Poll, FB340] CP340通信主处理函数
-#   [CP341_Poll, FB341] CP341通信主处理函数
-#   [MT_Poll, FB344] modbusTCP通信主处理函数
-#   [Valve_Proc, FB513] 阀门主处理函数
-#   [Motor_Proc, FB513] 电机主处理函数
-# 但如果存在冲突，可以通过含 buildin 属性的对象，指示对内置符号更改，主要是更改地址和注释
-# 如果不是为了重名重地址的原因，不用更改定义值
-
-# 本示例文件有7个配置文档： CPU AI PI SC modbusTCP Valve Motor
+#   symbols     符号定义，是多个符号的数组
+#               具体见本例在CPU文档中的注释
+#   includes    附加代码，会合并到SCL开始处
+#               值为字符串时为SCL代码，直接合并
+#               值为数组时为包含文件列表，会提取文件内容后合并
+#               代码和外部文件只能采用其中一种
+#               由于在YAML中书写SCL代码有很多局限，推荐用外部文件的方式
+# 6个功能文档都可选的属性为：
+#   list                  指示该PLC功能的列表
+#   loop_additional_code  附加代码，输出在主循环函数体内结尾处
+#                         值为字符串时为SCL代码，直接合并
+#                         值为数组时为包含文件列表，会提取文件内容后合并
 
 --- # CPU文档开始
 # type: CPU 指示这是一个CPU空间，所有属于这个名称下的配置文档都共用相同的配置
@@ -36,10 +42,13 @@ type: CPU
 name: AS1 # 用 CPU: AS1 效果一样
 
 # 符号定义
-# 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-# 所有FB、FC块的类型一定是它自身，所以这两种块的type可以省略
-# 注意，符号只能定义一次，如果要使用同一个符号，应当用 {ref: name} 对象去引用
+# 每类功能文档都内置了一些函数，它们有默认的内置符号，这些符号通常不需配置里设置
+# 但如果存在地址冲突，可以在 symbols 属性下重写内置符号以更改地址和注释，名称不可变
+# 一般情况下，如果不是为了重地址的原因，不必更改内置符号
+# 所有FB、FC、UDT块的类型一定是它自身，所以这两种块的type可以省略
+# 注意，符号只能定义一次，如果要使用同一个符号，应当用符号名称去引用
 symbols:  # CPU文档下定义其它文档需要共享的符号
+  # 每个符号是一个 [名称, 地址, 类型, 注释] 的数组
   - [vw1, MW1000] # 测试MW
   - [vd1, Md1000, Real] # 测试同地址 MD
   - [auto_data1, mw+] # 测试自动地址
@@ -70,12 +79,24 @@ IP: [192, 168, 10, 10]
 --- # AI文档开始
 # 指示本配置为生成 AI 代码
 type: AI
-CPU: AS1 
+CPU: AS1
+
+# 额外代码
+# 字符串形式指示直接SCL代码，内容将合并输出在 AI_Loop.SCL 文件中
+# includes的内容需要用户自己写，生成程序不检查其中的错误。
+includes: |
+  DATA_BLOCK "RecvDB"
+  STRUCT
+    Tank1 : WORD;
+  END_STRUCT;
+  BEGIN
+    Tank1 := W#16#02D0;
+  END_DATA_BLOCK
 
 symbols: 
   # AI文档已有2个内置符号，其内容由本程序自动生成：
-  #   AI_Proc FB512 : AI处理主FB
-  #   AI_Loop FC512 : 主循环调用FC，将这个加入OB1中
+  # - [AI_Proc, FB512]  模拟量主处理函数
+  # - [AI_Loop, FC512]  主循环调用FC，将这个加入OB1中
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
   - [AI_Proc, FB600] # 可省略，修改内置AI_Proc地址
   - [AI_Loop, FC600] # 可省略，当名称为AI_Loop，指示这是AI主调用FC块，这个要加入到OB中
@@ -123,12 +144,10 @@ name: AS1
 
 symbols:
   # 系统已有4个内置符号：
-  #   [PI_Proc FB350] : FM350-2 的modbus计数处理主FB
-  #   [PI_Loop FC350] : 表示主循环调用FC，将这个加入OB1中
-  #   [FM350-2, UDT350] : FM350-2 模块专用数据类型
+  # - [PI_Proc, FB350]    FM350-2 的modbus计数与测量处理主FB
+  # - [PI_Loop, FC350]    表示主循环调用FC，将这个加入OB1中
+  # - [FM350-2, UDT350]   FM350-2 模块专用数据类型
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
-
-  # 以下为自定义符号，这里是PI FM专用块和数据输出块
 
 list : # FM350-2 模块列表
   - comment: 模块1
@@ -144,19 +163,20 @@ list : # FM350-2 模块列表
 ...
 
 ---
-type: SC # 指示是CP340或CP341通信
+type: SC # 指示是CP340或CP341通信, 也可以用值 MB modbusRTU
 name: AS1
 
 includes: 
   - A101.SCL # 该文件包含 A101L 符号的FB实现
   - ZYGasFlow.SCL # 该文件包含 ZY_GAS_flow 符号的FB实现
+  - TankDB.SCL # AI_Alarm代码
 
 symbols:
   # 系统已有4个内置符号：
-  #   [CP340_Poll, FB345] : CP340 的modbus通信处理主FB
-  #   [CP341_Poll, FB346] : CP341 的modbus通信处理主FB 
-  #   [CP_Loop, FC345] : 表示主循环调用FC，将这个加入OB1中
-  #   [CP_polls_DB, DB880] : 将用于保存轮询命令数据
+  # - [CP340_Poll, FB340] CP340通信主处理函数
+  # - [CP341_Poll, FB341] CP341通信主处理函数
+  # - [CP_Loop, FC345]      表示主循环调用FC，将这个加入OB1中
+  # - [CP_polls_DB, DB880]  将用于保存轮询命令数据
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
   # 以下为自定义符号，这里是接收块
@@ -206,6 +226,10 @@ list : # CP 模块列表
         CRC: "44B4" 
         recv_DB: [GAS, DB841, ZY_GAS_flow] # GAS符号的定义处，可在定义前后任何位置引用。
         recv_start: 40
+
+# 额外代码，合并到CP_Loop FC块结尾
+loop_additional_code: 
+  - TankChain.SCL # 连锁逻辑的代码
 ...
 
 
@@ -218,17 +242,16 @@ type: modbusTCP # 也可以写为 "type: MT"
 CPU: AS1
 
 # 符号定义
-symbols: 
-  # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-  # 系统已有3个内置符号，其内容由本程序自动生成：
-  #   MT_Poll FB344 : modbusTCP 处理主 FB
-  #   MT_Loop FC344 : 主循环调用FC，将这个加入OB1中
-  #   MT_polls_DB DB881 : 用于保存轮询命令数据
+symbols:
+  # 系统已有3个内置符号，其内容自动生成：
+  # - [MT_Poll, FB344]      modbusTCP通信主处理函数
+  # - [MT_Loop, FC344]      主循环调用FC，将这个加入OB1中
+  # - [MT_polls_DB, DB881]  用于保存轮询命令数据
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
-  - [MT_polls_DB, DB901] # 修改内置DB：MT_polls_DB 地址
+  - [MT_polls_DB, DB901] # 修改内置DB块 MT_polls_DB 的地址
 
   # 以下为自定义符号
-  # - [JS_flow, FB801]  # JS_Flow 已在 MB 文档中定义，这里不要重复定义
+  # - [JS_flow, FB801]  # JS_Flow 已在 CPU 文档中定义，这里禁止重复定义
 
 list : # modbus TCP 连接列表
   # 第1个连接，
@@ -325,11 +348,10 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 type: Valve 
 CPU: AS1
 
-symbols:  
-  # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
-  # 系统已有2个内置符号，其内容由本程序自动生成：
-  # - [Valve_Proc, FB516]
-  # - [Valve_Loop, FC516]
+symbols:
+  # 系统已有2个内置符号，其内容自动生成：
+  # - [Valve_Proc, FB513]   阀门主处理函数块
+  # - [Valve_Loop, FC513]   主调用函数
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
   # 以下为自定义符号
@@ -403,10 +425,9 @@ type: Motor
 CPU: AS1
 
 symbols:  
-  # 所有的符号项目，是一个 [名称, 地址， 类型， 注释] 的数组
   # 系统已有2个内置符号，其内容由本程序自动生成：
-  # - [Motor_Proc, FB516]
-  # - [Motor_Loop, FC516]
+  # - [Motor_Proc, FB513]   电机主处理函数
+  # - [Motor_Loop, FC513]   主调用函数
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
   # 以下为自定义符号
