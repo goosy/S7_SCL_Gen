@@ -1,6 +1,6 @@
 {
   "name": "s7-scl-gen",
-  "version": "0.5.3",
+  "version": "0.5.5",
   "type": "module",
   "description": "S7 PLC SCL 代码自动生成",
   "main": "/src/index.js",
@@ -20,7 +20,8 @@
   "dependencies": {
     "gooconverter": "^0.3.5",
     "iconv-lite": "^0.6.3",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "mri": "^1.2.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.0",

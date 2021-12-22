@@ -154,7 +154,7 @@ async function add_conf(conf) {
   }
 }
 
-export async function gen_data() {
+export async function gen_data({ output_zyml, noconvert }) {
   const work_path = process.cwd();
 
   // 第一遍扫描 加载配置\提取符号\建立诊断信息
@@ -178,18 +178,25 @@ export async function gen_data() {
     console.log(e);
   }
 
+  // 输出无注释配置
+  if (output_zyml) {
+    console.log('output the uncommented configuration file:');
+    for (const [name, CPU] of Object.entries(CPUs)) {
+      // 生成无注释的配置
+      const yaml = TYPES.reduce(
+        (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type]}...` : docs,
+        `# CPU ${name} configuration`
+      );
+      const filename = `${join(work_path, name)}.zyml`;
+      await writeFile(filename, yaml);
+      console.log(`\t${filename}`);
+    }
+  }
+
   // 第二遍扫描 补全数据
-  console.log('output the no comment configuration file:');
-  for (const [name, CPU] of Object.entries(CPUs)) {
-    // 生成无注释的配置
-    const yaml = TYPES.reduce(
-      (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type]}...` : docs,
-      `# CPU ${name} configuration`
-    );
-    const filename = `${join(work_path, name)}.zyml`;
-    await writeFile(filename, yaml);
-    console.log(`\t${filename}`);
-    // 检查并补全符号表
+
+  // 检查并补全符号表
+  for (const CPU of Object.values(CPUs)) {
     const symbol_conf = build_symbols(CPU);
     symbols_list.push(symbol_conf)
   }
@@ -199,6 +206,9 @@ export async function gen_data() {
   CP_list.forEach(build_CP);
   MT_list.forEach(build_MT);
   motor_list.forEach(build_motor);
+
+  // 校验完毕，由 noconvert 变量决定是否输出
+  if (noconvert) return [[], []];
 
   // 第三遍扫描 生成最终待转换数据
   for (const AI of AI_list) {

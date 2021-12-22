@@ -17,20 +17,23 @@ async function convert2file(
   };
 }
 
-export async function convert() {
+export async function convert(options) {
   const work_path = process.cwd();
   console.log(`${work_path}:`);
-  const [copy_list, convert_list] = await gen_data();
-  console.log("copy file to:");
-  for (const [src, dst, desc] of copy_list) {
-    await copy_file(src, dst);
-    console.log(`\t${desc}`)
+  const [copy_list, convert_list] = await gen_data(options);
+  if (copy_list?.length) {
+    console.log("copy file to:");
+    for (const [src, dst, desc] of copy_list) {
+      await copy_file(src, dst);
+      console.log(`\t${desc}`)
+    }
   }
-
-  const OPT = { encoding: 'gbk', lineEndings: "windows" };
-  let output_dir = work_path;
-  console.log("generate file:");
-  for (const item of convert_list) {
-    await convert2file(item, output_dir, OPT);
+  if (convert_list?.length) {
+    const OPT = { encoding: 'gbk', lineEndings: "windows" };
+    let output_dir = work_path;
+    console.log("generate file:");
+    for (const item of convert_list) {
+      await convert2file(item, output_dir, OPT);
+    }
   }
 }
