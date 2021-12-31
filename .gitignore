@@ -53,6 +53,9 @@ typings/
 
 # Yarn Integrity file
 .yarn-integrity
+yarn.lock
+.yarn/
+.yarnrc.yml
 
 # dotenv environment variables file
 .env
@@ -65,7 +68,6 @@ typings/
 
 # package
 package-lock.json
-yarn.lock
 
 # production
 build-include/
@@ -75,3 +77,4 @@ conf/*.scl
 dist/
 lib/
 .vscode/
+.editorconfig
