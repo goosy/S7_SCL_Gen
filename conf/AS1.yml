@@ -419,7 +419,7 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 ...
 
 ---
-# 指示本配置为生成 Valve 代码
+# 指示本配置为生成 Motor 代码
 type: Motor
 CPU: AS1
 
@@ -452,14 +452,14 @@ list :
   - comment: A电机
     DB: [PUMP-001A, DB91]          # DB块
     enable: DI03-01                # 允许运行，（比如已蓄能、高压到位等）
-    run_state: DI03-02             # 运行状态
+    run: DI03-02             # 运行状态
     error: DI03-03                 # 电机故障输入
     remote: DI03-04                # 电机远程就地操作模式
+    timer_pulse: M0.5              # 计时脉冲，这里用周期存储器输入1HZ脉冲
+    over_time: 1000                # 操作返回延时，超时后撤回信号并指示启停失败
     start_action: DO03-01          # 启电机线路
     stop_action: DO03-02           # 停电机线路
     estop_action: DO03-03          # 紧急停机线路
-    Time_Pulse: M0.5               # 计时脉冲（这里用周期存储器）
-    anti_interference_delay: 200   # 防误操作延时，值0表示不延时消颤
     run_command: '"HMI-DB".run_cmd'
     stop_command: '"HMI-DB".stop_cmd'
     estop_command: '"HMI-DB".estop_cmd'
@@ -468,7 +468,7 @@ list :
   - comment: B电机
     DB: [PUMP-001B, DB+]
     enable: DI03-05
-    run_state: DI03-06
+    run: DI03-06
     error: DI03-07
     remote: DI03-08
     start_action: DO03-05
@@ -477,9 +477,9 @@ list :
   # 最少输入输出
   - comment: C电机
     DB: [PUMP-001C, DB+]
-    # 没有error过程值时，可省略或赋值FALSE，省略时得保证PLC运行时不被改变
-    # 没有remote过程值时，可省略或赋值TRUE，省略时得保证PLC运行时不被改变
-    stop_action: DO03-08 # 只能关阀
+    # 省略 error(默认FALSE) remote(默认TRUE) 参数时，必须保证PLC运行时不被改变
+    stateless: true       # 指示没有运行状态
+    stop_action: DO03-08  # 只能关阀
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 

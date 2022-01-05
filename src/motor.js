@@ -8,14 +8,13 @@ FUNCTION "{{MOTOR_LOOP_NAME}}" : VOID
 {{#for motor in list}}
 // {{motor.comment}}{{#if motor.DB}}
 "{{MOTOR_NAME}}".{{motor.DB.value}}({{motor.input_paras}});{{#if motor.start_action}}
-{{motor.start_action.value}} := {{motor.DB.value}}.Run_Coil;{{#endif}}{{#if motor.stop_action}}
-{{motor.stop_action.value}} := {{motor.DB.value}}.Stop_Coil;{{#endif}}{{#if motor.estop_action}}
-{{motor.estop_action.value}} := {{motor.DB.value}}.EStop_Coil;{{#endif}}
+{{motor.start_action.value}} := {{motor.DB.value}}.start_coil;{{#endif}}{{#if motor.stop_action}}
+{{motor.stop_action.value}} := {{motor.DB.value}}.stop_coil;{{#endif}}{{#if motor.estop_action}}
+{{motor.estop_action.value}} := {{motor.DB.value}}.E_stop_coil;{{#endif}}
 {{#endif}}{{#endfor motor}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
-
 
 /**
  * 第一遍扫描 提取符号
@@ -27,15 +26,17 @@ export function parse_symbols_motor(motor_area) {
     const symbols_dict = motor_area.CPU.symbols_dict;
     motor_area.list.forEach(motor => {
         if (!motor.DB) return; // 空块不处理
-        make_prop_symbolic(motor, 'enable', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'run_state', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'remote', symbols_dict, 'BOOL');
+        make_prop_symbolic(motor, 'enable', symbols_dict, 'BOOL');
+        make_prop_symbolic(motor, 'run', symbols_dict, 'BOOL');
+        make_prop_symbolic(motor, 'stateless', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'error', symbols_dict, 'BOOL');
+        make_prop_symbolic(motor, 'timer_pulse', symbols_dict, 'BOOL');
+        motor.start_action ??= motor.run_action; //容错属性
         make_prop_symbolic(motor, 'start_action', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'stop_action', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'estop_action', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'time_pulse', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'anti_interference_delay', symbols_dict, 'BOOL');
+        make_prop_symbolic(motor, 'over_time', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'DB', symbols_dict, MOTOR_NAME);
     });
 }
@@ -43,35 +44,40 @@ export function parse_symbols_motor(motor_area) {
 export function build_motor({ list }) {
     list.forEach(motor => { // 处理配置，形成完整数据
         const {
-            enable,
             remote,
+            enable,
+            run,
+            stateless,
             error,
-            run_state,
-            anti_interference_delay,
-            time_pulse,
+            timer_pulse,
+            over_time,
         } = motor;
         const input_paras = [];
 
-        if (enable) {
-            input_paras.push(`  EN_Run     := ${enable.value}`);
-        }
-        if (run_state) {
-            input_paras.push(`  Run_State  := ${run_state.value}`);
-        }
         if (remote) {
-            input_paras.push(`  Remote     := ${remote.value}`);
+            input_paras.push(`remote      := ${remote.value}`);
+        }
+        if (enable) {
+            input_paras.push(`enable_run  := ${enable.value}`);
+        }
+        if (run) {
+            input_paras.push(`run         := ${run.value}`);
+        }
+        if (stateless) {
+            input_paras.push(`stateless   := ${stateless.value}`);
         }
         if (error) {
-            input_paras.push(`  Error      := ${error.value}`);
+            input_paras.push(`error       := ${error.value}`);
         }
-        if (anti_interference_delay) {
-            input_paras.push(`  AID_Time   := ${anti_interference_delay.value}`);
+        if (timer_pulse) {
+            input_paras.push(`timer_pulse := ${timer_pulse.value}`);
         }
-        if (time_pulse) {
-            input_paras.push(`  Time_Pulse := ${time_pulse.value}`);
+        if (over_time) {
+            input_paras.push(`over_time   := ${over_time.value}`);
         }
-
-        motor.input_paras = input_paras.length ? '\n' + input_paras.join(',\n') : '';
+        // 只有一项时让SCL字串紧凑
+        input_paras[0] = input_paras.length == 1 ? input_paras[0].replace(/ +/g, ' ') : '\n             ' + input_paras[0];
+        motor.input_paras = input_paras.join(',\n             ');
     });
 }
 
