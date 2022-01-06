@@ -1,6 +1,6 @@
 {
   "name": "s7-scl-gen",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "type": "module",
   "description": "S7 PLC SCL 代码自动生成",
   "main": "/src/index.js",

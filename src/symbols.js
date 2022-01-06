@@ -9,8 +9,8 @@ export const PI_LOOP_NAME = 'PI_Loop';
 export const FM3502_CNT_NAME = 'FM350-2';
 export const CP340_NAME = 'CP340_Poll';
 export const CP341_NAME = 'CP341_Poll';
-export const CP_LOOP_NAME = 'CP_Loop';
-export const CP_POLLS_NAME = 'CP_polls_DB';
+export const SC_LOOP_NAME = 'SC_Loop';
+export const SC_POLLS_NAME = 'SC_polls_DB';
 export const MT_NAME = 'MT_Poll';
 export const MT_LOOP_NAME = 'MT_Loop';
 export const MT_POLLS_NAME = 'MT_polls_DB';
@@ -30,8 +30,8 @@ export const PI_BUILDIN = [
 export const CP_BUILDIN = [
     [CP340_NAME, 'FB340', CP340_NAME, 'CP340 SC communicate main process'],
     [CP341_NAME, 'FB341', CP341_NAME, 'CP341 SC communicate main process'],
-    [CP_LOOP_NAME, "FC341", CP_LOOP_NAME, 'main SC cyclic call function'],
-    [CP_POLLS_NAME, "DB880", CP_POLLS_NAME, 'SC polls data'],
+    [SC_LOOP_NAME, "FC341", SC_LOOP_NAME, 'main SC cyclic call function'],
+    [SC_POLLS_NAME, "DB880", SC_POLLS_NAME, 'SC polls data'],
 ];
 export const MT_BUILDIN = [
     [MT_NAME, 'FB344', MT_NAME, 'modbusTCP OUC main process'],

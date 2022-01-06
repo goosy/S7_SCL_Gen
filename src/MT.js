@@ -82,7 +82,7 @@ export function build_MT({ CPU, list }) {
       poll.function = fixed_hex(poll.function, 2);
       poll.started_addr = fixed_hex(poll.started_addr, 4);
       poll.length = fixed_hex(poll.length, 4);
-      poll.recv_code = `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();`;
+      poll.recv_code = poll.recv_DB.type_name == 'FB' ? `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();\n` : '';
     });
   });
 }
@@ -175,8 +175,8 @@ FUNCTION "{{MT_LOOP_NAME}}" : VOID
 "{{MT_NAME}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
   DATA  := "{{MT_POLLS_NAME}}".{{conn.polls_name}},
-  buff  := "{{MT_POLLS_NAME}}".buff);{{#for poll in conn.polls}}
-{{poll.recv_code}}{{#endfor poll}}
+  buff  := "{{MT_POLLS_NAME}}".buff);
+{{#for poll in conn.polls}}{{poll.recv_code}}{{#endfor poll}}
 {{#endfor conn}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION

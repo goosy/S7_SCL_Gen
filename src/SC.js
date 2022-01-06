@@ -5,7 +5,7 @@
  */
 
 import { fixed_hex } from "./util.js";
-import { make_prop_symbolic, CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME } from './symbols.js';
+import { make_prop_symbolic, CP340_NAME, CP341_NAME, SC_LOOP_NAME, SC_POLLS_NAME } from './symbols.js';
 
 /**
  * @typedef {object} S7Item
@@ -21,7 +21,7 @@ import { make_prop_symbolic, CP340_NAME, CP341_NAME, CP_LOOP_NAME, CP_POLLS_NAME
  * @param {S7Item} SC_area
  * @returns {void}
  */
-export function parse_symbols_CP(SC_area) {
+export function parse_symbols_SC(SC_area) {
     const symbols_dict = SC_area.CPU.symbols_dict;
     const options = SC_area.options;
     let index = 0;
@@ -52,7 +52,7 @@ export function parse_symbols_CP(SC_area) {
  * @param {S7Item} SC
  * @returns {void}
  */
-export function build_CP(SC) {
+export function build_SC(SC) {
     const { CPU, list } = SC;
     list.forEach(module => { // 处理配置，形成完整数据
         if (Array.isArray(module.module_addr)) throw Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
@@ -72,16 +72,16 @@ export function build_CP(SC) {
                 deivce_ID:${poll.deivce_ID}
                 send_data:${poll.send_data}`);
             }
-            poll.recv_code = `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();`;
+            poll.recv_code = poll.recv_DB.type_name == 'FB' ? `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();\n` : '';
         });
     });
 }
 
-export function gen_CP(CP_list) {
+export function gen_SC(SC_list) {
     const rules = [];
-    CP_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
+    SC_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
         const { name, output_dir } = CPU;
-        const { output_file = CP_LOOP_NAME } = options;
+        const { output_file = SC_LOOP_NAME } = options;
         rules.push({
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
@@ -91,8 +91,8 @@ export function gen_CP(CP_list) {
                 loop_additional_code,
                 MB340_NAME: CP340_NAME,
                 MB341_NAME: CP341_NAME,
-                CP_LOOP_NAME,
-                CP_POLLS_NAME,
+                CP_LOOP_NAME: SC_LOOP_NAME,
+                CP_POLLS_NAME: SC_POLLS_NAME,
             }
         })
     });
@@ -142,8 +142,8 @@ FUNCTION "{{CP_LOOP_NAME}}" : VOID
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
     Laddr         := {{module.module_addr.block_no}},  // CP模块地址
-    DATA          := "{{CP_POLLS_NAME}}".{{module.polls_name}});{{#for poll in module.polls}}
-{{poll.recv_code}}{{#endfor poll}}
+    DATA          := "{{CP_POLLS_NAME}}".{{module.polls_name}});
+{{#for poll in module.polls}}{{poll.recv_code}}{{#endfor poll}}
 {{#endfor module}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION

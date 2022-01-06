@@ -4,7 +4,7 @@ import { readdir, writeFile } from 'fs/promises';
 import { parse_symbols_AI, gen_AI } from "./AI.js";
 import { parse_symbols_PI, build_PI, gen_PI } from "./PI.js";
 import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
-import { parse_symbols_CP, build_CP, gen_CP } from './CP.js';
+import { parse_symbols_SC, build_SC, gen_SC } from './SC.js';
 import { parse_symbols_valve, gen_valve } from "./valve.js";
 import { parse_symbols_motor, build_motor, gen_motor } from "./motor.js";
 import { gen_common } from "./common.js";
@@ -29,7 +29,7 @@ const PI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
 const valve_list = []; // 阀门列表 {CPU， includes, list, options}[]
 const motor_list = []; // 电机列表 {CPU， includes, list, options}[]
 const MT_list = []; // modbusTCP 列表 {CPU， includes, list, options}[]
-const CP_list = []; // 串行通信列表 {CPU， includes, list, options}[]
+const SC_list = []; // 串行通信列表 {CPU， includes, list, options}[]
 const symbols_list = []; // symbols 列表 {CPU， includes, list, options}[]
 const common_list = []; // 通用列表 {CPU， includes, list, options}[]
 
@@ -140,8 +140,8 @@ async function add_conf(conf) {
     parse_symbols_PI(area);
     PI_list.push(area);
   } else if (doctype === 'SC') {
-    parse_symbols_CP(area);
-    CP_list.push(area);
+    parse_symbols_SC(area);
+    SC_list.push(area);
   } else if (doctype === 'modbusTCP') {
     parse_symbols_MT(area);
     MT_list.push(area);
@@ -203,7 +203,7 @@ export async function gen_data({ output_zyml, noconvert }) {
 
   const copy_list = [];
   PI_list.forEach(build_PI);
-  CP_list.forEach(build_CP);
+  SC_list.forEach(build_SC);
   MT_list.forEach(build_MT);
   motor_list.forEach(build_motor);
 
@@ -219,12 +219,12 @@ export async function gen_data({ output_zyml, noconvert }) {
     const output_dir = PI.CPU.output_dir;
     copy_list.push([`PI_Proc/${PI_NAME}.scl`, `${output_dir}/${PI_NAME}.scl`, `${join(work_path, output_dir, PI_NAME)}.scl`]);
   }
-  for (const CP of CP_list) {
-    const output_dir = CP.CPU.output_dir;
-    if (CP.options.has_CP340) {
+  for (const SC of SC_list) {
+    const output_dir = SC.CPU.output_dir;
+    if (SC.options.has_CP340) {
       copy_list.push([`CP_Poll/${CP340_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, CP340_NAME)}.scl`]);
     }
-    if (CP.options.has_CP341) {
+    if (SC.options.has_CP341) {
       copy_list.push([`CP_Poll/${CP341_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, CP341_NAME)}.scl`]);
     }
   }
@@ -246,7 +246,7 @@ export async function gen_data({ output_zyml, noconvert }) {
     gen_symbol(symbols_list),
     gen_AI(AI_list),
     gen_PI(PI_list),
-    gen_CP(CP_list),
+    gen_SC(SC_list),
     gen_MT(MT_list),
     gen_valve(valve_list),
     gen_motor(motor_list),
