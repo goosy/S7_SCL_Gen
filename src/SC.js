@@ -59,11 +59,13 @@ export function build_SC(SC) {
         module.polls_name ??= "polls_" + CPU.poll_list.push_new();
         module.polls.forEach(poll => {
             if (poll.deivce_ID && !poll.send_data) {
+                if (typeof poll.CRC !== "string" || typeof poll.CRC.length > 4) throw new TypeError(`"CRC:${poll.CRC}" modbus CRC must be a string`);
                 poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
                 poll.function = fixed_hex(poll.function, 2);
                 poll.started_addr = fixed_hex(poll.started_addr, 4);
                 poll.length = fixed_hex(poll.length, 4);
             } else if (!poll.deivce_ID && poll.send_data) {
+                if (typeof poll.send_data !== "string") throw new TypeError(`"send_data:${poll.send_data}" modbus send_data must be a string`);
                 const send_data = poll.send_data.trim().split(/ +/);
                 poll.send_data = send_data.map(byte => fixed_hex(byte, 2));
                 poll.send_length = fixed_hex(send_data.length, 2);

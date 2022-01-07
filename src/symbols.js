@@ -235,7 +235,11 @@ export function build_symbols(CPU) {
             if (e instanceof TypeError) {
                 throw new TypeError(e.message, { cause: e });
             } else if (e instanceof IncHLError || e instanceof RangeError) {
-                throw_symbol_error(`符号地址错误：${e.message}`, symbol, list.find(sym => sym.block_no === symbol.block_no));
+                throw_symbol_error(
+                    `符号地址错误: ${e.message}`,
+                    symbol,
+                    list.find(sym => sym.block_no === symbol.block_no && sym.block_name === symbol.block_name)
+                );
             }
             console.log(e.message);
         }

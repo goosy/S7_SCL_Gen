@@ -163,7 +163,8 @@ export function fixed_hex(num, length) {
 
 
 export function lazyassign(obj, prop, lazyvalue, options) {
-    const { writable = false, enumerable = false, configurable = false } = options ?? {};
+    // must enumerable default
+    const { writable = false, enumerable = true, configurable = false } = options ?? {};
     if (typeof lazyvalue === 'function') {
         Object.defineProperty(obj, prop, {
             get() {

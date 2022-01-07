@@ -161,7 +161,7 @@ export async function gen_data({ output_zyml, noconvert }) {
   try {
     console.log('readding file:');
     for (const file of await readdir(work_path)) {
-      if (file.endsWith('.yml')) {
+      if (/.*ya?ml$/i.test(file)) {
         const filename = join(work_path, file);
         trace_info.filename = filename;
         trace_info.doc_index = 0;
