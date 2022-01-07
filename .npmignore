@@ -2,8 +2,13 @@
 src/
 node_modules/
 
-# test & production
+# pack
+.yarn/
+
+# editor
 .vscode/
+
+# test & production
 dist/
 public/
 test/

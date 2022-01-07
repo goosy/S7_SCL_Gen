@@ -7,6 +7,7 @@ import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
 import { parse_symbols_SC, build_SC, gen_SC } from './SC.js';
 import { parse_symbols_valve, gen_valve } from "./valve.js";
 import { parse_symbols_motor, build_motor, gen_motor } from "./motor.js";
+import { parse_symbols_alarm, build_alarm, gen_alarm } from "./alarm.js";
 import { gen_common } from "./common.js";
 import {
   gen_symbol, build_symbols, add_symbols,
@@ -16,18 +17,20 @@ import {
   CP340_NAME, CP341_NAME, CP_BUILDIN,
   VALVE_NAME, VALVE_BUILDIN,
   MOTOR_NAME, MOTOR_BUILDIN,
+  ALARM_BUILDIN,
 } from './symbols.js';
 import { IntIncHL, S7IncHL, read_file } from './util.js';
 import { trace_info } from './trace_info.js'
 import { join } from 'path';
 
 // 目前支持的类型
-const TYPES = ['CPU', 'AI', 'PI', 'SC', 'modbusTCP', 'valve', 'motor'];
+const TYPES = ['CPU', 'AI', 'PI', 'SC', 'modbusTCP', 'valve', 'motor', 'alarm'];
 
 const AI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
 const PI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
 const valve_list = []; // 阀门列表 {CPU， includes, list, options}[]
 const motor_list = []; // 电机列表 {CPU， includes, list, options}[]
+const alarm_list = []; // 报警列表 {CPU， includes, list, options}[]
 const MT_list = []; // modbusTCP 列表 {CPU， includes, list, options}[]
 const SC_list = []; // 串行通信列表 {CPU， includes, list, options}[]
 const symbols_list = []; // symbols 列表 {CPU， includes, list, options}[]
@@ -39,17 +42,17 @@ function get_cpu(CPU_name) {
   return CPUs[CPU_name] ??= {
     name: CPU_name,
     conn_ID_list: new IntIncHL(16), // 已用连接ID列表
-    DB_list: new IntIncHL(100), // 已用数据块列表
-    FB_list: new IntIncHL(256), // 已用函数块列表
-    FC_list: new IntIncHL(256), // 已用函数列表
-    UDT_list: new IntIncHL(256), // 已用自定义类型列表
-    poll_list: new IntIncHL(1), // 已用查询号
-    MA_list: new S7IncHL([0, 0]), // 已用M地址
-    IA_list: new S7IncHL([0, 0]), // 已用I地址
-    QA_list: new S7IncHL([0, 0]), // 已用I地址
-    symbols_dict: {}, // 符号表
-    conn_host_list: {}, // 已用的连接地址列表
-    output_dir: CPU_name, // 输出文件夹
+    DB_list: new IntIncHL(100),     // 已用数据块列表
+    FB_list: new IntIncHL(256),     // 已用函数块列表
+    FC_list: new IntIncHL(256),     // 已用函数列表
+    UDT_list: new IntIncHL(256),    // 已用自定义类型列表
+    poll_list: new IntIncHL(1),     // 已用查询号
+    MA_list: new S7IncHL([0, 0]),   // 已用M地址
+    IA_list: new S7IncHL([0, 0]),   // 已用I地址
+    QA_list: new S7IncHL([0, 0]),   // 已用I地址
+    symbols_dict: {},               // 符号表
+    conn_host_list: {},             // 已用的连接地址列表
+    output_dir: CPU_name,           // 输出文件夹
     push_conf(type, conf) {
       this[type] = conf;
     }
@@ -75,9 +78,9 @@ async function fetch_includes(files) {
 async function add_conf(conf) {
   // 检查重复
   const { name, CPU: CPU_name = name, type } = conf;
-  if (typeof CPU_name !== 'string') throw new SyntaxError(' name(CPU) 必须提供！');
+  if (typeof CPU_name !== 'string') throw new SyntaxError(' name(CPU) 必须提供!');
   trace_info.CPU = CPU_name;
-  if (typeof type !== 'string') throw new SyntaxError(' type 必须提供！');
+  if (typeof type !== 'string') throw new SyntaxError(' type 必须提供!');
   let doctype = '';
   if (type.toUpperCase() === 'AI') doctype = 'AI';
   else if (type.toUpperCase() === 'PI') doctype = 'PI';
@@ -86,6 +89,7 @@ async function add_conf(conf) {
   else if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
   else if (type.toLowerCase() === 'valve') doctype = 'valve';
   else if (type.toLowerCase() === 'motor') doctype = 'motor';
+  else if (type.toLowerCase() === 'alarm') doctype = 'alarm';
   else {
     console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
     process.exit(1);
@@ -126,6 +130,7 @@ async function add_conf(conf) {
   else if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
   else if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
   else if (doctype === 'motor') add_symbols(symbols_dict, MOTOR_BUILDIN);
+  else if (doctype === 'alarm') add_symbols(symbols_dict, ALARM_BUILDIN);
   // 加入前置符号
   add_symbols(symbols_dict, symbols);
 
@@ -151,6 +156,9 @@ async function add_conf(conf) {
   } else if (doctype === 'motor') {
     parse_symbols_motor(area);
     motor_list.push(area);
+  } else if (doctype === 'alarm') {
+    parse_symbols_alarm(area);
+    alarm_list.push(area);
   }
 }
 
@@ -206,6 +214,7 @@ export async function gen_data({ output_zyml, noconvert }) {
   SC_list.forEach(build_SC);
   MT_list.forEach(build_MT);
   motor_list.forEach(build_motor);
+  alarm_list.forEach(build_alarm);
 
   // 校验完毕，由 noconvert 变量决定是否输出
   if (noconvert) return [[], []];
@@ -250,6 +259,7 @@ export async function gen_data({ output_zyml, noconvert }) {
     gen_MT(MT_list),
     gen_valve(valve_list),
     gen_motor(motor_list),
+    gen_alarm(alarm_list),
   ];
   return [copy_list, convert_list];
 }

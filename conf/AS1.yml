@@ -2,7 +2,7 @@
 
 # 转换代码说明：
 # 配置文档必须有 type 和 CPU(name) 属性，2个属性都相同的配置文档只能有一个
-# 目前只实现了7种类型文档——CPU文档加6种功能文档，由type属性值指示，大小写无关：
+# 目前只实现了8种类型文档——CPU文档加7种功能文档，由type属性值指示，大小写无关：
 #   - CPU          指示该CPU下共用的信息
 #                  比如输出文件夹，共用的符号和包含等
 #   - AI           模拟量转换
@@ -12,6 +12,7 @@
 #   - modbusTCP    modbus TCP 轮询，类型名称也可以用 MT
 #   - Valve        阀门控制
 #   - Motor        电机控制
+#   - Alarm        报警连锁（实现最简单的或逻辑)
 # 本文件示例了以上的文档
 #
 # 每种文档都可选的属性为：
@@ -63,7 +64,7 @@ symbols:  # CPU文档下定义其它文档需要共享的符号
   - [auto_data2, M+]
   - [auto_data3, M+]
   - [auto_data4, M+]
-  - [auto_data5, MD+, dint]
+  - [auto_data5, MD+, DInt]
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 输出文件夹，默认为 <name>
@@ -480,6 +481,60 @@ list :
     # 省略 error(默认FALSE) remote(默认TRUE) 参数时，必须保证PLC运行时不被改变
     stateless: true       # 指示没有运行状态
     stop_action: DO03-08  # 只能关阀
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...
+
+---
+# 指示本配置为生成 Alarm 代码
+type: alarm 
+CPU: AS1 
+
+includes: ~
+
+symbols:  
+  # 系统已有1个内置符号，其内容由本程序自动生成：
+  # - [Alarm_Loop, FC518]   主调用函数
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+  # 以下为自定义符号
+  - [DI02-13, I5.4]
+  - [DI02-14, I+]
+  - [DI02-15, I+]
+  - [DI02-16, I+]
+
+list :
+  # DI报警
+  # input是一组报警DI列表，在每个DI的上升沿置位output
+  - comment: 外输泵房间可燃气体浓度高联锁启轴流风机
+
+    # 下方会自动生成DB块"pump_gas"，构建必要的字段，包含input_list中的各输入项、reset字段、output字段
+    # 基中 "pump_gas".reset 字段可以重置输出，让 "pump_gas".output 字段输出为false
+    DB: [pump_gas, DB121]
+    # 输入开关量列表，每一项变量的上升沿去置位 "pump_gas".output
+    input_list:
+      # 每一项中：
+      # name   暴露给 OS 的变量名称
+      # target 值的数据来源，一般是一个DI符号
+      # S7_m_c 指示这个input可以传递变量到OS，变量名称为 name 的值
+      #        该属性可以显式指定，显式值优先默认值
+      #        无没该属性时，系统默认在有 name 时 S7_m_c 为true，没有 name 时为false
+      - {name: GIA_1201A, target: DI02-13, S7_m_c: true, comment: 外输泵可燃气1浓度高报警}  # 显示指定S7_m_c
+      - {name: GIA_1201B, target: DI02-14, comment: 外输泵可燃气2浓度高报警}                # 这里默认了S7_m_c为true
+      - {target: DI02-15}                                                                 # 这里默认了S7_m_c为false，即不向OS传递变量
+      - DI02-16                                                                           # 如果只有target属性，可以简化语法，本项与上一项等效
+      - '"TIT-1201".AH_Flag'                                                              # 值来源也可以是其它非符号SCL表达式，但这时转换程序不负责检查有效性
+    output_list: 
+      # 系统会自动用DB.output字段去设置各个output_list项，实现联锁
+      # 本例output字段去赋值3个启轴流风机
+      # 如果省略，转换程序不生成任何联锁。这时可以用 pump_gas.output 来自行编程
+      - AFan_1204A.start_CMD
+      - AFan_1204B.start_CMD
+      - AFan_1204C.start_CMD # 如果只有target属性，可以使用这个语法糖，代表 - {target: DI02-15}
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 

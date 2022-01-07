@@ -18,6 +18,7 @@ export const VALVE_NAME = `Valve_Proc`;
 export const VALVE_LOOP_NAME = 'Valve_Loop';
 export const MOTOR_NAME = `Motor_Proc`;
 export const MOTOR_LOOP_NAME = 'Motor_Loop';
+export const ALARM_LOOP_NAME = 'Alarm_Loop';
 export const AI_BUILDIN = [
     [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
     [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
@@ -46,6 +47,9 @@ export const MOTOR_BUILDIN = [
     [MOTOR_NAME, 'FB514', MOTOR_NAME, 'MOTOR main AI FB'],
     [MOTOR_LOOP_NAME, "FC514", MOTOR_LOOP_NAME, 'main motor cyclic call function'],
 ];
+export const ALARM_BUILDIN = [
+    [ALARM_LOOP_NAME, "FC518", MOTOR_LOOP_NAME, 'main alarm cyclic call function'],
+];
 export const buildin_symbols = [
     ...AI_BUILDIN,
     ...PI_BUILDIN,
@@ -53,17 +57,17 @@ export const buildin_symbols = [
     ...MT_BUILDIN,
     ...VALVE_BUILDIN,
     ...MOTOR_BUILDIN,
+    ...ALARM_BUILDIN,
 ];
 const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
-
 
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
     const get_msg = symbol => {
         const sInfo = trace_info.get_symbol(symbol);
         return `${sInfo.CPU}:${sInfo.type} symbol:[${symbol.raw}] (文件"${sInfo.filename}"第${sInfo.doc_index}个文档)`;
     };
-    const prev_msg = prev_symbol ? `之前：${get_msg(prev_symbol)}\n` : '';
-    const curr_msg = curr_symbol ? `当前：${get_msg(curr_symbol)}\n` : '';
+    const prev_msg = prev_symbol ? `之前: ${get_msg(prev_symbol)}\n` : '';
+    const curr_msg = curr_symbol ? `当前: ${get_msg(curr_symbol)}\n` : '';
     console.error(`${message}\n${prev_msg}${curr_msg}`);
     process.exit(10);
 }
