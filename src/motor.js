@@ -7,7 +7,8 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 FUNCTION "{{MOTOR_LOOP_NAME}}" : VOID
 {{#for motor in list}}
 // {{motor.comment}}{{#if motor.DB}}
-"{{MOTOR_NAME}}".{{motor.DB.value}}({{motor.input_paras}});{{#if motor.start_action}}
+"{{MOTOR_NAME}}".{{motor.DB.value}}({{motor.input_paras}});{{#if motor.run_action}}
+{{motor.run_action.value}} := {{motor.DB.value}}.run_coil;{{#endif}}{{#if motor.start_action}}
 {{motor.start_action.value}} := {{motor.DB.value}}.start_coil;{{#endif}}{{#if motor.stop_action}}
 {{motor.stop_action.value}} := {{motor.DB.value}}.stop_coil;{{#endif}}{{#if motor.estop_action}}
 {{motor.estop_action.value}} := {{motor.DB.value}}.E_stop_coil;{{#endif}}
@@ -32,7 +33,7 @@ export function parse_symbols_motor(motor_area) {
         make_prop_symbolic(motor, 'stateless', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'error', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'timer_pulse', symbols_dict, 'BOOL');
-        motor.start_action ??= motor.run_action; //容错属性
+        make_prop_symbolic(motor, 'run_action', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'start_action', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'stop_action', symbols_dict, 'BOOL');
         make_prop_symbolic(motor, 'estop_action', symbols_dict, 'BOOL');
