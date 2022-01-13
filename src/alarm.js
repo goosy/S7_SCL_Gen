@@ -5,10 +5,9 @@ export const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 
 // {{alarm.comment}}
 DATA_BLOCK "{{alarm.DB.name}}"
 {S7_m_c := 'true'}
-STRUCT{{#for input in alarm.input_list}}
-  {{input.name}}{{input.prop_str}} : BOOL ; // {{input.comment}}{{#endfor input}}
-  output {S7_m_c := 'true'} : BOOL ; // 输入信号上升沿输出
-  reset {S7_m_c := 'true'} : BOOL ; // 重置输出{{#for input in alarm.input_list}}
+STRUCT{{#for input in alarm.declaration}}
+  {{input.declaration}} // {{input.comment}}{{#endfor input}}
+  output {S7_m_c := 'true'} : BOOL ; // 输入信号上升沿输出{{#for input in alarm.input_list}}
   {{input.name}}_follower : BOOL ; // 用于检测上升沿的追随变量{{#endfor input}}
 END_STRUCT;
 BEGIN
@@ -17,23 +16,30 @@ END_DATA_BLOCK
 
 FUNCTION "alarm_Loop" : VOID
 // 联锁保护主循环
+
 VAR_TEMP
+  reset : BOOL ; // 复位
   output : BOOL ; // 输出
 END_VAR
-{{#for alarm in list}}{{#for input in alarm.input_list}}
-"{{alarm.DB.name}}".{{input.name}} := {{input.target.value}};{{#endfor input}}
-IF NOT "{{alarm.DB.name}}".reset{{#for input in alarm.input_list}}
-  OR "{{alarm.DB.name}}".{{input.name}} AND NOT "{{alarm.DB.name}}".{{input.name}}_follower{{
-  #endfor}} THEN
-  "{{alarm.DB.name}}".output := TRUE;
-ELSIF "{{alarm.DB.name}}".reset THEN
-  "{{alarm.DB.name}}".output := FALSE;
+{{#for alarm in list}}
+// {{alarm.comment}}{{#for assign in alarm.assign_list}}
+{{assign.assign_str}}{{#endfor assign}}
+reset := {{#for no, reset in alarm.reset_list}}{{#if no}} OR {{#endif}}{{reset.edge}}{{#endfor reset}};
+output := {{#for no, input in alarm.input_list}}{{#if no}}
+  OR {{#endif}}{{input.edge}} AND NOT "{{alarm.DB.name}}".{{input.name}}_follower{{#endfor}};
+IF reset THEN
+  "{{alarm.DB.name}}".output := FALSE;{{#for output in alarm.output_list}} 
+  {{output.value}} := FALSE;{{#endfor output}}
   "{{alarm.DB.name}}".reset := FALSE;
-END_IF;{{#for input in alarm.input_list}}
-"{{alarm.DB.name}}".{{input.name}}_follower := "{{alarm.DB.name}}".{{input.name}};{{#endfor}}
-// {{alarm.comment}}
-output := "{{alarm.DB.name}}".output;{{#for output in alarm.output_list}}
-{{output.target.value}} := output;{{#endfor output}}
+ELSIF output THEN
+  "{{alarm.DB.name}}".output := TRUE;
+  // 联锁输出{{#for output in alarm.output_list}} 
+  {{output.value}} := TRUE;{{#endfor output}}
+END_IF;
+// inputs{{#for input in alarm.input_list}}
+"{{alarm.DB.name}}".{{input.name}}_follower := {{input.edge}};{{#endfor}}{{#if alarm.output}}
+// output
+{{alarm.output.value}} := "{{alarm.DB.name}}".output;{{#endif alarm.output}}
 {{#endfor alarm}}
 END_FUNCTION
 `
@@ -47,42 +53,72 @@ END_FUNCTION
 export function parse_symbols_alarm(alarm_area) {
   const symbols_dict = alarm_area.CPU.symbols_dict;
   alarm_area.list.forEach(alarm => {
-    if (!alarm.DB) return; // 空块不处理
+    if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!"); // 空块不处理
     make_prop_symbolic(alarm, 'DB', symbols_dict);
-    for (let [index, input] of alarm.input_list.entries()) {
-      if (typeof input === 'string') {
+    
+    alarm.comment ??= '报警联锁';
+
+    if (!alarm.input_list || alarm.input_list.length < 1) throw new SyntaxError("alarm的input_list必须有1项以上!"); // 空项不处理
+    let list = alarm.input_list;
+    for (let [index, input] of list.entries()) {
+      // if input is symbol then convert to object of input type
+      if (typeof input === 'string' || Array.isArray(input)) {
         input = { target: input };
-        alarm.input_list[index] = input;
+        list[index] = input;
       }
+      if (!input.name && !input.target) throw new SyntaxError('alarm的input项必须name和target有一个!');
+      if (input.name === "test") throw new SyntaxError('alarm input项不能起名"test"! 已有同名内置项。');
       input.comment ??= '';
-      if (input.name != null) {
-        input.S7_m_c ??= true;
-      } else {
-        input.S7_m_c ??= false;
-        input.name = `input_${index++}`;
-      }
-      make_prop_symbolic(input, 'target', symbols_dict, 'BOOL');
+      if (input.target) make_prop_symbolic(input, 'target', symbols_dict, 'BOOL');
     }
-    alarm.output_list ??= [];
-    for (let [index, output] of alarm.output_list.entries()) {
-      if (typeof output === 'string') {
-        output = { target: output };
-        alarm.output_list[index] = output;
+    list.push({ name: 'test', comment: '测试' });
+
+    alarm.reset_list ??= [];
+    list = alarm.reset_list;
+    for (let [index, reset] of list.entries()) {
+      // if reset is symbol then convert to object of input type
+      if (typeof reset === 'string') {
+        reset = { target: reset };
+        list[index] = reset;
       }
-      output.comment ??= '';
-      make_prop_symbolic(output, 'target', symbols_dict, 'BOOL');
+      if (!reset.target) throw new SyntaxError('alarm的reset项必须有target!');
+      if (reset.name === "reset") throw new SyntaxError('alarm reset 项不能起名"reset"! 已有同名内置项。');
+      make_prop_symbolic(reset, 'target', symbols_dict, 'BOOL');
+    }
+    list.push({ name: 'reset', comment: '输出复位' });
+
+    make_prop_symbolic(alarm, "output", symbols_dict, 'BOOL');
+    alarm.output_list ??= [];
+    list = alarm.output_list;
+    for (let [index, output] of list.entries()) {
+      if (typeof output !== 'string' && !Array.isArray(output)) throw new SyntaxError('alarm的output项必须必须是一个S7符号或SCL表达式!');
+      make_prop_symbolic(list, index, symbols_dict, 'BOOL');
     }
   });
 }
 
+function buile_input(list, DB_name){
+  const attributes = " {S7_m_c := 'true'}";
+  for (let [index, item] of list.entries()) {
+      item.assign_str = item.name && item.target
+        ? `"${DB_name}".${item.name} := ${item.target.value};`
+        : null;
+      if (item.name) {// DB中生成S7_m_c字段，对input_list项，检测该字段上升沿
+        item.declaration = `${item.name}${attributes} : BOOL ;`;
+        item.edge = `"${DB_name}".${item.name}`;
+      } else { // DB中只有follower字段，对input_list项，检测target上升沿
+        item.name = `input_${index++}`;
+        item.edge = item.target.value;
+      }
+    }
+}
+
 export function build_alarm({ list }) {
   list.forEach(alarm => { // 处理配置，形成完整数据
-    const {
-      input_list,
-    } = alarm;
-    for (const input of input_list) {
-      input.prop_str = input.S7_m_c ? ` {S7_m_c := 'true'}` : '';
-    }
+    buile_input(alarm.input_list, alarm.DB.name);
+    buile_input(alarm.reset_list, alarm.DB.name);
+    alarm.declaration = alarm.input_list.concat(alarm.reset_list).filter(input => input.declaration);
+    alarm.assign_list = alarm.input_list.concat(alarm.reset_list).filter(input => input.assign_str);
   });
 }
 

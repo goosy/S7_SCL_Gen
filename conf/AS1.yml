@@ -498,43 +498,64 @@ includes: ~
 
 symbols:  
   # 系统已有1个内置符号，其内容由本程序自动生成：
-  # - [Alarm_Loop, FC518]   主调用函数
+  # - [Alarm_Loop, FC518]   主调用函数，在OB中加入对它的调用。
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
   # 以下为自定义符号
-  - [DI02-13, I5.4]
+  - [DI02-12, I5.3]
+  - [DI02-13, I+]
   - [DI02-14, I+]
   - [DI02-15, I+]
-  - [DI02-16, I+]
+  - [DO04-01, Q6.0]
 
 list :
   # DI报警
-  # input是一组报警DI列表，在每个DI的上升沿置位output
-  - comment: 外输泵房间可燃气体浓度高联锁启轴流风机
+  - comment: 外输泵房间联锁
 
-    # 下方会自动生成DB块"pump_gas"，构建必要的字段，包含input_list中的各输入项、reset字段、output字段
-    # 基中 "pump_gas".reset 字段可以重置输出，让 "pump_gas".output 字段输出为false
+    # 下方会自动生成DB块"pump_gas"并构建必要的字段，大致结构为：
+    #     DB.<input_name_1>   输入1 名称自定义
+    #     DB.<input_name_2>   输入2
+    #     ......
+    #     DB.<input_name_n>   输入n
+    #     DB.test             测试用
+    #     DB.reset            重置输出用，会将DB.output置0
+    #     DB.output           输出 input和test上升沿或运算
+    #     DB.inputx_follower  内部数据，用于跟踪上升沿
     DB: [pump_gas, DB121]
+
     # 输入开关量列表，每一项变量的上升沿去置位 "pump_gas".output
+    # 有name属性的input会加入到DB块"pump_gas"中
     input_list:
       # 每一项中：
-      # name   暴露给 OS 的变量名称
-      # target 值的数据来源，一般是一个DI符号
-      # S7_m_c 指示这个input可以传递变量到OS，变量名称为 name 的值
-      #        该属性可以显式指定，显式值优先默认值
-      #        无没该属性时，系统默认在有 name 时 S7_m_c 为true，没有 name 时为false
-      - {name: GIA_1201A, target: DI02-13, S7_m_c: true, comment: 外输泵可燃气1浓度高报警}  # 显示指定S7_m_c
-      - {name: GIA_1201B, target: DI02-14, comment: 外输泵可燃气2浓度高报警}                # 这里默认了S7_m_c为true
-      - {target: DI02-15}                                                                 # 这里默认了S7_m_c为false，即不向OS传递变量
-      - DI02-16                                                                           # 如果只有target属性，可以简化语法，本项与上一项等效
-      - '"TIT-1201".AH_Flag'                                                              # 值来源也可以是其它非符号SCL表达式，但这时转换程序不负责检查有效性
+      # name   暴露给 OS 的变量名称，系统会自动加上 S7_m_c，name不允许等于"test"，它已内置为测试input
+      # target 本input的过程值来源，必须是一个S7符号或SCL表达式。如果省略过程值来源，只能通过自写程序或HMI改变状态
+      - {target: DI02-13, name: GIA_1201A, comment: 外输泵可燃气浓度高报警}
+      - {target: DI02-14}          # 只有过程来源的项
+      - DI02-15                    # 如果input只有target属性，可以简化语法，与上一项等效
+      - [DI02-16, I5.7]            # 这种只写符号(字符串或符号数组)的写法，生成的SCL没有描述信息，OS也不能读取
+      - '"TIT-1201".AH_Flag'       # 过程值来源也可以是其它非符号的SCL表达式，但这时转换程序不负责检查有效性
+      - {name: mytest}             # 没有target属性时，指示该input没有过程数据源，只能通过HMI(OS)操作
+      # {name: test}               # 系统内置了一个名称为 test 的无过程数据源 input 字段，可用于测试
+
+    # 下方列表项中，有任何一项的值为1，就会将output置0
+    # 有 name 的项会暴露给 OS，系统会自动加上 S7_m_c
+    # DB内置一个reset字段
+    reset_list:
+      - {target: DI02-12, name: reset_button, comment: 复位按钮} # 添加reset过程源
+      - Alarm_SL.reset                                           # SCL表达式作为reset输入之一
+
+    # 内置输出项的过程源，可省略。
+    # 过程源只能是且必须是一个S7符号或SCL表达式
+    # 本项会暴露给OS，即以 DB.output 上传并自动加上 S7_m_c 属性
+    # output 项本身可通过 reset 复位
+    output: DO04-01
+
+    # 输出关联项，不会出现在DB结构中
     output_list: 
-      # 系统会自动用DB.output字段去设置各个output_list项，实现联锁
-      # 本例output字段去赋值3个启轴流风机
-      # 如果省略，转换程序不生成任何联锁。这时可以用 pump_gas.output 来自行编程
-      - AFan_1204A.start_CMD
-      - AFan_1204B.start_CMD
-      - AFan_1204C.start_CMD # 如果只有target属性，可以使用这个语法糖，代表 - {target: DI02-15}
+      # output_list 的每一个输出关联项，只能是且必须是一个S7符号或SCL表达式
+      # 系统会自动用DB.output字段去置位各个输出关联项，实现联锁，reset会复位输出关联项。
+      # 如果省略，转换程序不生成任何联锁。这时可以用 DB.output 来自行编程或HMI处理
+      - AFan_1204A.start_CMD # 轴流风机，注意
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
