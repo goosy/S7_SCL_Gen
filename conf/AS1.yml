@@ -42,6 +42,28 @@ type: CPU
 # name 同时作为默认输出文件夹名称，可在 output_dir 中指定为其它输出文件夹
 name: AS1 # 用 CPU: AS1 效果一样
 
+# CPU型号，可省略。
+# 目前只有modbusTCP(OUC通信)功能时必须提供
+# 目前已定义可以OUC通信的型号有：  
+#   IM151-8_PN/DP
+#   CPU31x-2_PN/DP
+#   CPU314C-2_PN/DP
+#   CPU317-2_PN/DP
+#   IM154-8_PN/DP
+#   CPU319-3_PN/DP
+#   CPU315T-3_PN/DP
+#   CPU317T-3_PN/DP
+#   CPU317TF-3_PN/DP
+#   CPU412-2_PN
+#   CPU414-3_PN/DP
+#   CPU416-3_PN/DP
+#   CPU412-5H_PN/DP
+#   CPU414-5H_PN/DP
+#   CPU416-5H_PN/DP
+#   CPU417-5H_PN/DP
+#   CPU410-5H
+device: CPU410-5H
+
 # 额外包含代码
 # 数组值指示一组外部文件，文件内容将合并输出在 common.SCL 文件中
 # includes的内容需要用户自己写，生成程序不检查其中的错误。
@@ -269,35 +291,22 @@ list : # modbus TCP 连接列表
     # modbusTCP 对方端口，必填，注意host:port组合不得重复，否则报错
     port: 502 
     
-    # 可直接指定id，建议用下一个local_device配置比较直观
-    # local_device_id: 2 
-    
-    # local_device 用于PN通信的设备，目前允许的值:
-    # IM151-8PN/DP
-    # CPU31x-2PN/DP
-    # CPU314C-2PN/DP
-    # IM154-8PN/DP
-    # CPU319-3PN/DP
-    # CPU315T-3PN/DP
-    # CPU317T-3PN/DP
-    # CPU317TF-3PN/DP
-    # CPU319-3PN/DP_X4
-    # CPU317-2PN/DP_X4
-    # CPU412-2PN
-    # CPU414-3PN/DP
-    # CPU416-3PN/DP
-    # CPU412-5H_PN/DP_X5
-    # CPU414-5H_PN/DP_X5
-    # CPU416-5H_PN/DP_X5
-    # CPU417-5H_PN/DP_X5
-    # CPU410-5H_X8
-    # CPU412-5H_PN/DP_X15
-    # CPU414-5H_PN/DP_X15
-    # CPU416-5H_PN/DP_X15
-    # CPU417-5H_PN/DP_X15
-    # CPU410-5H_X18
-    local_device: CPU31x-2PN/DP 
-    
+    # 用于通信的设备号，见 https://support.industry.siemens.com/cs/document/51339682/使用fb65-tcon-建立以太网的开放式用户通信连接时，如何参数化-loc
+    # 本参数优先级最高，会忽略 local_device rack XSlot 3个参数
+    # local_device_id: B#16#02 # 建议不要填写本参数，采用直观的 local_device rack XSlot 参数
+
+    # 由于local_device_id不直观，建议用下面三个参数进行直观配置，同时程序自动检验
+    # 如果已经设置了local_device_id，则忽略下方参数。
+    #   device  设备名称            见上方 CPU 文档中的定义
+    #                               如果在CPU文档已设置了device，可以省略本参数
+    #   rack    机架号              可以在Step7硬件配置里看到，通常为0或1，除了冗余机型外，大多情况下本参数可省略
+    #                               仅 CPU412-5H_PN/DP CPU414-5H_PN/DP CPU416-5H_PN/DP CPU417-5H_PN/DP CPU410-5H 需要设置本参数值
+    #   XSlot   通信接号扩展插槽号   可以在Step7硬件配置里的通信接口名称中看到，比如"X2"则XSlot值就是2
+    #                               仅 CPU319-3 PN/DP CPU317-2 PN/DP CPU410-5H 需要设置本参数值
+    device: ~                       # 设备名称 省略时采用CPU文档中的定义，如果CPU文档也无定义，则local_device_id会默认为B#16#02
+    rack: 1                         # 机架号  部分CPU可省略
+    XSlot: 8                        # 插槽号  非多IF可省略
+
     # 发出查询的时间间隔，可省略，默认为200，单位ms
     # interval_time: 200
 

@@ -1,32 +1,87 @@
 import { IntIncHL, fixed_hex } from './util.js';
-import { make_prop_symbolic, MT_NAME,MT_LOOP_NAME,MT_POLLS_NAME } from './symbols.js';
-const TCON_deivce_id = {
-  "IM151-8PN/DP": "B#16#01",
-  "CPU31x-2PN/DP": "B#16#02",
-  "CPU314C-2PN/DP": "B#16#02",
-  "IM154-8PN/DP": "B#16#02",
-  "CPU319-3PN/DP": "B#16#03",
-  "CPU315T-3PN/DP": "B#16#03",
-  "CPU317T-3PN/DP": "B#16#03",
-  "CPU317TF-3PN/DP": "B#16#03",
-  "CPU319-3PN/DP_X4": "B#16#04",
-  "CPU317-2PN/DP_X4": "B#16#04",
-  "CPU412-2PN": "B#16#05",
-  "CPU414-3PN/DP": "B#16#05",
-  "CPU416-3PN/DP": "B#16#05",
-  "CPU412-5H_PN/DP_X5": "B#16#05",
-  "CPU414-5H_PN/DP_X5": "B#16#05",
-  "CPU416-5H_PN/DP_X5": "B#16#05",
-  "CPU417-5H_PN/DP_X5": "B#16#05",
-  "CPU410-5H_X8": "B#16#08",
-  "CPU412-5H_PN/DP_X15": "B#16#15",
-  "CPU414-5H_PN/DP_X15": "B#16#15",
-  "CPU416-5H_PN/DP_X15": "B#16#15",
-  "CPU417-5H_PN/DP_X15": "B#16#15",
-  "CPU410-5H_X18": "B#16#18",
-}
-const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
+import { make_prop_symbolic, MT_NAME, MT_LOOP_NAME, MT_POLLS_NAME } from './symbols.js';
 
+const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
+const device_id = { // 只需要填写设备型号
+  "IM151-8_PN/DP": "B#16#01",
+  "CPU31x-2_PN/DP": "B#16#02",
+  "CPU314C-2_PN/DP": "B#16#02",
+  "IM154-8_PN/DP": "B#16#02",
+  "CPU315T-3_PN/DP": "B#16#03",
+  "CPU317T-3_PN/DP": "B#16#03",
+  "CPU317TF-3_PN/DP": "B#16#03",
+  "CPU412-2_PN": "B#16#05",
+  "CPU414-3_PN/DP": "B#16#05",
+  "CPU416-3_PN/DP": "B#16#05",
+}
+const device_X_id = { // 可能需要填写槽号的 
+  //['', 'X2', 'X4']
+  "CPU317-2_PN/DP": "B#16#02",
+  "CPU317-2_PN/DP_X2": "B#16#02",
+  "CPU317-2_PN/DP_X4": "B#16#04",
+  //['', 'X3', 'X4']
+  "CPU319-3_PN/DP": "B#16#03",
+  "CPU319-3_PN/DP_X3": "B#16#03",
+  "CPU319-3_PN/DP_X4": "B#16#04",
+}
+const device_R_X_id = { // 可能需要填写槽号和机架号的
+  // ['', 'R0', 'R1'] × ['', 'X5']
+  // 412-5H
+  "CPU412-5H_PN/DP": "B#16#05",
+  "CPU412-5H_PN/DP_X5": "B#16#05",
+  "CPU412-5H_PN/DP_R0": "B#16#05",
+  "CPU412-5H_PN/DP_R0_X5": "B#16#05",
+  "CPU412-5H_PN/DP_R1": "B#16#15",
+  "CPU412-5H_PN/DP_R1_X5": "B#16#15",
+  // 414-5H
+  "CPU414-5H_PN/DP": "B#16#05",
+  "CPU414-5H_PN/DP_X5": "B#16#05",
+  "CPU414-5H_PN/DP_R0": "B#16#05",
+  "CPU414-5H_PN/DP_R0_X5": "B#16#05",
+  "CPU414-5H_PN/DP_R1": "B#16#15",
+  "CPU414-5H_PN/DP_R1_X5": "B#16#15",
+  // 416-5H
+  "CPU416-5H_PN/DP": "B#16#05",
+  "CPU416-5H_PN/DP_X5": "B#16#05",
+  "CPU416-5H_PN/DP_R0": "B#16#05",
+  "CPU416-5H_PN/DP_R0_X5": "B#16#05",
+  "CPU416-5H_PN/DP_R1": "B#16#15",
+  "CPU416-5H_PN/DP_R1_X5": "B#16#15",
+  // 417-5H
+  "CPU417-5H_PN/DP": "B#16#05",
+  "CPU417-5H_PN/DP_X5": "B#16#05",
+  "CPU417-5H_PN/DP_R0": "B#16#05",
+  "CPU417-5H_PN/DP_R0_X5": "B#16#05",
+  "CPU417-5H_PN/DP_R1": "B#16#15",
+  "CPU417-5H_PN/DP_R1_X5": "B#16#15",
+  // 410-5H  ['', 'R0', 'R1'] × ['', 'X5', 'X8']
+  "CPU410-5H": "B#16#05",
+  "CPU410-5H_X5": "B#16#05",
+  "CPU410-5H_X8": "B#16#08",
+  "CPU410-5H_R0": "B#16#05",
+  "CPU410-5H_R0_X5": "B#16#05",
+  "CPU410-5H_R0_X8": "B#16#08",
+  "CPU410-5H_R1": "B#16#15",
+  "CPU410-5H_R1_X5": "B#16#15",
+  "CPU410-5H_R1_X8": "B#16#18",
+}
+
+function get_device_id(device, R, X) {
+  let id = device_id[device];
+  if (id) return id; // device is valid
+  const device_paras = [device];
+  if (R) {
+    device_paras.push(R);
+  }
+  if (X) {
+    id = device_X_id[`${device}_${X}`];
+    if (id) return id; // device_X is valid
+    device_paras.push(X);
+  }
+  id = device_R_X_id[device_paras.join('_')]
+  if (id) return id; // device_R_X is valid
+  return null; // 没有对应设备号
+}
 
 /**
  * 第一遍扫描 提取符号
@@ -53,23 +108,30 @@ export function build_MT({ CPU, list }) {
       poll_list
     } = CPU;
 
+    conn.device ??= CPU.device;
+    conn.R = typeof conn.rack === 'number' ? 'R' + conn.rack : '';
+    conn.X = typeof conn.XSlot === 'number' ? 'X' + conn.XSlot : '';
     const {
       ID,
-      local_device_id = TCON_deivce_id[conn.local_device] ?? DEFAULT_DEVICE_ID, // 已是SCL字面量
+      local_device_id = get_device_id(conn.device, conn.R, conn.X), // 已是SCL字面量
       host,
       port,
       // interval_time, // 由SCL程序负责默认的间隔时长
     } = conn;
 
-    conn.ID = fixed_hex(conn_ID_list.push(ID), 4);
+    // 指定的device没有对应的通信设备号
+    if (local_device_id === null && conn.device) throw new SyntaxError(`指定的通信设备号"${conn.device} rack${conn.rack} xslot${conn.XSlot}"不存在！`);
+    // 如没指定device，则采用默认设备号
+    conn.local_device_id = local_device_id ?? DEFAULT_DEVICE_ID;
 
     // port_list
     const host_str = conn.host.join('.');
     conn_host_list[host_str] ??= new IntIncHL(502);
     const port_list = conn_host_list[host_str];
     port_list.push(port);
+
+    conn.ID = fixed_hex(conn_ID_list.push(ID), 4);
     conn.DB.name ??= "conn_MT" + ID;
-    conn.local_device_id = local_device_id;
     conn.IP1 = fixed_hex(host[0], 2);
     conn.IP2 = fixed_hex(host[1], 2);
     conn.IP3 = fixed_hex(host[2], 2);
@@ -105,7 +167,7 @@ export function gen_MT(MT_list) {
       }
     })
   });
-  return {rules, template};
+  return { rules, template };
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
@@ -117,7 +179,7 @@ BEGIN
   TCON_Parameters.id := W#16#{{conn.ID}};             //连接ID 每个连接必须不一样！
   TCON_Parameters.connection_type := B#16#11;  //连接类型 11H=TCP/IP native, 12H=ISO on TCP, 13H=UDP, 01=TCP/IP comp
   TCON_Parameters.active_est := TRUE;          //是否主动（本功能调用必须为TRUE）
-  TCON_Parameters.local_device_id := {{conn.local_device_id}};  // {{conn.local_device}}
+  TCON_Parameters.local_device_id := {{conn.local_device_id}};  //{{conn.device}} {{conn.R}} {{conn.X}} 
   TCON_Parameters.local_tsap_id_len := B#16#0;
   TCON_Parameters.rem_subnet_id_len := B#16#0;
   TCON_Parameters.rem_staddr_len := B#16#4;

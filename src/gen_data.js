@@ -1,6 +1,7 @@
 import { dump, load, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
 
+import { parse_symbols_CPU } from "./CPU.js";
 import { parse_symbols_AI, gen_AI } from "./AI.js";
 import { parse_symbols_PI, build_PI, gen_PI } from "./PI.js";
 import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
@@ -82,9 +83,9 @@ async function add_conf(conf) {
   trace_info.CPU = CPU_name;
   if (typeof type !== 'string') throw new SyntaxError(' type 必须提供!');
   let doctype = '';
-  if (type.toUpperCase() === 'AI') doctype = 'AI';
+  if (type.toUpperCase() === 'CPU') doctype = 'CPU';
+  else if (type.toUpperCase() === 'AI') doctype = 'AI';
   else if (type.toUpperCase() === 'PI') doctype = 'PI';
-  else if (type.toUpperCase() === 'CPU') doctype = 'CPU';
   else if (type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC') doctype = 'SC';
   else if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
   else if (type.toLowerCase() === 'valve') doctype = 'valve';
@@ -95,6 +96,7 @@ async function add_conf(conf) {
     process.exit(1);
   }
   const CPU = get_cpu(CPU_name);
+  if (doctype === 'CPU') CPU.device = conf.device;
   if (CPU[doctype]) {
     console.error(`${CPU_name}:${doctype}${doctype == type ? '(' + type + ')' : ''} 有重复的配置 has duplicate configurations`);
     process.exit(2);
@@ -136,7 +138,7 @@ async function add_conf(conf) {
 
   const area = { CPU, list, includes, loop_additional_code, options };
   if (doctype === 'CPU') {
-    CPU.output_dir = conf?.options?.output_dir ?? CPU_name;
+    parse_symbols_CPU(area);
     common_list.push(area);
   } else if (doctype === 'AI') {
     parse_symbols_AI(area);
