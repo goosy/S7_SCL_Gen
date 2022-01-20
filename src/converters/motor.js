@@ -1,4 +1,4 @@
-import { make_prop_symbolic } from './symbols.js';
+import { make_prop_symbolic } from '../symbols.js';
 import { join } from 'path';
 
 export const MOTOR_NAME = `Motor_Proc`;

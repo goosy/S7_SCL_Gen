@@ -1,31 +1,34 @@
 import { dump, load, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
 import { gen_symbols, build_symbols, add_symbols, buildin_symbols } from './symbols.js';
-import { IntIncHL, S7IncHL, read_file } from './util.js';
+import { IntIncHL, module_path, S7IncHL, read_file } from './util.js';
 import { trace_info } from './trace_info.js'
 import { join } from 'path';
 
-// 目前支持的类型
-const TYPES = ['CPU', 'AI', 'PI', 'SC', 'MT', 'valve', 'motor', 'alarm'];
-
+// src/converters 目录下的JS文件为转换器
+// 每个转换器必须实现
+//   function if_type_<type>        判断是否为当前转换类型
+//   function gen_<type>            生成转换列表
+// 每个转换器可选实现
+//   Array <type>_BUILDIN           该转换类型的内置符号列表
+//   function parse_symbols_<type>  提取符号
+//   function build_<type>          构建转换数据
+//   function gen_<type>_copy_list  生成复制列表
+// 转换器文件定义了目前支持的转换类型
+const supported_types = (await readdir(join(module_path, 'src/converters'))).map(
+  file => file.replace(/\.js$/, '')
+);
 // 引入所有的转换器
-// 所有的转换器JS代码 必须实现
-//   function if_type_<type>
-//   function gen_<type>
-// 可选实现
-//   Array <type>_BUILDIN
-//   function parse_symbols_<type> 
-//   function gen_<type>_copy_list
 const converter = { gen_symbols };
 Object.assign(
   converter,
   ...await Promise.all(
-    TYPES.map(async type => import(`./${type}.js`))
+    supported_types.map(async type => import(`./converters/${type}.js`))
   )
 );
 
 // 重建内置符号
-TYPES.forEach(type => {
+supported_types.forEach(type => {
   const buildin = converter[`${type.toUpperCase()}_BUILDIN`];
   if (buildin) buildin_symbols.push(...buildin);
 });
@@ -87,7 +90,7 @@ async function add_conf(conf) {
   if (typeof CPU_name !== 'string') throw new SyntaxError(' name(CPU) 必须提供!');
   trace_info.CPU = CPU_name;
   if (typeof type !== 'string') throw new SyntaxError(' type 必须提供!');
-  const doctype = TYPES.find(t => converter[`is_type_${t}`](type));
+  const doctype = supported_types.find(t => converter[`is_type_${t}`](type));
   if (!doctype) {
     console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
     process.exit(1);
@@ -163,7 +166,7 @@ export async function gen_data({ output_zyml, noconvert }) {
     console.log('output the uncommented configuration file:');
     for (const [name, CPU] of Object.entries(CPUs)) {
       // 生成无注释的配置
-      const yaml = TYPES.reduce(
+      const yaml = supported_types.reduce(
         (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type]}...` : docs,
         `# CPU ${name} configuration`
       );
@@ -191,7 +194,7 @@ export async function gen_data({ output_zyml, noconvert }) {
 
   // 第三遍扫描 生成最终待转换数据
   const copy_list = [];
-  TYPES.forEach(type => {
+  supported_types.forEach(type => {
     for (const item of conf_list[type]) {
       const gen = converter[`gen_${type}_copy_list`];
       if (typeof gen !== 'function') return;
@@ -201,7 +204,7 @@ export async function gen_data({ output_zyml, noconvert }) {
     }
   })
 
-  const convert_list = [...TYPES, 'symbols'].map(type => {
+  const convert_list = [...supported_types, 'symbols'].map(type => {
     const gen = converter['gen_' + type];
     return gen(conf_list[type])
   });

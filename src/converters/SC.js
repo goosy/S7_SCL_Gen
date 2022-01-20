@@ -4,8 +4,8 @@
  * @file SC
  */
 
-import { fixed_hex } from "./util.js";
-import { make_prop_symbolic } from './symbols.js';
+import { fixed_hex } from "../util.js";
+import { make_prop_symbolic } from '../symbols.js';
 import { join } from 'path';
 
 export const CP340_NAME = 'CP340_Poll';

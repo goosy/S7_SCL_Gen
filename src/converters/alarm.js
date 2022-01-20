@@ -1,4 +1,4 @@
-import { make_prop_symbolic } from './symbols.js';
+import { make_prop_symbolic } from '../symbols.js';
 export const ALARM_LOOP_NAME = 'Alarm_Loop';
 export const ALARM_BUILDIN = [
   [ALARM_LOOP_NAME, "FC518", ALARM_LOOP_NAME, 'main alarm cyclic call function'],

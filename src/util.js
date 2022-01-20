@@ -2,7 +2,8 @@ import { access, mkdir, copyFile, readFile, writeFile } from 'fs/promises';
 import { basename, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import iconv from 'iconv-lite';
-const module_path = join(fileURLToPath(import.meta.url), "../../");
+
+export const module_path = join(fileURLToPath(import.meta.url), "../../");
 
 export class IncHLError extends Error {
     num;

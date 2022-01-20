@@ -1,5 +1,5 @@
-import { IntIncHL, fixed_hex } from './util.js';
-import { make_prop_symbolic } from './symbols.js';
+import { IntIncHL, fixed_hex } from '../util.js';
+import { make_prop_symbolic } from '../symbols.js';
 import { join } from 'path';
 
 export const MT_NAME = 'MT_Poll';
