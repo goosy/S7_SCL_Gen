@@ -1,4 +1,15 @@
-import { make_prop_symbolic, VALVE_NAME, VALVE_LOOP_NAME } from './symbols.js';
+import { make_prop_symbolic } from './symbols.js';
+import { join } from 'path';
+
+export const VALVE_NAME = `Valve_Proc`;
+export const VALVE_LOOP_NAME = 'Valve_Loop';
+export const VALVE_BUILDIN = [
+    [VALVE_NAME, 'FB513', VALVE_NAME, 'VALVE main AI FB'],
+    [VALVE_LOOP_NAME, "FC513", VALVE_LOOP_NAME, 'main valve cyclic call function'],
+];
+export function is_type_valve(type) {
+    return type.toLowerCase() === 'valve';
+}
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
@@ -73,4 +84,13 @@ export function gen_valve(valve_list) {
         })
     });
     return { rules, template };
+}
+
+export function gen_valve_copy_list(item) {
+    const output_dir = item.CPU.output_dir;
+    return {
+        src: `Valve_Proc/${VALVE_NAME}.scl`,
+        dst: `${output_dir}/`,
+        desc: `${join(process.cwd(), output_dir, VALVE_NAME)}.scl`
+    };
 }

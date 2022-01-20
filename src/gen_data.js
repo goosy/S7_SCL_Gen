@@ -1,41 +1,46 @@
 import { dump, load, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
-
-import { parse_symbols_CPU } from "./CPU.js";
-import { parse_symbols_AI, gen_AI } from "./AI.js";
-import { parse_symbols_PI, build_PI, gen_PI } from "./PI.js";
-import { parse_symbols_MT, build_MT, gen_MT } from './MT.js';
-import { parse_symbols_SC, build_SC, gen_SC } from './SC.js';
-import { parse_symbols_valve, gen_valve } from "./valve.js";
-import { parse_symbols_motor, build_motor, gen_motor } from "./motor.js";
-import { parse_symbols_alarm, build_alarm, gen_alarm } from "./alarm.js";
-import { gen_common } from "./common.js";
-import {
-  gen_symbol, build_symbols, add_symbols,
-  AI_NAME, AI_BUILDIN,
-  PI_NAME, PI_BUILDIN,
-  MT_NAME, MT_BUILDIN,
-  CP340_NAME, CP341_NAME, CP_BUILDIN,
-  VALVE_NAME, VALVE_BUILDIN,
-  MOTOR_NAME, MOTOR_BUILDIN,
-  ALARM_BUILDIN,
-} from './symbols.js';
+import { gen_symbols, build_symbols, add_symbols, buildin_symbols } from './symbols.js';
 import { IntIncHL, S7IncHL, read_file } from './util.js';
 import { trace_info } from './trace_info.js'
 import { join } from 'path';
 
 // 目前支持的类型
-const TYPES = ['CPU', 'AI', 'PI', 'SC', 'modbusTCP', 'valve', 'motor', 'alarm'];
+const TYPES = ['CPU', 'AI', 'PI', 'SC', 'MT', 'valve', 'motor', 'alarm'];
 
-const AI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
-const PI_list = []; // 模拟量列表 {CPU， includes, list, options}[]
-const valve_list = []; // 阀门列表 {CPU， includes, list, options}[]
-const motor_list = []; // 电机列表 {CPU， includes, list, options}[]
-const alarm_list = []; // 报警列表 {CPU， includes, list, options}[]
-const MT_list = []; // modbusTCP 列表 {CPU， includes, list, options}[]
-const SC_list = []; // 串行通信列表 {CPU， includes, list, options}[]
-const symbols_list = []; // symbols 列表 {CPU， includes, list, options}[]
-const common_list = []; // 通用列表 {CPU， includes, list, options}[]
+// 引入所有的转换器
+// 所有的转换器JS代码 必须实现
+//   function if_type_<type>
+//   function gen_<type>
+// 可选实现
+//   Array <type>_BUILDIN
+//   function parse_symbols_<type> 
+//   function gen_<type>_copy_list
+const converter = { gen_symbols };
+Object.assign(
+  converter,
+  ...await Promise.all(
+    TYPES.map(async type => import(`./${type}.js`))
+  )
+);
+
+// 重建内置符号
+TYPES.forEach(type => {
+  const buildin = converter[`${type.toUpperCase()}_BUILDIN`];
+  if (buildin) buildin_symbols.push(...buildin);
+});
+
+const conf_list = {
+  CPU: [],  // 通用列表 {CPU， includes, list, options}[]
+  AI: [],      // 模拟量列表 {CPU， includes, list, options}[]
+  PI: [],      // 模拟量列表 {CPU， includes, list, options}[]
+  valve: [],   // 阀门列表 {CPU， includes, list, options}[]
+  motor: [],   // 电机列表 {CPU， includes, list, options}[]
+  alarm: [],   // 报警列表 {CPU， includes, list, options}[]
+  MT: [],      // MT 列表 {CPU， includes, list, options}[]
+  SC: [],      // 串行通信列表 {CPU， includes, list, options}[]
+  symbols: [], // symbols 列表 {CPU， includes, list, options}[]
+}
 
 const CPUs = {}; // CPU 资源
 function get_cpu(CPU_name) {
@@ -82,16 +87,8 @@ async function add_conf(conf) {
   if (typeof CPU_name !== 'string') throw new SyntaxError(' name(CPU) 必须提供!');
   trace_info.CPU = CPU_name;
   if (typeof type !== 'string') throw new SyntaxError(' type 必须提供!');
-  let doctype = '';
-  if (type.toUpperCase() === 'CPU') doctype = 'CPU';
-  else if (type.toUpperCase() === 'AI') doctype = 'AI';
-  else if (type.toUpperCase() === 'PI') doctype = 'PI';
-  else if (type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC') doctype = 'SC';
-  else if (type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp') doctype = 'modbusTCP';
-  else if (type.toLowerCase() === 'valve') doctype = 'valve';
-  else if (type.toLowerCase() === 'motor') doctype = 'motor';
-  else if (type.toLowerCase() === 'alarm') doctype = 'alarm';
-  else {
+  const doctype = TYPES.find(t => converter[`is_type_${t}`](type));
+  if (!doctype) {
     console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
     process.exit(1);
   }
@@ -126,42 +123,15 @@ async function add_conf(conf) {
   // 加入 includes 符号
   const includes = parse_symbols_in_SCL(await fetch_includes(conf.includes));
   // 加入内置符号
-  if (doctype === 'AI') add_symbols(symbols_dict, AI_BUILDIN);
-  else if (doctype === 'PI') add_symbols(symbols_dict, PI_BUILDIN);
-  else if (doctype === 'SC') add_symbols(symbols_dict, CP_BUILDIN);
-  else if (doctype === 'modbusTCP') add_symbols(symbols_dict, MT_BUILDIN);
-  else if (doctype === 'valve') add_symbols(symbols_dict, VALVE_BUILDIN);
-  else if (doctype === 'motor') add_symbols(symbols_dict, MOTOR_BUILDIN);
-  else if (doctype === 'alarm') add_symbols(symbols_dict, ALARM_BUILDIN);
+  const buildin = converter[`${doctype.toUpperCase()}_BUILDIN`];
+  if (buildin) add_symbols(symbols_dict, buildin);
   // 加入前置符号
   add_symbols(symbols_dict, symbols);
 
   const area = { CPU, list, includes, loop_additional_code, options };
-  if (doctype === 'CPU') {
-    parse_symbols_CPU(area);
-    common_list.push(area);
-  } else if (doctype === 'AI') {
-    parse_symbols_AI(area);
-    AI_list.push(area);
-  } else if (doctype === 'PI') {
-    parse_symbols_PI(area);
-    PI_list.push(area);
-  } else if (doctype === 'SC') {
-    parse_symbols_SC(area);
-    SC_list.push(area);
-  } else if (doctype === 'modbusTCP') {
-    parse_symbols_MT(area);
-    MT_list.push(area);
-  } else if (doctype === 'valve') {
-    parse_symbols_valve(area);
-    valve_list.push(area);
-  } else if (doctype === 'motor') {
-    parse_symbols_motor(area);
-    motor_list.push(area);
-  } else if (doctype === 'alarm') {
-    parse_symbols_alarm(area);
-    alarm_list.push(area);
-  }
+  const parse_symbols = converter[`parse_symbols_${doctype}`];
+  if (typeof parse_symbols === 'function') parse_symbols(area);
+  conf_list[doctype].push(area);
 }
 
 export async function gen_data({ output_zyml, noconvert }) {
@@ -208,60 +178,32 @@ export async function gen_data({ output_zyml, noconvert }) {
   // 检查并补全符号表
   for (const CPU of Object.values(CPUs)) {
     const symbol_conf = build_symbols(CPU);
-    symbols_list.push(symbol_conf)
+    conf_list.symbols.push(symbol_conf)
   }
 
-  const copy_list = [];
-  PI_list.forEach(build_PI);
-  SC_list.forEach(build_SC);
-  MT_list.forEach(build_MT);
-  motor_list.forEach(build_motor);
-  alarm_list.forEach(build_alarm);
+  for (const [type, list] of Object.entries(conf_list)) {
+    const build = converter['build_' + type];
+    if (typeof build === 'function') list.forEach(build);
+  };
 
   // 校验完毕，由 noconvert 变量决定是否输出
   if (noconvert) return [[], []];
 
   // 第三遍扫描 生成最终待转换数据
-  for (const AI of AI_list) {
-    const output_dir = AI.CPU.output_dir;
-    copy_list.push([`AI_Proc/${AI_NAME}(step7).scl`, `${output_dir}/${AI_NAME}.scl`, `${join(work_path, output_dir, AI_NAME)}.scl`]);
-  }
-  for (const PI of PI_list) {
-    const output_dir = PI.CPU.output_dir;
-    copy_list.push([`PI_Proc/${PI_NAME}.scl`, `${output_dir}/${PI_NAME}.scl`, `${join(work_path, output_dir, PI_NAME)}.scl`]);
-  }
-  for (const SC of SC_list) {
-    const output_dir = SC.CPU.output_dir;
-    if (SC.options.has_CP340) {
-      copy_list.push([`CP_Poll/${CP340_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, CP340_NAME)}.scl`]);
+  const copy_list = [];
+  TYPES.forEach(type => {
+    for (const item of conf_list[type]) {
+      const gen = converter[`gen_${type}_copy_list`];
+      if (typeof gen !== 'function') return;
+      let ret = gen(item);
+      ret = Array.isArray(ret) ? ret : [ret];
+      copy_list.push(...ret);
     }
-    if (SC.options.has_CP341) {
-      copy_list.push([`CP_Poll/${CP341_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, CP341_NAME)}.scl`]);
-    }
-  }
-  for (const MT of MT_list) {
-    const output_dir = MT.CPU.output_dir;
-    copy_list.push([`MT_Poll/${MT_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, MT_NAME)}.scl`]);
-  }
-  for (const valve of valve_list) {
-    const output_dir = valve.CPU.output_dir;
-    copy_list.push([`Valve_Proc/${VALVE_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, VALVE_NAME)}.scl`]);
-  }
-  for (const motor of motor_list) {
-    const output_dir = motor.CPU.output_dir;
-    copy_list.push([`Motor_Proc/${MOTOR_NAME}.scl`, `${output_dir}/`, `${join(work_path, output_dir, MOTOR_NAME)}.scl`]);
-  }
+  })
 
-  const convert_list = [
-    gen_common(common_list),
-    gen_symbol(symbols_list),
-    gen_AI(AI_list),
-    gen_PI(PI_list),
-    gen_SC(SC_list),
-    gen_MT(MT_list),
-    gen_valve(valve_list),
-    gen_motor(motor_list),
-    gen_alarm(alarm_list),
-  ];
+  const convert_list = [...TYPES, 'symbols'].map(type => {
+    const gen = converter['gen_' + type];
+    return gen(conf_list[type])
+  });
   return [copy_list, convert_list];
 }

@@ -1,4 +1,15 @@
-import { make_prop_symbolic, MOTOR_NAME, MOTOR_LOOP_NAME } from './symbols.js';
+import { make_prop_symbolic } from './symbols.js';
+import { join } from 'path';
+
+export const MOTOR_NAME = `Motor_Proc`;
+export const MOTOR_LOOP_NAME = 'Motor_Loop';
+export const MOTOR_BUILDIN = [
+    [MOTOR_NAME, 'FB514', MOTOR_NAME, 'MOTOR main AI FB'],
+    [MOTOR_LOOP_NAME, "FC514", MOTOR_LOOP_NAME, 'main motor cyclic call function'],
+];
+export function is_type_motor(type) {
+    return type.toLowerCase() === 'motor';
+}
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
@@ -99,4 +110,13 @@ export function gen_motor(motor_list) {
         })
     });
     return { rules, template };
+}
+
+export function gen_motor_copy_list(item) {
+    const output_dir = item.CPU.output_dir;
+    return {
+        src: `Motor_Proc/${MOTOR_NAME}.scl`,
+        dst: `${output_dir}/`,
+        desc: `${join(process.cwd(), output_dir, MOTOR_NAME)}.scl`
+    };
 }

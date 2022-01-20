@@ -23,7 +23,7 @@ export async function convert(options) {
   const [copy_list, convert_list] = await gen_data(options);
   if (copy_list?.length) {
     console.log("copy file to:");
-    for (const [src, dst, desc] of copy_list) {
+    for (const {src, dst, desc} of copy_list) {
       await copy_file(src, dst);
       console.log(`\t${desc}`)
     }

@@ -1,6 +1,13 @@
-import { make_prop_symbolic, ALARM_LOOP_NAME } from './symbols.js';
+import { make_prop_symbolic } from './symbols.js';
+export const ALARM_LOOP_NAME = 'Alarm_Loop';
+export const ALARM_BUILDIN = [
+  [ALARM_LOOP_NAME, "FC518", ALARM_LOOP_NAME, 'main alarm cyclic call function'],
+];
+export function is_type_alarm(type) {
+  return type.toLowerCase() === 'alarm';
+}
 
-export const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{#for alarm in list}}
 // {{alarm.comment}}
 DATA_BLOCK "{{alarm.DB.name}}"

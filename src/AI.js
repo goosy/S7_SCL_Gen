@@ -1,4 +1,16 @@
-import { make_prop_symbolic, AI_NAME, AI_LOOP_NAME } from "./symbols.js";
+import { make_prop_symbolic } from "./symbols.js";
+import { join } from 'path';
+
+export const AI_NAME = 'AI_Proc';
+export const AI_LOOP_NAME = 'AI_Loop';
+export const AI_BUILDIN = [
+    [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
+    [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
+];
+
+export function is_type_AI(type) {
+    return type.toUpperCase() === 'AI';
+}
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
@@ -58,4 +70,13 @@ export function gen_AI(AI_list) {
         })
     });
     return { rules, template }
+}
+
+export function gen_AI_copy_list(item) {
+    const output_dir = item.CPU.output_dir;
+    return {
+        src: `AI_Proc/${AI_NAME}(step7).scl`,
+        dst: `${output_dir}/${AI_NAME}.scl`,
+        desc: `${join(process.cwd(), output_dir, AI_NAME)}.scl`,
+    };
 }

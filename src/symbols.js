@@ -1,64 +1,8 @@
 import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
 import { trace_info } from './trace_info.js'
 
-export const COMMON_NAME = 'common';
-export const AI_NAME = 'AI_Proc';
-export const AI_LOOP_NAME = 'AI_Loop';
-export const PI_NAME = 'PI_Proc';
-export const PI_LOOP_NAME = 'PI_Loop';
-export const FM3502_CNT_NAME = 'FM350-2';
-export const CP340_NAME = 'CP340_Poll';
-export const CP341_NAME = 'CP341_Poll';
-export const SC_LOOP_NAME = 'SC_Loop';
-export const SC_POLLS_NAME = 'SC_polls_DB';
-export const MT_NAME = 'MT_Poll';
-export const MT_LOOP_NAME = 'MT_Loop';
-export const MT_POLLS_NAME = 'MT_polls_DB';
-export const VALVE_NAME = `Valve_Proc`;
-export const VALVE_LOOP_NAME = 'Valve_Loop';
-export const MOTOR_NAME = `Motor_Proc`;
-export const MOTOR_LOOP_NAME = 'Motor_Loop';
-export const ALARM_LOOP_NAME = 'Alarm_Loop';
-export const AI_BUILDIN = [
-    [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
-    [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
-];
-export const PI_BUILDIN = [
-    [PI_NAME, 'FB350', PI_NAME, 'PI main FB'],
-    [PI_LOOP_NAME, "FC350", PI_LOOP_NAME, 'main PI cyclic call function'],
-    [FM3502_CNT_NAME, "UDT350", FM3502_CNT_NAME, 'FM350-2 count DB'],
-];
-export const CP_BUILDIN = [
-    [CP340_NAME, 'FB340', CP340_NAME, 'CP340 SC communicate main process'],
-    [CP341_NAME, 'FB341', CP341_NAME, 'CP341 SC communicate main process'],
-    [SC_LOOP_NAME, "FC341", SC_LOOP_NAME, 'main SC cyclic call function'],
-    [SC_POLLS_NAME, "DB880", SC_POLLS_NAME, 'SC polls data'],
-];
-export const MT_BUILDIN = [
-    [MT_NAME, 'FB344', MT_NAME, 'modbusTCP OUC main process'],
-    [MT_LOOP_NAME, "FC344", MT_LOOP_NAME, 'main modbusTCP cyclic call function'],
-    [MT_POLLS_NAME, "DB881", MT_POLLS_NAME, 'modbusTCP polls data'],
-];
-export const VALVE_BUILDIN = [
-    [VALVE_NAME, 'FB513', VALVE_NAME, 'VALVE main AI FB'],
-    [VALVE_LOOP_NAME, "FC513", VALVE_LOOP_NAME, 'main valve cyclic call function'],
-];
-export const MOTOR_BUILDIN = [
-    [MOTOR_NAME, 'FB514', MOTOR_NAME, 'MOTOR main AI FB'],
-    [MOTOR_LOOP_NAME, "FC514", MOTOR_LOOP_NAME, 'main motor cyclic call function'],
-];
-export const ALARM_BUILDIN = [
-    [ALARM_LOOP_NAME, "FC518", MOTOR_LOOP_NAME, 'main alarm cyclic call function'],
-];
-export const buildin_symbols = [
-    ...AI_BUILDIN,
-    ...PI_BUILDIN,
-    ...CP_BUILDIN,
-    ...MT_BUILDIN,
-    ...VALVE_BUILDIN,
-    ...MOTOR_BUILDIN,
-    ...ALARM_BUILDIN,
-];
+export const buildin_symbols = [];//加载转换器后自动重建
+
 const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
 
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
@@ -285,7 +229,8 @@ function get_symbol({ name, type, block_name, block_no, block_bit, type_name, ty
 
 const template = `{{#for sym in symbol_list}}{{sym}}
 {{#endfor sym}}`;
-export function gen_symbol(symbols_list) {
+
+export function gen_symbols(symbols_list) {
     const rules = [];
     symbols_list.forEach(({ CPU, list }) => {
         const output_dir = CPU.output_dir;

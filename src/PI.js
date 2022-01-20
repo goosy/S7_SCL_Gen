@@ -5,7 +5,41 @@
  */
 
 import { fixed_hex } from "./util.js";
-import { make_prop_symbolic, PI_NAME, PI_LOOP_NAME, FM3502_CNT_NAME } from './symbols.js';
+import { make_prop_symbolic } from './symbols.js';
+import { join } from 'path';
+
+export const PI_NAME = 'PI_Proc';
+export const PI_LOOP_NAME = 'PI_Loop';
+export const FM3502_CNT_NAME = 'FM350-2';
+export const PI_BUILDIN = [
+    [PI_NAME, 'FB350', PI_NAME, 'PI main FB'],
+    [PI_LOOP_NAME, "FC350", PI_LOOP_NAME, 'main PI cyclic call function'],
+    [FM3502_CNT_NAME, "UDT350", FM3502_CNT_NAME, 'FM350-2 count DB'],
+];
+export function is_type_PI(type) {
+    return type.toUpperCase() === 'PI';
+}
+
+const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+{{includes}}
+{{#for module in modules}}
+// FM350-2专用数据块"{{module.count_DB.name}}"
+DATA_BLOCK "{{module.count_DB.name}}" "{{FM3502_CNT_NAME}}"
+BEGIN
+  MOD_ADR := W#16#{{module.module_no}}; // FM350-2模块地址
+  CH_ADR := DW#16#{{module.channel_no}}; // 通道地址，即模块地址乘8
+END_DATA_BLOCK{{#endfor module}}
+
+
+// 主调用
+FUNCTION "{{PI_LOOP_NAME}}" : VOID
+{{#for no, module in modules}}
+// {{no+1}}. {{module.type}} {{module.comment}}
+"{{PI_NAME}}"."{{module.DB.name}}"(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向"{{module.count_DB.name}}"
+{{#endfor module}}{{#if loop_additional_code}}
+{{loop_additional_code}}{{#endif}}
+END_FUNCTION
+`;
 
 /**
  * @typedef {object} S7Item
@@ -78,23 +112,11 @@ export function gen_PI(PI_list) {
     return { rules, template };
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
-{{includes}}
-{{#for module in modules}}
-// FM350-2专用数据块"{{module.count_DB.name}}"
-DATA_BLOCK "{{module.count_DB.name}}" "{{FM3502_CNT_NAME}}"
-BEGIN
-  MOD_ADR := W#16#{{module.module_no}}; // FM350-2模块地址
-  CH_ADR := DW#16#{{module.channel_no}}; // 通道地址，即模块地址乘8
-END_DATA_BLOCK{{#endfor module}}
-
-
-// 主调用
-FUNCTION "{{PI_LOOP_NAME}}" : VOID
-{{#for no, module in modules}}
-// {{no+1}}. {{module.type}} {{module.comment}}
-"{{PI_NAME}}"."{{module.DB.name}}"(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向"{{module.count_DB.name}}"
-{{#endfor module}}{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
-END_FUNCTION
-`;
+export function gen_PI_copy_list(item) {
+    const output_dir = item.CPU.output_dir;
+    return {
+        src: `PI_Proc/${PI_NAME}.scl`,
+        dst: `${output_dir}/`,
+        desc: `${join(process.cwd(), output_dir, PI_NAME)}.scl`,
+    };
+}
