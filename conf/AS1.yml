@@ -2,10 +2,11 @@
 
 # 转换代码说明：
 # 配置文档必须有 type 和 CPU(name) 属性，2个属性都相同的配置文档只能有一个
-# 目前只实现了8种类型文档——CPU文档加7种功能文档，由type属性值指示，大小写无关：
+# 目前只实现了8种类型文档——CPU文档加8种功能文档，由type属性值指示，大小写无关：
 #   - CPU          指示该CPU下共用的信息
 #                  比如输出文件夹，共用的符号和包含等
 #   - AI           模拟量转换
+#   - PV           过程量限值与报警
 #   - PI           脉冲量转换
 #   - SC           串行轮询，用在RS232 RS422 RS485通信中
 #                  (功能包括了 modbus RTU 轮询，故类型值也可以为 modbusRTU)
@@ -151,8 +152,43 @@ list: # 模拟量列表
     input: [M485-1, MW100] # M区域
     enable_alarm: TRUE # 初始值取消报警
   - comment: 液位
-    DB: [LIT001, DB+]
+    DB: [LIT010, DB+]
     input: '"RecvDB".Tank1' # 纯字符串时为引用，引用非符号名称时，转换程序不检查正确性
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...
+
+--- # PV文档开始
+# 指示本配置为生成 PV_Alarm 代码
+type: PV
+CPU: AS1
+
+# 额外代码
+# 字符串形式指示直接SCL代码，内容将合并输出在 PV_Loop.SCL 文件中
+# includes的内容需要用户自己写，生成程序不检查其中的错误。
+includes: ~
+
+symbols: 
+  # PV文档已有2个内置符号，其内容由本程序自动生成：
+  # - [PV_Alarm, FB519]  模拟量主处理函数
+  # - [PV_Loop, FC519]  主循环调用FC，将这个加入OB1中
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+list: # 过程量列表
+  - comment: 储罐液位 1#
+    DB: [LIT001,  DB200] # PV数据块，没有该项则忽略转换，只输出 comment
+    input: '"tankLitre".LIT001' # PV通道输入值，可以是SCL表达式，要求为实数。所以不能为PQ区的值
+    AH_limit: "12.5"
+    WH_limit: "12.0"
+    WL_limit: "3.5"
+    AL_limit: "3.0"
+  - comment: 储罐液位 2#
+    enable_alarm: false
+    DB: [LIT002, DB+] 
+    input: '"tankLitre".LIT002'
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 输出文件名，系统自动加后缀。

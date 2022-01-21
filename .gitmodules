@@ -16,3 +16,6 @@
 [submodule "Motor_Proc"]
 	path = Motor_Proc
 	url = git@github.com:goosy/Motor_Proc.git
+[submodule "PV_Alarm"]
+	path = PV_Alarm
+	url = git@github.com:goosy/PV_Alarm.git

@@ -8,7 +8,7 @@
 //   function build_<type>          构建转换数据
 //   function gen_<type>_copy_list  生成复制列表
 // 转换器文件定义了目前支持的转换类型
-export const supported_types = ['AI', 'alarm', 'CPU', 'motor', 'MT', 'PI', 'SC', 'valve'];
+export const supported_types = ['AI', 'alarm', 'CPU', 'motor', 'MT', 'PI', 'PV', 'SC', 'valve'];
 
 // 引入所有的转换器
 import * as AI_converter from './converters/AI.js';
@@ -17,6 +17,7 @@ import * as CPU_converter from './converters/CPU.js';
 import * as motor_converter from './converters/motor.js';
 import * as MT_converter from './converters/MT.js';
 import * as PI_converter from './converters/PI.js';
+import * as PV_converter from './converters/PV.js';
 import * as SC_converter from './converters/SC.js';
 import * as valve_converter from './converters/valve.js';
 
@@ -27,6 +28,7 @@ export const converter = {
     ...motor_converter,
     ...MT_converter,
     ...PI_converter,
+    ...PV_converter,
     ...SC_converter,
     ...valve_converter,
 }
