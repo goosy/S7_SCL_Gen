@@ -13,9 +13,9 @@ export default { // main lib
     output: [{
         file: pkg.exports['.'][0].import,
         format: 'es',
-    }, {
-        file: pkg.exports['.'][0].require,
-        format: 'cjs',
+    // }, {
+    //     file: pkg.exports['.'][0].require,
+    //     format: 'cjs',
     }],
     plugins: [
         resolve({

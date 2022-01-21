@@ -250,6 +250,6 @@ function dos2unix(str) {
 
 export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux"}) {
     await prepare_dir(dirname(filename));
-    let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(str), encoding);
+    let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(content), encoding);
     await writeFile(filename, buff);
 }

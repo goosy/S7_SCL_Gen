@@ -1,49 +1,23 @@
 import { dump, load, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
 import { gen_symbols, build_symbols, add_symbols, buildin_symbols } from './symbols.js';
-import { IntIncHL, module_path, S7IncHL, read_file } from './util.js';
+import { IntIncHL, S7IncHL, read_file } from './util.js';
 import { trace_info } from './trace_info.js'
 import { join } from 'path';
+import { supported_types, converter } from './converter.js';
 
-// src/converters 目录下的JS文件为转换器
-// 每个转换器必须实现
-//   function if_type_<type>        判断是否为当前转换类型
-//   function gen_<type>            生成转换列表
-// 每个转换器可选实现
-//   Array <type>_BUILDIN           该转换类型的内置符号列表
-//   function parse_symbols_<type>  提取符号
-//   function build_<type>          构建转换数据
-//   function gen_<type>_copy_list  生成复制列表
-// 转换器文件定义了目前支持的转换类型
-const supported_types = (await readdir(join(module_path, 'src/converters'))).map(
-  file => file.replace(/\.js$/, '')
-);
-// 引入所有的转换器
-const converter = { gen_symbols };
-Object.assign(
-  converter,
-  ...await Promise.all(
-    supported_types.map(async type => import(`./converters/${type}.js`))
-  )
-);
+converter.gen_symbols = gen_symbols;
 
-// 重建内置符号
+/** @type {string: {CPU， includes, list, options}[] }*/
+const conf_list = { symbols: [] };
+
 supported_types.forEach(type => {
+  // 重建内置符号
   const buildin = converter[`${type.toUpperCase()}_BUILDIN`];
   if (buildin) buildin_symbols.push(...buildin);
+  // 初始化conf_list
+  conf_list[type] = [];
 });
-
-const conf_list = {
-  CPU: [],  // 通用列表 {CPU， includes, list, options}[]
-  AI: [],      // 模拟量列表 {CPU， includes, list, options}[]
-  PI: [],      // 模拟量列表 {CPU， includes, list, options}[]
-  valve: [],   // 阀门列表 {CPU， includes, list, options}[]
-  motor: [],   // 电机列表 {CPU， includes, list, options}[]
-  alarm: [],   // 报警列表 {CPU， includes, list, options}[]
-  MT: [],      // MT 列表 {CPU， includes, list, options}[]
-  SC: [],      // 串行通信列表 {CPU， includes, list, options}[]
-  symbols: [], // symbols 列表 {CPU， includes, list, options}[]
-}
 
 const CPUs = {}; // CPU 资源
 function get_cpu(CPU_name) {

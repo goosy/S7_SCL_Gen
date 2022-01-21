@@ -1,9 +1,9 @@
 {
   "name": "s7-scl-gen",
-  "version": "0.5.15",
+  "version": "0.5.16",
   "type": "module",
   "description": "S7 PLC SCL 代码自动生成",
-  "main": "/src/index.js",
+  "main": "/lib/index.js",
   "exports": {
     ".": [
       {
@@ -40,7 +40,7 @@
   "scripts": {
     "clean": "rimraf ./conf/*.zyml ./conf/AS1/**/",
     "dev": "node ./dev.js",
-    "build": "rollup -c",
+    "build": "node ./build.js && rollup -c",
     "prepublish": "yarn build",
     "watch": "rollup -c -w"
   },
