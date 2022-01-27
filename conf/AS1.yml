@@ -150,7 +150,7 @@ list: # 模拟量列表
   - comment: 气温
     DB: [TIT002, DB+]
     input: [M485-1, MW100] # M区域
-    enable_alarm: TRUE # 初始值取消报警
+    enable_alarm: FALSE # 初始值不报警，可以在HMI中重设是否允许报警
   - comment: 液位
     DB: [LIT010, DB+]
     input: '"RecvDB".Tank1' # 纯字符串时为引用，引用非符号名称时，转换程序不检查正确性
