@@ -163,7 +163,7 @@ export function gen_SC(SC_list) {
             }
         })
     });
-    return { rules, template };
+    return [{ rules, template }];
 }
 
 export function gen_SC_copy_list(item) {

@@ -255,14 +255,14 @@ export function gen_MT(MT_list) {
       }
     })
   });
-  return { rules, template };
+  return [{ rules, template }];
 }
 
 export function gen_MT_copy_list(item) {
   const output_dir = item.CPU.output_dir;
-  return {
+  return [{
     src: `MT_Poll/${MT_NAME}.scl`,
     dst: `${output_dir}/`,
     desc: `${join(process.cwd(), output_dir, MT_NAME)}.scl`
-  }
+  }];
 }

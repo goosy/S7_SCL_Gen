@@ -70,6 +70,7 @@ yarn.lock
 package-lock.json
 
 # production
+src/converter.js
 build-include/
 conf/**/
 conf/*.zyml

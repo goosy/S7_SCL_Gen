@@ -55,7 +55,7 @@ export function parse_symbols_AI(AI_area) {
 
 export function gen_AI(AI_list) {
     const rules = [];
-    AI_list.forEach(({ CPU, includes, loop_additional_code, list, options={} }) => {
+    AI_list.forEach(({ CPU, includes, loop_additional_code, list, options = {} }) => {
         const { name, output_dir } = CPU;
         const { output_file = AI_LOOP_NAME } = options;
         rules.push({
@@ -69,14 +69,14 @@ export function gen_AI(AI_list) {
             }
         })
     });
-    return { rules, template }
+    return [{ rules, template }];
 }
 
 export function gen_AI_copy_list(item) {
     const output_dir = item.CPU.output_dir;
-    return {
+    return [{
         src: `AI_Proc/${AI_NAME}(step7).scl`,
         dst: `${output_dir}/${AI_NAME}.scl`,
         desc: `${join(process.cwd(), output_dir, AI_NAME)}.scl`,
-    };
+    }];
 }

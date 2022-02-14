@@ -67,14 +67,14 @@ export function gen_PV(PV_list) {
             }
         })
     });
-    return { rules, template }
+    return [{ rules, template }];
 }
 
 export function gen_PV_copy_list(item) {
     const output_dir = item.CPU.output_dir;
-    return {
+    return [{
         src: `PV_Alarm/${PV_NAME}.scl`,
         dst: `${output_dir}/${PV_NAME}.scl`,
         desc: `${join(process.cwd(), output_dir, PV_NAME)}.scl`,
-    };
+    }];
 }

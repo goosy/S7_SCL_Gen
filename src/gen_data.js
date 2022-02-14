@@ -1,15 +1,14 @@
 import { dump, load, loadAll } from "js-yaml";
 import { readdir, writeFile } from 'fs/promises';
-import { gen_symbols, build_symbols, add_symbols, buildin_symbols } from './symbols.js';
+import { build_symbols, add_symbols, buildin_symbols } from './symbols.js';
 import { IntIncHL, S7IncHL, read_file } from './util.js';
 import { trace_info } from './trace_info.js'
 import { join } from 'path';
 import { supported_types, converter } from './converter.js';
-
-converter.gen_symbols = gen_symbols;
+import assert from 'assert/strict';
 
 /** @type {string: {CPU， includes, list, options}[] }*/
-const conf_list = { symbols: [] };
+const conf_list = {};
 
 supported_types.forEach(type => {
   // 重建内置符号
@@ -33,7 +32,7 @@ function get_cpu(CPU_name) {
     MA_list: new S7IncHL([0, 0]),   // 已用M地址
     IA_list: new S7IncHL([0, 0]),   // 已用I地址
     QA_list: new S7IncHL([0, 0]),   // 已用I地址
-    symbols_dict: {},               // 符号表
+    symbols_dict: {},               // 符号字典
     conn_host_list: {},             // 已用的连接地址列表
     output_dir: CPU_name,           // 输出文件夹
     push_conf(type, conf) {
@@ -61,9 +60,9 @@ async function fetch_includes(files) {
 async function add_conf(conf) {
   // 检查重复
   const { name, CPU: CPU_name = name, type } = conf;
-  if (typeof CPU_name !== 'string') throw new SyntaxError(' name(CPU) 必须提供!');
+  assert.equal(typeof CPU_name, 'string', new SyntaxError(' name (或者CPU) 必须提供!'));
   trace_info.CPU = CPU_name;
-  if (typeof type !== 'string') throw new SyntaxError(' type 必须提供!');
+  assert.equal(typeof type, 'string', new SyntaxError(' type 必须提供!'));
   const doctype = supported_types.find(t => converter[`is_type_${t}`](type));
   if (!doctype) {
     console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
@@ -154,8 +153,7 @@ export async function gen_data({ output_zyml, noconvert }) {
 
   // 检查并补全符号表
   for (const CPU of Object.values(CPUs)) {
-    const symbol_conf = build_symbols(CPU);
-    conf_list.symbols.push(symbol_conf)
+    build_symbols(CPU);
   }
 
   for (const [type, list] of Object.entries(conf_list)) {
@@ -168,19 +166,20 @@ export async function gen_data({ output_zyml, noconvert }) {
 
   // 第三遍扫描 生成最终待转换数据
   const copy_list = [];
+  const convert_list = [];
   supported_types.forEach(type => {
     for (const item of conf_list[type]) {
       const gen = converter[`gen_${type}_copy_list`];
-      if (typeof gen !== 'function') return;
-      let ret = gen(item);
-      ret = Array.isArray(ret) ? ret : [ret];
+      assert.equal(typeof gen, 'function', `innal error: gen_${type}_copy_list`);
+      const ret = gen(item);
+      assert(Array.isArray(ret), `innal error: gen_${type}_copy_list(${item}) is not a Array`);
       copy_list.push(...ret);
     }
-  })
 
-  const convert_list = [...supported_types, 'symbols'].map(type => {
+    // push each gen_{type}(type_item) to convert_list
     const gen = converter['gen_' + type];
-    return gen(conf_list[type])
+    assert.equal(typeof gen, 'function', 'innal error');
+    convert_list.push(...gen(conf_list[type]));
   });
   return [copy_list, convert_list];
 }

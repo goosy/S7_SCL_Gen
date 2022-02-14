@@ -83,14 +83,14 @@ export function gen_valve(valve_list) {
             }
         })
     });
-    return { rules, template };
+    return [{ rules, template }];
 }
 
 export function gen_valve_copy_list(item) {
     const output_dir = item.CPU.output_dir;
-    return {
+    return [{
         src: `Valve_Proc/${VALVE_NAME}.scl`,
         dst: `${output_dir}/`,
         desc: `${join(process.cwd(), output_dir, VALVE_NAME)}.scl`
-    };
+    }];
 }

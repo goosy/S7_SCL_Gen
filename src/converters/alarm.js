@@ -62,7 +62,7 @@ export function parse_symbols_alarm(alarm_area) {
   alarm_area.list.forEach(alarm => {
     if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!"); // 空块不处理
     make_prop_symbolic(alarm, 'DB', symbols_dict);
-    
+
     alarm.comment ??= '报警联锁';
 
     if (!alarm.input_list || alarm.input_list.length < 1) throw new SyntaxError("alarm的input_list必须有1项以上!"); // 空项不处理
@@ -104,20 +104,20 @@ export function parse_symbols_alarm(alarm_area) {
   });
 }
 
-function buile_input(list, DB_name){
+function buile_input(list, DB_name) {
   const attributes = " {S7_m_c := 'true'}";
   for (let [index, item] of list.entries()) {
-      item.assign_str = item.name && item.target
-        ? `"${DB_name}".${item.name} := ${item.target.value};`
-        : null;
-      if (item.name) {// DB中生成S7_m_c字段，对input_list项，检测该字段上升沿
-        item.declaration = `${item.name}${attributes} : BOOL ;`;
-        item.edge = `"${DB_name}".${item.name}`;
-      } else { // DB中只有follower字段，对input_list项，检测target上升沿
-        item.name = `input_${index++}`;
-        item.edge = item.target.value;
-      }
+    item.assign_str = item.name && item.target
+      ? `"${DB_name}".${item.name} := ${item.target.value};`
+      : null;
+    if (item.name) {// DB中生成S7_m_c字段，对input_list项，检测该字段上升沿
+      item.declaration = `${item.name}${attributes} : BOOL ;`;
+      item.edge = `"${DB_name}".${item.name}`;
+    } else { // DB中只有follower字段，对input_list项，检测target上升沿
+      item.name = `input_${index++}`;
+      item.edge = item.target.value;
     }
+  }
 }
 
 export function build_alarm({ list }) {
@@ -144,5 +144,9 @@ export function gen_alarm(alarm_list) {
       }
     })
   });
-  return { rules, template };
+  return [{ rules, template }];
+}
+
+export function gen_alarm_copy_list(item) {
+  return [];
 }

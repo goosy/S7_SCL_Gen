@@ -109,14 +109,14 @@ export function gen_motor(motor_list) {
             }
         })
     });
-    return { rules, template };
+    return [{ rules, template }];
 }
 
 export function gen_motor_copy_list(item) {
     const output_dir = item.CPU.output_dir;
-    return {
+    return [{
         src: `Motor_Proc/${MOTOR_NAME}.scl`,
         dst: `${output_dir}/`,
         desc: `${join(process.cwd(), output_dir, MOTOR_NAME)}.scl`
-    };
+    }];
 }

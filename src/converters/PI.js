@@ -109,14 +109,14 @@ export function gen_PI(PI_list) {
             }
         })
     });
-    return { rules, template };
+    return [{ rules, template }];
 }
 
 export function gen_PI_copy_list(item) {
     const output_dir = item.CPU.output_dir;
-    return {
+    return [{
         src: `PI_Proc/${PI_NAME}.scl`,
         dst: `${output_dir}/`,
         desc: `${join(process.cwd(), output_dir, PI_NAME)}.scl`,
-    };
+    }];
 }
