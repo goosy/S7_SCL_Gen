@@ -27,7 +27,7 @@ export function is_type_CPU(type) {
     return type.toUpperCase() === 'CPU';
 }
 
-export function parse_symbols_CPU({ CPU, options = {} }) {
+export function build_CPU({ CPU, options = {} }) {
     if (options.output_dir) CPU.output_dir = options.output_dir;
 }
 
@@ -43,9 +43,9 @@ export function gen_CPU(CPU_list) {
     const symbols_rules = [];
     CPU_list.forEach(({ CPU, includes, options = {} }) => {
         const { name, output_dir } = CPU;
-        const { output_file = CPU_NAME } = options;
+        const { output_file } = options;
         if (includes.length) CPU_rules.push({
-            "name": `${output_dir}/${output_file}.scl`,
+            "name": `${output_dir}/${output_file ?? CPU_NAME}.scl`,
             "tags": {
                 name,
                 includes,
@@ -53,7 +53,7 @@ export function gen_CPU(CPU_list) {
         });
         const symbol_list = Object.values(CPU.symbols_dict).map(get_S7_symbol);
         if (symbol_list.length) symbols_rules.push({
-            "name": `${output_dir}/symbols.asc`,
+            "name": `${output_dir}/${output_file ?? 'symbols'}.asc`,
             "tags": { symbol_list }
         });
     });

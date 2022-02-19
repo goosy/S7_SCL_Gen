@@ -7,6 +7,7 @@
 import { fixed_hex } from "../util.js";
 import { make_prop_symbolic } from '../symbols.js';
 import { join } from 'path';
+import assert from 'assert/strict';
 
 export const CP340_NAME = 'CP340_Poll';
 export const CP341_NAME = 'CP341_Poll';
@@ -61,7 +62,7 @@ END_DATA_BLOCK
 FUNCTION "{{CP_LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
 // {{no+1}}. {{module.type}} {{module.comment}}
-"{{#if module.type == 'CP341'}}{{MB341_NAME}}{{#else}}{{MB340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.coutomTrigger}}
+"{{#if module.type == 'CP341'}}{{MB341_NAME}}{{#else}}{{MB340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customTrigger}}
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
     Laddr         := {{module.module_addr.block_no}},  // CP模块地址
@@ -91,7 +92,7 @@ export function parse_symbols_SC(SC_area) {
     const options = SC_area.options;
     let index = 0;
     SC_area.list.forEach(module => {
-        if (!module?.DB) throw Error(`${SC_area.CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
+        assert(module?.DB, SyntaxError(`${SC_area.CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`));
         module.type ??= 'CP341';
         let type = 'notype';
         if (module.type === 'CP341') {
@@ -101,7 +102,7 @@ export function parse_symbols_SC(SC_area) {
             options.has_CP340 = true;
             type = CP340_NAME;
         }
-        if (type === 'notype') throw new Error(`${SC_area.CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
+        assert(type !== 'notype', new SyntaxError(`${SC_area.CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`));
         module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
         make_prop_symbolic(module, 'module_addr', symbols_dict, 'WORD');
         make_prop_symbolic(module, 'DB', symbols_dict, type);
@@ -120,24 +121,31 @@ export function parse_symbols_SC(SC_area) {
 export function build_SC(SC) {
     const { CPU, list } = SC;
     list.forEach(module => { // 处理配置，形成完整数据
-        if (Array.isArray(module.module_addr)) throw Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
+        assert(!Array.isArray(module.module_addr), Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`));
         module.polls_name ??= "polls_" + CPU.poll_list.push_new();
+        module.customTrigger ??= false;
         module.polls.forEach(poll => {
             if (poll.deivce_ID && !poll.send_data) {
-                if (typeof poll.CRC !== "string" || typeof poll.CRC.length > 4) throw new TypeError(`"CRC:${poll.CRC}" modbus CRC must be a string`);
+                // CRC must be a 4-character string
+                const CRCError = new SyntaxError(`"CRC:${poll.CRC}" —— CRC 必须是一个包含4位16进制数的字符串，建议最中间加一空格防止YAML识别为10进制数字。`);
+                assert.equal(typeof poll.CRC, 'string', CRCError);
+                assert(/^[0-9a-f]{2} *[0-9a-f]{2}$/i.test(poll.CRC.trim()), CRCError);''.replaceAll
+                poll.CRC = poll.CRC.trim().replaceAll(' ','');
+                assert.equal(poll.CRC.length, 4, CRCError);
                 poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
                 poll.function = fixed_hex(poll.function, 2);
                 poll.started_addr = fixed_hex(poll.started_addr, 4);
                 poll.length = fixed_hex(poll.length, 4);
             } else if (!poll.deivce_ID && poll.send_data) {
-                if (typeof poll.send_data !== "string") throw new TypeError(`"send_data:${poll.send_data}" modbus send_data must be a string`);
+                // send_data must be a space-separated hex string
+                const send_data_error = new SyntaxError(`"send_data:${poll.send_data}" —— send_data 必须是一个由空格分隔的16进制字符串`);
+                assert.equal(typeof poll.send_data, 'string', send_data_error);
+                assert(/^[0-9a-f]{2}( +[0-9a-f]{2})+$/i.test(poll.send_data.trim()), send_data_error);
                 const send_data = poll.send_data.trim().split(/ +/);
                 poll.send_data = send_data.map(byte => fixed_hex(byte, 2));
                 poll.send_length = fixed_hex(send_data.length, 2);
-            } else { // poll.deivce_ID 和 poll.send_data 只能且必须有其中一个
-                throw new Error(`poll configuration wrong!
-                deivce_ID:${poll.deivce_ID}
-                send_data:${poll.send_data}`);
+            } else { // poll configuration wrong!
+                throw new SyntaxError(`poll.deivce_ID 和 poll.send_data 只能且必须有其中一个!\tdeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`);
             }
             poll.recv_code = poll.recv_DB.type_name == 'FB' ? `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();\n` : '';
         });
