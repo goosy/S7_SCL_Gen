@@ -1,8 +1,14 @@
-import { convertRules } from 'gooconverter';
+import { readFile } from 'fs/promises';
 import { join } from 'path';
+import { convertRules } from 'gooconverter';
 
 import { copy_file, write_file } from './util.js'
 import { gen_data } from './gen_data.js';
+export { convert, copy_file, version };
+
+const { version } = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url))
+);
 
 async function convert2file(
   { rules, template },
@@ -17,13 +23,13 @@ async function convert2file(
   };
 }
 
-export async function convert(options) {
+async function convert(options) {
   const work_path = process.cwd();
   console.log(`${work_path}:`);
   const [copy_list, convert_list] = await gen_data(options);
   if (copy_list?.length) {
     console.log("copy file to:");
-    for (const {src, dst, desc} of copy_list) {
+    for (const { src, dst, desc } of copy_list) {
       await copy_file(src, dst);
       console.log(`\t${desc}`)
     }

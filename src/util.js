@@ -1,4 +1,4 @@
-import { access, mkdir, copyFile, readFile, writeFile } from 'fs/promises';
+import { access, mkdir, cp, readFile, writeFile } from 'fs/promises';
 import { basename, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import iconv from 'iconv-lite';
@@ -115,7 +115,7 @@ export class S7IncHL extends IncreaseHL {
     push(item, size = 1.0) {
         let num;
         try {
-            if(item[0] != null) num = foct2dec(...(item ?? []));
+            if (item[0] != null) num = foct2dec(...(item ?? []));
             num = this.check(num, size);
             this.#list[num + ':' + size] = true;
             let remainder = num % 8;
@@ -205,29 +205,33 @@ export async function prepare_dir(dir) {
  * 复制文件
  * 目标为文件夹时，以'/'结尾
  * @date 2021-09-28
- * @param {string} file
- * @param {string|string[]} dstList
+ * @param {string} src
+ * @param {string|string[]} dst
  */
-export async function copy_file(file, dstList) {
+export async function copy_file(src, dst) {
     async function _copy(src, dst) {
+        const options = { recursive: true };
         if (typeof src != 'string') return;
         if (typeof dst != 'string') return;
         if (dst.endsWith('/')) {
-            dst += basename(file);
+            dst += basename(src);
         }
         let srcPath = join(module_path, src);
         let dstPath = join(work_path, dst);
         await prepare_dir(dirname(dstPath));
-        await copyFile(srcPath, dstPath);
+        await cp(srcPath, dstPath, options);
     }
-    if (!Array.isArray(dstList)) dstList = [dstList];
     const work_path = process.cwd();
-    for (const dst of dstList) { // for-of 实现异步顺序执行
-        await _copy(file, dst);
+    if (Array.isArray(dst)) {
+        for (const item of dst) { // for-of 实现异步顺序执行
+            await _copy(src, item);
+        }
+    } else {
+        await _copy(src, dst);
     }
 }
 
-export async function read_file(filename, options={}) {
+export async function read_file(filename, options = {}) {
     options.encoding ??= "utf8";
     let exist = true;
     await access(filename).catch(() => {
@@ -248,7 +252,7 @@ function dos2unix(str) {
     return str.split('\r\n').join('\n');
 }
 
-export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux"}) {
+export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux" }) {
     await prepare_dir(dirname(filename));
     let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(content), encoding);
     await writeFile(filename, buff);

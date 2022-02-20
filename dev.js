@@ -11,6 +11,6 @@ const argv = mri(process.argv.slice(2), {
 });
 const output_zyml = argv['zyml-only'] || argv['output-zyml'];
 const noconvert = argv['zyml-only'];
-process.chdir('./conf');
+process.chdir('./example');
 await convert({ output_zyml, noconvert });
 if (!noconvert) console.log("converted all YAML to SCL!")

@@ -72,9 +72,9 @@ package-lock.json
 # production
 src/converter.js
 build-include/
-conf/**/
-conf/*.zyml
-conf/*.scl
+example/SCL
+example/*.zyml
+example/*.scl
 dist/
 lib/
 .vscode/
