@@ -112,10 +112,10 @@ export class S7IncHL extends IncreaseHL {
         return num;
     }
 
-    push(item, size = 1.0) {
+    push(s7addr, size = 1.0) {
         let num;
         try {
-            if (item[0] != null) num = foct2dec(...(item ?? []));
+            if (s7addr[0] != null) num = foct2dec(...(s7addr ?? []));
             num = this.check(num, size);
             this.#list[num + ':' + size] = true;
             let remainder = num % 8;

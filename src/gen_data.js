@@ -24,6 +24,7 @@ function get_cpu(CPU_name) {
   return CPUs[CPU_name] ??= {
     name: CPU_name,
     conn_ID_list: new IntIncHL(16), // 已用连接ID列表
+    OB_list: new IntIncHL(100),     // 已用组织块列表
     DB_list: new IntIncHL(100),     // 已用数据块列表
     FB_list: new IntIncHL(256),     // 已用函数块列表
     FC_list: new IntIncHL(256),     // 已用函数列表
@@ -31,7 +32,9 @@ function get_cpu(CPU_name) {
     poll_list: new IntIncHL(1),     // 已用查询号
     MA_list: new S7IncHL([0, 0]),   // 已用M地址
     IA_list: new S7IncHL([0, 0]),   // 已用I地址
-    QA_list: new S7IncHL([0, 0]),   // 已用I地址
+    QA_list: new S7IncHL([0, 0]),   // 已用Q地址
+    PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
+    PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
     symbols_dict: {},               // 符号字典
     conn_host_list: {},             // 已用的连接地址列表
     output_dir: CPU_name,           // 输出文件夹

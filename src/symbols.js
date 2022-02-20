@@ -1,9 +1,26 @@
+import assert from 'assert/strict';
 import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
 import { trace_info } from './trace_info.js'
 
 export const buildin_symbols = [];//加载转换器后自动重建
 
-const common_type = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
+// FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
+const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];
+const INTEGER_PREFIX = [...INDEPENDENT_PREFIX, 'DB'];
+const DWORD_PREFIX = ['MD', 'ID', 'PID', 'QD', 'PQD'];
+const WORD_PREFIX = ['MW', 'IW', 'PIW', 'QW', 'PQW'];
+const BYTE_PREFIX = ['MB', 'IB', 'PIB', 'QB', 'PQB'];
+const BIT_PREFIX = ['M', 'I', 'Q'];
+const S7MEM_PREFIX = [...DWORD_PREFIX, ...WORD_PREFIX, ...BYTE_PREFIX, ...BIT_PREFIX];
+const COMMON_TYPE = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
+
+// equal { M: 0.1, I: 0.1, Q: 0.1, MB: 1, ... PQD: 4}
+const area_size = Object.fromEntries([
+    ...BIT_PREFIX.map(prefix => [prefix, 0.1]),
+    ...BYTE_PREFIX.map(prefix => [prefix, 1.0]),
+    ...WORD_PREFIX.map(prefix => [prefix, 2.0]),
+    ...DWORD_PREFIX.map(prefix => [prefix, 4.0]),
+]);
 
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
     const get_msg = symbol => {
@@ -23,40 +40,45 @@ function parse(raw, default_type) {
         name = raw[0],
         addr = raw[1]?.toUpperCase(),
         comment = raw[3];
-    if (typeof addr !== 'string' || typeof name !== 'string') {
-        throw new Error(`${raw} is wrong!`);
-    }
+    const symbol_error = new SyntaxError(`${raw} is wrong!`);
+    assert.equal(typeof name, 'string', symbol_error);
+    assert.equal(typeof addr, 'string', symbol_error);
     let type = raw[2] ?? default_type;
     if (typeof type === "string") {
         const UC = type.toUpperCase();
-        if (common_type.includes(UC)) {
+        if (COMMON_TYPE.includes(UC)) {
             type = UC;
         }
     } else {
         type = null;
     }
     if (type === addr) type = name;
-    const reg = /^(MW|MD|M|FB|FC|DB|PIW|IW|I|PQW|QW|Q|UDT)(\d+|\+)(\.(\d))?$/;
+    // regexp = /^(OB|FB|FC|UDT|DB|MD|ID|PID|QD|PQD|MW|IW|PIW|QW|PQW|MB|IB|PIB|QB|PQB|M|I|Q)(\d+|\+)(\.(\d))?$/
+    const prefix_str = [...INTEGER_PREFIX, ...S7MEM_PREFIX].join('|');
+    const reg = new RegExp(`^(${prefix_str})(\\d+|\\+)(\\.(\\d))?$`);
     let [, block_name, block_no, , block_bit = 0] = reg.exec(addr.toUpperCase()) ?? [];
     if (!block_name || !block_no) return raw;
-    if (block_name === 'FB' || block_name === 'FC' || block_name === 'UDT') {
+    if (INDEPENDENT_PREFIX.includes(block_name)) {
         // FB FC UDT 的类型是自己
         type = name;
     }
-    if (!type && block_name === 'DB') {
+    if (type) {
+        // type 必须是字符串
+        assert.equal(typeof type, 'string', symbol_error);
+    } else if (block_name === 'DB') {
         // DB的默认类型是自己
         type = name;
-    }
-    if (!type && /^MD$/.test(block_name)) {
-        // MD 的默认类型是 DWORD
+    } else if (DWORD_PREFIX.includes(block_name)) {
+        // 默认类型是 DWORD
         type = 'DWORD';
-    }
-    if (!type && /^(MW|IW|PIW|QW|PQW)$/.test(block_name)) {
-        // MW PIW 的默认类型是 WORD
+    } else if (WORD_PREFIX.includes(block_name)) {
+        // 默认类型是 WORD
         type = 'WORD';
-    }
-    if (!type && /^(I|Q|M)$/.test(block_name)) {
-        // I Q 的默认类型是 BOOL
+    } else if (BYTE_PREFIX.includes(block_name)) {
+        // 默认类型是 BYTE
+        type = 'BYTE';
+    } else if (BIT_PREFIX.includes(block_name)) {
+        // M I Q 的默认类型是 BOOL
         type = 'BOOL';
     }
     let [, type_name, type_no] = reg.exec(type.toUpperCase()) ?? [type];
@@ -125,53 +147,26 @@ export function make_prop_symbolic(obj, prop, symbols_dict, default_type) {
     }
 }
 
-const area_size = {
-    M: 0.1,
-    MB: 1.0,
-    MW: 2.0,
-    MD: 4.0,
-    I: 0.1,
-    IW: 2.0,
-    PIW: 2.0,
-    ID: 4.0,
-    PID: 4.0,
-    Q: 0.1,
-    QW: 2.0,
-    PQW: 2.0,
-    QD: 4.0,
-    PQD: 4.0,
-}
-
 // 第二遍扫描，检查并补全符号表
 export function build_symbols(CPU) {
     const exist_bno = {};
-    const { MA_list, IA_list, QA_list, symbols_dict } = CPU;
+    const symbols_dict = CPU.symbols_dict;
     const list = Object.values(symbols_dict);
     // 检查重复并建立索引
     list.forEach(symbol => {
         const name = symbol.name;
         try {
-            if (['DB', 'FB', 'FC'].includes(symbol.block_name)) { // DB FB FC 自动分配块号
+            if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC UDT 自动分配块号
                 if (symbol.block_no === '+') symbol.block_no = null;
                 else symbol.block_no = parseInt(symbol.block_no); //取整
                 symbol.block_bit = "";
                 symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
                 symbol.addr = symbol.block_name + symbol.block_no;
-            } else if (
-                ['MD', 'MW', 'M', 'I', 'IW', 'PIW', 'ID', 'PID', 'Q', 'QW', 'PQW', 'QD', 'PQD'].includes(symbol.block_name)
-            ) { // Area 自动分配地址
-                if (symbol.block_no === '+') {
-                    symbol.block_no = null;
-                    symbol.block_bit = 0;
-                } else {
-                    symbol.block_no = parseInt(symbol.block_no);
-                    symbol.block_bit = parseInt(symbol.block_bit);
-                }
-                let list;
-                if (symbol.block_name.includes('M')) list = MA_list;
-                if (symbol.block_name.includes('I')) list = IA_list;
-                if (symbol.block_name.includes('Q')) list = QA_list;
-                const addr = list.push([symbol.block_no, symbol.block_bit], area_size[symbol.block_name]);
+            } else if (S7MEM_PREFIX.includes(symbol.block_name)) { // Area 自动分配地址
+                const s7addr = symbol.block_no === '+' ? [null, 0] : [parseInt(symbol.block_no), parseInt(symbol.block_bit)];
+                // list 为 CPU.PIA_list、CPU.PQA_list、CPU.MA_list、CPU.IA_list、CPU.QA_list 之一
+                const area_list = CPU[['PI', 'PQ', 'M', 'I', 'Q'].find(prefix => symbol.block_name.startsWith(prefix)) + 'A_list'];
+                const addr = area_list.push(s7addr, area_size[symbol.block_name]);
                 symbol.block_no = addr[0];
                 symbol.block_bit = addr[1];
                 symbol.addr = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
@@ -196,10 +191,10 @@ export function build_symbols(CPU) {
     });
     // 补全类型
     list.forEach(symbol => {
-        if (symbol.block_name == "OB" || symbol.block_name == "FB" || symbol.block_name == "FC" || symbol.type == null) {
+        if (INDEPENDENT_PREFIX.includes(symbol.block_name) || symbol.type == null) {
             symbol.type = symbol.name;
         }
-        if (common_type.includes(symbol.type)) {
+        if (COMMON_TYPE.includes(symbol.type)) {
             symbol.type_name = symbol.type;
             symbol.type_no = '';
         } else {
