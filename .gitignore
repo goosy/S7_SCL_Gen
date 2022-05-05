@@ -79,3 +79,4 @@ dist/
 lib/
 .vscode/
 .editorconfig
+.pnp*js

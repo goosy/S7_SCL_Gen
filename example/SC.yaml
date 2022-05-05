@@ -1,0 +1,71 @@
+---
+type: SC  # 指示生成串行通信(serial commnucation)文档
+          # 包括modbus协议，故也可以写为 "type: MB modbusRTU"
+name: AS1 # 指示属于哪一个CPU
+
+includes: 
+- A101.SCL # 该文件包含 A101L 符号的FB实现
+- ZYGasFlow.SCL # 该文件包含 ZY_GAS_flow 符号的FB实现
+- TankDB.SCL # AI_Alarm代码
+
+symbols:
+  # 系统已有4个内置符号：
+  # - [CP340_Poll, FB340] CP340通信主处理函数
+  # - [CP341_Poll, FB341] CP341通信主处理函数
+  # - [SC_Loop, FC345]      表示主循环调用FC，将这个加入OB1中
+  # - [SC_polls_DB, DB880]  将用于保存轮询命令数据
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+  # 以下为自定义符号，这里是接收块
+  # 建议所有的接收块都用FB定义结构，不仅减少接收块的定义工作量，还能在FB中方便地对接收后的数据进一步处理和转换。
+  # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
+  # 这类FB不通用，需要另外单独写块本身。
+  # 可通过指定includes，系统自动添加对应代码进 CP_Loop.scl 中。建议将所有FB块的定义文件放入includes中
+- [A101L, FB802]
+- [ZY_GAS_flow, FB803]
+
+list : # CP 模块列表
+- comment: CP01 Module736 储罐液位
+  type: CP340                         # 类型: 字符串
+  customTrigger: TRUE                 # 指示由外部触发通信
+  REQ: Pulse_1Hz                      # 指定时间存储器发送轮询 类型: S7符号定义 | S7符号引用 | SCL表达式
+  module_addr: 736                    # 类型: 正整数
+  DB: [CP01, DB881]                   # 类型: S7符号定义 | S7符号引用
+  polls_name: polls_GAS               # 类型: 字符串
+  polls:
+  - comment: '液位'                   # 类型: 字符串
+    send_data: 31 31 30 30 0D         # send_data 必须是一个由空格分隔的16进制字节的字符串
+    recv_DB: [tankLitre, DB20, A101L] # 类型: S7符号定义 | S7符号引用
+    recv_start: 0                     # 类型: 正整数
+- comment: CP02 Module752 河口来油流量与天然气流量
+  type: CP341
+  module_addr: 752
+  DB: [CP02, DB882]
+  polls_name: polls_HK
+  polls:
+    # deivce_ID function started_addr length 配置项允许16进制字符串
+  - comment: 河口1#流量计 30
+    deivce_ID: '1e'                    # 16进制数用字符串形式 
+    function: '4'                      # 16进制数用字符串形式 
+    started_addr: 'c'                 # 16进制数用字符串形式 
+    length: '1c'                       # 16进制数用字符串形式
+    CRC: F3AC                          # 用2字节16进制字符串表示
+    recv_DB: [Flow30,  DB830, JS_flow]
+    recv_start: 0
+  - comment: 天然气3#流量计             # 非modbus发送，不要有deivce_ID属性，直接在send_data属性上写16进制发送数据
+    send_data: 03 03 00 00 18 8E 5D    # send_data 必须是一个由空格分隔的16进制字节的字符串
+    recv_DB: GAS                       # 接收块，引用GAS符号
+    recv_start: 20                     # 要注意开始地址不一样
+  - comment: 天然气总 10# 
+    deivce_ID: 10 
+    function: 3 
+    started_addr: 0 
+    length: 12
+    CRC: "44B4" 
+    recv_DB: [GAS, DB841, ZY_GAS_flow] # GAS符号的定义处，可在定义前后任何位置引用。
+    recv_start: 40
+
+# 额外代码，合并到CP_Loop FC块结尾
+loop_additional_code: 
+  - TankChain.SCL # 连锁逻辑的代码
+...

@@ -1,0 +1,88 @@
+---
+# 指令`CPU`指示属于哪个PLC/PCS系统，`name` 指令与之等效
+CPU: AS1 # 
+
+# 指示这是一个CPU空间，使用该CPU的其它配置文档都共享的资源、信息和指令
+# 比如输出文件夹，共用的符号和包含等
+# 所有`CPU`指令相同的配置文件，会在生成代码时：
+# 统一检查资源冲突情况、统一资源分配、自动合并符号表，避免占用同一DB块、同一连接等
+type: CPU
+
+# 运行平台
+# 目前暂只支持step7(也是默认值)，将来加入 portal 和 pcs
+platform: step7
+
+# CPU型号，可省略。
+# 如果有对应的 modbusTCP 配置文档，该指令必须填写(因为采用OUC通信)。
+# 目前已定义可以OUC通信的型号有：  
+#   IM151-8_PN/DP
+#   CPU31x-2_PN/DP
+#   CPU314C-2_PN/DP
+#   CPU317-2_PN/DP
+#   IM154-8_PN/DP
+#   CPU319-3_PN/DP
+#   CPU315T-3_PN/DP
+#   CPU317T-3_PN/DP
+#   CPU317TF-3_PN/DP
+#   CPU412-2_PN
+#   CPU414-3_PN/DP
+#   CPU416-3_PN/DP
+#   CPU412-5H_PN/DP
+#   CPU414-5H_PN/DP
+#   CPU416-5H_PN/DP
+#   CPU417-5H_PN/DP
+#   CPU410-5H
+# 类型: 字符串
+device: CPU410-5H
+
+
+# includes的内容需要用户自己写，生成程序不检查其中的错误。
+includes: 
+- JSFlow.SCL  # 该文件包含 JS_flow 符号的定义与FB实现
+              # JS_flow 定义了流量接收DB块的数据结构，用于一诺的智能流量表。
+              # 可参照这个文件写其它接收块函数。
+
+# CPU文档下symbols列表定义其它文档需要共享的符号
+# 建议把不在转换器中使用但实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
+# 类型: 数组
+symbols:
+  # CPU文档已有9个内置符号，代表打开的时钟存储器，其内容由本程序自动生成：
+  # - [Clock_Memory, MB0],
+  # - [Pulse_10Hz,   M0.0],
+  # - [Pulse_5Hz,    M0.1],
+  # - [Pulse_2.5Hz,  M0.2],
+  # - [Pulse_2Hz,    M0.3],
+  # - [Pulse_1.25Hz, M0.4],
+  # - [Pulse_1Hz,    M0.5],
+  # - [Pulse_0.62Hz, M0.6],
+  # - [Pulse_0.5Hz,  M0.7],
+  # 如果时钟存储器设定的不是默认的MB0，只须对内置符号'Clock_Memory'重新定义就可以了，其余8个内置符号会自动更正。
+- [Clock_Memory, MB10] # 重设时钟存储器为MB10
+
+  # 自定义符号
+- [vw1, MW1000] # 测试MW
+- [vd1, Md1000, Real] # 测试同地址 MD
+- [auto_data1, mw+] # 测试自动地址
+- [auto_data2, M+]
+- [auto_data3, M+]
+- [auto_data4, M+]
+- [auto_data5, MD+, DInt]
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+  # 所有相同CPU配置的输出文件夹，默认为CPU名称
+  # 类型: 字符串
+  output_dir : SCL
+
+  # 输出CPU配置文件名，系统自动加后缀。
+  # 默认输出文件是 symbols.asc CPU.scl
+  # 将下方指令取消注释后，会将输出文件名改成 example.asc example.scl
+  # 类型: 字符串
+  #output_file : 'example'
+
+# host IP 目前用暂不上，保留
+# 类型: 字符串
+host: sample.my.host
+# 类型: 字符串
+IP: 192.168.10.10
+
+... # YAML语法，指示一个文档结束

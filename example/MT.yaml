@@ -1,0 +1,99 @@
+---
+type: modbusTCP #  指示本配置为生成 modbusTCP 文档 也可以写为 "type: MT"
+CPU: AS1        # 指示属于哪一个CPU
+
+# 符号定义
+symbols:
+  # 系统已有3个内置符号，其内容自动生成：
+  # - [MT_Poll, FB344]      modbusTCP通信主处理函数
+  # - [MT_Loop, FC344]      主循环调用FC，将这个加入OB1中
+  # - [MT_polls_DB, DB881]  用于保存轮询命令数据
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+- [MT_polls_DB, DB901] # 修改内置DB块 MT_polls_DB 的地址
+
+  # 以下为自定义符号
+# - [JS_flow, FB801]  # JS_Flow 已在 CPU 文档中定义，这里禁止重复定义
+
+list : # modbus TCP 连接列表
+
+# 第1个连接，
+- comment: 192.168.10.10:502 智能流量计 # 本连接的注释，可省略
+
+  # 十进制连接号，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
+  # 类型: 正整数
+  # ID: 1
+  
+  # 背景连接块。不必填写type，会自动指定为 MT_Poll
+  # 类型: S7符号定义 | S7符号引用
+  DB: [conn_example, DB891]
+  
+  # modbusTCP 对方IP 必填
+  # 类型: 字符串 | 整数数组
+  host: 192.168.10.10 # 也可以用数组 `[192, 168, 10, 10]`
+  
+  # modbusTCP 对方端口，必填，注意host:port组合不得重复，否则报错
+  # 类型: 正整数
+  port: 502 
+  
+  # 用于通信的设备号，见 https://support.industry.siemens.com/cs/document/51339682/使用fb65-tcon-建立以太网的开放式用户通信连接时，如何参数化-loc
+  # 本参数优先级最高，会忽略 local_device rack XSlot 3个参数
+  # local_device_id: B#16#02 # 建议不要填写本参数，采用直观的 local_device rack XSlot 参数
+
+  # 由于local_device_id不直观，建议用下面三个参数进行直观配置，同时程序自动检验
+  # 如果已经设置了local_device_id，则忽略下方参数。
+  #   device  设备名称            见 CPU 文档中的定义
+  #           类型: 字符串        如果在CPU文档已设置了device，可以省略本参数
+  #   rack    机架号              可以在Step7硬件配置里看到，通常为0或1，除了冗余机型外，大多情况下本参数可省略
+  #           类型: 正整数        仅 CPU412-5H_PN/DP CPU414-5H_PN/DP CPU416-5H_PN/DP CPU417-5H_PN/DP CPU410-5H 需要设置本参数值
+  #   XSlot   通信接号扩展插槽号   可以在Step7硬件配置里的通信接口名称中看到，比如"X2"则XSlot值就是2
+  #           类型: 正整数         仅 CPU319-3 PN/DP CPU317-2 PN/DP CPU410-5H 需要设置本参数值
+  device: ~                       # 设备名称 省略时采用CPU文档中的定义，如果CPU文档也无定义，则local_device_id会默认为B#16#02
+  rack: 1                         # 机架号  部分CPU可省略
+  XSlot: 8                        # 插槽号  非多IF可省略
+
+  # 发出查询的时间间隔，可省略，默认为200，单位ms
+  # 类型: 正整数
+  # interval_time: 200
+
+  # 自定义查询名称，必填，不可与其它连接的重名。
+  # 类型: 字符串
+  polls_name: polls_example 
+  
+  # 该连接下的轮询定义，至少要有一个查询
+  polls: 
+
+    # 查询1
+    # deivce_ID function started_addr length 配置项允许16进制字符串
+  - comment: 垦西1#流量计              # 本查询的注释，可省略。 类型: 字符串
+    deivce_ID: 1                      # 设备号，即RTU从站地址。 类型: 正整数
+    function: 4                       # modbus 功能号。 类型: 正整数
+    started_addr: 0                   # 查询起始地址。 类型: 正整数
+    length: 28                        # 查询长度。 类型: 正整数
+    recv_DB: [Flow01, DB803, JS_flow] # 接收块。 类型: S7符号定义 | S7符号引用
+    recv_start: 0                     # 接收开始位置。 类型: 正整数
+
+    # 查询2
+  - comment: '垦西2#流量计'
+    deivce_ID: 'F'                    # 16进制数用字符串形式
+    function: '4'                     # 16进制数用字符串形式
+    started_addr: '10'                # 16进制数用字符串形式
+    length: '28'                      # 16进制数用字符串形式
+    recv_DB: [Flow02, DB802, JS_flow]
+    recv_start: 0
+
+    # 查询3
+  - comment: '垦西3#流量计'
+    deivce_ID: 16
+    function: 4
+    started_addr: 0
+    length: 28
+    recv_DB: [Flow03, DB+, JS_flow]
+    recv_start: 0
+
+# 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+...

@@ -1,6 +1,7 @@
 import { IntIncHL, fixed_hex } from '../util.js';
 import { make_prop_symbolic } from '../symbols.js';
 import { join } from 'path';
+import assert from 'assert/strict';
 
 export const MT_NAME = 'MT_Poll';
 export const MT_LOOP_NAME = 'MT_Loop';
@@ -95,10 +96,10 @@ BEGIN
   TCON_Parameters.rem_staddr_len := B#16#4;
   TCON_Parameters.rem_tsap_id_len := B#16#2;
   TCON_Parameters.next_staddr_len := B#16#0;
-  TCON_Parameters.rem_staddr[1] := B#16#{{conn.IP1}};    //IP1 {{conn.host[0]}}
-  TCON_Parameters.rem_staddr[2] := B#16#{{conn.IP2}};    //IP2 {{conn.host[1]}}
-  TCON_Parameters.rem_staddr[3] := B#16#{{conn.IP3}};    //IP3 {{conn.host[2]}}
-  TCON_Parameters.rem_staddr[4] := B#16#{{conn.IP4}};    //IP4 {{conn.host[3]}}
+  TCON_Parameters.rem_staddr[1] := B#16#{{conn.IP1}};    //IP1 {{conn.IP[0]}}
+  TCON_Parameters.rem_staddr[2] := B#16#{{conn.IP2}};    //IP2 {{conn.IP[1]}}
+  TCON_Parameters.rem_staddr[3] := B#16#{{conn.IP3}};    //IP3 {{conn.IP[2]}}
+  TCON_Parameters.rem_staddr[4] := B#16#{{conn.IP4}};    //IP4 {{conn.IP[3]}}
   TCON_Parameters.rem_tsap_id[1] := B#16#{{conn.port1}};   //PortH {{conn.port}}
   TCON_Parameters.rem_tsap_id[2] := B#16#{{conn.port2}};   //PortL
   TCON_Parameters.spare := W#16#0;
@@ -202,7 +203,7 @@ export function build_MT({ CPU, list }) {
     const {
       ID,
       local_device_id = get_device_id(conn.device, conn.R, conn.X), // 已是SCL字面量
-      host,
+      host: hostraw,
       port,
       // interval_time, // 由SCL程序负责默认的间隔时长
     } = conn;
@@ -212,18 +213,27 @@ export function build_MT({ CPU, list }) {
     // 如没指定device，则采用默认设备号
     conn.local_device_id = local_device_id ?? DEFAULT_DEVICE_ID;
 
+    // host IP
+    const host_str = Array.isArray(hostraw) ? hostraw.join('.') : hostraw;
+    assert.equal(typeof host_str, 'string', new SyntaxError(`配置项"host: ${host_str}"有误，必须提供IP地址，可以是数组形式!`));
+    assert(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host_str), new SyntaxError(`配置项"host: ${host_str}"的不是IP地址形式!`));
+    conn.host = host_str;
+    conn.IP = host_str.split('.').map(str => {
+      const ip = parseInt(str);
+      assert(ip >= 0 && ip < 256, new SyntaxError(`配置项"host: ${host_str}"的IP地址越界!`));
+      return ip;
+    });
     // port_list
-    const host_str = conn.host.join('.');
     conn_host_list[host_str] ??= new IntIncHL(502);
     const port_list = conn_host_list[host_str];
     port_list.push(port);
 
     conn.ID = fixed_hex(conn_ID_list.push(ID), 4);
     conn.DB.name ??= "conn_MT" + ID;
-    conn.IP1 = fixed_hex(host[0], 2);
-    conn.IP2 = fixed_hex(host[1], 2);
-    conn.IP3 = fixed_hex(host[2], 2);
-    conn.IP4 = fixed_hex(host[3], 2);
+    conn.IP1 = fixed_hex(conn.IP[0], 2);
+    conn.IP2 = fixed_hex(conn.IP[1], 2);
+    conn.IP3 = fixed_hex(conn.IP[2], 2);
+    conn.IP4 = fixed_hex(conn.IP[3], 2);
     conn.port1 = fixed_hex((port >>> 8), 2);
     conn.port2 = fixed_hex((port & 0xff), 2);
     conn.polls_name ??= "polls_" + poll_list.push_new();

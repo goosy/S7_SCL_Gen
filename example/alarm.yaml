@@ -1,0 +1,96 @@
+---
+CPU: AS1    # 指示属于哪一个CPU
+type: alarm # 指示本配置为生成 Alarm 代码
+
+includes: ~
+
+symbols:  
+  # 系统已有1个内置符号，其内容由本程序自动生成：
+  # - [Alarm_Loop, FC518]   主调用函数，在OB中加入对它的调用。
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+  # 以下为自定义符号
+- [DI02-12, I5.3]
+- [DI02-13, I+]
+- [DI02-14, I+]
+- [DI02-15, I+]
+- [DO04-01, Q6.0]
+
+list :
+
+- comment: 外输泵房间联锁
+
+  # 下方会自动生成DB块并构建必要的内部结构，大致结构为：
+  #     DB.<input_name_1>   输入1 名称由input_list的每项决定
+  #     DB.<input_name_2>   输入2 名称由input_list的每项决定
+  #     ......
+  #     DB.<input_name_n>   输入n 名称由input_list的每项决定
+  #     DB.test             测试用
+  #     DB.reset            重置输出用，会将DB.output置0
+  #     DB.output           输出 在input和test上升沿进行或运算后赋值
+  #     DB.input_1_follower 内部数据用于跟踪上升沿
+  #     ......
+  #     DB.input_n_follower 内部数据数量与input_list对应
+  #     DB.test_follower    内部数据用于跟踪DB.test上升沿
+  # 类型: S7符号定义 | S7符号引用
+  DB: [pump_gas, DB121] # 本例DB块名为"pump_gas"
+
+  # 输入列表，每一输入项指代的值是一个布尔值，在输入项的上升沿去置位 DB.output
+  # 有name属性的input会加入到DB块的结构中
+  input_list:
+    # 每一输入项类型: 对象 | S7符号定义 | S7符号引用 | SCL表达式
+    # 当输入项是一个对象时，这个对象包含以下属性：
+    #   name    暴露给 OS 的变量名称，系统会自动加上 S7_m_c，name不允许等于"test"，它已内置为测试input
+    #   target  本input的过程值来源，类型为S7符号或SCL表达式。如果省略target，只能通过自写程序或HMI改变该输入项。
+    #   comment 输入项的注释
+  - {target: DI02-13, name: GIA_1201A, comment: 外输泵可燃气浓度高报警}
+  - {target: DI02-14}          # 只有过程来源的项，不会上传到HMI
+  - {name: mytest}             # 没有target属性时，指示该input没有过程数据源，只能通过HMI(OS)操作
+    # 系统内置了一个名称为 test 的无数据源的输入项，可用于测试
+    # 这个输入项相当于 `{name: test}`
+
+    # 如果上方的对象只有一个target属性，而该属性值为S7符号，则中以输入项简写为S7符号。
+    # 这情况下输入项类型为S7符号，符号定义和符号引用都可以。
+    # 这种输入项没有描述信息，也不能自动上传OS中。
+  - DI02-15            # 符号引用作为输入项，与 `{target: DI02-15}` 等效
+  - [DI02-16, I5.7]    # 符号定义作为输入项，与 `{target: [DI02-16, I5.7]}` 等效
+
+    # 当输入项是一个SCL表达式时，运行中以表达式的值作为该输入项
+    # 这种输入项转换器不负责检查有效性，同样没有描述信息，更不能自动上传OS中。
+  - '"TIT-1201".AH_Flag'
+
+  # 复位列表
+  # 有任何一项的值为 true ，就会将 DB.output 复位。
+  # 有 name 的项会暴露给 OS，系统会自动加上 S7_m_c
+  # DB内置一个reset字段
+  reset_list:
+    - {target: DI02-12, name: reset_button, comment: 复位按钮} # 添加reset过程源
+    - Alarm_SL.reset                                           # SCL表达式作为reset输入之一
+
+  # 输出
+  # 正常情况下 DB.output 不必设定过程源，有关联输出最好在 DB.output_list 中设置。
+  # 本项会暴露给OS，即以 DB.output 上传并自动加上 S7_m_c 属性
+  # 本项的值类型: S7符号定义 | S7符号引用 | SCL表达式
+  # output 值可通过 reset_list 的任何一项复位
+  output: DO04-01
+
+  # 输出关联项，不会出现在DB结构中，DB.output 值会实时关联至 DB.output_list 的每一项。
+  output_list: 
+    # output_list 的每一个输出关联项，只能是且必须是一个S7符号或SCL表达式
+    # 无论是S7符号或SCL表达式，它指代的源必须可赋值的地址，比如
+    #   正确: DO04-02
+    #   错误: DI02-12
+    #   正确: AFan_1204A.start_CMD
+    #   错误: NOT AFan_1204A.run
+    # 转换器无法分辨输出项的合理性
+    # 生成程序自动用DB.output字段去置位各个输出关联项，实现联锁，reset会复位输出关联项。
+    # 如果省略，转换程序不生成任何联锁。这时可以用 DB.output 来自行编程或HMI处理
+    - AFan_1204A.start_CMD # 轴流风机，注意
+
+# 更多的联锁设置，可以依照上方书写，注意对齐，以对齐表示层级
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...

@@ -11,8 +11,8 @@ s7scl [subcommand] [path] [options]
 subcommand 子命令:
   convert     | conv         转换配置为SCL，省略时的默认子命令
   help                       打印本帮助
-  gcl  | init | template     在当前目录下产生一个配置目录GCL，内含样板配置文件
-                             也可以用path参数指定配置目录名称
+  gcl  | init | template     在当前目录下产生一个配置目录，内含样板配置文件
+                             默认目录名为GCL，也可以用path参数指定为其它目录
 
 path 参数:  指示要解析的YAML文件所在的目录，默认为 "." 即省略时为当前目录
 
@@ -53,7 +53,10 @@ if (argv.version) {
 } else if (cmd === 'gcl' || cmd === 'init' || cmd === 'template') {
     const dst = path ?? 'GCL';
     await copy_file('example', dst);
-    console.log(`create folder ${join(process.cwd(), dst)}`);
+    await copy_file('README.md', dst+'/');
+    const fullname_dst = join(process.cwd(), dst);
+    const readme = join(fullname_dst, 'README.md');
+    console.log(`已生成配置文件夹 ${fullname_dst}。\n可以参阅 ${readme} 内的说明。`);
 } else {
     show_help();
 }

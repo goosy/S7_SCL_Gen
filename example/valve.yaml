@@ -1,0 +1,74 @@
+---
+type: Valve # 指示本配置为生成 Valve 代码
+CPU: AS1    # 指示属于哪一个CPU
+
+symbols:
+  # 系统已有2个内置符号，其内容自动生成：
+  # - [Valve_Proc, FB513]   阀门主处理函数块
+  # - [Valve_Loop, FC513]   主调用函数
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+  # 以下为自定义符号
+- [AI11-01, PIW672]
+- [AI11-02, PIW674]
+- [DI01-01, I0.0]
+- [DI01-02, I+]
+- [DI01-03, I+]
+- [DI01-04, I+]
+- [DI01-05, I+]
+- [DI01-06, I+]
+- [DI01-07, I+]
+- [DI01-08, I+]
+- [DO01-01, Q0.0]
+- [DO01-02, Q+]
+- [DO02-01, Q2.0]
+- [DO02-02, Q+]
+
+list :
+  # 没有阀位时，AI 可直接设置为断线值S7_AI_MIN_WORD
+  # 没有远程信号时，remote可不赋值，其值默认为TRUE，如果要避免其它过程改变它，可以显式赋值为 true
+  # 没有故障信号时，error可不赋值，其值默认为FALSE，如果要避免其它过程改变它，可以显式赋值为 false
+  # 以下常量可以直接使用
+  # S7_ZERO := 0;
+  # S7_SPAN := 27648;
+  # S7_AI_MIN := -32768;
+  # S7_AI_MIN_WORD := W#16#8000;
+  # S7_AI_MAX := 32767;
+  # S7_AI_MAX_WORD := W#16#7FFF;
+
+  # 阀门1
+- comment: A阀门
+  DB: [MGV-1201A, DB111] # 阀门DB块 类型: S7符号定义 | S7符号引用
+  AI: AI11-01            # 阀位信号输入
+  CP: DI01-01            # 关到位信号
+  OP: DI01-02            # 开到位信号
+  error: DI01-03         # 错误信号
+  remote: DI01-04        # 远程信号 以上5项类型: S7符号定义 | S7符号引用 | SCL表达式
+  close_action: DO01-01  # 关阀线圈
+  open_action: DO01-02   # 开阀线圈 以上2项类型: S7符号定义 | S7符号引用 | SCL表达式 结果为可赋值布尔地址
+
+  # 阀门2
+- comment: B阀门
+  DB: [MGV-1201B, DB+]
+  AI: S7_AI_MIN_WORD   # 没有AI过程值时，可省略或直接赋值断线值，省略时得保证PLC运行时不被改变
+  CP: DI01-05
+  OP: DI01-06
+  error: FALSE
+  remote: TRUE
+  open_action: DO02-01 # 只能开阀
+
+- comment: C阀门
+  DB: [MGV-1201C, DB+]
+  AI: AI11-02
+  CP: DI01-07
+  OP: DI01-08
+  error: FALSE          # 没有error过程值时，可省略或赋值FALSE，省略时得保证PLC运行时不被改变
+  remote: TRUE          # 没有remote过程值时，可省略或赋值TRUE，省略时得保证PLC运行时不被改变
+  close_action: DO02-02 # 只能关阀
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...
