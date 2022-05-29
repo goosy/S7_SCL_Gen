@@ -1,6 +1,12 @@
 ---
 type: modbusTCP #  指示本配置为生成 modbusTCP 文档 也可以写为 "type: MT"
 CPU: AS1        # 指示属于哪一个CPU
+description: |
+  使用 modbusTCP 通信，必须在step7工程中加入以下库
+  * FB63 TSEND
+  * FB64 TRCV
+  * FB65 TCON
+  * FB66 TDISCON
 
 # 符号定义
 symbols:
