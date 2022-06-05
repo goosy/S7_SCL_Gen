@@ -1,4 +1,4 @@
-import { dump, load, loadAll } from "js-yaml";
+import { stringify, parse, parseAllDocuments } from "yaml";
 import { readdir, writeFile } from 'fs/promises';
 import { build_symbols, add_symbols, buildin_symbols } from './symbols.js';
 import { IntIncHL, S7IncHL, read_file } from './util.js';
@@ -69,7 +69,7 @@ async function add_conf(conf) {
   const doctype = supported_types.find(t => converter[`is_type_${t}`](type));
   if (!doctype) {
     console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
-    process.exit(1);
+    return;
   }
   const CPU = get_cpu(CPU_name);
   if (doctype === 'CPU') CPU.device = conf.device;
@@ -77,13 +77,13 @@ async function add_conf(conf) {
     console.error(`${CPU_name}:${doctype}${doctype == type ? '(' + type + ')' : ''} 有重复的配置 has duplicate configurations`);
     process.exit(2);
   }
-  CPU.push_conf(doctype, dump(conf)); // 按名称压入无注释配置文本
+  CPU.push_conf(doctype, stringify(conf)); // 按名称压入无注释配置文本
   trace_info.type = doctype;
   trace_info.push_doc();
 
   function parse_symbols_in_SCL(SCL) {
     const code = SCL.replace(/(^|\n)\s*\(\*(symbols:\s+[\s\S]*?)\*\)/g, (m, m1, yaml) => {
-      const symbols = load(yaml)['symbols']?.map(symbol => {
+      const symbols = parse(yaml)['symbols']?.map(symbol => {
         symbol[3] ??= 'symbol from files of includes';
         return symbol;
       })
@@ -124,10 +124,10 @@ export async function gen_data({ output_zyml, noconvert }) {
         const filename = join(work_path, file);
         trace_info.filename = filename;
         trace_info.doc_index = 0;
-        const docs = loadAll(await read_file(filename));
+        const docs = parseAllDocuments(await read_file(filename), { version: '1.1' });
         for (const [index, doc] of docs.entries()) {
           trace_info.doc_index = index + 1;
-          await add_conf(doc);
+          await add_conf(doc.toJS({ merge: true }));
         }
         console.log(`\t${filename}`);
       }
