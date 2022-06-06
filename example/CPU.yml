@@ -38,9 +38,10 @@ device: CPU410-5H
 
 # includes的内容需要用户自己写，生成程序不检查其中的错误。
 includes: 
-- JSFlow.SCL  # 该文件包含 JS_flow 符号的定义与FB实现
-              # JS_flow 定义了流量接收DB块的数据结构，用于一诺的智能流量表。
-              # 可参照这个文件写其它接收块函数。
+- JSFlow.SCL  # 该文件包含用户自定义FB"JS_flow"代码
+              # 其中包括 JS_flow 符号的定义和流量接收DB块的数据结构
+              # 用于一诺的智能流量表。
+              # 可参照这个文件写其它自定义接收块函数。
 
 # CPU文档下symbols列表定义其它文档需要共享的符号
 # 建议把不在转换器中使用但实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
@@ -74,8 +75,8 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
   output_dir : SCL
 
   # 输出CPU配置文件名，系统自动加后缀。
-  # 默认输出文件是 symbols.asc CPU.scl
-  # 将下方指令取消注释后，会将输出文件名改成 example.asc example.scl
+  # 默认输出文件是 CPU.scl
+  # 将下方指令取消注释后，会将输出文件名改成 example.scl
   # 类型: 字符串
   #output_file : 'example'
 

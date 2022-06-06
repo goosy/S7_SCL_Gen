@@ -1,5 +1,5 @@
 import assert from 'assert/strict';
-import { add_symbols, get_S7_symbol } from '../symbols.js';
+import { add_symbols } from '../symbols.js';
 
 export const CPU_NAME = 'CPU';
 export const CPU_BUILDIN = [
@@ -40,12 +40,9 @@ export function is_type_CPU(type) {
     return type.toUpperCase() === 'CPU';
 }
 
-const template_CPU = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
 `;
-
-const template_symbols = `{{#for sym in symbol_list}}{{sym}}
-{{#endfor sym}}`;
 
 /**
  * 第一遍扫描 提取符号
@@ -60,7 +57,7 @@ export function parse_symbols_CPU(CPU_area) {
     if (CM_addr != 'MB0') { // 内置符号改变
         const symbols = CPU_BUILDIN.slice(1).map(symbol_raw => {
             const ret = [...symbol_raw];
-            const prefix = CM_addr.replace(/B/i,'').toUpperCase();
+            const prefix = CM_addr.replace(/B/i, '').toUpperCase();
             ret[1] = ret[1].replace('M0', prefix);
             return ret;
         });
@@ -74,7 +71,6 @@ export function build_CPU({ CPU, options = {} }) {
 
 export function gen_CPU(CPU_list) {
     const CPU_rules = [];
-    const symbols_rules = [];
     CPU_list.forEach(({ CPU, includes, options = {} }) => {
         const { name, output_dir } = CPU;
         const { output_file } = options;
@@ -85,16 +81,8 @@ export function gen_CPU(CPU_list) {
                 includes,
             }
         });
-        const symbol_list = Object.values(CPU.symbols_dict).map(get_S7_symbol);
-        if (symbol_list.length) symbols_rules.push({
-            "name": `${output_dir}/${output_file ?? 'symbols'}.asc`,
-            "tags": { symbol_list }
-        });
     });
-    return [
-        { rules: CPU_rules, template: template_CPU },
-        { rules: symbols_rules, template: template_symbols }
-    ];
+    return [{ rules: CPU_rules, template }];
 }
 
 export function gen_CPU_copy_list() {

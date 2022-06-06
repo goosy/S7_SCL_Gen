@@ -210,7 +210,7 @@ const SYMN_LEN = 23;
 const NAME_LEN = 4;
 const NO_LEN = 5;
 const BLANK_COMMENT_LEN = 80;
-export function get_S7_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
+function get_S7_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
     const symname = str_padding_right(name, SYMN_LEN);
     const block_name_str = str_padding_right(block_name, NAME_LEN);
     const block_no_str = str_padding_left(block_no, NO_LEN);
@@ -220,4 +220,19 @@ export function get_S7_symbol({ name, type, block_name, block_no, block_bit, typ
     const type_no_str = type_no === '' ? '' : str_padding_left(type_no, NO_LEN);
     const cm = str_padding_right(comment ?? '', BLANK_COMMENT_LEN);
     return `126,${symname} ${block_name_str}${block_no_str}${block_bit_str} ${type_str}${type_no_str} ${cm}`;
+}
+
+const template = `{{#for sym in symbol_list}}{{sym}}
+{{#endfor sym}}`;
+
+export function gen_symbols(CPUs) {
+    const rules = [];
+    for (const CPU of Object.values(CPUs)) {
+        const symbol_list = Object.values(CPU.symbols_dict).map(get_S7_symbol);
+        if (symbol_list.length) rules.push({
+            "name": `${CPU.output_dir}/symbols.asc`,
+            "tags": { symbol_list }
+        });
+    };
+    return { rules, template };
 }

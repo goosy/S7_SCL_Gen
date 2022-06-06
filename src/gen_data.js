@@ -1,6 +1,6 @@
 import { stringify, parse, parseAllDocuments } from "yaml";
 import { readdir, writeFile } from 'fs/promises';
-import { build_symbols, add_symbols, buildin_symbols } from './symbols.js';
+import { build_symbols, add_symbols, buildin_symbols, gen_symbols } from './symbols.js';
 import { IntIncHL, S7IncHL, read_file } from './util.js';
 import { trace_info } from './trace_info.js'
 import { join } from 'path';
@@ -59,6 +59,17 @@ async function fetch_includes(files) {
   return code;
 }
 
+/**
+ * check if its supported document type
+ * returns the standard type name if supported
+ * else return undefined
+ * @param {string} type
+ * @returns {string|undefined}
+ */
+function is_supported_type(type) {
+  return supported_types.find(t => converter[`is_type_${t}`](type));
+}
+
 // 第一遍扫描，仅提取符号
 async function add_conf(conf) {
   // 检查重复
@@ -66,7 +77,7 @@ async function add_conf(conf) {
   assert.equal(typeof CPU_name, 'string', new SyntaxError(' name (或者CPU) 必须提供!'));
   trace_info.CPU = CPU_name;
   assert.equal(typeof type, 'string', new SyntaxError(' type 必须提供!'));
-  const doctype = supported_types.find(t => converter[`is_type_${t}`](type));
+  const doctype = is_supported_type(type);
   if (!doctype) {
     console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
     return;
@@ -184,5 +195,6 @@ export async function gen_data({ output_zyml, noconvert }) {
     assert.equal(typeof gen, 'function', 'innal error');
     convert_list.push(...gen(conf_list[type]));
   });
+  convert_list.push(gen_symbols(CPUs)); // symbols converter
   return [copy_list, convert_list];
 }
