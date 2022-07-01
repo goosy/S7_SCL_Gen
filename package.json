@@ -40,7 +40,7 @@
   "scripts": {
     "clean": "rimraf ./example/SCL",
     "dev": "yarn clean && node ./dev.js",
-    "build": "node ./build.js && rollup -c",
+    "build": "node ./build.js",
     "prepublish": "yarn clean && yarn build",
     "watch": "rollup -c -w",
     "test": "mocha"
