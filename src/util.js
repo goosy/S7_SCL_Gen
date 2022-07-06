@@ -257,3 +257,7 @@ export async function write_file(filename, content, { encoding = "utf8", lineEnd
     let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(content), encoding);
     await writeFile(filename, buff);
 }
+
+export function getClassName(obj) {
+    return obj.constructor.name;
+}

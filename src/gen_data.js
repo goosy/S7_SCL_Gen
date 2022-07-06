@@ -13,31 +13,38 @@ supported_types.forEach(type => {
   conf_list[type] = [];
 });
 
-const CPUs = {}; // CPU 资源
-function get_cpu(CPU_name) {
-  // 如没有则建立一个初始资源数据
-  return CPUs[CPU_name] ??= {
-    name: CPU_name,
-    conn_ID_list: new IntIncHL(16), // 已用连接ID列表
-    OB_list: new IntIncHL(100),     // 已用组织块列表
-    DB_list: new IntIncHL(100),     // 已用数据块列表
-    FB_list: new IntIncHL(256),     // 已用函数块列表
-    FC_list: new IntIncHL(256),     // 已用函数列表
-    UDT_list: new IntIncHL(256),    // 已用自定义类型列表
-    poll_list: new IntIncHL(1),     // 已用查询号
-    MA_list: new S7IncHL([0, 0]),   // 已用M地址
-    IA_list: new S7IncHL([0, 0]),   // 已用I地址
-    QA_list: new S7IncHL([0, 0]),   // 已用Q地址
-    PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
-    PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
-    symbols_dict: {},               // 符号字典
-    conn_host_list: {},             // 已用的连接地址列表
-    output_dir: CPU_name,           // 输出文件夹
-    add_type(type, document) {      // 按类型压入Document
-      this[type] = document;
-    }
-  }
-}
+const CPUs = { // CPU 资源
+  get(CPU_name) {
+    // 从已有CPU中找，如没有则建立一个初始CPU资源数据
+    return CPUs[CPU_name] ??= {
+      name: CPU_name,
+      conn_ID_list: new IntIncHL(16), // 已用连接ID列表
+      OB_list: new IntIncHL(100),     // 已用组织块列表
+      DB_list: new IntIncHL(100),     // 已用数据块列表
+      FB_list: new IntIncHL(256),     // 已用函数块列表
+      FC_list: new IntIncHL(256),     // 已用函数列表
+      UDT_list: new IntIncHL(256),    // 已用自定义类型列表
+      poll_list: new IntIncHL(1),     // 已用查询号
+      MA_list: new S7IncHL([0, 0]),   // 已用M地址
+      IA_list: new S7IncHL([0, 0]),   // 已用I地址
+      QA_list: new S7IncHL([0, 0]),   // 已用Q地址
+      PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
+      PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
+      symbols_dict: {},               // 符号字典
+      conn_host_list: {},             // 已用的连接地址列表
+      output_dir: CPU_name,           // 输出文件夹
+      add_type(type, document) {      // 按类型压入Document
+        this[type] = document;
+      }
+    };
+  },
+};
+Object.defineProperty(CPUs, 'get', {
+  enumerable: false,
+  configurable: false,
+  writable: false
+});
+
 
 async function parse_includes(includes, options) {
   let gcl_list = [], code = '';
@@ -49,7 +56,7 @@ async function parse_includes(includes, options) {
       await gcl.load(filename, { ...options, encoding: 'utf8', inSCL: true });
       gcl_list.push(gcl);
     };
-    code = gcl_list.map(gcl=>gcl.SCL).join('\n');
+    code = gcl_list.map(gcl => gcl.SCL).join('\n');
   } catch (err) {
     code = '';
     console.error(err.message);
@@ -86,7 +93,7 @@ async function add_conf(gcl) {
       console.error(`${gcl.file}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
       return;
     }
-    const CPU = get_cpu(CPU_name);
+    const CPU = CPUs.get(CPU_name);
     if (doctype === 'CPU') CPU.device = doc.get('device');
     if (CPU[doctype]) {
       console.error(`"${gcl.file}"文件的配置 (${CPU_name}-${doctype}) 已存在`);
@@ -124,19 +131,19 @@ async function add_conf(gcl) {
   }
 }
 
-export async function gen_data({ output_zyml, noconvert }) {
+export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   const work_path = process.cwd();
 
   // 第一遍扫描 加载配置\提取符号\建立诊断信息
   try {
-    console.log('readding file:');
+    silent || console.log('readding file:');
     for (const file of await readdir(work_path)) {
-      if (/.*ya?ml$/i.test(file)) {
+      if (/^.*\.ya?ml$/i.test(file)) {
         const filename = join(work_path, file);
         const gcl = new GCL();
         await gcl.load(filename);
         await add_conf(gcl);
-        console.log(`\t${filename}`);
+        silent || console.log(`\t${filename}`);
       }
     }
   } catch (e) {
@@ -146,10 +153,14 @@ export async function gen_data({ output_zyml, noconvert }) {
   // 输出无注释配置
   if (output_zyml) {
     console.log('output the uncommented configuration file:');
+    const options = {
+      commentString() { return ''; },
+      indentSeq: false
+    }
     for (const [name, CPU] of Object.entries(CPUs)) {
       // 生成无注释的配置
       const yaml = supported_types.reduce(
-        (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type].toString()}...` : docs,
+        (docs, type) => CPU[type] ? `${docs}\n\n${CPU[type].toString(options)}` : docs,
         `# CPU ${name} configuration`
       );
       const filename = `${join(work_path, name)}.zyml`;

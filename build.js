@@ -16,7 +16,7 @@ const inputOptions = {
         }), // tells Rollup how to find XX in node_modules
         commonjs(), // converts XX to ES modules
     ],
-    external: [...builtinModules, 'iconv-lite'],
+    external: [...builtinModules, 'iconv-lite', '**/package.json'],
 };
 
 const outputOptionsList = [{
