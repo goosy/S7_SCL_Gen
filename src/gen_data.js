@@ -1,19 +1,14 @@
-import { stringify, parse, parseAllDocuments } from "yaml";
 import { readdir, writeFile } from 'fs/promises';
-import { build_symbols, add_symbols, buildin_symbols, gen_symbols } from './symbols.js';
-import { IntIncHL, S7IncHL, read_file } from './util.js';
-import { trace_info } from './trace_info.js'
+import { build_symbols, add_symbols, gen_symbols } from './symbols.js';
+import { IntIncHL, S7IncHL, module_path } from './util.js';
+import { GCL } from './gcl.js';
 import { join } from 'path';
 import { supported_types, converter } from './converter.js';
 import assert from 'assert/strict';
 
-/** @type {string: {CPU， includes, list, options}[] }*/
+/** @type {string: {CPU, includes, list, options}[] }*/
 const conf_list = {};
-
 supported_types.forEach(type => {
-  // 重建内置符号
-  const buildin = converter[`${type.toUpperCase()}_BUILDIN`];
-  if (buildin) buildin_symbols.push(...buildin);
   // 初始化conf_list
   conf_list[type] = [];
 });
@@ -38,25 +33,28 @@ function get_cpu(CPU_name) {
     symbols_dict: {},               // 符号字典
     conn_host_list: {},             // 已用的连接地址列表
     output_dir: CPU_name,           // 输出文件夹
-    push_conf(type, conf) {
-      this[type] = conf;
+    add_type(type, document) {      // 按类型压入Document
+      this[type] = document;
     }
   }
 }
 
-async function fetch_includes(files) {
-  if (typeof files == 'string') return files;
-  if (!Array.isArray(files)) return '';
-  let code = '';
+async function parse_includes(includes, options) {
+  let gcl_list = [], code = '';
+  if (typeof includes == 'string') return { code: includes, gcl_list };
+  if (!Array.isArray(includes)) return { code: '', gcl_list };
   try {
-    for (const file of files) {
-      code += await read_file(file) + '\n';
+    for (const filename of includes) {
+      const gcl = new GCL();
+      await gcl.load(filename, { ...options, encoding: 'utf8', inSCL: true });
+      gcl_list.push(gcl);
     };
+    code = gcl_list.map(gcl=>gcl.SCL).join('\n');
   } catch (err) {
     code = '';
-    log.error(err.message);
+    console.error(err.message);
   }
-  return code;
+  return { code, gcl_list };
 }
 
 /**
@@ -70,58 +68,60 @@ function is_supported_type(type) {
   return supported_types.find(t => converter[`is_type_${t}`](type));
 }
 
-// 第一遍扫描，仅提取符号
-async function add_conf(conf) {
-  // 检查重复
-  const { name, CPU: CPU_name = name, type } = conf;
-  assert.equal(typeof CPU_name, 'string', new SyntaxError(' name (或者CPU) 必须提供!'));
-  trace_info.CPU = CPU_name;
-  assert.equal(typeof type, 'string', new SyntaxError(' type 必须提供!'));
-  const doctype = is_supported_type(type);
-  if (!doctype) {
-    console.error(`${trace_info.filename}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
-    return;
-  }
-  const CPU = get_cpu(CPU_name);
-  if (doctype === 'CPU') CPU.device = conf.device;
-  if (CPU[doctype]) {
-    console.error(`${CPU_name}:${doctype}${doctype == type ? '(' + type + ')' : ''} 有重复的配置 has duplicate configurations`);
-    process.exit(2);
-  }
-  CPU.push_conf(doctype, stringify(conf)); // 按名称压入无注释配置文本
-  trace_info.type = doctype;
-  trace_info.push_doc();
+/**
+ * 加入指定GCL文件的所有文档
+ * 生命周期为第一遍扫描，主要功能是提取符号
+ * @date 2022-07-03
+ * @param {GCL} gcl
+ * @param {number} index
+ */
+async function add_conf(gcl) {
+  for (const doc of gcl.documents) {
+    // 检查重复
+    const { CPU: CPU_name, type } = doc;
+    assert.equal(typeof CPU_name, 'string', new SyntaxError(' name (或者CPU) 必须提供!'));
+    assert.equal(typeof type, 'string', new SyntaxError(' type 必须提供!'));
+    const doctype = is_supported_type(type);
+    if (!doctype) {
+      console.error(`${gcl.file}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
+      return;
+    }
+    const CPU = get_cpu(CPU_name);
+    if (doctype === 'CPU') CPU.device = doc.get('device');
+    if (CPU[doctype]) {
+      console.error(`"${gcl.file}"文件的配置 (${CPU_name}-${doctype}) 已存在`);
+      process.exit(2);
+    }
+    CPU.add_type(doctype, doc); // 按名称压入文档
 
-  function parse_symbols_in_SCL(SCL) {
-    const code = SCL.replace(/(^|\n)\s*\(\*(symbols:\s+[\s\S]*?)\*\)/g, (m, m1, yaml) => {
-      const symbols = parse(yaml)['symbols']?.map(symbol => {
-        symbol[3] ??= 'symbol from files of includes';
-        return symbol;
+    // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
+    const conf = doc.toJS();
+    const options = conf.options ?? {};
+    const list = conf.list ?? [];
+    const { code: loop_additional_code, gcl_list: _ } = await parse_includes(conf.loop_additional_code, { CPU: CPU.name, type: doctype });
+    const { code: includes, gcl_list } = await parse_includes(conf.includes, { CPU: CPU.name, type: doctype });
+    // 加入 includes 符号
+    gcl_list.forEach(gcl => {
+      gcl.documents.forEach(doc => {
+        const symbols = doc.get('symbols');
+        add_symbols(CPU, symbols ?? [], { document: doc });
       })
-      add_symbols(symbols_dict, symbols ?? []);
-      return '';
     })
-    return code;
+    // 加入内置符号
+    const buildin = converter[`${doctype.toUpperCase()}_BUILDIN`];
+    if (buildin) {
+      const document = { file: join(module_path, `./src/converters/${doctype}.js`) };
+      add_symbols(CPU, buildin, { document });
+    }
+    // 加入前置符号
+    const symbols = doc.get('symbols');
+    if (symbols) add_symbols(CPU, symbols, { document: doc });
+
+    const area = { CPU, list, includes, loop_additional_code, options, gcl };
+    const parse_symbols = converter[`parse_symbols_${doctype}`];
+    if (typeof parse_symbols === 'function') parse_symbols(area);
+    conf_list[doctype].push(area);
   }
-
-  // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
-  const options = conf.options ?? {};
-  const list = conf.list ?? [];
-  const symbols = conf.symbols ?? [];
-  const symbols_dict = CPU.symbols_dict;
-  const loop_additional_code = await fetch_includes(conf.loop_additional_code);
-  // 加入 includes 符号
-  const includes = parse_symbols_in_SCL(await fetch_includes(conf.includes));
-  // 加入内置符号
-  const buildin = converter[`${doctype.toUpperCase()}_BUILDIN`];
-  if (buildin) add_symbols(symbols_dict, buildin);
-  // 加入前置符号
-  add_symbols(symbols_dict, symbols);
-
-  const area = { CPU, list, includes, loop_additional_code, options };
-  const parse_symbols = converter[`parse_symbols_${doctype}`];
-  if (typeof parse_symbols === 'function') parse_symbols(area);
-  conf_list[doctype].push(area);
 }
 
 export async function gen_data({ output_zyml, noconvert }) {
@@ -133,17 +133,12 @@ export async function gen_data({ output_zyml, noconvert }) {
     for (const file of await readdir(work_path)) {
       if (/.*ya?ml$/i.test(file)) {
         const filename = join(work_path, file);
-        trace_info.filename = filename;
-        trace_info.doc_index = 0;
-        const docs = parseAllDocuments(await read_file(filename), { version: '1.1' });
-        for (const [index, doc] of docs.entries()) {
-          trace_info.doc_index = index + 1;
-          await add_conf(doc.toJS({ merge: true }));
-        }
+        const gcl = new GCL();
+        await gcl.load(filename);
+        await add_conf(gcl);
         console.log(`\t${filename}`);
       }
     }
-    trace_info.clear();
   } catch (e) {
     console.log(e);
   }
@@ -154,7 +149,7 @@ export async function gen_data({ output_zyml, noconvert }) {
     for (const [name, CPU] of Object.entries(CPUs)) {
       // 生成无注释的配置
       const yaml = supported_types.reduce(
-        (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type]}...` : docs,
+        (docs, type) => CPU[type] ? `${docs}\n\n---\n${CPU[type].toString()}...` : docs,
         `# CPU ${name} configuration`
       );
       const filename = `${join(work_path, name)}.zyml`;

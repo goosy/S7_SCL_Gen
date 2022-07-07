@@ -87,12 +87,11 @@ END_FUNCTION
  * @param {S7Item} SC_area
  * @returns {void}
  */
-export function parse_symbols_SC(SC_area) {
-    const symbols_dict = SC_area.CPU.symbols_dict;
-    const options = SC_area.options;
+export function parse_symbols_SC({ CPU, list, options }) {
+    const document = CPU.SC;
     let index = 0;
-    SC_area.list.forEach(module => {
-        assert(module?.DB, SyntaxError(`${SC_area.CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`));
+    list.forEach(module => {
+        assert(module?.DB, SyntaxError(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`));
         module.type ??= 'CP341';
         let type = 'notype';
         if (module.type === 'CP341') {
@@ -102,12 +101,12 @@ export function parse_symbols_SC(SC_area) {
             options.has_CP340 = true;
             type = CP340_NAME;
         }
-        assert(type !== 'notype', new SyntaxError(`${SC_area.CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`));
+        assert(type !== 'notype', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`));
         module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
-        make_prop_symbolic(module, 'module_addr', symbols_dict, 'WORD');
-        make_prop_symbolic(module, 'DB', symbols_dict, type);
+        make_prop_symbolic(module, 'module_addr', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        make_prop_symbolic(module, 'DB', CPU, { document, range: [0, 0, 0], default_type: type });
         module.polls.forEach(poll => {
-            make_prop_symbolic(poll, 'recv_DB', symbols_dict);
+            make_prop_symbolic(poll, 'recv_DB', CPU, { document, range: [0, 0, 0] });
         });
     })
 }
@@ -129,8 +128,8 @@ export function build_SC(SC) {
                 // CRC must be a 4-character string
                 const CRCError = new SyntaxError(`"CRC:${poll.CRC}" —— CRC 必须是一个包含4位16进制数的字符串，建议最中间加一空格防止YAML识别为10进制数字。`);
                 assert.equal(typeof poll.CRC, 'string', CRCError);
-                assert(/^[0-9a-f]{2} *[0-9a-f]{2}$/i.test(poll.CRC.trim()), CRCError);''.replaceAll
-                poll.CRC = poll.CRC.trim().replaceAll(' ','');
+                assert(/^[0-9a-f]{2} *[0-9a-f]{2}$/i.test(poll.CRC.trim()), CRCError); ''.replaceAll
+                poll.CRC = poll.CRC.trim().replaceAll(' ', '');
                 assert.equal(poll.CRC.length, 4, CRCError);
                 poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
                 poll.function = fixed_hex(poll.function, 2);

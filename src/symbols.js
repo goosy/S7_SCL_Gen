@@ -1,8 +1,12 @@
 import assert from 'assert/strict';
 import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
-import { trace_info } from './trace_info.js'
+import { isSeq, YAMLSeq } from 'yaml';
+import { supported_types, converter } from './converter.js';
 
-export const buildin_symbols = [];//加载转换器后自动重建
+// 构建总内置符号表
+export const buildin_symbols = supported_types.map(type => {
+    return converter[`${type.toUpperCase()}_BUILDIN`] ?? [];
+}).flat();
 
 // FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
 const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];
@@ -14,7 +18,7 @@ const BIT_PREFIX = ['M', 'I', 'Q'];
 const S7MEM_PREFIX = [...DWORD_PREFIX, ...WORD_PREFIX, ...BYTE_PREFIX, ...BIT_PREFIX];
 const COMMON_TYPE = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
 
-// equal { M: 0.1, I: 0.1, Q: 0.1, MB: 1, ... PQD: 4}
+// equal area_size = { M: 0.1, I: 0.1, Q: 0.1, MB: 1, ... PQD: 4};
 const area_size = Object.fromEntries([
     ...BIT_PREFIX.map(prefix => [prefix, 0.1]),
     ...BYTE_PREFIX.map(prefix => [prefix, 1.0]),
@@ -24,8 +28,10 @@ const area_size = Object.fromEntries([
 
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
     const get_msg = symbol => {
-        const sInfo = trace_info.get_symbol(symbol);
-        return `${sInfo.CPU}:${sInfo.type} symbol:[${symbol.raw}] (文件"${sInfo.filename}"第${sInfo.doc_index}个文档)`;
+        const doc = symbol.source.document;
+        const range = symbol.source.range;
+        if (doc.gcl) return `${doc.gcl.file}文件 ${doc.CPU}-${doc.type}文档 ${range} symbol:${symbol.name}`;
+        return `内置符号 symbol:${symbol.name}`
     };
     const prev_msg = prev_symbol ? `之前: ${get_msg(prev_symbol)}\n` : '';
     const curr_msg = curr_symbol ? `当前: ${get_msg(curr_symbol)}\n` : '';
@@ -34,7 +40,7 @@ function throw_symbol_error(message, curr_symbol, prev_symbol) {
 }
 
 function parse(raw, default_type) {
-    // todo 非 array 不处理
+    // 非 array 不处理
     if (!Array.isArray(raw)) return raw;
     const
         name = raw[0],
@@ -83,10 +89,12 @@ function parse(raw, default_type) {
     }
     let [, type_name, type_no] = reg.exec(type.toUpperCase()) ?? [type];
     const value = `"${name}"`;
-    return { name, addr, type, value, block_name, block_no, block_bit, type_name, type_no, comment, raw };
+    const source = { raw };
+    return { name, addr, type, value, block_name, block_no, block_bit, type_name, type_no, comment, source };
 }
 
-function check_buildin_and_modify(symbols_dict, symbol) {
+function check_buildin_and_modify(CPU, symbol) {
+    const symbols_dict = CPU.symbols_dict;
     if (!buildin_symbols.map(raw => raw[0]).includes(symbol.name)) return false;
     const ref = symbols_dict[symbol.name];
     if (!ref) return false;
@@ -97,16 +105,22 @@ function check_buildin_and_modify(symbols_dict, symbol) {
     return true;
 }
 
-function add_symbol(symbols_dict, symbol_raw, default_type) {
-    if (typeof default_type !== 'string') default_type = null;
-    const symbol = parse(symbol_raw, default_type);
+export function add_symbol(CPU, symbol_raw, options = {}) {
+    const is_AST = isSeq(symbol_raw);
+    const symbols_dict = CPU.symbols_dict;
+    const default_type = typeof options.default_type === 'string' ? options.default_type : null;
+    const symbol_definition = is_AST ? JSON.parse(symbol_raw) : symbol_raw;
+    const symbol = parse(symbol_definition, default_type);
     // 非有效符号
-    if (symbol === symbol_raw) throw_symbol_error(`符号必须是一个数组！ 原始值:"${symbol_raw}"`);
+    if (!symbol.source) throw_symbol_error(`符号必须是一个数组！ 原始值:"${symbol_definition}"`);
 
     // 内置符号则应用新地址
-    const is_buildin = check_buildin_and_modify(symbols_dict, symbol);
+    const is_buildin = check_buildin_and_modify(CPU, symbol);
 
-    trace_info.push_symbol(symbol);
+    // 保存源信息
+    symbol.source.document = options.document;
+    symbol.source.range = is_AST ? symbol_raw.range : [0, 0, 0];
+
     // 不允许重复
     if (!is_buildin && symbols_dict[symbol.name]) {
         throw_symbol_error(`符号"${symbol.name}"名称重复!`, symbol, symbols_dict[symbol.name]);
@@ -118,10 +132,22 @@ function add_symbol(symbols_dict, symbol_raw, default_type) {
     return symbol;
 }
 
-export function add_symbols(symbols_dict, symbol_raw_list) {
-    return symbol_raw_list.map(symbol_raw => add_symbol(symbols_dict, symbol_raw));
+/**
+ * 对指定的符号定义列表解析并返回S7符号列表
+ * @date 2022-07-05
+ * @param {CPU} CPU
+ * @param {String[]|YAMLSeq} symbol_list
+ * @param {Object} options
+ * @returns {Symbol[]}
+ */
+export function add_symbols(CPU, symbol_list, options = {}) {
+    if (isSeq(symbol_list)) {
+        return symbol_list.items.map(symbol_node => add_symbol(CPU, symbol_node, options));
+    } else if (Array.isArray(symbol_list)) {
+        return symbol_list.map(symbol_raw => add_symbol(CPU, symbol_raw, options));
+    }
+    return [];
 }
-
 
 function ref(item) {
     if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
@@ -130,16 +156,15 @@ function ref(item) {
     return item;
 }
 
-export function make_prop_symbolic(obj, prop, symbols_dict, default_type) {
+export function make_prop_symbolic(obj, prop, CPU, options = {}) {
     const value = obj[prop];
     if (Array.isArray(value)) {
         // 如是数组，则返回符号
-        obj[prop] = add_symbol(symbols_dict, value, default_type);
+        obj[prop] = add_symbol(CPU, value, options);
     } else if (typeof value === 'string') {
-        // 如是字符串，则返回求符号函数
-        // 全部符号未加载完，需要惰性赋值，所以是函数
-        // 函数最终返回符号或字串值引用对象
-        lazyassign(obj, prop, () => symbols_dict[value] ?? ref(value));
+        // 如是字符串，则返回惰性赋值符号函数,因为全部符号尚未加载完。
+        // 下次调用时将赋值为最终符号或字串值引用对象
+        lazyassign(obj, prop, () => CPU.symbols_dict[value] ?? ref(value));
     } else {
         // 数字或布尔值返回引用对象
         // 其它直接值返回本身

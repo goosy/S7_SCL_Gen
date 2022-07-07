@@ -175,16 +175,15 @@ function get_device_id(device, R, X) {
 /**
  * 第一遍扫描 提取符号
  * @date 2021-12-07
- * @param {S7Item} MT_area
+ * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_MT(MT_area) {
-  const symbols_dict = MT_area.CPU.symbols_dict;
-  const conn_list = MT_area.list;
-  conn_list.forEach(conn => {
-    make_prop_symbolic(conn, 'DB', symbols_dict, MT_NAME);
+export function parse_symbols_MT({ CPU, list }) {
+  const document = CPU.MT;
+  list.forEach(conn => {
+    make_prop_symbolic(conn, 'DB', CPU, { document, range: [0, 0, 0], default_type: MT_NAME });
     conn.polls.forEach(poll => {
-      make_prop_symbolic(poll, 'recv_DB', symbols_dict);
+      make_prop_symbolic(poll, 'recv_DB', CPU, { document, range: [0, 0, 0] });
     })
   });
 }

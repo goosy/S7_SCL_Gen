@@ -44,12 +44,12 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_AI(AI_area) {
-    const symbols_dict = AI_area.CPU.symbols_dict;
-    AI_area.list.forEach(AI => {
+export function parse_symbols_AI({ CPU, list }) {
+    const document = CPU.AI;
+    list.forEach(AI => {
         if (!AI.DB) return; // 空AI不处理
-        make_prop_symbolic(AI, 'DB', symbols_dict, AI_NAME);
-        make_prop_symbolic(AI, 'input', symbols_dict, 'WORD');
+        make_prop_symbolic(AI, 'DB', CPU, { document, range: [0, 0, 0], default_type: AI_NAME });
+        make_prop_symbolic(AI, 'input', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
     });
 }
 

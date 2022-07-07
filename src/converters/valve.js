@@ -51,18 +51,18 @@ END_FUNCTION
  * @param {S7Item} valve_area
  * @returns {void}
  */
-export function parse_symbols_valve(valve_area) {
-    const symbols_dict = valve_area.CPU.symbols_dict;
-    valve_area.list.forEach(valve => {
+export function parse_symbols_valve({ CPU, list }) {
+    const document = CPU.valve;
+    list.forEach(valve => {
         if (!valve.DB) return; // 空AI不处理
-        make_prop_symbolic(valve, 'AI', symbols_dict, 'WORD');
-        make_prop_symbolic(valve, 'CP', symbols_dict, 'BOOL');
-        make_prop_symbolic(valve, 'OP', symbols_dict, 'BOOL');
-        make_prop_symbolic(valve, 'remote', symbols_dict, 'BOOL');
-        make_prop_symbolic(valve, 'error', symbols_dict, 'BOOL');
-        make_prop_symbolic(valve, 'close_action', symbols_dict, 'BOOL');
-        make_prop_symbolic(valve, 'open_action', symbols_dict, 'BOOL');
-        make_prop_symbolic(valve, 'DB', symbols_dict, VALVE_NAME);
+        make_prop_symbolic(valve, 'AI', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        make_prop_symbolic(valve, 'CP', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(valve, 'OP', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(valve, 'remote', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(valve, 'error', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(valve, 'close_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(valve, 'open_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(valve, 'DB', CPU, { document, range: [0, 0, 0], default_type: VALVE_NAME });
     });
 }
 

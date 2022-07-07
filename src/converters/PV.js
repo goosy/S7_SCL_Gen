@@ -42,12 +42,12 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_PV(PV_area) {
-    const symbols_dict = PV_area.CPU.symbols_dict;
-    PV_area.list.forEach(PV => {
+export function parse_symbols_PV({ CPU, list }) {
+    const document = CPU.PV;
+    list.forEach(PV => {
         if (!PV.DB) return; // 空PV不处理
-        make_prop_symbolic(PV, 'DB', symbols_dict, PV_NAME);
-        make_prop_symbolic(PV, 'input', symbols_dict, 'REAL');
+        make_prop_symbolic(PV, 'DB', CPU, { document, range: [0, 0, 0], default_type: PV_NAME });
+        make_prop_symbolic(PV, 'input', CPU, { document, range: [0, 0, 0], default_type: 'REAL' });
     });
 }
 

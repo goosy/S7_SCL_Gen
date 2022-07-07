@@ -54,14 +54,14 @@ END_FUNCTION
 /**
  * 第一遍扫描 提取符号
  * @date 2021-12-07
- * @param {S7Item} alarm_area
+ * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_alarm(alarm_area) {
-  const symbols_dict = alarm_area.CPU.symbols_dict;
-  alarm_area.list.forEach(alarm => {
+export function parse_symbols_alarm({ CPU, list }) {
+  const document = CPU.alarm;
+  list.forEach(alarm => {
     if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!"); // 空块不处理
-    make_prop_symbolic(alarm, 'DB', symbols_dict);
+    make_prop_symbolic(alarm, 'DB', CPU, { document, range: [0, 0, 0] });
 
     alarm.comment ??= '报警联锁';
 
@@ -76,7 +76,7 @@ export function parse_symbols_alarm(alarm_area) {
       if (!input.name && !input.target) throw new SyntaxError('alarm的input项必须name和target有一个!');
       if (input.name === "test") throw new SyntaxError('alarm input项不能起名"test"! 已有同名内置项。');
       input.comment ??= '';
-      if (input.target) make_prop_symbolic(input, 'target', symbols_dict, 'BOOL');
+      if (input.target) make_prop_symbolic(input, 'target', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
     }
     list.push({ name: 'test', comment: '测试' });
 
@@ -90,16 +90,16 @@ export function parse_symbols_alarm(alarm_area) {
       }
       if (!reset.target) throw new SyntaxError('alarm的reset项必须有target!');
       if (reset.name === "reset") throw new SyntaxError('alarm reset 项不能起名"reset"! 已有同名内置项。');
-      make_prop_symbolic(reset, 'target', symbols_dict, 'BOOL');
+      make_prop_symbolic(reset, 'target', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
     }
     list.push({ name: 'reset', comment: '输出复位' });
 
-    make_prop_symbolic(alarm, "output", symbols_dict, 'BOOL');
+    make_prop_symbolic(alarm, "output", CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
     alarm.output_list ??= [];
     list = alarm.output_list;
     for (let [index, output] of list.entries()) {
       if (typeof output !== 'string' && !Array.isArray(output)) throw new SyntaxError('alarm的output项必须必须是一个S7符号或SCL表达式!');
-      make_prop_symbolic(list, index, symbols_dict, 'BOOL');
+      make_prop_symbolic(list, index, CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
     }
   });
 }

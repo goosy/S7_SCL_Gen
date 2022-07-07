@@ -52,26 +52,25 @@ END_FUNCTION
 /**
  * 第一遍扫描 提取符号
  * @date 2021-12-14
- * @param {S7Item} PI_area
+ * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_PI(PI_area) {
-    const symbols_dict = PI_area.CPU.symbols_dict;
-    const options = PI_area.options;
+export function parse_symbols_PI({ CPU, list, options }) {
+    const document = CPU.PI;
     let index = 0;
-    PI_area.list.forEach(module => {
-        if (!module?.DB) throw Error(`${PI_area.CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
+    list.forEach(module => {
+        if (!module?.DB) throw Error(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
         module.type ??= 'FM350-2';
         let type = 'notype';
         if (module.type === 'FM350-2') {
             options.has_FM3502 = true;
             type = PI_NAME;
         }
-        if (type === 'notype') throw new Error(`${PI_area.CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
+        if (type === 'notype') throw new Error(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
         module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
-        make_prop_symbolic(module, 'module_addr', symbols_dict, 'WORD');
-        make_prop_symbolic(module, 'DB', symbols_dict, type);
-        make_prop_symbolic(module, 'count_DB', symbols_dict, FM3502_CNT_NAME);
+        make_prop_symbolic(module, 'module_addr', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        make_prop_symbolic(module, 'DB', CPU, { document, range: [0, 0, 0], default_type: type });
+        make_prop_symbolic(module, 'count_DB', CPU, { document, range: [0, 0, 0], default_type: FM3502_CNT_NAME });
     });
 }
 

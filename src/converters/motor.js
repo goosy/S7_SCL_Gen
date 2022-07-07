@@ -31,25 +31,25 @@ END_FUNCTION
 /**
  * 第一遍扫描 提取符号
  * @date 2021-12-07
- * @param {S7Item} motor_area
+ * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_motor(motor_area) {
-    const symbols_dict = motor_area.CPU.symbols_dict;
-    motor_area.list.forEach(motor => {
+export function parse_symbols_motor({ CPU, list }) {
+    const document = CPU.motor;
+    list.forEach(motor => {
         if (!motor.DB) return; // 空块不处理
-        make_prop_symbolic(motor, 'remote', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'enable', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'run', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'stateless', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'error', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'timer_pulse', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'run_action', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'start_action', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'stop_action', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'estop_action', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'over_time', symbols_dict, 'BOOL');
-        make_prop_symbolic(motor, 'DB', symbols_dict, MOTOR_NAME);
+        make_prop_symbolic(motor, 'remote', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'enable', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'run', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'stateless', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'error', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'timer_pulse', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'run_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'start_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'stop_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'estop_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'over_time', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
+        make_prop_symbolic(motor, 'DB', CPU, { document, range: [0, 0, 0], default_type: MOTOR_NAME });
     });
 }
 

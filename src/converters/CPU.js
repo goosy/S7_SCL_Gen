@@ -50,9 +50,8 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_CPU(CPU_area) {
-    const symbols_dict = CPU_area.CPU.symbols_dict;
-    const CM_addr = symbols_dict['Clock_Memory'].addr;
+export function parse_symbols_CPU({ CPU }) {
+    const CM_addr = CPU.symbols_dict['Clock_Memory'].addr;
     assert(/^mb\d+$/i.test(CM_addr), new SyntaxError(`Clock_Memory 符号 "${CM_addr}" 无效！`));
     if (CM_addr != 'MB0') { // 内置符号改变
         const symbols = CPU_BUILDIN.slice(1).map(symbol_raw => {
@@ -61,7 +60,8 @@ export function parse_symbols_CPU(CPU_area) {
             ret[1] = ret[1].replace('M0', prefix);
             return ret;
         });
-        add_symbols(symbols_dict, symbols);
+        const document = CPU.CPU;
+        add_symbols(CPU, symbols, { document });
     }
 }
 
