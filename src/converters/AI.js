@@ -15,7 +15,7 @@ export function is_type_AI(type) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
 {{#for AI_item in list}}{{#if AI_item.DB}}
-// AI背景块：{{AI_item.comment}}
+// AI背景块: {{AI_item.comment}}
 DATA_BLOCK "{{AI_item.DB.name}}" "{{AI_NAME}}"
 BEGIN{{#if AI_item.enable_alarm != undefined}}
     enable_alarm := {{AI_item.enable_alarm}};{{#endif}}{{#if AI_item.zero}}
@@ -43,12 +43,14 @@ END_FUNCTION
  * @date 2021-12-07
  * @param {S7Item} VItem
  * @returns {void}
- */
+ */ 
 export function parse_symbols_AI({ CPU, list }) {
     const document = CPU.AI;
     list.forEach(AI => {
         if (!AI.DB) return; // 空AI不处理
+        if (Array.isArray(AI.DB)) AI.DB[3] ??= AI.comment;
         make_prop_symbolic(AI, 'DB', CPU, { document, range: [0, 0, 0], default_type: AI_NAME });
+        if (Array.isArray(AI.input)) AI.input[3] ??= AI.comment;
         make_prop_symbolic(AI, 'input', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
     });
 }

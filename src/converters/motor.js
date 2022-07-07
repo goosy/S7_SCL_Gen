@@ -38,18 +38,21 @@ export function parse_symbols_motor({ CPU, list }) {
     const document = CPU.motor;
     list.forEach(motor => {
         if (!motor.DB) return; // 空块不处理
-        make_prop_symbolic(motor, 'remote', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'enable', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'run', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'stateless', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'error', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'timer_pulse', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'run_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'start_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'stop_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'estop_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'over_time', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(motor, 'DB', CPU, { document, range: [0, 0, 0], default_type: MOTOR_NAME });
+
+        function symbolic(default_type, comment) {
+            if (comment) return function (prop) {
+                if (Array.isArray(motor[prop])) motor[prop][3] ??= `${comment} ${prop}`;
+                make_prop_symbolic(motor, prop, CPU, { document, range: [0, 0, 0], default_type });
+            }
+            return function (prop) {
+                make_prop_symbolic(motor, prop, CPU, { document, range: [0, 0, 0], default_type });
+            }
+        }
+
+        symbolic(MOTOR_NAME, motor.comment)('DB');
+        ['enable', 'run', 'error', 'remote'].forEach(symbolic('BOOL', motor.comment));
+        ['timer_pulse'].forEach(symbolic('BOOL'));
+        ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(symbolic('BOOL', motor.comment));
     });
 }
 
@@ -76,7 +79,7 @@ export function build_motor({ list }) {
             input_paras.push(`run         := ${run.value}`);
         }
         if (stateless) {
-            input_paras.push(`stateless   := ${stateless.value}`);
+            input_paras.push(`stateless   := ${stateless}`); // stateless is not a symbol
         }
         if (error) {
             input_paras.push(`error       := ${error.value}`);
@@ -85,7 +88,7 @@ export function build_motor({ list }) {
             input_paras.push(`timer_pulse := ${timer_pulse.value}`);
         }
         if (over_time) {
-            input_paras.push(`over_time   := ${over_time.value}`);
+            input_paras.push(`over_time   := ${over_time}`); // over_time is not a symbol
         }
         // 只有一项时让SCL字串紧凑
         input_paras[0] = input_paras.length == 1 ? input_paras[0].replace(/ +/g, ' ') : '\n             ' + input_paras[0];

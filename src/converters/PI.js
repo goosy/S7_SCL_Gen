@@ -69,6 +69,7 @@ export function parse_symbols_PI({ CPU, list, options }) {
         if (type === 'notype') throw new Error(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
         module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
         make_prop_symbolic(module, 'module_addr', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
         make_prop_symbolic(module, 'DB', CPU, { document, range: [0, 0, 0], default_type: type });
         make_prop_symbolic(module, 'count_DB', CPU, { document, range: [0, 0, 0], default_type: FM3502_CNT_NAME });
     });

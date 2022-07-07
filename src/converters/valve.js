@@ -55,14 +55,20 @@ export function parse_symbols_valve({ CPU, list }) {
     const document = CPU.valve;
     list.forEach(valve => {
         if (!valve.DB) return; // 空AI不处理
-        make_prop_symbolic(valve, 'AI', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
-        make_prop_symbolic(valve, 'CP', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(valve, 'OP', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(valve, 'remote', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(valve, 'error', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(valve, 'close_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(valve, 'open_action', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
-        make_prop_symbolic(valve, 'DB', CPU, { document, range: [0, 0, 0], default_type: VALVE_NAME });
+
+        function symbolic(default_type, comment) {
+            if (comment) return function (prop) {
+                if (Array.isArray(valve[prop])) valve[prop][3] ??= `${comment} ${prop}`;
+                make_prop_symbolic(valve, prop, CPU, { document, range: [0, 0, 0], default_type });
+            }
+            return function (prop) {
+                make_prop_symbolic(valve, prop, CPU, { document, range: [0, 0, 0], default_type });
+            }
+        }
+
+        symbolic(VALVE_NAME, valve.comment)('DB');
+        symbolic('WORD', valve.comment)('AI');
+        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action'].forEach(symbolic('BOOL', valve.comment));
     });
 }
 

@@ -61,9 +61,9 @@ export function parse_symbols_alarm({ CPU, list }) {
   const document = CPU.alarm;
   list.forEach(alarm => {
     if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!"); // 空块不处理
-    make_prop_symbolic(alarm, 'DB', CPU, { document, range: [0, 0, 0] });
-
     alarm.comment ??= '报警联锁';
+    if (Array.isArray(alarm.DB)) alarm.DB[3] ??= alarm.comment;
+    make_prop_symbolic(alarm, 'DB', CPU, { document, range: [0, 0, 0] });
 
     if (!alarm.input_list || alarm.input_list.length < 1) throw new SyntaxError("alarm的input_list必须有1项以上!"); // 空项不处理
     let list = alarm.input_list;
@@ -76,6 +76,7 @@ export function parse_symbols_alarm({ CPU, list }) {
       if (!input.name && !input.target) throw new SyntaxError('alarm的input项必须name和target有一个!');
       if (input.name === "test") throw new SyntaxError('alarm input项不能起名"test"! 已有同名内置项。');
       input.comment ??= '';
+      if (Array.isArray(input.target)) input.target[3] ??= input.comment;
       if (input.target) make_prop_symbolic(input, 'target', CPU, { document, range: [0, 0, 0], default_type: 'BOOL' });
     }
     list.push({ name: 'test', comment: '测试' });

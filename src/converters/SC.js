@@ -104,8 +104,10 @@ export function parse_symbols_SC({ CPU, list, options }) {
         assert(type !== 'notype', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`));
         module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
         make_prop_symbolic(module, 'module_addr', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
         make_prop_symbolic(module, 'DB', CPU, { document, range: [0, 0, 0], default_type: type });
         module.polls.forEach(poll => {
+            if (Array.isArray(poll.recv_DB)) poll.recv_DB[3] ??= poll.comment;
             make_prop_symbolic(poll, 'recv_DB', CPU, { document, range: [0, 0, 0] });
         });
     })
