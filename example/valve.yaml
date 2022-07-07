@@ -19,15 +19,20 @@ symbols:
 - [DI01-06, I+]
 - [DI01-07, I+]
 - [DI01-08, I+]
+- [DI02-01, I+]
+- [DI02-02, I+]
 - [DO01-01, Q0.0]
 - [DO01-02, Q+]
 - [DO02-01, Q2.0]
 - [DO02-02, Q+]
+- [DO02-03, Q+]
+- [DO02-04, Q+]
 
 list :
   # 没有阀位时，AI 可直接设置为断线值S7_AI_MIN_WORD
   # 没有远程信号时，remote可不赋值，其值默认为TRUE，如果要避免其它过程改变它，可以显式赋值为 true
   # 没有故障信号时，error可不赋值，其值默认为FALSE，如果要避免其它过程改变它，可以显式赋值为 false
+  # 必须有开到位和关到位信号，否则会导致 close_action open_action 无法撤销信号，转译的SCL可能工作不正常
   # 以下常量可以直接使用
   # S7_ZERO := 0;
   # S7_SPAN := 27648;
@@ -36,7 +41,7 @@ list :
   # S7_AI_MAX := 32767;
   # S7_AI_MAX_WORD := W#16#7FFF;
 
-  # 阀门1
+  # 阀门1 2DO回路，即由CPU维护信号
 - comment: A阀门
   DB: [MGV-1201A, DB111] # 阀门DB块 类型: S7符号定义 | S7符号引用
   AI: AI11-01            # 阀位信号输入
@@ -47,24 +52,26 @@ list :
   close_action: DO01-01  # 关阀线圈
   open_action: DO01-02   # 开阀线圈 以上2项类型: S7符号定义 | S7符号引用 | SCL表达式 结果为可赋值布尔地址
 
-  # 阀门2
+  # 阀门2 3DO回路，开与关在执行机构处自保持，故必须有停信号
 - comment: B阀门
   DB: [MGV-1201B, DB+]
-  AI: S7_AI_MIN_WORD   # 没有AI过程值时，可省略或直接赋值断线值，省略时得保证PLC运行时不被改变
+  AI: ~   # 没有AI过程值时，可省略，省略时禁用行程命令，并将强制赋断线值以保证PLC运行期间不被改变
   CP: DI01-05
   OP: DI01-06
-  error: FALSE
+  error: '"DI01-07" and "DI01-08"'
   remote: TRUE
-  open_action: DO02-01 # 只能开阀
+  close_action: DO02-01
+  open_action: DO02-02
+  stop_action: DO02-03
 
 - comment: C阀门
   DB: [MGV-1201C, DB+]
   AI: AI11-02
-  CP: DI01-07
-  OP: DI01-08
+  CP: DI02-01
+  OP: DI02-02
   error: FALSE          # 没有error过程值时，可省略或赋值FALSE，省略时得保证PLC运行时不被改变
   remote: TRUE          # 没有remote过程值时，可省略或赋值TRUE，省略时得保证PLC运行时不被改变
-  close_action: DO02-02 # 只能关阀
+  close_action: DO02-04 # 只能关阀
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 

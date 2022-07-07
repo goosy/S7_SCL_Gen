@@ -31,19 +31,19 @@ CONST
 END_CONST
 {{#for valve in list}}
 // {{valve.comment}}{{#if valve.DB}}
-"{{VALVE_NAME}}".{{valve.DB.value}}({{#if valve.AI}}
-    AI := {{valve.AI.value}},{{#endif}}
+"{{VALVE_NAME}}".{{valve.DB.value}}(
+    AI := {{#if valve.AI}}{{valve.AI.value}}{{#else}}S7_AI_MIN_WORD{{#endif}},
     CP := {{valve.CP.value}},
-    OP := {{valve.OP.value}},
-    error := {{valve.error.value}},
-    remote := {{valve.remote.value}});{{#if valve.close_action}}
+    OP := {{valve.OP.value}}{{#if valve.error}},
+    error := {{valve.error.value}}{{#endif}}{{#if valve.remote}},
+    remote := {{valve.remote.value}}{{#endif}});{{#if valve.close_action}}
 {{valve.close_action.value}} := "{{valve.DB.name}}".close_action;{{#endif}}{{#if valve.open_action}}
-{{valve.open_action.value}} := "{{valve.DB.name}}".open_action;{{#endif}}
+{{valve.open_action.value}} := "{{valve.DB.name}}".open_action;{{#endif}}{{#if valve.stop_action}}
+{{valve.stop_action.value}} := "{{valve.DB.name}}".stop_action;{{#endif}}
 {{#endif}}{{#endfor valve}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
-
 
 /**
  * 第一遍扫描 提取符号
@@ -68,7 +68,7 @@ export function parse_symbols_valve({ CPU, list }) {
 
         symbolic(VALVE_NAME, valve.comment)('DB');
         symbolic('WORD', valve.comment)('AI');
-        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action'].forEach(symbolic('BOOL', valve.comment));
+        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(symbolic('BOOL', valve.comment));
     });
 }
 
