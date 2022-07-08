@@ -3,10 +3,10 @@ import { join } from 'path';
 
 export const VALVE_NAME = `Valve_Proc`;
 export const VALVE_LOOP_NAME = 'Valve_Loop';
-export const VALVE_BUILDIN = [
-    [VALVE_NAME, 'FB513', VALVE_NAME, 'VALVE main AI FB'],
-    [VALVE_LOOP_NAME, "FC513", VALVE_LOOP_NAME, 'main valve cyclic call function'],
-];
+export const VALVE_BUILDIN = `
+- [${VALVE_NAME}, FB513, ${VALVE_NAME}, VALVE main AI FB]
+- [${VALVE_LOOP_NAME}, FC513, ${VALVE_LOOP_NAME}, main valve cyclic call function]
+`;
 export function is_type_valve(type) {
     return type.toLowerCase() === 'valve';
 }
@@ -59,10 +59,10 @@ export function parse_symbols_valve({ CPU, list }) {
         function symbolic(default_type, comment) {
             if (comment) return function (prop) {
                 if (Array.isArray(valve[prop])) valve[prop][3] ??= `${comment} ${prop}`;
-                make_prop_symbolic(valve, prop, CPU, { document, range: [0, 0, 0], default_type });
+                make_prop_symbolic(valve, prop, CPU, { document, default_type });
             }
             return function (prop) {
-                make_prop_symbolic(valve, prop, CPU, { document, range: [0, 0, 0], default_type });
+                make_prop_symbolic(valve, prop, CPU, { document, default_type });
             }
         }
 

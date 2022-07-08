@@ -2,18 +2,17 @@ import assert from 'assert/strict';
 import { add_symbols } from '../symbols.js';
 
 export const CPU_NAME = 'CPU';
-export const CPU_BUILDIN = [
-    // ['Clock_Memory', 'MB0', , 'clock memory'],
-    ['Clock_Memory', 'MB0'],
-    ['Pulse_10Hz', 'M0.0'],
-    ['Pulse_5Hz', 'M0.1'],
-    ['Pulse_2.5Hz', 'M0.2'],
-    ['Pulse_2Hz', 'M0.3'],
-    ['Pulse_1.25Hz', 'M0.4'],
-    ['Pulse_1Hz', 'M0.5'],
-    ['Pulse_0.62Hz', 'M0.6'],
-    ['Pulse_0.5Hz', 'M0.7'],
-];
+export const CPU_BUILDIN = `
+- [Clock_Memory, MB0, ~, clock memory]
+- [Pulse_10Hz, M0.0]
+- [Pulse_5Hz, M0.1]
+- [Pulse_2.5Hz, M0.2]
+- [Pulse_2Hz, M0.3]
+- [Pulse_1.25Hz, M0.4]
+- [Pulse_1Hz, M0.5]
+- [Pulse_0.62Hz, M0.6]
+- [Pulse_0.5Hz, M0.7]
+`;
 
 const CPU_type = [
     "IM151-8PN/DP",
@@ -54,14 +53,11 @@ export function parse_symbols_CPU({ CPU }) {
     const CM_addr = CPU.symbols_dict['Clock_Memory'].addr;
     assert(/^mb\d+$/i.test(CM_addr), new SyntaxError(`Clock_Memory 符号 "${CM_addr}" 无效！`));
     if (CM_addr != 'MB0') { // 内置符号改变
-        const symbols = CPU_BUILDIN.slice(1).map(symbol_raw => {
-            const ret = [...symbol_raw];
-            const prefix = CM_addr.replace(/B/i, '').toUpperCase();
-            ret[1] = ret[1].replace('M0', prefix);
-            return ret;
-        });
-        const document = CPU.CPU;
-        add_symbols(CPU, symbols, { document });
+        const prefix = CM_addr.replace(/B/i, '').toUpperCase();
+        const symbols = CPU_BUILDIN.split('- ').slice(2).map(symbol =>
+            symbol.replace(/[\[\]]/g, '').replace('M0', prefix).split(',').map(item => item.trim())
+        );
+        add_symbols(CPU, symbols);
     }
 }
 

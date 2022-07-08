@@ -1,6 +1,6 @@
 import { readdir, writeFile } from 'fs/promises';
-import { build_symbols, add_symbols, gen_symbols } from './symbols.js';
-import { IntIncHL, S7IncHL, module_path } from './util.js';
+import { build_symbols, add_symbols, gen_symbols, BUILDIN_SYMBOLS } from './symbols.js';
+import { IntIncHL, S7IncHL } from './util.js';
 import { GCL } from './gcl.js';
 import { join } from 'path';
 import { supported_types, converter } from './converter.js';
@@ -115,11 +115,8 @@ async function add_conf(gcl) {
       })
     })
     // 加入内置符号
-    const buildin = converter[`${doctype.toUpperCase()}_BUILDIN`];
-    if (buildin) {
-      const document = { file: join(module_path, `./src/converters/${doctype}.js`) };
-      add_symbols(CPU, buildin, { document });
-    }
+    const buildin = BUILDIN_SYMBOLS[doctype];
+    add_symbols(CPU, buildin.get('symbols'), { document: buildin });
     // 加入前置符号
     const symbols = doc.get('symbols');
     if (symbols) add_symbols(CPU, symbols, { document: doc });

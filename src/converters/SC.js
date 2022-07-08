@@ -13,12 +13,12 @@ export const CP340_NAME = 'CP340_Poll';
 export const CP341_NAME = 'CP341_Poll';
 export const SC_LOOP_NAME = 'SC_Loop';
 export const SC_POLLS_NAME = 'SC_polls_DB';
-export const SC_BUILDIN = [
-    [CP340_NAME, 'FB340', CP340_NAME, 'CP340 SC communicate main process'],
-    [CP341_NAME, 'FB341', CP341_NAME, 'CP341 SC communicate main process'],
-    [SC_LOOP_NAME, "FC341", SC_LOOP_NAME, 'main SC cyclic call function'],
-    [SC_POLLS_NAME, "DB880", SC_POLLS_NAME, 'SC polls data'],
-];
+export const SC_BUILDIN = `
+- [${CP340_NAME}, FB340, ${CP340_NAME}, CP340 SC communicate main process]
+- [${CP341_NAME}, FB341, ${CP341_NAME}, CP341 SC communicate main process]
+- [${SC_LOOP_NAME}, FC341, ${SC_LOOP_NAME}, main SC cyclic call function]
+- [${SC_POLLS_NAME}, DB880, ${SC_POLLS_NAME}, SC polls data]
+`;
 export function is_type_SC(type) {
     return type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC';
 }
@@ -103,12 +103,12 @@ export function parse_symbols_SC({ CPU, list, options }) {
         }
         assert(type !== 'notype', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`));
         module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
-        make_prop_symbolic(module, 'module_addr', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        make_prop_symbolic(module, 'module_addr', CPU, { document, default_type: 'WORD' });
         if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
-        make_prop_symbolic(module, 'DB', CPU, { document, range: [0, 0, 0], default_type: type });
+        make_prop_symbolic(module, 'DB', CPU, { document, default_type: type });
         module.polls.forEach(poll => {
             if (Array.isArray(poll.recv_DB)) poll.recv_DB[3] ??= poll.comment;
-            make_prop_symbolic(poll, 'recv_DB', CPU, { document, range: [0, 0, 0] });
+            make_prop_symbolic(poll, 'recv_DB', CPU, { document });
         });
     })
 }

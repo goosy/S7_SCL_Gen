@@ -3,10 +3,10 @@ import { join } from 'path';
 
 export const AI_NAME = 'AI_Proc';
 export const AI_LOOP_NAME = 'AI_Loop';
-export const AI_BUILDIN = [
-    [AI_NAME, 'FB512', AI_NAME, 'AI main AI FB'],
-    [AI_LOOP_NAME, "FC512", AI_LOOP_NAME, 'main AI cyclic call function'],
-];
+export const AI_BUILDIN = `
+- [${AI_NAME}, FB512, ${AI_NAME}, AI main AI FB]
+- [${AI_LOOP_NAME}, FC512, ${AI_LOOP_NAME}, main AI cyclic call function]
+`;
 
 export function is_type_AI(type) {
     return type.toUpperCase() === 'AI';
@@ -49,9 +49,9 @@ export function parse_symbols_AI({ CPU, list }) {
     list.forEach(AI => {
         if (!AI.DB) return; // 空AI不处理
         if (Array.isArray(AI.DB)) AI.DB[3] ??= AI.comment;
-        make_prop_symbolic(AI, 'DB', CPU, { document, range: [0, 0, 0], default_type: AI_NAME });
+        make_prop_symbolic(AI, 'DB', CPU, { document, force_type: AI_NAME }); //强制类型
         if (Array.isArray(AI.input)) AI.input[3] ??= AI.comment;
-        make_prop_symbolic(AI, 'input', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        make_prop_symbolic(AI, 'input', CPU, { document, default_type: 'WORD' });
     });
 }
 

@@ -3,10 +3,10 @@ import { join } from 'path';
 
 export const PV_NAME = 'PV_Alarm';
 export const PV_LOOP_NAME = 'PV_Loop';
-export const PV_BUILDIN = [
-    [PV_NAME, 'FB519', PV_NAME, 'PV_Alarm main FB'],
-    [PV_LOOP_NAME, "FC519", PV_LOOP_NAME, 'main PV_Alarm cyclic call function'],
-];
+export const PV_BUILDIN = `
+- [${PV_NAME}, FB519, ${PV_NAME}, PV_Alarm main FB]
+- [${PV_LOOP_NAME}, FC519, ${PV_LOOP_NAME}, main PV_Alarm cyclic call function]
+`;
 
 export function is_type_PV(type) {
     return type.toUpperCase() === 'PV_ALARM' || type.toUpperCase() === 'PVALARM' || type.toUpperCase() === 'PV';
@@ -47,8 +47,8 @@ export function parse_symbols_PV({ CPU, list }) {
     list.forEach(PV => {
         if (!PV.DB) return; // 空PV不处理
         if (Array.isArray(PV.DB)) PV.DB[3] ??= PV.comment;
-        make_prop_symbolic(PV, 'DB', CPU, { document, range: [0, 0, 0], default_type: PV_NAME });
-        make_prop_symbolic(PV, 'input', CPU, { document, range: [0, 0, 0], default_type: 'REAL' });
+        make_prop_symbolic(PV, 'DB', CPU, { document, default_type: PV_NAME });
+        make_prop_symbolic(PV, 'input', CPU, { document, default_type: 'REAL' });
     });
 }
 

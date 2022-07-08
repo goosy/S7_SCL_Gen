@@ -11,11 +11,11 @@ import { join } from 'path';
 export const PI_NAME = 'PI_Proc';
 export const PI_LOOP_NAME = 'PI_Loop';
 export const FM3502_CNT_NAME = 'FM350-2';
-export const PI_BUILDIN = [
-    [PI_NAME, 'FB350', PI_NAME, 'PI main FB'],
-    [PI_LOOP_NAME, "FC350", PI_LOOP_NAME, 'main PI cyclic call function'],
-    [FM3502_CNT_NAME, "UDT350", FM3502_CNT_NAME, 'FM350-2 count DB'],
-];
+export const PI_BUILDIN = `
+- [${PI_NAME}, FB350, ${PI_NAME}, PI main FB]
+- [${PI_LOOP_NAME}, FC350, ${PI_LOOP_NAME}, main PI cyclic call function]
+- [${FM3502_CNT_NAME}, UDT350, ${FM3502_CNT_NAME}, FM350-2 count DB]
+`;
 export function is_type_PI(type) {
     return type.toUpperCase() === 'PI';
 }
@@ -68,10 +68,10 @@ export function parse_symbols_PI({ CPU, list, options }) {
         }
         if (type === 'notype') throw new Error(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
         module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
-        make_prop_symbolic(module, 'module_addr', CPU, { document, range: [0, 0, 0], default_type: 'WORD' });
+        make_prop_symbolic(module, 'module_addr', CPU, { document, default_type: 'WORD' });
         if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
-        make_prop_symbolic(module, 'DB', CPU, { document, range: [0, 0, 0], default_type: type });
-        make_prop_symbolic(module, 'count_DB', CPU, { document, range: [0, 0, 0], default_type: FM3502_CNT_NAME });
+        make_prop_symbolic(module, 'DB', CPU, { document, default_type: type });
+        make_prop_symbolic(module, 'count_DB', CPU, { document, default_type: FM3502_CNT_NAME });
     });
 }
 

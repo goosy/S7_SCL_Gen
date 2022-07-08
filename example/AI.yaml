@@ -22,6 +22,7 @@ symbols:
   # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 - [AI_Proc, FB600] # 可省略，修改内置AI_Proc地址
 - [AI_Loop, FC600] # 可省略，当名称为AI_Loop，指示这是AI主调用FC块，这个要加入到OB中
+- [PIT001,  DB100] # AI提前在这里会类型出错，必须手动写成 - [PIT001,  DB100, AI_Proc]
 
 list: # 模拟量列表
 #每个AI项的 DB input 都是
@@ -30,7 +31,7 @@ list: # 模拟量列表
   # AI数据块
   # 类型: S7符号定义 | S7符号引用
   # 没有该项则忽略转换，只输出 comment
-  DB: [PIT001,  DB100]
+  DB: PIT001
   # 输入值 类型:S7符号定义|S7符号引用|SCL表达式
   input: [AI01-01, PIW512]
   # 以下类型为数字(浮点数要采用字符串形式)
@@ -45,7 +46,7 @@ list: # 模拟量列表
 
 - <<: *tubepress           # yaml语法"<<: *anchor" 表示将锚点anchor的内容合并在这里
   comment: 来油压力         # 可以对合并内容的部分属性进行更改
-  DB: [PIT002, DB+] 
+  DB: [PIT002, DB101] 
   input: [AI01-02, PIW514] 
   $AL_limit: ~ # 引用对象无法删除某个属性，只能将其该属性设置为null
 

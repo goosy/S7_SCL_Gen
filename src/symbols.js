@@ -1,12 +1,25 @@
 import assert from 'assert/strict';
 import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
 import { isSeq, YAMLSeq } from 'yaml';
+import { GCL } from './gcl.js';
 import { supported_types, converter } from './converter.js';
 
-// 构建总内置符号表
-export const buildin_symbols = supported_types.map(type => {
-    return converter[`${type.toUpperCase()}_BUILDIN`] ?? [];
-}).flat();
+export const BUILDIN_SYMBOLS = new GCL();
+await BUILDIN_SYMBOLS.load(
+    supported_types.map(type => {
+        const area = converter[`${type.toUpperCase()}_BUILDIN`] ?? [];
+        return `---\ntype: ${type}\nsymbols: ${area}...`;
+    }).join('\n\n'),
+    { isFile: false, filename: 'buildin' }
+);
+
+// 构建内置符号名称表
+const buildin_symbols = [];
+BUILDIN_SYMBOLS.documents.forEach(doc => {
+    doc.get('symbols').items.forEach(symbol => {
+        buildin_symbols.push(symbol.items[0].value);
+    });
+});
 
 // FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
 const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];
@@ -95,7 +108,7 @@ function parse(raw, default_type) {
 
 function check_buildin_and_modify(CPU, symbol) {
     const symbols_dict = CPU.symbols_dict;
-    if (!buildin_symbols.map(raw => raw[0]).includes(symbol.name)) return false;
+    if (!buildin_symbols.includes(symbol.name)) return false;
     const ref = symbols_dict[symbol.name];
     if (!ref) return false;
     // modify address
@@ -110,9 +123,14 @@ export function add_symbol(CPU, symbol_raw, options = {}) {
     const symbols_dict = CPU.symbols_dict;
     const default_type = typeof options.default_type === 'string' ? options.default_type : null;
     const symbol_definition = is_AST ? JSON.parse(symbol_raw) : symbol_raw;
+    const force_type = options.force_type;
+    if (typeof force_type === 'string') {
+        symbol_definition[2] = force_type;
+    }
     const symbol = parse(symbol_definition, default_type);
+
     // 非有效符号
-    if (!symbol.source) throw_symbol_error(`符号必须是一个数组！ 原始值:"${symbol_definition}"`);
+    if (!symbol.source) throw_symbol_error(`符号必须是一个定义正确数组！ 原始值:"${symbol_definition}"`);
 
     // 内置符号则应用新地址
     const is_buildin = check_buildin_and_modify(CPU, symbol);
@@ -164,6 +182,7 @@ export function make_prop_symbolic(obj, prop, CPU, options = {}) {
     } else if (typeof value === 'string') {
         // 如是字符串，则返回惰性赋值符号函数,因为全部符号尚未加载完。
         // 下次调用时将赋值为最终符号或字串值引用对象
+        // TODO: 强制类型
         lazyassign(obj, prop, () => CPU.symbols_dict[value] ?? ref(value));
     } else {
         // 数字或布尔值返回引用对象

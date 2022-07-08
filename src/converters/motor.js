@@ -3,10 +3,10 @@ import { join } from 'path';
 
 export const MOTOR_NAME = `Motor_Proc`;
 export const MOTOR_LOOP_NAME = 'Motor_Loop';
-export const MOTOR_BUILDIN = [
-    [MOTOR_NAME, 'FB514', MOTOR_NAME, 'MOTOR main AI FB'],
-    [MOTOR_LOOP_NAME, "FC514", MOTOR_LOOP_NAME, 'main motor cyclic call function'],
-];
+export const MOTOR_BUILDIN = `
+- [${MOTOR_NAME}, FB514, ${MOTOR_NAME}, MOTOR main AI FB]
+- [${MOTOR_LOOP_NAME}, FC514, ${MOTOR_LOOP_NAME}, main motor cyclic call function]
+`;
 export function is_type_motor(type) {
     return type.toLowerCase() === 'motor';
 }
@@ -51,10 +51,10 @@ export function parse_symbols_motor({ CPU, list }) {
         function symbolic(default_type, comment) {
             if (comment) return function (prop) {
                 if (Array.isArray(motor[prop])) motor[prop][3] ??= `${comment} ${prop}`;
-                make_prop_symbolic(motor, prop, CPU, { document, range: [0, 0, 0], default_type });
+                make_prop_symbolic(motor, prop, CPU, { document, default_type });
             }
             return function (prop) {
-                make_prop_symbolic(motor, prop, CPU, { document, range: [0, 0, 0], default_type });
+                make_prop_symbolic(motor, prop, CPU, { document, default_type });
             }
         }
 

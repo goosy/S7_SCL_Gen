@@ -6,11 +6,11 @@ import assert from 'assert/strict';
 export const MT_NAME = 'MT_Poll';
 export const MT_LOOP_NAME = 'MT_Loop';
 export const MT_POLLS_NAME = 'MT_polls_DB';
-export const MT_BUILDIN = [
-  [MT_NAME, 'FB344', MT_NAME, 'modbusTCP OUC main process'],
-  [MT_LOOP_NAME, "FC344", MT_LOOP_NAME, 'main modbusTCP cyclic call function'],
-  [MT_POLLS_NAME, "DB881", MT_POLLS_NAME, 'modbusTCP polls data'],
-];
+export const MT_BUILDIN = `
+- [${MT_NAME}, FB344, ${MT_NAME}, modbusTCP OUC main process]
+- [${MT_LOOP_NAME}, FC344, ${MT_LOOP_NAME}, main modbusTCP cyclic call function]
+- [${MT_POLLS_NAME}, DB881, ${MT_POLLS_NAME}, modbusTCP polls data]
+`;
 
 const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
 const device_id = { // 只需要填写设备型号
@@ -189,10 +189,10 @@ export function parse_symbols_MT({ CPU, list }) {
   const document = CPU.MT;
   list.forEach(conn => {
     if (Array.isArray(conn.DB)) conn.DB[3] ??= conn.comment;
-    make_prop_symbolic(conn, 'DB', CPU, { document, range: [0, 0, 0], default_type: MT_NAME });
+    make_prop_symbolic(conn, 'DB', CPU, { document, default_type: MT_NAME });
     conn.polls.forEach(poll => {
       if (Array.isArray(poll.recv_DB)) poll.recv_DB[3] ??= poll.comment;
-      make_prop_symbolic(poll, 'recv_DB', CPU, { document, range: [0, 0, 0] });
+      make_prop_symbolic(poll, 'recv_DB', CPU, { document });
     })
   });
 }

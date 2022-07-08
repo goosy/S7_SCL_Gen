@@ -5,18 +5,10 @@ import {
     parseDocument,
 } from 'yaml';
 
-// export {
-//     isDocument, isAlias, isNode,
-//     isCollection, isMap, isSeq, isPair, isScalar
-// } from 'yaml';
 export class GCL {
     #file;
     get file() {
         return this.#file;
-    }
-    #encoding;
-    get encoding() {
-        return this.#encoding;
     }
     /** @type {Document[]} */
     #documents;
@@ -33,13 +25,20 @@ export class GCL {
     }
     constructor() {
     }
-    async load(file, options = { encoding: 'utf8' }) {
+    async load(yaml, options = {}) {
         const {
             encoding = 'utf8',
+            isFile = true,
+            filename = '',
             inSCL = false,
         } = options;
-        this.#file = file;
-        this.#source = await readFile(this.#file, { encoding });
+        if (isFile) {
+            this.#file = yaml;
+            this.#source = await readFile(this.#file, { encoding });
+        } else {
+            this.#file = filename;
+            this.#source = yaml;
+        }
         if (inSCL) {
             this.#documents = [];
             // SCL注释中只能进行GCL符号定义
@@ -57,7 +56,7 @@ export class GCL {
         for (const doc of this.#documents) {
             doc.gcl = this;
             doc.offset ??= 0;
-            const CPU = doc.get('CPU') ?? doc.get('name')?? options.CPU;
+            const CPU = doc.get('CPU') ?? doc.get('name') ?? options.CPU;
             Object.defineProperty(doc, 'CPU', {
                 get() {
                     return CPU;
@@ -73,7 +72,7 @@ export class GCL {
                 enumerable,
                 configurable
             });
-            // console.log(doc);
+            this[type] = doc;
         }
     }
 }
