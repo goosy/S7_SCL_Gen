@@ -63,7 +63,9 @@ list : # modbus TCP 连接列表
 
   # 自定义查询名称，必填，不可与其它连接的重名。
   # 类型: 字符串
-  polls_name: polls_example 
+  polls_name: polls_example
+
+  $interval_time: 1000 # 轮询间隔时间，初始值设定 (如果想保持运行期间固定，可使用 interval_time: 1000  )
   
   # 该连接下的轮询定义，至少要有一个查询
   polls: 

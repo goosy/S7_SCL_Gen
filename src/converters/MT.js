@@ -141,6 +141,13 @@ BEGIN{{#for conn in connections}}
   {{conn.polls_name}}[{{no}}].recvDBB := {{poll.recv_start}};{{#endfor poll}}{{#endfor conn}}
 END_DATA_BLOCK
 
+{{#for conn in connections}}{{#if conn.$interval_time}}
+DATA_BLOCK "{{conn.DB.name}}" "{{MT_NAME}}"
+BEGIN
+    intervalTime := {{conn.$interval_time}};
+END_DATA_BLOCK
+{{#endif}}{{#endfor conn}}
+
 // 调用
 FUNCTION "{{MT_LOOP_NAME}}" : VOID
 {{#for conn in connections}}

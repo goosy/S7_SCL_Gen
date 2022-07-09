@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { convert, copy_file, version } from './lib/index.js';
+import { convert, copy_file, version, tips } from './lib/index.js';
 import { join } from 'path';
 import mri from 'mri';
+
+tips();
 
 function show_help() {
     console.log(`usage:

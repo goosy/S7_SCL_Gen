@@ -125,8 +125,8 @@ export function build_alarm({ list }) {
   list.forEach(alarm => { // 处理配置，形成完整数据
     buile_input(alarm.input_list, alarm.DB.name);
     buile_input(alarm.reset_list, alarm.DB.name);
-    alarm.declaration = alarm.input_list.concat(alarm.reset_list).filter(input => input.declaration);
-    alarm.assign_list = alarm.input_list.concat(alarm.reset_list).filter(input => input.assign_str);
+    alarm.declaration = [...alarm.input_list, ...alarm.reset_list].filter(input => input.declaration);
+    alarm.assign_list = [...alarm.input_list, ...alarm.reset_list].filter(input => input.assign_str);
   });
 }
 

@@ -17,20 +17,20 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 {{#for PV_item in list}}{{#if PV_item.DB}}
 // PV_Alarm 背景块：{{PV_item.comment}}
 DATA_BLOCK "{{PV_item.DB.name}}" "{{PV_NAME}}"
-BEGIN{{#if PV_item.enable_alarm != undefined}}
-    enable_alarm := {{PV_item.enable_alarm}};{{#endif}}{{#if PV_item.AH_limit}}
-    AH_limit := {{PV_item.AH_limit}};{{#endif}}{{#if PV_item.WH_limit}}
-    WH_limit := {{PV_item.WH_limit}};{{#endif}}{{#if PV_item.WL_limit}}
-    WL_limit := {{PV_item.WL_limit}};{{#endif}}{{#if PV_item.AL_limit}}
-    AL_limit := {{PV_item.AL_limit}};{{#endif}}{{#if PV_item.dead_zone}}
-    dead_zone := {{PV_item.dead_zone}};{{#endif}}{{#if PV_item.FT_time}}
-    FT_time := L#{{PV_item.FT_time}};{{#endif}}
+BEGIN{{#if PV_item.$enable_alarm != undefined}}
+    enable_alarm := {{PV_item.$enable_alarm}};{{#endif}}{{#if PV_item.$AH_limit}}
+    AH_limit := {{PV_item.$AH_limit}};{{#endif}}{{#if PV_item.$WH_limit}}
+    WH_limit := {{PV_item.$WH_limit}};{{#endif}}{{#if PV_item.$WL_limit}}
+    WL_limit := {{PV_item.$WL_limit}};{{#endif}}{{#if PV_item.$AL_limit}}
+    AL_limit := {{PV_item.$AL_limit}};{{#endif}}{{#if PV_item.$dead_zone}}
+    dead_zone := {{PV_item.$dead_zone}};{{#endif}}{{#if PV_item.$FT_time}}
+    FT_time := L#{{PV_item.$FT_time}};{{#endif}}
 END_DATA_BLOCK
 {{#endif}}{{#endfor PV_item}}
 
 // 主循环调用
 FUNCTION "PV_Loop" : VOID{{#for PV_item in list}}
-{{#if PV_item.DB}}"{{PV_NAME}}"."{{PV_item.DB.name}}"(PV := {{PV_item.input.value}});  {{#endif}}// {{PV_item.comment}}{{#endfor PV_item}}
+{{#if PV_item.DB}}"{{PV_NAME}}"."{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{#if PV_item.enable_alarm != undefined}}, enable_alarm := {{PV_item.enable_alarm}}{{#endif}}); // {{PV_item.comment}}{{#endif}}{{#endfor PV_item}}
 {{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION

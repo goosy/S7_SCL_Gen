@@ -1,9 +1,30 @@
-import { access, mkdir, cp, readFile, writeFile } from 'fs/promises';
+import { access, mkdir, cp, readFile, rename, writeFile } from 'fs/promises';
 import { basename, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { createInterface } from 'readline';
 import iconv from 'iconv-lite';
 
 export const module_path = join(fileURLToPath(import.meta.url), "../../");
+const pkg = JSON.parse(
+    await readFile(join(module_path, 'package.json'), { silent: true })
+);
+export const version = pkg.version;
+
+export async function tips() {
+    const file = join(module_path, 'tips.txt');
+    const msg = await read_file(file, { silent: true });
+    if (msg) {
+        const rl = createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        console.log(msg);
+        rl.question(`不再提示本消息?(Y)es, (N)o :`, async answer => {
+            if (answer.toUpperCase() === 'Y') await rename(file, file+'.lck');
+            rl.close();
+        })
+    }
+}
 
 export class IncHLError extends Error {
     num;
@@ -240,7 +261,7 @@ export async function read_file(filename, options = {}) {
     if (exist) {
         return await readFile(filename, options);
     }
-    console.log(`warnning: ${filename} file not found`);
+    if (!options.silent) console.log(`warnning: ${filename} file not found`);
     return '';
 }
 

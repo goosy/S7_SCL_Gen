@@ -44,18 +44,20 @@ list :
   # 阀门1 2DO回路，即由CPU维护信号
 - comment: A阀门
   DB: [MGV-1201A, DB111] # 阀门DB块 类型: S7符号定义 | S7符号引用
+  # 以下7项类型: S7符号定义 | S7符号引用 | SCL表达式
   AI: AI11-01            # 阀位信号输入
+  # 以下值为 boolean，SLC符号与表达式结果必须也是 boolean
   CP: DI01-01            # 关到位信号
   OP: DI01-02            # 开到位信号
-  error: DI01-03         # 错误信号
-  remote: DI01-04        # 远程信号 以上5项类型: S7符号定义 | S7符号引用 | SCL表达式
+  error: DI01-03         # 错误信号 可省略，默认为false
+  remote: DI01-04        # 远程信号 可省略，默认为true
   close_action: DO01-01  # 关阀线圈
-  open_action: DO01-02   # 开阀线圈 以上2项类型: S7符号定义 | S7符号引用 | SCL表达式 结果为可赋值布尔地址
+  open_action: DO01-02   # 开阀线圈 以上2项类型: S7符号定义 | S7符号引用 | SCL表达式
 
   # 阀门2 3DO回路，开与关在执行机构处自保持，故必须有停信号
 - comment: B阀门
   DB: [MGV-1201B, DB+]
-  AI: ~   # 没有AI过程值时，可省略，省略时禁用行程命令，并将强制赋断线值以保证PLC运行期间不被改变
+  AI: ~                  # 没有AI过程值时，可省略，省略时禁用行程命令，并将强制赋断线值以保证PLC运行期间不被改变
   CP: DI01-05
   OP: DI01-06
   error: '"DI01-07" and "DI01-08"'
@@ -69,13 +71,12 @@ list :
   AI: AI11-02
   CP: DI02-01
   OP: DI02-02
-  error: FALSE          # 没有error过程值时，可省略或赋值FALSE，省略时得保证PLC运行时不被改变
-  remote: TRUE          # 没有remote过程值时，可省略或赋值TRUE，省略时得保证PLC运行时不被改变
-  close_action: DO02-04 # 只能关阀
+  error: FALSE           # 没有error过程值时，可省略或赋值FALSE，省略时得注意PLC运行时的改变
+  remote: TRUE           # 没有remote过程值时，可省略或赋值TRUE，省略时得注意PLC运行时的改变
+  close_action: DO02-04  # 只能关阀
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
   # 输出文件名，系统自动加后缀。
   # output_file : 'example'
-
 ...

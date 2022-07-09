@@ -35,29 +35,31 @@ list: # 模拟量列表
   input: [AI01-01, PIW512]
   # 以下类型为数字(浮点数要采用字符串形式)
   # 同时这些配置项指示的是初始值，即不会在循环周期赋值
-  zero: "-0.2"
-  span: "2.6"
-  AH_limit: "2.5"
-  WH_limit: "2.0"
-  WL_limit: "-0.05"
-  AL_limit: "-0.1"
-  dead_zone: "0.01"
+  $zero: "-0.2"
+  $span: "2.6"
+  $AH_limit: "2.5"
+  $WH_limit: "2.0"
+  $WL_limit: "-0.05"
+  $AL_limit: "-0.1"
+  $dead_zone: "0.01"
 
 - <<: *tubepress           # yaml语法"<<: *anchor" 表示将锚点anchor的内容合并在这里
   comment: 来油压力         # 可以对合并内容的部分属性进行更改
   DB: [PIT002, DB+] 
   input: [AI01-02, PIW514] 
-  AL_limit: ~ # 引用对象无法删除某个属性，只能将其该属性设置为null
+  $AL_limit: ~ # 引用对象无法删除某个属性，只能将其该属性设置为null
 
 - comment: 进站温度
   DB: [TIT001, DB+] 
   input: [AI01-03, PIW516] # AI通道
-  zero: "-40.0"
-  span: "80.0"
+  $zero: "-40.0"
+  $span: "80.0"
 - comment: 气温
   DB: [TIT002, DB+]
   input: [M485-1, MW100] # M区域
-  enable_alarm: FALSE # 初始值不报警，可以在HMI中重设是否允许报警
+  # 输入值 类型: boolean | SCL boolean 表达式
+  $enable_alarm: FALSE # 报警允许初始值，默认为true。如没有下一项可以在HMI中设置本值
+  enable_alarm: 'pump1.run_state' # 报警允许，可以运行期间由本表达式动态设定是否允许报警
 - comment: 液位
   DB: [LIT010, DB+]
   input: '"RecvDB".Tank1' # SCL表达式，转换程序不检查正确性

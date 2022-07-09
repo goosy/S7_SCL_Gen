@@ -1,13 +1,9 @@
-import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { convertRules } from 'gooconverter';
-import { copy_file, write_file } from './util.js'
+import { copy_file, write_file, version, tips } from './util.js'
 import { gen_data } from './gen_data.js';
-export { convert, copy_file, version };
 
-const { version } = JSON.parse(
-  await readFile(new URL('../package.json', import.meta.url))
-);
+export { convert, copy_file, version, tips };
 
 async function convert2file(
   { rules, template },

@@ -14,6 +14,15 @@ export function is_type_motor(type) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
 
+{{#for motor in list}}{{#if motor.DB}}
+// motor背景块: {{motor.comment}}
+DATA_BLOCK "{{motor.DB.name}}" "{{MOTOR_NAME}}"
+BEGIN{{#if motor.$stateless !== undefined}}
+    stateless := {{motor.$stateless}};{{#endif}}{{#if motor.$over_time}}
+    over_time := {{motor.$over_time}};{{#endif}}
+END_DATA_BLOCK
+{{#endif}}{{#endfor motor}}
+
 // 主循环调用
 FUNCTION "{{MOTOR_LOOP_NAME}}" : VOID
 {{#for motor in list}}
@@ -91,7 +100,8 @@ export function build_motor({ list }) {
             input_paras.push(`over_time   := ${over_time}`); // over_time is not a symbol
         }
         // 只有一项时让SCL字串紧凑
-        input_paras[0] = input_paras.length == 1 ? input_paras[0].replace(/ +/g, ' ') : '\n             ' + input_paras[0];
+        if (input_paras.length == 1) input_paras[0] = input_paras[0].replace(/ +/g, ' ');
+        if (input_paras.length > 1) input_paras[0] = '\n             ' + input_paras[0];
         motor.input_paras = input_paras.join(',\n             ');
     });
 }
