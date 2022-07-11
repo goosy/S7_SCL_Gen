@@ -3,8 +3,6 @@ import { convert, copy_file, version, tips } from './lib/index.js';
 import { join } from 'path';
 import mri from 'mri';
 
-tips();
-
 function show_help() {
     console.log(`usage:
 
@@ -65,3 +63,5 @@ if (argv.version) {
 } else {
     show_help();
 }
+
+tips();

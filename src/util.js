@@ -14,11 +14,11 @@ export async function tips() {
     const file = join(module_path, 'tips.txt');
     const msg = await read_file(file, { silent: true });
     if (msg) {
+        console.log(`\n\n===========\n重要版本提示！！！\n\n${msg}`);
         const rl = createInterface({
             input: process.stdin,
             output: process.stdout
         });
-        console.log(msg);
         rl.question(`不再提示本消息?(Y)es, (N)o :`, async answer => {
             if (answer.toUpperCase() === 'Y') await rename(file, file+'.lck');
             rl.close();
