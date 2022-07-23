@@ -13,7 +13,10 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 // {{alarm.comment}}
 DATA_BLOCK "{{alarm.DB.name}}"
 {S7_m_c := 'true'}
-STRUCT{{#for input in alarm.declaration}}
+AUTHOR:Goosy
+FAMILY:GooLib
+STRUCT
+  enable {S7_m_c := 'true'} : BOOL := {{alarm.$enable}}; // 允许报警或连锁{{#for input in alarm.declaration}}
   {{input.declaration}} // {{input.comment}}{{#endfor input}}
   output {S7_m_c := 'true'} : BOOL ; // 输入信号上升沿输出{{#for input in alarm.input_list}}
   {{input.name}}_follower : BOOL ; // 用于检测上升沿的追随变量{{#endfor input}}
@@ -32,17 +35,20 @@ END_VAR
 {{#for alarm in list}}
 // {{alarm.comment}}{{#for assign in alarm.assign_list}}
 {{assign.assign_str}}{{#endfor assign}}
-reset := {{#for no, reset in alarm.reset_list}}{{#if no}} OR {{#endif}}{{reset.edge}}{{#endfor reset}};
-output := {{#for no, input in alarm.input_list}}{{#if no}}
-  OR {{#endif}}{{input.edge}} AND NOT "{{alarm.DB.name}}".{{input.name}}_follower{{#endfor}};
+reset := NOT "{{alarm.DB.name}}".enable{{#for reset in alarm.reset_list}} OR {{reset.edge}}{{#endfor reset}};
 IF reset THEN
-  "{{alarm.DB.name}}".output := FALSE;{{#for output in alarm.output_list}} 
+  "{{alarm.DB.name}}".output := FALSE;  // 复位output
+  "{{alarm.DB.name}}".reset := FALSE;  // 复位reset
+  // 复位联锁输出{{#for output in alarm.output_list}} 
   {{output.value}} := FALSE;{{#endfor output}}
-  "{{alarm.DB.name}}".reset := FALSE;
-ELSIF output THEN
-  "{{alarm.DB.name}}".output := TRUE;
-  // 联锁输出{{#for output in alarm.output_list}} 
-  {{output.value}} := TRUE;{{#endfor output}}
+ELSE
+  output := {{#for no, input in alarm.input_list}}{{#if no}}
+    OR {{#endif}}{{input.edge}} AND NOT "{{alarm.DB.name}}".{{input.name}}_follower{{#endfor}};
+  IF output THEN
+    "{{alarm.DB.name}}".output := TRUE; // 置位output
+    // 置位联锁输出{{#for output in alarm.output_list}} 
+    {{output.value}} := TRUE;{{#endfor output}}
+  END_IF;
 END_IF;
 // inputs{{#for input in alarm.input_list}}
 "{{alarm.DB.name}}".{{input.name}}_follower := {{input.edge}};{{#endfor}}{{#if alarm.output}}
@@ -64,6 +70,7 @@ export function parse_symbols_alarm({ CPU, list }) {
     if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!"); // 空块不处理
     alarm.comment ??= '报警联锁';
     if (Array.isArray(alarm.DB)) alarm.DB[3] ??= alarm.comment;
+    alarm.$enable = alarm.$enable !== false ? true : false;
     make_prop_symbolic(alarm, 'DB', CPU, { document });
 
     if (!alarm.input_list || alarm.input_list.length < 1) throw new SyntaxError("alarm的input_list必须有1项以上!"); // 空项不处理
@@ -107,13 +114,13 @@ export function parse_symbols_alarm({ CPU, list }) {
 }
 
 function buile_input(list, DB_name) {
-  const attributes = " {S7_m_c := 'true'}";
+  const S7_m_c = "{S7_m_c := 'true'}";
   for (let [index, item] of list.entries()) {
     item.assign_str = item.name && item.target
       ? `"${DB_name}".${item.name} := ${item.target.value};`
       : null;
     if (item.name) {// DB中生成S7_m_c字段，对input_list项，检测该字段上升沿
-      item.declaration = `${item.name}${attributes} : BOOL ;`;
+      item.declaration = `${item.name} ${S7_m_c} : BOOL ;`;
       item.edge = `"${DB_name}".${item.name}`;
     } else { // DB中只有follower字段，对input_list项，检测target上升沿
       item.name = `input_${index++}`;

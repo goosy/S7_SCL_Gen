@@ -18,7 +18,11 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 // AI背景块: {{AI_item.comment}}
 DATA_BLOCK "{{AI_item.DB.name}}" "{{AI_NAME}}"
 BEGIN{{#if AI_item.$enable_alarm != undefined}}
-    enable_alarm := {{AI_item.$enable_alarm}};{{#endif}}{{#if AI_item.$zero}}
+    enable_alarm := {{AI_item.$enable_alarm}};{{#endif}}{{#if AI_item.$zero_raw}}
+    zero_raw := {{AI_item.$zero_raw}};{{#endif}}{{#if AI_item.$span_raw}}
+    span_raw := {{AI_item.$span_raw}};{{#endif}}{{#if AI_item.$overflow_SP}}
+    overflow_SP := {{AI_item.$overflow_SP}};{{#endif}}{{#if AI_item.$underflow_SP}}
+    underflow_SP := {{AI_item.$underflow_SP}};{{#endif}}{{#if AI_item.$zero}}
     zero := {{AI_item.$zero}};{{#endif}}{{#if AI_item.$span}}
     span := {{AI_item.$span}};{{#endif}}{{#if AI_item.$AH_limit}}
     AH_limit := {{AI_item.$AH_limit}};{{#endif}}{{#if AI_item.$WH_limit}}

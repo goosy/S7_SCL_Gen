@@ -87,6 +87,13 @@ list :
     # 如果省略，转换程序不生成任何联锁。这时可以用 DB.output 来自行编程或HMI处理
     - AFan_1204A.start_CMD # 轴流风机，注意
 
+- comment: 声光报警
+
+  DB: [sound_light, DB122]
+  $enable: false # boolean 字面量，值只能为true或false，代表初始时是否允许报警连锁，非法输入会默认为true。可在运行中由HMI改变本值
+  input_list:
+  - {target: [DI02-09, I5.0], name: MBN, comment: 人工报警按钮}
+  - '"pump_gas".output'
 # 更多的联锁设置，可以依照上方书写，注意对齐，以对齐表示层级
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
