@@ -48,18 +48,17 @@ files: # files 仅仅是复制该文件到输出文件夹中
 # 建议把不在转换器中使用但实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
 # 类型: 数组
 symbols:
-  # CPU文档已有9个内置符号，代表打开的时钟存储器，其内容由本程序自动生成：
-  # - [Clock_Memory, MB0],
-  # - [Pulse_10Hz,   M0.0],
-  # - [Pulse_5Hz,    M0.1],
-  # - [Pulse_2.5Hz,  M0.2],
-  # - [Pulse_2Hz,    M0.3],
-  # - [Pulse_1.25Hz, M0.4],
-  # - [Pulse_1Hz,    M0.5],
-  # - [Pulse_0.62Hz, M0.6],
-  # - [Pulse_0.5Hz,  M0.7],
-  # 如果时钟存储器设定的不是默认的MB0，只须对内置符号'Clock_Memory'重新定义就可以了，其余8个内置符号会自动更正。
-- [Clock_Memory, MB10] # 重设时钟存储器为MB10
+  # Clock_Memory 是一个特定的符号，如配置了该符号，会自动以设定的地址MB10生成以下符号：
+  # - [Clock_Memory, MB10, ~, clock memory]
+  # - [Pulse_10Hz,   M10.0]
+  # - [Pulse_5Hz,    M10.1]
+  # - [Pulse_2.5Hz,  M10.2]
+  # - [Pulse_2Hz,    M10.3]
+  # - [Pulse_1.25Hz, M10.4]
+  # - [Pulse_1Hz,    M10.5]
+  # - [Pulse_0.62Hz, M10.6]
+  # - [Pulse_0.5Hz,  M10.7]
+- [Clock_Memory, MB10] # 设置时钟存储器为MB10，不配置本行则不产生任何时钟存储器符号。
 - [JS_flow, FB801]
 
   # 自定义符号

@@ -39,9 +39,6 @@ jspm_packages/
 # TypeScript v1 declaration files
 typings/
 
-# Optional npm cache directory
-.npm
-
 # Optional eslint cache
 .eslintcache
 
@@ -50,12 +47,6 @@ typings/
 
 # Output of 'npm pack'
 *.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-yarn.lock
-.yarn/
-.yarnrc.yml
 
 # dotenv environment variables file
 .env
@@ -67,7 +58,14 @@ yarn.lock
 .idea
 
 # package
+.npm
 package-lock.json
+.yarn-integrity
+yarn.lock
+.yarn/
+.yarnrc.yml
+.pnp*js
+pnpm-lock.yaml
 
 # production
 src/converter.js
@@ -79,4 +77,3 @@ dist/
 lib/
 .vscode/
 .editorconfig
-.pnp*js

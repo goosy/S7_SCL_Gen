@@ -7,8 +7,9 @@ import { supported_types, converter } from './converter.js';
 export const BUILDIN_SYMBOLS = new GCL();
 await BUILDIN_SYMBOLS.load(
     supported_types.map(type => {
-        const area = converter[`${type.toUpperCase()}_BUILDIN`] ?? [];
-        return `---\ntype: ${type}\nsymbols: ${area}...`;
+        const area = converter[`${type.toUpperCase()}_BUILDIN`];
+        if (area) return `---\ntype: ${type}\nsymbols: ${area}...`;
+        return '';
     }).join('\n\n'),
     { isFile: false, filename: 'buildin' }
 );

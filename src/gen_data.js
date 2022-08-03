@@ -118,7 +118,7 @@ async function add_conf(gcl) {
     })
     // 加入内置符号
     const buildin = BUILDIN_SYMBOLS[doctype];
-    add_symbols(CPU, buildin.get('symbols'), { document: buildin });
+    if (buildin) add_symbols(CPU, buildin.get('symbols'), { document: buildin });
     // 加入前置符号
     const symbols = doc.get('symbols');
     if (symbols) add_symbols(CPU, symbols, { document: doc });

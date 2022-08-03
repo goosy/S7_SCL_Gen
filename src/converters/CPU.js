@@ -2,17 +2,6 @@ import assert from 'assert/strict';
 import { add_symbols } from '../symbols.js';
 
 export const CPU_NAME = 'CPU';
-export const CPU_BUILDIN = `
-- [Clock_Memory, MB0, ~, clock memory]
-- [Pulse_10Hz, M0.0]
-- [Pulse_5Hz, M0.1]
-- [Pulse_2.5Hz, M0.2]
-- [Pulse_2Hz, M0.3]
-- [Pulse_1.25Hz, M0.4]
-- [Pulse_1Hz, M0.5]
-- [Pulse_0.62Hz, M0.6]
-- [Pulse_0.5Hz, M0.7]
-`;
 
 const CPU_type = [
     "IM151-8PN/DP",
@@ -50,15 +39,22 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
  * @returns {void}
  */
 export function parse_symbols_CPU({ CPU }) {
-    const CM_addr = CPU.symbols_dict['Clock_Memory'].addr;
-    assert(/^mb\d+$/i.test(CM_addr), new SyntaxError(`Clock_Memory 符号 "${CM_addr}" 无效！`));
-    if (CM_addr != 'MB0') { // 内置符号改变
-        const prefix = CM_addr.replace(/B/i, '').toUpperCase();
-        const symbols = CPU_BUILDIN.split('- ').slice(2).map(symbol =>
-            symbol.replace(/[\[\]]/g, '').replace('M0', prefix).split(',').map(item => item.trim())
-        );
-        add_symbols(CPU, symbols);
-    }
+    const CM = CPU.symbols_dict['Clock_Memory'];
+    if (!CM) return;
+    assert(/^mb\d+$/i.test(CM.addr), new SyntaxError(`Clock_Memory 符号 "${CM.addr}" 无效！`));
+    const CM_addr = CM.addr.substring(2);
+    CM.comment = 'clock memory';
+    const symbols = [
+        ['Pulse_10Hz', `M${CM_addr}.0`],
+        ['Pulse_5Hz', `M${CM_addr}.1`],
+        ['Pulse_2.5Hz', `M${CM_addr}.2`],
+        ['Pulse_2Hz', `M${CM_addr}.3`],
+        ['Pulse_1.25Hz', `M${CM_addr}.4`],
+        ['Pulse_1Hz', `M${CM_addr}.5`],
+        ['Pulse_0.62Hz', `M${CM_addr}.6`],
+        ['Pulse_0.5Hz', `M${CM_addr}.7`],
+    ];
+    add_symbols(CPU, symbols);
 }
 
 export function build_CPU({ CPU, options = {} }) {
