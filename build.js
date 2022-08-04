@@ -8,7 +8,7 @@ import { builtinModules } from 'module';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 
-const inputOptions = {
+const mainInputOptions = {
     input: './src/index.js',
     plugins: [
         resolve({
@@ -19,12 +19,26 @@ const inputOptions = {
     external: [...builtinModules, 'iconv-lite', '**/package.json'],
 };
 
-const outputOptionsList = [{
+const mainOutputOptionsList = [{
     file: pkg.exports['.'][0].import,
     format: 'es',
-    // }, {
-    //     file: pkg.exports['.'][0].require,
-    //     format: 'cjs',
+}];
+
+const CLIInputOptions = {
+    input: './src/cli.js',
+    plugins: [
+        resolve({
+            preferBuiltins: true,
+        }), // tells Rollup how to find XX in node_modules
+        commonjs(), // converts XX to ES modules
+    ],
+    external: [...builtinModules, './index.js'],
+};
+
+const CLIOutputOptionsList = [{
+    file: pkg.bin.s7scl,
+    format: 'es',
+    banner: '#!/usr/bin/env node',
 }];
 
 async function build() {
@@ -38,7 +52,7 @@ async function build() {
             supported_types,
         }
     }];
-    const template = await readFile('src/converter.template', { encoding: 'utf8'});
+    const template = await readFile('src/converter.template', { encoding: 'utf8' });
     for (let { name, content } of convertRules(rules, template)) {
         const output_file = posix.join(context.module_path, 'src', name);
         await write_file(output_file, content, {});
@@ -47,27 +61,26 @@ async function build() {
     console.log(`file src/converter.js generated!`);
 
     // build bundle files
-    let bundle;
+    let main_bundle, cli_bundle;
     let buildFailed = false;
     try {
-        bundle = await rollup(inputOptions);
-        // bundle.watchFiles is an array of file names this bundle depends on
-        await generateOutputs(bundle);
+        main_bundle = await rollup(mainInputOptions);
+        await generateOutputs(main_bundle, mainOutputOptionsList);
+        cli_bundle = await rollup(CLIInputOptions);
+        await generateOutputs(cli_bundle, CLIOutputOptionsList);
     } catch (error) {
         buildFailed = true;
         // do some error reporting
         console.error(error);
     }
-    if (bundle) {
-        // closes the bundle
-        await bundle.close();
-    }
+    if (main_bundle) await main_bundle.close();
+    if (cli_bundle) await cli_bundle.close();
     process.exit(buildFailed ? 1 : 0);
 }
 
-async function generateOutputs(bundle) {
+async function generateOutputs(bundle, outputOptionsList) {
     for (const outputOptions of outputOptionsList) {
-        const { output } = await bundle.write(outputOptions);
+        await bundle.write(outputOptions);
         console.log(`file ${outputOptions.file} generated!`);
     }
 }

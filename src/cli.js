@@ -1,5 +1,4 @@
-#!/usr/bin/env node
-import { convert, copy_file, context } from './lib/index.js';
+import { convert, copy_file, context } from './index.js';
 import { posix } from 'path';
 import mri from 'mri';
 

@@ -1,15 +1,13 @@
 {
   "name": "s7-scl-gen",
-  "version": "1.3.0",
+  "version": "1.3.2",
   "type": "module",
   "description": "S7 PLC SCL 代码自动生成",
   "main": "/lib/index.js",
   "exports": {
     ".": [
       {
-        "import": "./lib/index.js",
-        "require": "./lib/index.cjs",
-        "default": "./lib/acorn.js"
+        "import": "./lib/index.js"
       },
       "./lib/index.js"
     ]
@@ -21,14 +19,14 @@
     "iconv-lite": "^0.6.3"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^19.0.0",
-    "@rollup/plugin-node-resolve": "^13.0.0",
-    "eslint": "^8.3.0",
+    "@rollup/plugin-commonjs": "^19.0.2",
+    "@rollup/plugin-node-resolve": "^13.3.0",
+    "eslint": "^8.21.0",
     "globby": "^13.1.2",
     "gooconverter": "^0.3.6",
     "mri": "^1.2.0",
     "rimraf": "^3.0.2",
-    "rollup": "^2.52.3",
+    "rollup": "^2.77.2",
     "yaml": "^2.1.1"
   },
   "directories": {
@@ -36,7 +34,7 @@
     "lib": "lib"
   },
   "bin": {
-    "s7scl": "cli.js"
+    "s7scl": "./lib/cli.js"
   },
   "scripts": {
     "clean": "rimraf ./example/SCL ./lib",
