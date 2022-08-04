@@ -1,5 +1,6 @@
 import { make_prop_symbolic } from '../symbols.js';
-import { join } from 'path';
+import { context } from '../util.js';
+import { posix } from 'path';
 
 export const MOTOR_NAME = `Motor_Proc`;
 export const MOTOR_LOOP_NAME = 'Motor_Loop';
@@ -126,10 +127,8 @@ export function gen_motor(motor_list) {
 }
 
 export function gen_motor_copy_list(item) {
-    const output_dir = item.CPU.output_dir;
-    return [{
-        src: `Motor_Proc/${MOTOR_NAME}.scl`,
-        dst: `${output_dir}/`,
-        desc: `${join(process.cwd(), output_dir, MOTOR_NAME)}.scl`
-    }];
+    const filename = `${MOTOR_NAME}.scl`;
+    const src = posix.join(context.module_path, 'Motor_Proc', filename);
+    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+    return [{ src, dst }];
 }

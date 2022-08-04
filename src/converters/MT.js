@@ -1,6 +1,6 @@
-import { IntIncHL, fixed_hex } from '../util.js';
+import { IntIncHL, fixed_hex, context } from '../util.js';
 import { make_prop_symbolic } from '../symbols.js';
-import { join } from 'path';
+import { posix } from 'path';
 import assert from 'assert/strict';
 
 export const MT_NAME = 'MT_Poll';
@@ -277,10 +277,8 @@ export function gen_MT(MT_list) {
 }
 
 export function gen_MT_copy_list(item) {
-  const output_dir = item.CPU.output_dir;
-  return [{
-    src: `MT_Poll/${MT_NAME}.scl`,
-    dst: `${output_dir}/`,
-    desc: `${join(process.cwd(), output_dir, MT_NAME)}.scl`
-  }];
+  const filename = `${MT_NAME}.scl`;
+  const src = posix.join(context.module_path, 'MT_Poll', filename);
+  const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+  return [{ src, dst }];
 }

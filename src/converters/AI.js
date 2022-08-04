@@ -1,5 +1,6 @@
 import { make_prop_symbolic } from "../symbols.js";
-import { join } from 'path';
+import { context } from '../util.js';
+import { posix } from 'path';
 
 export const AI_NAME = 'AI_Proc';
 export const AI_LOOP_NAME = 'AI_Loop';
@@ -47,7 +48,7 @@ END_FUNCTION
  * @date 2021-12-07
  * @param {S7Item} VItem
  * @returns {void}
- */ 
+ */
 export function parse_symbols_AI({ CPU, list }) {
     const document = CPU.AI;
     list.forEach(AI => {
@@ -79,10 +80,7 @@ export function gen_AI(AI_list) {
 }
 
 export function gen_AI_copy_list(item) {
-    const output_dir = item.CPU.output_dir;
-    return [{
-        src: `AI_Proc/${AI_NAME}(step7).scl`,
-        dst: `${output_dir}/${AI_NAME}.scl`,
-        desc: `${join(process.cwd(), output_dir, AI_NAME)}.scl`,
-    }];
+    const src = posix.join(context.module_path, `AI_Proc/${AI_NAME}(step7).scl`);
+    const dst = posix.join(context.work_path, item.CPU.output_dir, AI_NAME + '.scl');
+    return [{ src, dst }];
 }

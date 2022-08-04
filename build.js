@@ -1,6 +1,6 @@
-import { join } from 'path';
+import { posix } from 'path';
 import { readdir, readFile } from 'fs/promises';
-import { module_path, write_file } from './src/util.js';
+import { context, write_file } from './src/util.js';
 import { convertRules } from 'gooconverter';
 import { rollup } from 'rollup';
 import pkg from './package.json' assert { type: 'json' };
@@ -29,7 +29,7 @@ const outputOptionsList = [{
 
 async function build() {
     // build src/converter.js
-    const supported_types = (await readdir(join(module_path, 'src/converters'))).map(
+    const supported_types = (await readdir(posix.join(context.module_path, 'src/converters'))).map(
         file => file.replace(/\.js$/, '')
     );
     const rules = [{
@@ -40,7 +40,7 @@ async function build() {
     }];
     const template = await readFile('src/converter.template', { encoding: 'utf8'});
     for (let { name, content } of convertRules(rules, template)) {
-        const output_file = join(module_path, 'src', name);
+        const output_file = posix.join(context.module_path, 'src', name);
         await write_file(output_file, content, {});
         console.log(`created ${output_file}`);
     };

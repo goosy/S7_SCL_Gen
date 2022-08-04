@@ -1,30 +1,33 @@
 import { access, mkdir, cp, readFile, rename, writeFile } from 'fs/promises';
-import { basename, dirname, join } from 'path';
+import { basename, dirname, posix } from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline';
 import iconv from 'iconv-lite';
 
-export const module_path = join(fileURLToPath(import.meta.url), "../../");
+const module_path = posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), "../../");
 const pkg = JSON.parse(
-    await readFile(join(module_path, 'package.json'), { silent: true })
+    await readFile(posix.join(module_path, 'package.json'), { silent: true })
 );
-export const version = pkg.version;
-
-export async function tips() {
-    const file = join(module_path, 'tips.txt');
-    const msg = await read_file(file, { silent: true });
-    if (msg) {
-        console.log(`\n\n===========\n重要版本提示！！！\n\n${msg}`);
-        const rl = createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
-        rl.question(`不再提示本消息?(Y)es, (N)o :`, async answer => {
-            if (answer.toUpperCase() === 'Y') await rename(file, file+'.lck');
-            rl.close();
-        })
+export const context = {
+    module_path,
+    work_path: process.cwd().replace(/\\/g, '/'),
+    version: pkg.version,
+    async tips() {
+        const file = posix.join(module_path, 'tips.txt');
+        const msg = await read_file(file, { silent: true });
+        if (msg) {
+            console.log(`\n\n===========\n重要版本提示！！！\n\n${msg}`);
+            const rl = createInterface({
+                input: process.stdin,
+                output: process.stdout
+            });
+            rl.question(`不再提示本消息?(Y)es, (N)o :`, async answer => {
+                if (answer.toUpperCase() === 'Y') await rename(file, file + '.lck');
+                rl.close();
+            })
+        }
     }
-}
+};
 
 export class IncHLError extends Error {
     num;
@@ -231,18 +234,12 @@ export async function prepare_dir(dir) {
  */
 export async function copy_file(src, dst) {
     async function _copy(src, dst) {
-        const options = { recursive: true };
         if (typeof src != 'string') return;
         if (typeof dst != 'string') return;
-        if (dst.endsWith('/')) {
-            dst += basename(src);
-        }
-        let srcPath = join(module_path, src);
-        let dstPath = join(work_path, dst);
-        await prepare_dir(dirname(dstPath));
-        await cp(srcPath, dstPath, options);
+        if (dst.endsWith('/')) dst += basename(src);
+        await prepare_dir(dirname(dst));
+        await cp(src, dst, { recursive: true });
     }
-    const work_path = process.cwd();
     if (Array.isArray(dst)) {
         for (const item of dst) { // for-of 实现异步顺序执行
             await _copy(src, item);

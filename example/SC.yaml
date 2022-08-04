@@ -14,9 +14,9 @@ description: |
   * FB3 P_SEND
 
 includes: 
-- A101.SCL # 该文件包含 A101L 符号的FB实现
+- A101.SCL      # 该文件包含 A101L 符号的FB实现
 - ZYGasFlow.SCL # 该文件包含 ZY_GAS_flow 符号的FB实现
-- TankDB.SCL # AI_Alarm代码
+- TankDB.SCL    # AI_Alarm代码
 
 symbols:
 # 系统已有4个内置符号：
@@ -77,5 +77,4 @@ list : # CP 模块列表
 
 # 额外代码，合并到CP_Loop FC块结尾
 loop_additional_code: 
-  - TankChain.SCL # 连锁逻辑的代码
 ...

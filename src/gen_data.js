@@ -1,12 +1,13 @@
 import { readdir, writeFile } from 'fs/promises';
 import { build_symbols, add_symbols, gen_symbols, BUILDIN_SYMBOLS } from './symbols.js';
-import { IntIncHL, S7IncHL } from './util.js';
+import { IntIncHL, S7IncHL, context } from './util.js';
 import { GCL } from './gcl.js';
-import { join } from 'path';
+import { globby } from 'globby';
+import { posix } from 'path';
 import { supported_types, converter } from './converter.js';
 import assert from 'assert/strict';
 
-/** @type {string: {CPU, includes, list, options}[] }*/
+/** @type {string: {CPU, includes, files, list, options}[] }*/
 const conf_list = {};
 supported_types.forEach(type => {
   // 初始化conf_list
@@ -105,6 +106,7 @@ async function add_conf(gcl) {
     const conf = doc.toJS();
     const options = conf.options ?? {};
     const list = conf.list ?? [];
+    const files = conf.files ?? [];
     const { code: loop_additional_code, gcl_list: _ } = await parse_includes(conf.loop_additional_code, { CPU: CPU.name, type: doctype });
     const { code: includes, gcl_list } = await parse_includes(conf.includes, { CPU: CPU.name, type: doctype });
     // 加入 includes 符号
@@ -121,7 +123,7 @@ async function add_conf(gcl) {
     const symbols = doc.get('symbols');
     if (symbols) add_symbols(CPU, symbols, { document: doc });
 
-    const area = { CPU, list, includes, loop_additional_code, options, gcl };
+    const area = { CPU, list, includes, files, loop_additional_code, options, gcl };
     const parse_symbols = converter[`parse_symbols_${doctype}`];
     if (typeof parse_symbols === 'function') parse_symbols(area);
     conf_list[doctype].push(area);
@@ -129,14 +131,14 @@ async function add_conf(gcl) {
 }
 
 export async function gen_data({ output_zyml, noconvert, silent } = {}) {
-  const work_path = process.cwd();
+  const work_path = context.work_path;
 
   // 第一遍扫描 加载配置\提取符号\建立诊断信息
   try {
     silent || console.log('readding file:');
     for (const file of await readdir(work_path)) {
       if (/^.*\.ya?ml$/i.test(file)) {
-        const filename = join(work_path, file);
+        const filename = posix.join(work_path, file);
         const gcl = new GCL();
         await gcl.load(filename);
         await add_conf(gcl);
@@ -160,7 +162,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         (docs, type) => CPU[type] ? `${docs}\n\n${CPU[type].toString(options)}` : docs,
         `# CPU ${name} configuration`
       );
-      const filename = `${join(work_path, name)}.zyml`;
+      const filename = `${posix.join(work_path, name)}.zyml`;
       await writeFile(filename, yaml);
       console.log(`\t${filename}`);
     }
@@ -184,20 +186,35 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   // 第三遍扫描 生成最终待转换数据
   const copy_list = [];
   const convert_list = [];
-  supported_types.forEach(type => {
+  for (const type of supported_types) {
     for (const item of conf_list[type]) {
+      const output_dir = posix.join(work_path, item.CPU.output_dir);
       const gen = converter[`gen_${type}_copy_list`];
       assert.equal(typeof gen, 'function', `innal error: gen_${type}_copy_list`);
+      const conf_files = [];
+      for (const file of item.files) {
+        if (/\\/.test(file)) throw new SyntaxError('路径分隔符要使用"/"!');
+        let [base, rest] = file.split('//');
+        if (rest == undefined) {
+          rest = base;
+          base = '';
+        }
+        base = posix.join(work_path, base);
+        for (const src of await globby(posix.join(base, rest))) {
+          const dst = src.replace(base, output_dir);
+          conf_files.push({ src, dst }); 
+        }
+      };
       const ret = gen(item);
       assert(Array.isArray(ret), `innal error: gen_${type}_copy_list(${item}) is not a Array`);
-      copy_list.push(...ret);
+      copy_list.push(...conf_files, ...ret);
     }
 
     // push each gen_{type}(type_item) to convert_list
     const gen = converter['gen_' + type];
     assert.equal(typeof gen, 'function', 'innal error');
     convert_list.push(...gen(conf_list[type]));
-  });
+  };
   convert_list.push(gen_symbols(CPUs)); // symbols converter
   return [copy_list, convert_list];
 }

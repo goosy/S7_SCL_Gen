@@ -1,5 +1,6 @@
 import { make_prop_symbolic } from "../symbols.js";
-import { join } from 'path';
+import { context } from '../util.js';
+import { posix } from 'path';
 
 export const PV_NAME = 'PV_Alarm';
 export const PV_LOOP_NAME = 'PV_Loop';
@@ -72,10 +73,8 @@ export function gen_PV(PV_list) {
 }
 
 export function gen_PV_copy_list(item) {
-    const output_dir = item.CPU.output_dir;
-    return [{
-        src: `PV_Alarm/${PV_NAME}.scl`,
-        dst: `${output_dir}/${PV_NAME}.scl`,
-        desc: `${join(process.cwd(), output_dir, PV_NAME)}.scl`,
-    }];
+    const filename = `${PV_NAME}.scl`;
+    const src = posix.join(context.module_path, 'PV_Alarm', filename);
+    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+    return [{ src, dst }];
 }

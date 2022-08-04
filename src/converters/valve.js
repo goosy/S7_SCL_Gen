@@ -1,5 +1,6 @@
 import { make_prop_symbolic } from '../symbols.js';
-import { join } from 'path';
+import { context } from '../util.js';
+import { posix } from 'path';
 
 export const VALVE_NAME = `Valve_Proc`;
 export const VALVE_LOOP_NAME = 'Valve_Loop';
@@ -93,10 +94,8 @@ export function gen_valve(valve_list) {
 }
 
 export function gen_valve_copy_list(item) {
-    const output_dir = item.CPU.output_dir;
-    return [{
-        src: `Valve_Proc/${VALVE_NAME}.scl`,
-        dst: `${output_dir}/`,
-        desc: `${join(process.cwd(), output_dir, VALVE_NAME)}.scl`
-    }];
+    const filename = `${VALVE_NAME}.scl`;
+    const src = posix.join(context.module_path, 'Valve_Proc', filename);
+    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+    return [{ src, dst }];
 }

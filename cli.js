@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { convert, copy_file, version, tips } from './lib/index.js';
-import { join } from 'path';
+import { convert, copy_file, context } from './lib/index.js';
+import { posix } from 'path';
 import mri from 'mri';
 
 function show_help() {
@@ -46,22 +46,23 @@ const noconvert = argv['zyml-only'];
 const silent = argv.silent;
 
 if (argv.version) {
-    console.log(`v${version}`);
+    console.log(`v${context.version}`);
 } else if (argv.help) {
     show_help();
 } else if (cmd === 'convert' || cmd === 'conv') {
     process.chdir(path ?? '.');
+    context.work_path = process.cwd().replace(/\\/g, '/');
     await convert({ output_zyml, noconvert, silent });
     noconvert || silent || console.log("converted all YAML to SCL!");
 } else if (cmd === 'gcl' || cmd === 'init' || cmd === 'template') {
-    const dst = path ?? 'GCL';
-    await copy_file('example', dst);
-    await copy_file('README.md', dst + '/');
-    const fullname_dst = join(process.cwd(), dst);
-    const readme = join(fullname_dst, 'README.md');
+    const dst = posix.join(context.work_path, path ?? 'GCL');
+    await copy_file(posix.join(context.module_path, 'example'), dst);
+    await copy_file(posix.join(context.module_path, 'README.md'), dst + '/');
+    const fullname_dst = posix.join(context.work_path, dst);
+    const readme = posix.join(fullname_dst, 'README.md');
     console.log(`已生成配置文件夹 ${fullname_dst}。\n可以参阅 ${readme} 内的说明。`);
 } else {
     show_help();
 }
 
-tips();
+context.tips();

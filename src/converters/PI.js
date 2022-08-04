@@ -4,9 +4,9 @@
  * @file PI
  */
 
-import { fixed_hex } from "../util.js";
+import { fixed_hex, context } from '../util.js';
 import { make_prop_symbolic } from '../symbols.js';
-import { join } from 'path';
+import { posix } from 'path';
 
 export const PI_NAME = 'PI_Proc';
 export const PI_LOOP_NAME = 'PI_Loop';
@@ -17,7 +17,7 @@ export const PI_BUILDIN = `
 - [${FM3502_CNT_NAME}, UDT350, ${FM3502_CNT_NAME}, FM350-2 count DB]
 `;
 export function is_type_PI(type) {
-    return type.toUpperCase() === 'PI';
+  return type.toUpperCase() === 'PI';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
@@ -56,23 +56,23 @@ END_FUNCTION
  * @returns {void}
  */
 export function parse_symbols_PI({ CPU, list, options }) {
-    const document = CPU.PI;
-    let index = 0;
-    list.forEach(module => {
-        if (!module?.DB) throw Error(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
-        module.type ??= 'FM350-2';
-        let type = 'notype';
-        if (module.type === 'FM350-2') {
-            options.has_FM3502 = true;
-            type = PI_NAME;
-        }
-        if (type === 'notype') throw new Error(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
-        module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
-        make_prop_symbolic(module, 'module_addr', CPU, { document, default_type: 'WORD' });
-        if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
-        make_prop_symbolic(module, 'DB', CPU, { document, default_type: type });
-        make_prop_symbolic(module, 'count_DB', CPU, { document, default_type: FM3502_CNT_NAME });
-    });
+  const document = CPU.PI;
+  let index = 0;
+  list.forEach(module => {
+    if (!module?.DB) throw Error(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
+    module.type ??= 'FM350-2';
+    let type = 'notype';
+    if (module.type === 'FM350-2') {
+      options.has_FM3502 = true;
+      type = PI_NAME;
+    }
+    if (type === 'notype') throw new Error(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
+    module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
+    make_prop_symbolic(module, 'module_addr', CPU, { document, default_type: 'WORD' });
+    if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
+    make_prop_symbolic(module, 'DB', CPU, { document, default_type: type });
+    make_prop_symbolic(module, 'count_DB', CPU, { document, default_type: FM3502_CNT_NAME });
+  });
 }
 
 /**
@@ -82,41 +82,39 @@ export function parse_symbols_PI({ CPU, list, options }) {
  * @returns {void}
  */
 export function build_PI(PI) {
-    const { CPU, list } = PI;
-    list.forEach(module => { // 处理配置，形成完整数据
-        if (Array.isArray(module.module_addr)) throw Error(`${CPU.name}:PI 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
-        const MNO = module.module_addr.block_no;
-        module.module_no = fixed_hex(MNO, 4);
-        module.channel_no = fixed_hex(MNO * 8, 8);
-    });
+  const { CPU, list } = PI;
+  list.forEach(module => { // 处理配置，形成完整数据
+    if (Array.isArray(module.module_addr)) throw Error(`${CPU.name}:PI 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
+    const MNO = module.module_addr.block_no;
+    module.module_no = fixed_hex(MNO, 4);
+    module.channel_no = fixed_hex(MNO * 8, 8);
+  });
 }
 
 export function gen_PI(PI_list) {
-    const rules = [];
-    PI_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
-        const { name, output_dir } = CPU;
-        const { output_file = PI_LOOP_NAME } = options;
-        rules.push({
-            "name": `${output_dir}/${output_file}.scl`,
-            "tags": {
-                name,
-                modules,
-                includes,
-                loop_additional_code,
-                PI_NAME,
-                PI_LOOP_NAME,
-                FM3502_CNT_NAME,
-            }
-        })
-    });
-    return [{ rules, template }];
+  const rules = [];
+  PI_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
+    const { name, output_dir } = CPU;
+    const { output_file = PI_LOOP_NAME } = options;
+    rules.push({
+      "name": `${output_dir}/${output_file}.scl`,
+      "tags": {
+        name,
+        modules,
+        includes,
+        loop_additional_code,
+        PI_NAME,
+        PI_LOOP_NAME,
+        FM3502_CNT_NAME,
+      }
+    })
+  });
+  return [{ rules, template }];
 }
 
 export function gen_PI_copy_list(item) {
-    const output_dir = item.CPU.output_dir;
-    return [{
-        src: `PI_Proc/${PI_NAME}.scl`,
-        dst: `${output_dir}/`,
-        desc: `${join(process.cwd(), output_dir, PI_NAME)}.scl`,
-    }];
+  const filename = `${PI_NAME}.scl`;
+  const src = posix.join(context.module_path, 'PI_Proc', filename);
+  const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+  return [{ src, dst }];
 }

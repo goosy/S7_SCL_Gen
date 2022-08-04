@@ -4,9 +4,9 @@
  * @file SC
  */
 
-import { fixed_hex } from "../util.js";
+import { fixed_hex, context } from '../util.js';
 import { make_prop_symbolic } from '../symbols.js';
-import { join } from 'path';
+import { posix } from 'path';
 import assert from 'assert/strict';
 
 export const CP340_NAME = 'CP340_Poll';
@@ -176,21 +176,18 @@ export function gen_SC(SC_list) {
 }
 
 export function gen_SC_copy_list(item) {
-    const output_dir = item.CPU.output_dir;
     const copy_list = [];
     if (item.options.has_CP340) {
-        copy_list.push({
-            src: `CP_Poll/${CP340_NAME}.scl`,
-            dst: `${output_dir}/`,
-            desc: `${join(process.cwd(), output_dir, CP340_NAME)}.scl`,
-        });
+        const filename = `${CP340_NAME}.scl`;
+        const src = posix.join(context.module_path, 'CP_Poll', filename);
+        const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+        copy_list.push({ src, dst });
     }
     if (item.options.has_CP341) {
-        copy_list.push({
-            src: `CP_Poll/${CP341_NAME}.scl`,
-            dst: `${output_dir}/`,
-            desc: `${join(process.cwd(), output_dir, CP341_NAME)}.scl`,
-        });
+        const filename = `${CP341_NAME}.scl`;
+        const src = posix.join(context.module_path, 'CP_Poll', filename);
+        const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+        copy_list.push({ src, dst });
     }
     return copy_list;
 }

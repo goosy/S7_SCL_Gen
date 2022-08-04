@@ -1,4 +1,4 @@
-import { convert } from './src/index.js';
+import { convert, context } from './src/index.js';
 import mri from 'mri';
 
 const argv = mri(process.argv.slice(2), {
@@ -12,5 +12,6 @@ const argv = mri(process.argv.slice(2), {
 const output_zyml = argv['zyml-only'] || argv['output-zyml'];
 const noconvert = argv['zyml-only'];
 process.chdir('./example');
+context.work_path = process.cwd().replace(/\\/g, '/');
 await convert({ output_zyml, noconvert });
 if (!noconvert) console.log("converted all YAML to SCL!")
