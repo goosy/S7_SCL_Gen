@@ -43,12 +43,21 @@ const area_size = Object.fromEntries([
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
     const get_msg = symbol => {
         const doc = symbol.source.document;
-        const range = symbol.source.range;
-        if (doc.gcl) return `${doc.gcl.file}文件 ${doc.CPU}-${doc.type}文档 ${range} symbol:${symbol.name}`;
+        const gcl = doc.gcl;
+        if (gcl) {
+            const { ln, col, code } = gcl.get_coorinfo(...symbol.source.range);
+            return `
+            文件:${gcl.file}
+            文档:${doc.CPU}-${doc.type}
+            符号:${symbol.name}
+            行:${ln}
+            列:${col}
+            代码:${code}`;
+        }
         return `内置符号 symbol:${symbol.name}`
     };
-    const prev_msg = prev_symbol ? `之前: ${get_msg(prev_symbol)}\n` : '';
-    const curr_msg = curr_symbol ? `当前: ${get_msg(curr_symbol)}\n` : '';
+    const prev_msg = prev_symbol ? `之前符号位置: ${get_msg(prev_symbol)}\n` : '';
+    const curr_msg = curr_symbol ? `当前符号位置: ${get_msg(curr_symbol)}\n` : '';
     console.error(`${message}\n${prev_msg}${curr_msg}`);
     process.exit(10);
 }
@@ -227,7 +236,7 @@ export function build_symbols(CPU) {
                 throw_symbol_error(
                     `符号地址错误: ${e.message}`,
                     symbol,
-                    list.find(sym => sym.block_no === symbol.block_no && sym.block_name === symbol.block_name)
+                    list.find(sym => symbol !== sym && sym.addr === symbol.addr)
                 );
             }
             console.log(e.message);

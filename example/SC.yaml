@@ -14,8 +14,8 @@ description: |
   * FB3 P_SEND
 
 includes: 
-- A101.SCL      # 该文件包含 A101L 符号的FB实现
-- ZYGasFlow.SCL # 该文件包含 ZY_GAS_flow 符号的FB实现
+- A101.SCL      # 该文件包含 A101L 符号的定义 [A101L, FB802] 和 FB 实现
+- ZYGasFlow.SCL # 该文件包含 ZY_GAS_flow 符号的定义 [ZY_GAS_flow, FB803] 和 FB 实现
 - TankDB.SCL    # AI_Alarm代码
 
 symbols:
@@ -31,8 +31,8 @@ symbols:
 # 转换程序能对接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
 # 这类FB不通用，需要另外单独写块本身。
 # 可通过指定includes，系统自动添加对应代码进 CP_Loop.scl 中。建议将所有FB块的定义文件放入includes中
-- [A101L, FB802]
-- [ZY_GAS_flow, FB803]
+- [Flow30, DB830, JS_flow]
+- [GAS, DB841, ZY_GAS_flow]   # GAS符号的定义处，可在定义前后任何位置引用。
 
 list : # CP 模块列表
 - comment: CP01 Module736 储罐液位
@@ -57,10 +57,10 @@ list : # CP 模块列表
   - comment: 河口1#流量计 30
     deivce_ID: '1e'                    # 16进制数用字符串形式 
     function: '4'                      # 16进制数用字符串形式 
-    started_addr: 'c'                 # 16进制数用字符串形式 
+    started_addr: 'c'                  # 16进制数用字符串形式 
     length: '1c'                       # 16进制数用字符串形式
     CRC: F3AC                          # 用2字节16进制字符串表示
-    recv_DB: [Flow30,  DB830, JS_flow]
+    recv_DB: Flow30
     recv_start: 0
   - comment: 天然气3#流量计             # 非modbus发送，不要有deivce_ID属性，直接在send_data属性上写16进制发送数据
     send_data: 03 03 00 00 18 8E 5D    # send_data 必须是一个由空格分隔的16进制字节的字符串
@@ -72,8 +72,8 @@ list : # CP 模块列表
     started_addr: 0 
     length: 12
     CRC: "44B4" 
-    recv_DB: [GAS, DB841, ZY_GAS_flow] # GAS符号的定义处，可在定义前后任何位置引用。
-    recv_start: 40
+    recv_DB: GAS                       # 引用同一个接收块
+    recv_start: 40                     # 要注意开始地址不一样
 
 # 额外代码，合并到CP_Loop FC块结尾
 loop_additional_code: 

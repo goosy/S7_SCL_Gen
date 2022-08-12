@@ -77,57 +77,52 @@ function is_supported_type(type) {
 }
 
 /**
- * 加入指定GCL文件的所有文档
+ * 加载指定文档
  * 生命周期为第一遍扫描，主要功能是提取符号
  * @date 2022-07-03
- * @param {GCL} gcl
- * @param {number} index
+ * @param {import('yaml').Document} doc
  */
-async function add_conf(gcl) {
-  for (const doc of gcl.documents) {
-    // 检查重复
-    const { CPU: CPU_name, type } = doc;
-    assert.equal(typeof CPU_name, 'string', new SyntaxError(' name (或者CPU) 必须提供!'));
-    assert.equal(typeof type, 'string', new SyntaxError(' type 必须提供!'));
-    const doctype = is_supported_type(type);
-    if (!doctype) {
-      console.error(`${gcl.file}文件 ${CPU_name}:${type}文档 : 该类型转换系统不支持`);
-      return;
-    }
-    const CPU = CPUs.get(CPU_name);
-    if (doctype === 'CPU') CPU.device = doc.get('device');
-    if (CPU[doctype]) {
-      console.error(`"${gcl.file}"文件的配置 (${CPU_name}-${doctype}) 已存在`);
-      process.exit(2);
-    }
-    CPU.add_type(doctype, doc); // 按名称压入文档
-
-    // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
-    const conf = doc.toJS();
-    const options = conf.options ?? {};
-    const list = conf.list ?? [];
-    const files = conf.files ?? [];
-    const { code: loop_additional_code, gcl_list: _ } = await parse_includes(conf.loop_additional_code, { CPU: CPU.name, type: doctype });
-    const { code: includes, gcl_list } = await parse_includes(conf.includes, { CPU: CPU.name, type: doctype });
-    // 加入 includes 符号
-    gcl_list.forEach(gcl => {
-      gcl.documents.forEach(doc => {
-        const symbols = doc.get('symbols');
-        add_symbols(CPU, symbols ?? [], { document: doc });
-      })
-    })
-    // 加入内置符号
-    const buildin = BUILDIN_SYMBOLS[doctype];
-    if (buildin) add_symbols(CPU, buildin.get('symbols'), { document: buildin });
-    // 加入前置符号
-    const symbols = doc.get('symbols');
-    if (symbols) add_symbols(CPU, symbols, { document: doc });
-
-    const area = { CPU, list, includes, files, loop_additional_code, options, gcl };
-    const parse_symbols = converter[`parse_symbols_${doctype}`];
-    if (typeof parse_symbols === 'function') parse_symbols(area);
-    conf_list[doctype].push(area);
+async function add_conf(doc) {
+  // 检查重复
+  const { CPU: CPU_name, type: doctype } = doc;
+  const type = is_supported_type(doctype);
+  if (!type) {
+    console.error(`${doc.gcl.file}文件 ${CPU_name}:${doctype}文档 : 该类型转换系统不支持`);
+    return;
   }
+  const CPU = CPUs.get(CPU_name);
+  if (type === 'CPU') CPU.device = doc.get('device');
+  if (CPU[type]) {
+    console.error(`"${doc.gcl.file}"文件的配置 (${CPU_name}-${type}) 已存在`);
+    process.exit(2);
+  }
+  CPU.add_type(type, doc); // 按名称压入文档
+
+  // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
+  const conf = doc.toJS();
+  const options = conf.options ?? {};
+  const list = conf.list ?? [];
+  const files = conf.files ?? [];
+  const { code: loop_additional_code, gcl_list: _ } = await parse_includes(conf.loop_additional_code, { CPU: CPU.name, type: type });
+  const { code: includes, gcl_list } = await parse_includes(conf.includes, { CPU: CPU.name, type: type });
+  // 加入 includes 符号
+  for (const gcl of gcl_list) {
+    for (const doc of gcl.documents) {
+      const symbols = doc.get('symbols');
+      add_symbols(CPU, symbols ?? [], { document: doc });
+    }
+  }
+  // 加入内置符号
+  const buildin_doc = BUILDIN_SYMBOLS[type];
+  if (buildin_doc) add_symbols(CPU, buildin_doc.get('symbols'), { document: buildin_doc });
+  // 加入前置符号
+  const symbols_node = doc.get('symbols');
+  if (symbols_node) add_symbols(CPU, symbols_node, { document: doc });
+
+  const area = { CPU, list, includes, files, loop_additional_code, options, gcl: doc.gcl };
+  const parse_symbols = converter[`parse_symbols_${type}`];
+  if (typeof parse_symbols === 'function') parse_symbols(area);
+  conf_list[type].push(area);
 }
 
 export async function gen_data({ output_zyml, noconvert, silent } = {}) {
@@ -141,7 +136,9 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         const filename = posix.join(work_path, file);
         const gcl = new GCL();
         await gcl.load(filename);
-        await add_conf(gcl);
+        for (const doc of gcl.documents) {
+          await add_conf(doc);
+        }
         silent || console.log(`\t${filename}`);
       }
     }
@@ -202,7 +199,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         base = posix.join(work_path, base);
         for (const src of await globby(posix.join(base, rest))) {
           const dst = src.replace(base, output_dir);
-          conf_files.push({ src, dst }); 
+          conf_files.push({ src, dst });
         }
       };
       const ret = gen(item);
