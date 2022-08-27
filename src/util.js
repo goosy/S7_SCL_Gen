@@ -270,7 +270,7 @@ function dos2unix(str) {
     return str.split('\r\n').join('\n');
 }
 
-export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux" }) {
+export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux" } = {}) {
     await prepare_dir(dirname(filename));
     let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(content), encoding);
     await writeFile(filename, buff);

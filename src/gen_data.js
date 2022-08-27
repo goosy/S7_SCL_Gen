@@ -1,6 +1,6 @@
-import { readdir, writeFile } from 'fs/promises';
+import { readdir } from 'fs/promises';
 import { build_symbols, add_symbols, gen_symbols, BUILDIN_SYMBOLS } from './symbols.js';
-import { IntIncHL, S7IncHL, context } from './util.js';
+import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 import { GCL } from './gcl.js';
 import { globby } from 'globby';
 import { posix } from 'path';
@@ -151,25 +151,6 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     console.log(e);
   }
 
-  // 输出无注释配置
-  if (output_zyml) {
-    console.log('output the uncommented configuration file:');
-    const options = {
-      commentString() { return ''; },
-      indentSeq: false
-    }
-    for (const [name, CPU] of Object.entries(CPUs)) {
-      // 生成无注释的配置
-      const yaml = supported_types.reduce(
-        (docs, type) => CPU[type] ? `${docs}\n\n${CPU[type].toString(options)}` : docs,
-        `# CPU ${name} configuration`
-      );
-      const filename = `${posix.join(work_path, name)}.zyml`;
-      await writeFile(filename, yaml);
-      console.log(`\t${filename}`);
-    }
-  }
-
   // 第二遍扫描 补全数据
 
   // 检查并补全符号表
@@ -184,6 +165,25 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
 
   // 校验完毕，由 noconvert 变量决定是否输出
   if (noconvert) return [[], []];
+
+  // 输出无注释配置
+  if (output_zyml) {
+    console.log('output the uncommented configuration file:');
+    const options = {
+      commentString() { return ''; }, //注释选项
+      indentSeq: false                //列表是否缩进
+    }
+    for (const [name, CPU] of Object.entries(CPUs)) {
+      // 生成无注释的配置
+      const yaml = supported_types.reduce(
+        (docs, type) => CPU[type] ? `${docs}\n\n${CPU[type].toString(options)}` : docs,
+        `# CPU ${name} configuration`
+      );
+      const filename = `${posix.join(work_path, CPU.output_dir, name)}.zyml`;
+      await write_file(filename, yaml);
+      console.log(`\t${filename}`);
+    }
+  }
 
   // 第三遍扫描 生成最终待转换数据
   const copy_list = [];

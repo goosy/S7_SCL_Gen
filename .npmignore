@@ -18,4 +18,4 @@ dist/
 public/
 example/SCL/
 test/
-.pnp*js
+.pnp*
