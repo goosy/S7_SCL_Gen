@@ -74,7 +74,6 @@ export function build({ list }) {
             run,
             stateless,
             error,
-            timer_pulse,
             over_time,
         } = motor;
         const input_paras = [];
@@ -93,9 +92,6 @@ export function build({ list }) {
         }
         if (error) {
             input_paras.push(`error       := ${error.value}`);
-        }
-        if (timer_pulse) {
-            input_paras.push(`timer_pulse := ${timer_pulse.value}`);
         }
         if (over_time) {
             input_paras.push(`over_time   := ${over_time}`); // over_time is not a symbol
