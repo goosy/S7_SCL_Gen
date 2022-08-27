@@ -11,15 +11,15 @@ import assert from 'assert/strict';
 
 export const CP340_NAME = 'CP340_Poll';
 export const CP341_NAME = 'CP341_Poll';
-export const SC_LOOP_NAME = 'SC_Loop';
-export const SC_POLLS_NAME = 'SC_polls_DB';
-export const SC_BUILDIN = `
+export const LOOP_NAME = 'SC_Loop';
+export const POLLS_NAME = 'SC_polls_DB';
+export const BUILDIN = `
 - [${CP340_NAME}, FB340, ${CP340_NAME}, CP340 SC communicate main process]
 - [${CP341_NAME}, FB341, ${CP341_NAME}, CP341 SC communicate main process]
-- [${SC_LOOP_NAME}, FC341, ${SC_LOOP_NAME}, main SC cyclic call function]
-- [${SC_POLLS_NAME}, DB880, ${SC_POLLS_NAME}, SC polls data]
+- [${LOOP_NAME}, FC341, ${LOOP_NAME}, main SC cyclic call function]
+- [${POLLS_NAME}, DB880, ${POLLS_NAME}, SC polls data]
 `;
-export function is_type_SC(type) {
+export function is_type(type) {
     return type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC';
 }
 
@@ -27,7 +27,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 {{includes}}
 
 // 轮询DB块，含485发送数据，
-DATA_BLOCK "{{CP_POLLS_NAME}}"
+DATA_BLOCK "{{POLLS_NAME}}"
 STRUCT{{#for module in modules}}
     {{module.polls_name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for no, poll in module.polls}}{{#if poll.deivce_ID}}
         device{{no}}_ID : BYTE;    //子站地址
@@ -59,14 +59,14 @@ BEGIN{{#for module in modules}}
 END_DATA_BLOCK
 
 // 主调用
-FUNCTION "{{CP_LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
 // {{no+1}}. {{module.type}} {{module.comment}}
-"{{#if module.type == 'CP341'}}{{MB341_NAME}}{{#else}}{{MB340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customTrigger}}
+"{{#if module.type == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customTrigger}}
     customTrigger := TRUE,
     REQ           := {{module.REQ}},{{#endif}}
     Laddr         := {{module.module_addr.block_no}},  // CP模块地址
-    DATA          := "{{CP_POLLS_NAME}}".{{module.polls_name}});
+    DATA          := "{{POLLS_NAME}}".{{module.polls_name}});
 {{#for poll in module.polls}}{{poll.recv_code}}{{#endfor poll}}
 {{#endfor module}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
@@ -87,7 +87,7 @@ END_FUNCTION
  * @param {S7Item} SC_area
  * @returns {void}
  */
-export function parse_symbols_SC({ CPU, list, options }) {
+export function parse_symbols({ CPU, list, options }) {
     const document = CPU.SC;
     let index = 0;
     list.forEach(module => {
@@ -119,7 +119,7 @@ export function parse_symbols_SC({ CPU, list, options }) {
  * @param {S7Item} SC
  * @returns {void}
  */
-export function build_SC(SC) {
+export function build(SC) {
     const { CPU, list } = SC;
     list.forEach(module => { // 处理配置，形成完整数据
         assert(!Array.isArray(module.module_addr), Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`));
@@ -153,11 +153,11 @@ export function build_SC(SC) {
     });
 }
 
-export function gen_SC(SC_list) {
+export function gen(SC_list) {
     const rules = [];
     SC_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
         const { name, output_dir } = CPU;
-        const { output_file = SC_LOOP_NAME } = options;
+        const { output_file = LOOP_NAME } = options;
         rules.push({
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
@@ -165,17 +165,17 @@ export function gen_SC(SC_list) {
                 modules,
                 includes,
                 loop_additional_code,
-                MB340_NAME: CP340_NAME,
-                MB341_NAME: CP341_NAME,
-                CP_LOOP_NAME: SC_LOOP_NAME,
-                CP_POLLS_NAME: SC_POLLS_NAME,
+                CP340_NAME,
+                CP341_NAME,
+                LOOP_NAME,
+                POLLS_NAME,
             }
         })
     });
     return [{ rules, template }];
 }
 
-export function gen_SC_copy_list(item) {
+export function gen_copy_list(item) {
     const copy_list = [];
     if (item.options.has_CP340) {
         const filename = `${CP340_NAME}.scl`;

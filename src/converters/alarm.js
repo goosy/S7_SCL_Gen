@@ -1,10 +1,10 @@
 import { make_prop_symbolic } from '../symbols.js';
-export const ALARM_LOOP_NAME = 'Alarm_Loop';
-export const ALARM_BUILDIN = `
-- [${ALARM_LOOP_NAME}, FC518, ${ALARM_LOOP_NAME}, main alarm cyclic call function]
+export const LOOP_NAME = 'Alarm_Loop';
+export const BUILDIN = `
+- [${LOOP_NAME}, FC518, ${LOOP_NAME}, main alarm cyclic call function]
 `;
 
-export function is_type_alarm(type) {
+export function is_type(type) {
   return type.toLowerCase() === 'alarm';
 }
 
@@ -25,7 +25,7 @@ BEGIN
 END_DATA_BLOCK
 {{#endfor alarm}}
 
-FUNCTION "alarm_Loop" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID
 // 联锁保护主循环
 
 VAR_TEMP
@@ -64,7 +64,7 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_alarm({ CPU, list }) {
+export function parse_symbols({ CPU, list }) {
   const document = CPU.alarm;
   list.forEach(alarm => {
     if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!"); // 空块不处理
@@ -113,7 +113,7 @@ export function parse_symbols_alarm({ CPU, list }) {
   });
 }
 
-function buile_input(list, DB_name) {
+function build_input(list, DB_name) {
   const S7_m_c = "{S7_m_c := 'true'}";
   for (let [index, item] of list.entries()) {
     item.assign_str = item.name && item.target
@@ -129,26 +129,26 @@ function buile_input(list, DB_name) {
   }
 }
 
-export function build_alarm({ list }) {
+export function build({ list }) {
   list.forEach(alarm => { // 处理配置，形成完整数据
-    buile_input(alarm.input_list, alarm.DB.name);
-    buile_input(alarm.reset_list, alarm.DB.name);
+    build_input(alarm.input_list, alarm.DB.name);
+    build_input(alarm.reset_list, alarm.DB.name);
     alarm.declaration = [...alarm.input_list, ...alarm.reset_list].filter(input => input.declaration);
     alarm.assign_list = [...alarm.input_list, ...alarm.reset_list].filter(input => input.assign_str);
   });
 }
 
-export function gen_alarm(alarm_list) {
+export function gen(alarm_list) {
   const rules = [];
   alarm_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
     const { name, output_dir } = CPU;
     rules.push({
-      "name": `${output_dir}/${ALARM_LOOP_NAME}.scl`,
+      "name": `${output_dir}/${LOOP_NAME}.scl`,
       "tags": {
         name,
         includes,
         loop_additional_code,
-        ALARM_LOOP_NAME,
+        LOOP_NAME,
         list,
       }
     })
@@ -156,6 +156,6 @@ export function gen_alarm(alarm_list) {
   return [{ rules, template }];
 }
 
-export function gen_alarm_copy_list(item) {
+export function gen_copy_list(item) {
   return [];
 }

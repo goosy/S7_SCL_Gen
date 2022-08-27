@@ -2,25 +2,9 @@ import assert from 'assert/strict';
 import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
 import { isSeq, YAMLSeq } from 'yaml';
 import { GCL } from './gcl.js';
-import { supported_types, converter } from './converter.js';
 
-export const BUILDIN_SYMBOLS = new GCL();
-await BUILDIN_SYMBOLS.load(
-    supported_types.map(type => {
-        const area = converter[`${type.toUpperCase()}_BUILDIN`];
-        if (area) return `---\ntype: ${type}\nsymbols: ${area}...`;
-        return '';
-    }).join('\n\n'),
-    { isFile: false, filename: 'buildin' }
-);
-
-// 构建内置符号名称表
-const buildin_symbols = [];
-BUILDIN_SYMBOLS.documents.forEach(doc => {
-    doc.get('symbols').items.forEach(symbol => {
-        buildin_symbols.push(symbol.items[0].value);
-    });
-});
+export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
+export const buildin_symbols = []; // Initialized by converter.js
 
 // FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
 const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];

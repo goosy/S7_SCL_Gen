@@ -3,13 +3,13 @@ import { make_prop_symbolic } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
 
-export const MT_NAME = 'MT_Poll';
-export const MT_LOOP_NAME = 'MT_Loop';
-export const MT_POLLS_NAME = 'MT_polls_DB';
-export const MT_BUILDIN = `
-- [${MT_NAME}, FB344, ${MT_NAME}, modbusTCP OUC main process]
-- [${MT_LOOP_NAME}, FC344, ${MT_LOOP_NAME}, main modbusTCP cyclic call function]
-- [${MT_POLLS_NAME}, DB881, ${MT_POLLS_NAME}, modbusTCP polls data]
+export const NAME = 'MT_Poll';
+export const LOOP_NAME = 'MT_Loop';
+export const POLLS_NAME = 'MT_polls_DB';
+export const BUILDIN = `
+- [${NAME}, FB344, ${NAME}, modbusTCP OUC main process]
+- [${LOOP_NAME}, FC344, ${LOOP_NAME}, main modbusTCP cyclic call function]
+- [${POLLS_NAME}, DB881, ${POLLS_NAME}, modbusTCP polls data]
 `;
 
 const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
@@ -77,14 +77,14 @@ const device_R_X_id = { // 可能需要填写槽号和机架号的
   "CPU410-5H_R1_X8": "B#16#18",
 }
 
-export function is_type_MT(type) {
+export function is_type(type) {
   return type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
 {{#for conn in connections}}
-DATA_BLOCK "{{conn.DB.name}}" "MT_Poll" // {{conn.comment}}
+DATA_BLOCK "{{conn.DB.name}}" "{{NAME}}" // {{conn.comment}}
 BEGIN
   TCON_Parameters.block_length := W#16#40;     //固定为64
   TCON_Parameters.id := W#16#{{conn.ID}};             //连接ID 每个连接必须不一样！
@@ -106,8 +106,8 @@ BEGIN
 END_DATA_BLOCK
 {{#endfor}}
 
-// 轮询定义数据块 "{{MT_POLLS_NAME}}"
-DATA_BLOCK "{{MT_POLLS_NAME}}"
+// 轮询定义数据块 "{{POLLS_NAME}}"
+DATA_BLOCK "{{POLLS_NAME}}"
 TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT{{#for conn in connections}}
@@ -142,20 +142,20 @@ BEGIN{{#for conn in connections}}
 END_DATA_BLOCK
 
 {{#for conn in connections}}{{#if conn.$interval_time}}
-DATA_BLOCK "{{conn.DB.name}}" "{{MT_NAME}}"
+DATA_BLOCK "{{conn.DB.name}}" "{{NAME}}"
 BEGIN
     intervalTime := {{conn.$interval_time}};
 END_DATA_BLOCK
-{{#endif}}{{#endfor conn}}
+{{#endif conn.$interval_time}}{{#endfor conn}}
 
 // 调用
-FUNCTION "{{MT_LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for conn in connections}}
 // {{conn.comment}}
-"{{MT_NAME}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
+"{{NAME}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
-  DATA  := "{{MT_POLLS_NAME}}".{{conn.polls_name}},
-  buff  := "{{MT_POLLS_NAME}}".buff);
+  DATA  := "{{POLLS_NAME}}".{{conn.polls_name}},
+  buff  := "{{POLLS_NAME}}".buff);
 {{#for poll in conn.polls}}{{poll.recv_code}}{{#endfor poll}}
 {{#endfor conn}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
@@ -185,11 +185,11 @@ function get_device_id(device, R, X) {
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_MT({ CPU, list }) {
+export function parse_symbols({ CPU, list }) {
   const document = CPU.MT;
   list.forEach(conn => {
     if (Array.isArray(conn.DB)) conn.DB[3] ??= conn.comment;
-    make_prop_symbolic(conn, 'DB', CPU, { document, default_type: MT_NAME });
+    make_prop_symbolic(conn, 'DB', CPU, { document, default_type: NAME });
     conn.polls.forEach(poll => {
       if (Array.isArray(poll.recv_DB)) poll.recv_DB[3] ??= poll.comment;
       make_prop_symbolic(poll, 'recv_DB', CPU, { document });
@@ -197,7 +197,7 @@ export function parse_symbols_MT({ CPU, list }) {
   });
 }
 
-export function build_MT({ CPU, list }) {
+export function build({ CPU, list }) {
   list.forEach(conn => { // 处理配置，形成完整数据
     const {
       conn_ID_list,
@@ -255,11 +255,11 @@ export function build_MT({ CPU, list }) {
   });
 }
 
-export function gen_MT(MT_list) {
+export function gen(MT_list) {
   const rules = [];
   MT_list.forEach(({ CPU, includes, loop_additional_code, list: connections, options }) => {
     const { name, output_dir } = CPU;
-    const { output_file = 'MT_Loop' } = options;
+    const { output_file = LOOP_NAME } = options;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
@@ -267,18 +267,18 @@ export function gen_MT(MT_list) {
         includes,
         loop_additional_code,
         connections,
-        MT_NAME,
-        MT_LOOP_NAME,
-        MT_POLLS_NAME,
+        NAME,
+        LOOP_NAME,
+        POLLS_NAME,
       }
     })
   });
   return [{ rules, template }];
 }
 
-export function gen_MT_copy_list(item) {
-  const filename = `${MT_NAME}.scl`;
-  const src = posix.join(context.module_path, 'MT_Poll', filename);
+export function gen_copy_list(item) {
+  const filename = `${NAME}.scl`;
+  const src = posix.join(context.module_path, NAME, filename);
   const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
   return [{ src, dst }];
 }

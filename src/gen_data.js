@@ -73,7 +73,7 @@ async function parse_includes(includes, options) {
  * @returns {string|undefined}
  */
 function is_supported_type(type) {
-  return supported_types.find(t => converter[`is_type_${t}`](type));
+  return supported_types.find(t => converter[t].is_type(type));
 }
 
 /**
@@ -120,7 +120,7 @@ async function add_conf(doc) {
   if (symbols_node) add_symbols(CPU, symbols_node, { document: doc });
 
   const area = { CPU, list, includes, files, loop_additional_code, options, gcl: doc.gcl };
-  const parse_symbols = converter[`parse_symbols_${type}`];
+  const parse_symbols = converter[type].parse_symbols;
   if (typeof parse_symbols === 'function') parse_symbols(area);
   conf_list[type].push(area);
 }
@@ -173,7 +173,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   }
 
   for (const [type, list] of Object.entries(conf_list)) {
-    const build = converter['build_' + type];
+    const build = converter[type].build;
     if (typeof build === 'function') list.forEach(build);
   };
 
@@ -186,8 +186,8 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   for (const type of supported_types) {
     for (const item of conf_list[type]) {
       const output_dir = posix.join(work_path, item.CPU.output_dir);
-      const gen = converter[`gen_${type}_copy_list`];
-      assert.equal(typeof gen, 'function', `innal error: gen_${type}_copy_list`);
+      const gen_copy_list = converter[type].gen_copy_list;
+      assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${type}_copy_list`);
       const conf_files = [];
       for (const file of item.files) {
         if (/\\/.test(file)) throw new SyntaxError('路径分隔符要使用"/"!');
@@ -202,13 +202,13 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
           conf_files.push({ src, dst });
         }
       };
-      const ret = gen(item);
+      const ret = gen_copy_list(item);
       assert(Array.isArray(ret), `innal error: gen_${type}_copy_list(${item}) is not a Array`);
       copy_list.push(...conf_files, ...ret);
     }
 
     // push each gen_{type}(type_item) to convert_list
-    const gen = converter['gen_' + type];
+    const gen = converter[type].gen;
     assert.equal(typeof gen, 'function', 'innal error');
     convert_list.push(...gen(conf_list[type]));
   };

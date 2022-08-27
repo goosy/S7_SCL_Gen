@@ -37,7 +37,7 @@ template:
   $dead_zone: "0.01"
 
 list: # 模拟量列表
-#每个AI项的 DB input 都是
+
 - comment: 进站压力         # 类型:字符串
   # AI数据块
   # 类型: S7符号定义 | S7符号引用

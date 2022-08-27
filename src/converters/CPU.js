@@ -1,9 +1,9 @@
 import assert from 'assert/strict';
 import { add_symbols } from '../symbols.js';
 
-export const CPU_NAME = 'CPU';
+export const NAME = 'CPU';
 
-const CPU_type = [
+export const device_types = [
     "IM151-8PN/DP",
     "CPU31x-2PN/DP",
     "CPU314C-2PN/DP",
@@ -24,7 +24,7 @@ const CPU_type = [
 ];
 const DEFAULT_DEVICE = "CPU31x-2PN/DP"; //默认的CPU设备
 
-export function is_type_CPU(type) {
+export function is_type(type) {
     return type.toUpperCase() === 'CPU';
 }
 
@@ -38,7 +38,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols_CPU({ CPU }) {
+export function parse_symbols({ CPU }) {
     const CM = CPU.symbols_dict['Clock_Memory'];
     if (!CM) return;
     assert(/^mb\d+$/i.test(CM.addr), new SyntaxError(`Clock_Memory 符号 "${CM.addr}" 无效！`));
@@ -57,17 +57,17 @@ export function parse_symbols_CPU({ CPU }) {
     add_symbols(CPU, symbols);
 }
 
-export function build_CPU({ CPU, options = {} }) {
+export function build({ CPU, options = {} }) {
     if (options.output_dir) CPU.output_dir = options.output_dir;
 }
 
-export function gen_CPU(CPU_list) {
+export function gen(CPU_list) {
     const CPU_rules = [];
     CPU_list.forEach(({ CPU, includes, options = {} }) => {
         const { name, output_dir } = CPU;
         const { output_file } = options;
         if (includes.length) CPU_rules.push({
-            "name": `${output_dir}/${output_file ?? CPU_NAME}.scl`,
+            "name": `${output_dir}/${output_file ?? NAME}.scl`,
             "tags": {
                 name,
                 includes,
@@ -77,6 +77,6 @@ export function gen_CPU(CPU_list) {
     return [{ rules: CPU_rules, template }];
 }
 
-export function gen_CPU_copy_list() {
+export function gen_copy_list() {
     return [];
 }
