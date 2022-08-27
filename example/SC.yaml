@@ -16,7 +16,6 @@ description: |
 includes: 
 - A101.SCL      # 该文件包含 A101L 符号的定义 [A101L, FB802] 和 FB 实现
 - ZYGasFlow.SCL # 该文件包含 ZY_GAS_flow 符号的定义 [ZY_GAS_flow, FB803] 和 FB 实现
-- TankDB.SCL    # AI_Alarm代码
 
 symbols:
 # 系统已有4个内置符号：

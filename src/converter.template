@@ -10,7 +10,7 @@
 //   function parse_symbols  第一遍扫描文档时提取符号
 //   function build          第二遍扫描文档时构建完善的转换数据
 
-import { BUILDIN_SYMBOLS, buildin_symbols } from './symbols.js';
+import { BUILDIN_SYMBOLS } from './symbols.js';
 // 引入所有的转换器{{#for type in supported_types}}
 import * as {{type}} from './converters/{{type}}.js';{{#endfor}}
 
@@ -25,9 +25,3 @@ await BUILDIN_SYMBOLS.load(
     }).join('\n\n'),
     { isFile: false, filename: 'buildin' }
 );
-// 构建内置符号名称表
-BUILDIN_SYMBOLS.documents.forEach(doc => {
-    doc.get('symbols').items.forEach(symbol => {
-        buildin_symbols.push(symbol.items[0].value);
-    });
-});

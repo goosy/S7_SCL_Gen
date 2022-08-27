@@ -4,7 +4,6 @@ import { isSeq, YAMLSeq } from 'yaml';
 import { GCL } from './gcl.js';
 
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
-export const buildin_symbols = []; // Initialized by converter.js
 
 // FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
 const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];
@@ -102,7 +101,7 @@ function parse(raw, default_type) {
 
 function check_buildin_and_modify(CPU, symbol) {
     const symbols_dict = CPU.symbols_dict;
-    if (!buildin_symbols.includes(symbol.name)) return false;
+    if (!CPU.buildin_symbols.includes(symbol.name)) return false;
     const ref = symbols_dict[symbol.name];
     if (!ref) return false;
     // modify address

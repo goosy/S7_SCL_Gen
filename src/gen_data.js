@@ -32,6 +32,9 @@ const CPUs = { // CPU 资源
       PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
       PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
       symbols_dict: {},               // 符号字典
+      buildin_symbols: BUILDIN_SYMBOLS.documents.map(doc =>
+        doc.get('symbols').items.map(symbol => symbol.items[0].value)
+      ).flat(),                       // 该CPU的内置符号名称列表
       conn_host_list: {},             // 已用的连接地址列表
       output_dir: CPU_name,           // 输出文件夹
       add_type(type, document) {      // 按类型压入Document
@@ -45,7 +48,6 @@ Object.defineProperty(CPUs, 'get', {
   configurable: false,
   writable: false
 });
-
 
 async function parse_includes(includes, options) {
   let gcl_list = [], code = '';
@@ -105,16 +107,19 @@ async function add_conf(doc) {
   const files = conf.files ?? [];
   const { code: loop_additional_code, gcl_list: _ } = await parse_includes(conf.loop_additional_code, { CPU: CPU.name, type: type });
   const { code: includes, gcl_list } = await parse_includes(conf.includes, { CPU: CPU.name, type: type });
-  // 加入 includes 符号
+
+  // 加入内置符号
   for (const gcl of gcl_list) {
     for (const doc of gcl.documents) {
       const symbols = doc.get('symbols');
+      // 将包含文件的符号扩展到内置符号列表
+      CPU.buildin_symbols.push(...symbols.items.map(symbol => symbol.items[0].value));
       add_symbols(CPU, symbols ?? [], { document: doc });
     }
   }
-  // 加入内置符号
   const buildin_doc = BUILDIN_SYMBOLS[type];
   if (buildin_doc) add_symbols(CPU, buildin_doc.get('symbols'), { document: buildin_doc });
+
   // 加入前置符号
   const symbols_node = doc.get('symbols');
   if (symbols_node) add_symbols(CPU, symbols_node, { document: doc });

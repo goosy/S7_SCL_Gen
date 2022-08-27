@@ -71,8 +71,6 @@ pnpm-lock.yaml
 src/converter.js
 build-include/
 example/SCL
-example/*.zyml
-example/*.scl
 dist/
 lib/
 .vscode/

@@ -1,0 +1,48 @@
+(**
+symbols:
+- [JS_flow, FB801, ~, 智能表头接收处理]
+**)
+FUNCTION_BLOCK "JS_flow"
+TITLE='一诺智能表接收处理'
+VERSION:'1.0'
+AUTHOR:Goosy
+NAME:JSFlow
+FAMILY:JSLib
+VAR_INPUT 
+  work_F {S7_m_c := 'true'} : BOOL ;  //设备正常指示 
+  invalid {S7_m_c := 'true'} : BOOL ;  //设备无效指示 
+  on_recevie {S7_m_c := 'true'} : BOOL ; //有新数据收到
+  device_ID {S7_m_c := 'true'} : BYTE ; //设备号
+  func_no {S7_m_c := 'true'} : BYTE ;  //modbus功能号
+  length {S7_m_c := 'true'} : BYTE ; //长度
+  WC_flow_rate {S7_m_c := 'true'} : real ; //工况流量（m3/h）
+  SC_flow_rate {S7_m_c := 'true'} : real ; //标况流量
+  WC_flow_int_part {S7_m_c := 'true'} : DInt ; //工况累计流量整数部分
+  WC_flow_dec_part {S7_m_c := 'true'} : real ; //工况累计流量小数部分
+  WC_flow {S7_m_c := 'true'} : real ; //工况累计流量
+  WC_flow_per_day {S7_m_c := 'true'} : real ; //工况日流量
+  SC_flow_int_part {S7_m_c := 'true'} : DInt ; //标况累计流量整数部分
+  SC_flow_dec_part {S7_m_c := 'true'} : real ; //标况累计流量小数部分
+  SC_flow {S7_m_c := 'true'} : real ; //标况累计流量
+  SC_flow_per_day {S7_m_c := 'true'} : real ; //标况日流量
+  tempterature {S7_m_c := 'true'} : real ; //温度值（0℃）
+  pressure {S7_m_c := 'true'} : real ; //压力值（Mpa）
+  density {S7_m_c := 'true'} : real ; //密度值（kg/m?）
+  working_condition {S7_m_c := 'true'} : DInt ; //工作状态
+  CRC16 : WORD; // modbusRTU CRC， modbusTCP通讯不需要
+END_VAR
+VAR_IN_OUT
+  flow_base {S7_m_c := 'true'} : REAL ; //累积流量基准值
+  flow_HMI {S7_m_c := 'true'} : REAL ; //显示累积流量
+END_VAR
+VAR
+  flow_follow : REAL ; //流量跟随值
+END_VAR
+BEGIN
+  IF flow_follow <> flow_HMI THEN
+    flow_base := flow_HMI - WC_flow;
+  ELSE
+    flow_HMI := flow_base + WC_flow;
+  END_IF;
+  flow_follow := flow_HMI;
+END_FUNCTION_BLOCK

@@ -124,16 +124,28 @@ includes只能采用上述2种之一，由于在YAML中书写SCL代码有很多�
 
 【高级应用】
 
-可以在外部SCL文件中用 `(**` 和 `**)` 包裹的注释中依照上文格式进行符号定义，例：
+可以在外部SCL文件中用 `(**` 和 `**)` 两行包裹的注释中依照上文格式进行符号定义，例：
 
 ```scl
 (**
 symbols: 
-- [JSFlow, FB01, ~, 智能表头接收处理]
+- [JSFlow, FB801, ~, 智能表头接收处理]
 **)
 FUNCTION_BLOCK "A101L"
 ……
 END_FUNCTION_BLOCK
+```
+
+外部SCL文件定义的符号，将会作为该配置就是文档的内置符号，可以在配置文档正文中覆盖该符号定义。
+
+```yaml
+CPU: AS
+type: MT
+includes:
+- JSFlow.scl # 该文件定义了内置符号 [JSFlow, FB801, ~, 智能表头接收处理]
+symbols: 
+- [JSFlow, FB100, ~, 智能表头接收处理] # 没有本行，JSFlow的地址默认为FB801，本行将地址修改为FB100
+list:
 ```
 
 #### files 额外复制的文件

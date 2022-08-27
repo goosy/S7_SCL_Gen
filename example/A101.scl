@@ -1,0 +1,52 @@
+(**
+symbols:
+- [A101L, FB802]
+**)
+FUNCTION_BLOCK "A101L"
+TITLE='珠峰液位接收块'
+VERSION:'1.0'
+AUTHOR:Goosy
+NAME:A101
+FAMILY:GoosyLib
+
+VAR_INPUT
+    workOK {S7_m_c := 'true'} : BOOL ;
+    invalid {S7_m_c := 'true'} : BOOL ;
+    on_receive {S7_m_c := 'true'} : BOOL ;
+    begin_flag : CHAR ; // 'A' 65
+    raw_data : ARRAY[0..31] OF CHAR; //液位数据
+    end_flag : WORD; // W#16#0D0A
+END_VAR
+
+VAR_IN_OUT 
+    LIT001 {S7_m_c := 'true'} : REAL; //1#罐液位
+    LIT002 {S7_m_c := 'true'} : REAL; //2#罐液位
+    LIT003 {S7_m_c := 'true'} : REAL; //3#罐液位
+    LIT004 {S7_m_c := 'true'} : REAL; //4#罐液位
+    LIT005 {S7_m_c := 'true'} : REAL; //5#罐液位
+    LIT006 {S7_m_c := 'true'} : REAL; //6#罐液位
+    LIT007 {S7_m_c := 'true'} : REAL; //7#罐液位
+    LIT008 {S7_m_c := 'true'} : REAL; //8#罐液位
+END_VAR
+
+VAR_TEMP
+    litre : ARRAY[0..7] OF INT; //液位数据
+    litre_status : WORD;
+END_VAR
+
+BEGIN
+IF on_receive THEN
+    litre_status := ATH(
+       IN     :=raw_data,
+       N      :=32,
+       OUT    :=litre);
+    LIT001 := INT_TO_REAL(litre[0])/1000.0;
+    LIT002 := INT_TO_REAL(litre[1])/1000.0;
+    LIT003 := INT_TO_REAL(litre[2])/1000.0;
+    LIT004 := INT_TO_REAL(litre[3])/1000.0;
+    LIT005 := INT_TO_REAL(litre[4])/1000.0;
+    LIT006 := INT_TO_REAL(litre[5])/1000.0;
+    LIT007 := INT_TO_REAL(litre[6])/1000.0;
+    LIT008 := INT_TO_REAL(litre[7])/1000.0;
+END_IF;
+END_FUNCTION_BLOCK

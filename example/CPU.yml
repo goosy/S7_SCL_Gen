@@ -36,13 +36,14 @@ platform: step7
 device: CPU410-5H
 
 
-# includes, files 的S7程序需要用户自己写，生成程序不检查其中的错误。
-includes: ~ # includes 用来包含到该类型转换后的输出文件中，会解析文件中的符号定义
-files: # files 仅仅是复制该文件到输出文件夹中
-- JSFLow.scl # JSFlow.scl 文件包含用户自定义FB"JS_flow"代码
-             # 其中包括 JS_flow 符号的定义和流量接收DB块的数据结构
-             # 用于一诺的智能流量表。
-             # 可参照这个文件写其它自定义接收块函数。
+# includes, files 的文件为用户自行指定，生成程序不会检查其中的错误。
+includes:       # includes 用来包含到该类型转换后的输出文件中，会解析文件中的符号定义
+- JSFLow.scl    # JSFlow.scl 文件包含用户自定义FB"JS_flow"代码
+                # 其中包括 JS_flow 符号的定义和流量接收DB块的数据结构
+                # 用于一诺的智能流量表。
+                # 可参照这个文件写其它自定义接收块函数。
+files:          # files 仅仅是复制该文件到输出文件夹中
+- ..//README.md # 复制说明文件，也可以复件其它的手工代码的SCL、AWL文件
 
 # CPU文档下symbols列表定义其它文档需要共享的符号
 # 建议把不在转换器中使用但实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
@@ -59,7 +60,7 @@ symbols:
   # - [Pulse_0.62Hz, M10.6]
   # - [Pulse_0.5Hz,  M10.7]
 - [Clock_Memory, MB10] # 设置时钟存储器为MB10，不配置本行则不产生任何时钟存储器符号。
-- [JS_flow, FB801]
+- [JS_flow, FB100]     # 修改JSFLow.scl文件中内置符号，地址由默认的FB01改变为FB100
 
   # 自定义符号
 - [vw1, MW1000] # 测试MW
