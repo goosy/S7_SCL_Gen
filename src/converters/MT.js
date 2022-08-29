@@ -156,8 +156,10 @@ FUNCTION "{{LOOP_NAME}}" : VOID
   intervalTime := {{conn.interval_time}},{{#endif}}
   DATA  := "{{POLLS_NAME}}".{{conn.polls_name}},
   buff  := "{{POLLS_NAME}}".buff);
-{{#for poll in conn.polls}}{{poll.recv_code}}{{#endfor poll}}
-{{#endfor conn}}{{#if loop_additional_code}}
+
+{{#endfor conn}}// 接收块
+{{connections.recv_code}}
+{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
@@ -198,6 +200,7 @@ export function parse_symbols({ CPU, list }) {
 }
 
 export function build({ CPU, list }) {
+  Object.defineProperty(list, 'recv_DBs', { value: new Set() });
   list.forEach(conn => { // 处理配置，形成完整数据
     const {
       conn_ID_list,
@@ -250,9 +253,15 @@ export function build({ CPU, list }) {
       poll.function = fixed_hex(poll.function, 2);
       poll.started_addr = fixed_hex(poll.started_addr, 4);
       poll.length = fixed_hex(poll.length, 4);
-      poll.recv_code = poll.recv_DB.type_name == 'FB' ? `"${poll.recv_DB.type}"."${poll.recv_DB.name}"();\n` : '';
+      list.recv_DBs.add(poll.recv_DB);
     });
   });
+  let value = '';
+  list.recv_DBs.forEach(DB => {
+    const comment = DB.comment ? ` // ${DB.comment}` : '';
+    value += DB.type_name == 'FB' ? `"${DB.type}"."${DB.name}"();${comment}\n` : `// ${DB.name}${comment}\n`;
+  });
+  Object.defineProperty(list, 'recv_code', { value });
 }
 
 export function gen(MT_list) {
