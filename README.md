@@ -4,19 +4,11 @@
 
 ## 安装 install
 
-npm: `npm install s7-scl-gen -G`
-yarn: `yarn global add s7-scl-gen`
-pnpm: `pnpm add s7-scl-gen -G`
+* npm: `npm install s7-scl-gen -G`
+* yarn: `yarn global add s7-scl-gen`
+* pnpm: `pnpm add s7-scl-gen -G`
 
 ## 使用 usage
-
-### 生成SCL源码
-
-在配置文件夹下运行
-
-```bash
-s7scl
-```
 
 ### 生成一个配置文件夹模板
 
@@ -27,6 +19,14 @@ s7scl gcl
 执行后会在当前文件夹中生成一个名为GCL的配置文件夹，该文件夹内含样本配置文件和一份说明文件README.md。
 
 可以进入到GCL文件夹对样本配置进行修改，然后再在GCL文件夹下用 `s7scl` 去生成源码。
+
+### 生成SCL源码
+
+在配置文件夹下运行
+
+```bash
+s7scl
+```
 
 ### 用法帮助
 
@@ -88,7 +88,10 @@ optins: ~
   指令名称也可以缩写为 `MT`
 - `Valve`        阀门控制功能文档
 - `Motor`        电机控制功能文档
-- `Alarm`        报警连锁功能文档（实现最简单的_或_输出逻辑)
+- `Alarm`        报警连锁功能文档（实现最简单的输入_或运算_后上升沿输出)
+- `timer`        计时功能文档
+
+具体功能文档的配置和说明可参看 example 目录下的YAML文件
 
 ### 所有文档都可选的指令
 
@@ -171,7 +174,7 @@ list:
 
 ### 功能文档都可选的指令
 
-- list 某个功能的项列表
+- list 对应功能的列表
   类型: 对象列表
 - loop_additional_code  附加代码
   类型: 字符串数组|字符串

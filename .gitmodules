@@ -19,3 +19,6 @@
 [submodule "PV_Alarm"]
 	path = PV_Alarm
 	url = git@github.com:goosy/PV_Alarm.git
+[submodule "Timer_Proc"]
+	path = Timer_Proc
+	url = git@github.com:goosy/Timer_Proc.git

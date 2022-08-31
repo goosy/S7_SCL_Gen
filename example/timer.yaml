@@ -1,0 +1,60 @@
+---
+
+CPU: AS1 # 指示属于哪一个CPU
+
+# 指示本配置为生成 timer 代码。
+# 每一个计时器的DB有以下内容上传至HMI：
+# - enable 允许计时
+# - reset 计时清零，本字段自动复位
+# - count 计时总秒数，本字段可HMI更改以改变计时数值
+# - hours 计时小时数，本字段可HMI更改以改变计时数值
+# - minutes 计时分钟秒数，本字段可HMI更改以改变计时数值
+# - seconds 计时秒数，本字段可HMI更改以改变计时数值
+type: timer
+
+# 额外代码
+includes: 
+
+symbols: 
+  # timer文档已有2个内置符号，其内容由本程序自动生成：
+  # - [Timer_Proc, FB520]  计时器主处理函数
+  # - [Timer_Loop, FC520]  主循环调用FC，将这个加入OB1中
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+list: # 计时器列表
+
+- comment: 泵运行时间         # 类型:字符串
+  # timer数据块
+  # 类型: S7符号定义 | S7符号引用
+  DB: [pump_runtime, DB501]
+
+  # 允许信号，为假时停止计时，为真时继续计时
+  # BOOL 类型:S7符号定义|S7符号引用|SCL表达式
+  enable: [DI04-01, I6.0] # 由泵的运行信号控制计时
+
+  # 重置，为真时将计时清零
+  # BOOL 类型:S7符号定义|S7符号引用|SCL表达式
+  reset: 'NOT "DI04-01"' # 泵停止时计时清零
+
+  # BOOL 类型:S7符号定义|S7符号引用|SCL表达式
+  PPS: [DI04-02, I6.1] # 由硬件输入秒脉冲
+
+- comment: 信号发送器
+  DB: [signal_timer, DB502]
+  enable: '"sender".work_flag' # 注意，转换器不对SCL表达式做检查
+  PPS: GPS.PPS # 注意，转换器不对SCL表达式做检查
+  # 没有reset参数，计时会一直累计下去。可通过HMI清零
+
+- comment: 风机运行时间
+  DB: [fan_runtime, DB503]
+  # 如省略 enable 参数，可由HMI控制计时
+  # 使用计数器生成，要求每个 timer 的 PPS 参数必须赋值一个秒脉冲输入信号
+  # 如省略 PPS 参数，转换器会自动采用内置时钟存储器 "Pulse_1Hz"，但有一个前提：
+  # 必须在CPU中打开时钟存储器，并必须在CPU配置文档中打开对应的 "Clock_Memory" 内置符号
+  # 如果上一行前提不满足，在step7中编译代码时会出错。
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...
