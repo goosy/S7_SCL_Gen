@@ -115,10 +115,10 @@ STRUCT{{#for conn in connections}}
     MBAP_seq : WORD ; //事务号 PLC自动填写
     MBAP_protocol : WORD ;  //必须为0
     MBAP_length : WORD  := W#16#6;  //长度，对读命令，通常为6
-    MBAP_Addr : BYTE ;  //设备号，不关心的情况下可以填0
+    device_ID : BYTE ;  //设备号，不关心的情况下可以填0
     MFunction : BYTE ;  //modbus功能号
-    Addr : WORD ; //起始地址
-    Number : WORD ; //长度
+    address : WORD ; //起始地址
+    data : WORD ; //长度
     recvDB : INT ;  //接收数据块号
     recvDBB : INT ; //接收数据块起始地址
   END_STRUCT ;{{#endfor conn}}
@@ -126,17 +126,17 @@ STRUCT{{#for conn in connections}}
     MBAP_seq : WORD ;    //事务号 PLC自动填写
     MBAP_protocol : WORD ;    //必须为0
     MBAP_length : WORD ;    //长度，对读命令，通常为6
-    MBAP_Addr : BYTE ;    //设备号，不关心的情况下可以填0
+    device_ID : BYTE ;    //设备号，不关心的情况下可以填0
     MFunction : BYTE ;    //modbus功能号
     data : ARRAY[0..251] OF BYTE ;    //数据
   END_STRUCT ;
 END_STRUCT ;
 BEGIN{{#for conn in connections}}
   // --- {{conn.comment}}{{#for no, poll in conn.polls}}
-  {{conn.polls_name}}[{{no}}].MBAP_Addr := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
+  {{conn.polls_name}}[{{no}}].device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
   {{conn.polls_name}}[{{no}}].MFunction := B#16#{{poll.function}};
-  {{conn.polls_name}}[{{no}}].Addr := W#16#{{poll.started_addr}};
-  {{conn.polls_name}}[{{no}}].Number := W#16#{{poll.length}};
+  {{conn.polls_name}}[{{no}}].address := W#16#{{poll.address}};
+  {{conn.polls_name}}[{{no}}].data := W#16#{{poll.data}};
   {{conn.polls_name}}[{{no}}].recvDB := {{poll.recv_DB.block_no}};
   {{conn.polls_name}}[{{no}}].recvDBB := {{poll.recv_start}};{{#endfor poll}}{{#endfor conn}}
 END_DATA_BLOCK
@@ -251,17 +251,19 @@ export function build({ CPU, list }) {
     conn.polls.forEach(poll => {
       poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
       poll.function = fixed_hex(poll.function, 2);
-      poll.started_addr = fixed_hex(poll.started_addr, 4);
-      poll.length = fixed_hex(poll.length, 4);
-      list.recv_DBs.add(poll.recv_DB);
+      poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
+      poll.data = fixed_hex(poll.data ?? poll.length, 4);
+      const DB = poll.recv_DB;
+      DB.needInvoke = DB.type_name == 'FB' && !poll?.dynamic;
+      list.recv_DBs.add(DB);
     });
   });
-  let value = '';
-  list.recv_DBs.forEach(DB => {
-    const comment = DB.comment ? ` // ${DB.comment}` : '';
-    value += DB.type_name == 'FB' ? `"${DB.type}"."${DB.name}"();${comment}\n` : `// ${DB.name}${comment}\n`;
+  Object.defineProperty(list, 'recv_code', {
+    value: [...list.recv_DBs].map(DB => {
+      const comment = DB.comment ? ` // ${DB.comment}` : '';
+      return DB.needInvoke ? `"${DB.type}"."${DB.name}"();${comment}` : `// ${DB.name}${comment}`;
+    }).join('\n')
   });
-  Object.defineProperty(list, 'recv_code', { value });
 }
 
 export function gen(MT_list) {

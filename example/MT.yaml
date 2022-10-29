@@ -70,32 +70,42 @@ list : # modbus TCP 连接列表
   # 该连接下的轮询定义，至少要有一个查询
   polls: 
 
+  # deivce_ID function address data|length 配置项允许16进制字符串
+  # 为了在SCL中对发送数据的进行符号引用，转换生成的轮询块发送数据层级为：
+  #   MT_polls_DB.{polls_name}[{poll序号}].{发送字段}
+  # 以下方查询1为例：
+  # * MT_polls_DB.polls_example[0].device_ID (BYTE) 子站号
+  # * MT_polls_DB.polls_example[0].MFunction (BYTE) 功能码
+  # * MT_polls_DB.polls_example[0].address (WORD)   开始地址
+  # * MT_polls_DB.polls_example[0].data (WORD)      对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
+  # * MT_polls_DB.polls_example[0].CRC (WORD)       CRC16校验码
+  # 每个poll可以使用 dynamic 属性，见 SC.yaml。这里不作该属性的示例。
+  
+  - comment: 1#流量计                  # 本查询的注释，可省略。 类型: 字符串
     # 查询1
-    # deivce_ID function started_addr length 配置项允许16进制字符串
-  - comment: 垦西1#流量计              # 本查询的注释，可省略。 类型: 字符串
     deivce_ID: 1                      # 设备号，即RTU从站地址。 类型: 正整数
     function: 4                       # modbus 功能号。 类型: 正整数
-    started_addr: 0                   # 查询起始地址。 类型: 正整数
+    address: 0                        # 查询起始地址。 类型: 正整数
     length: 28                        # 查询长度。 类型: 正整数
-    recv_DB: [Flow01, DB803, JS_flow] # 接收块。 类型: S7符号定义 | S7符号引用
+    recv_DB: [Flow01, DB802, JS_flow] # 接收块。 类型: S7符号定义 | S7符号引用
     recv_start: 0                     # 接收开始位置。 类型: 正整数
 
+  - comment: '2#流量计'
     # 查询2
-  - comment: '垦西2#流量计'
     deivce_ID: 'F'                    # 16进制数用字符串形式
     function: '4'                     # 16进制数用字符串形式
-    started_addr: '10'                # 16进制数用字符串形式
+    address: '10'                     # 16进制数用字符串形式
     length: '28'                      # 16进制数用字符串形式
-    recv_DB: [Flow02, DB802, JS_flow]
+    recv_DB: [Flow02, DB+, JS_flow]
     recv_start: 0
 
+  - comment: '1#流量计写参数值'
     # 查询3
-  - comment: '垦西3#流量计'
-    deivce_ID: 16
-    function: 4
-    started_addr: 0
-    length: 28
-    recv_DB: [Flow03, DB+, JS_flow]
+    deivce_ID: 1
+    function: 6
+    address: 66
+    data: 200                         # data 属性就是 length 属性，用此名称是为了语义。
+    recv_DB: [WriteRet, DB+]
     recv_start: 0
 
 # 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级

@@ -4,24 +4,24 @@ type: SC  # 指示生成串行通信(serial commnucation)文档
 name: AS1 # 指示属于哪一个CPU
 description: |
   使用 CP340 通信，必须在step7工程中加入以下库
-  
+
   * FB2 P_RCV
   * FB3 P_SEND
 
   使用 CP341 通信，必须在step7工程中加入以下库
-  
+
   * FB2 P_RCV
   * FB3 P_SEND
 
-includes: 
+includes:
 - A101.SCL      # 该文件包含 A101L 符号的定义 [A101L, FB802] 和 FB 实现
-- ZYGasFlow.SCL # 该文件包含 ZY_GAS_flow 符号的定义 [ZY_GAS_flow, FB803] 和 FB 实现
 
 symbols:
-# 系统已有4个内置符号：
+# 系统已有5个内置符号：
 # - [CP340_Poll, FB340] CP340通信主处理函数
 # - [CP341_Poll, FB341] CP341通信主处理函数
-# - [SC_Loop, FC345]      表示主循环调用FC，将这个加入OB1中
+# - [CRC16, FC464, CRC16, modbus CRC16 check] CRC16校验函数
+# - [SC_Loop, FC341]      表示主循环调用FC，将这个加入OB1中
 # - [SC_polls_DB, DB880]  将用于保存轮询命令数据
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
@@ -31,9 +31,13 @@ symbols:
 # 这类FB不通用，需要另外单独写块本身。
 # 可通过指定includes，系统自动添加对应代码进 CP_Loop.scl 中。建议将所有FB块的定义文件放入includes中
 - [Flow30, DB830, JS_flow]
-- [GAS, DB841, ZY_GAS_flow]   # GAS符号的定义处，可在定义前后任何位置引用。
+- [GAS, DB841]   # GAS符号的定义处，可在定义前后任何位置引用。
 
 list : # CP 模块列表
+
+# 可以在一个模块中混用 modbus 和原始串行通信
+# modbus协议暂只支持 01 02 03 04 05 06 号功能码
+
 - comment: CP01 Module736 储罐液位
   type: CP340                         # 类型: 字符串
   customTrigger: TRUE                 # 指示由外部触发通信
@@ -52,28 +56,49 @@ list : # CP 模块列表
   DB: [CP02, DB882]
   polls_name: polls_HK
   polls:
-    # deivce_ID function started_addr length 配置项允许16进制字符串
+  # deivce_ID function address data|length 配置项允许16进制字符串
+  # 对于modbusRTU协议，运行时会自动处理CRC校验
   - comment: 河口1#流量计 30
-    deivce_ID: '1e'                    # 16进制数用字符串形式 
-    function: '4'                      # 16进制数用字符串形式 
-    started_addr: 'c'                  # 16进制数用字符串形式 
+    deivce_ID: '1e'                    # 16进制数用字符串形式
+    function: '4'                      # 16进制数用字符串形式
+    address: 'c'                  # 16进制数用字符串形式
+    # length 和 data 属性本质是一样的，两个属性都可以在配置中使用用
+    # 但在生成的SCL中只有 data 这一字段。
+    # 属性名称可以用2个是为了功能码的读写语义，建议为了配置的可阅读性：
+    # 01 02 03 04 功能用 length，05 06 功能用 data
     length: '1c'                       # 16进制数用字符串形式
-    CRC: F3AC                          # 用2字节16进制字符串表示
     recv_DB: Flow30
     recv_start: 0
   - comment: 天然气3#流量计             # 非modbus发送，不要有deivce_ID属性，直接在send_data属性上写16进制发送数据
+    # 正常情况下，无论是不是modbus，发送的数据都是固定的。
+    # 固定数据时，转换程序会自动为接收块为背景块的情形自动调用接收块处理FB
+    # 当发送数据不固定时，比如 modbus 05 命令，要设置动态属性 dynamic
+    # 动态发送时，转换程序不再自动调用接收块FB，需要自定义函数处理发送与接收数据
+    # 自定义函数可通过 SC_polls_DB.{polls_name}.poll{序号}.{数据符号} 来处理发送数据
+    # 比如本poll的发送数据SCL符号地址为：
+    # * SC_polls_DB.polls_HK.poll1.send_length (BYTE)
+    # * SC_polls_DB.polls_HK.poll1.send_data (ARRAY OF BYTE)
+    # 下面的 send_data 和下一个poll的modbus命令都是初始值，如果动态，send_data要填充0满足最大长度
+    dynamic: true
     send_data: 03 03 00 00 18 8E 5D    # send_data 必须是一个由空格分隔的16进制字节的字符串
     recv_DB: GAS                       # 接收块，引用GAS符号
     recv_start: 20                     # 要注意开始地址不一样
-  - comment: 天然气总 10# 
-    deivce_ID: 10 
-    function: 3 
-    started_addr: 0 
-    length: 12
-    CRC: "44B4" 
+  - comment: 天然气总 10#
+    # 本poll的发送数据SCL符号地址分别为：
+    # * SC_polls_DB.polls_HK.poll2.device_ID (BYTE) 子站号
+    # * SC_polls_DB.polls_HK.poll2.MFunction (BYTE) 功能码
+    # * SC_polls_DB.polls_HK.poll2.address (WORD) 开始地址
+    # * SC_polls_DB.polls_HK.poll2.data (WORD) 对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
+    # * SC_polls_DB.polls_HK.poll2.CRC (WORD) CRC16校验码
+    dynamic: true
+    deivce_ID: 10
+    function: 6
+    address: 20
+    data: 12
     recv_DB: GAS                       # 引用同一个接收块
     recv_start: 40                     # 要注意开始地址不一样
 
 # 额外代码，合并到CP_Loop FC块结尾
-loop_additional_code: 
+# dynamic poll 的处理代码应当放在这里
+loop_additional_code:
 ...

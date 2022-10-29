@@ -12,10 +12,12 @@ import assert from 'assert/strict';
 export const CP340_NAME = 'CP340_Poll';
 export const CP341_NAME = 'CP341_Poll';
 export const LOOP_NAME = 'SC_Loop';
+export const CRC = 'CRC16';
 export const POLLS_NAME = 'SC_polls_DB';
 export const BUILDIN = `
 - [${CP340_NAME}, FB340, ${CP340_NAME}, CP340 SC communicate main process]
 - [${CP341_NAME}, FB341, ${CP341_NAME}, CP341 SC communicate main process]
+- [${CRC}, FC464, ${CRC}, modbus CRC16 check]
 - [${LOOP_NAME}, FC341, ${LOOP_NAME}, main SC cyclic call function]
 - [${POLLS_NAME}, DB880, ${POLLS_NAME}, SC polls data]
 `;
@@ -29,32 +31,32 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 // 轮询DB块，含485发送数据，
 DATA_BLOCK "{{POLLS_NAME}}"
 STRUCT{{#for module in modules}}
-  {{module.polls_name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for no, poll in module.polls}}{{#if poll.deivce_ID}}
-    device{{no}}_ID : BYTE;    //子站地址
-    device{{no}}_function : BYTE;    //modbus 功能号
-    device{{no}}_start : WORD;    //起始地址
-    device{{no}}_length : WORD;    //长度
-    device{{no}}_CRC : WORD;    //{{#else}}
-    device{{no}}_ID : BYTE;    //常量0
-    device{{no}}_send_length : BYTE;    //发送字节数
-    device{{no}}_send_data : ARRAY  [0 .. {{poll.send_data.length - 1}}] OF BYTE;    //发送数据{{#endif}}
-    device{{no}}_recvDB : INT;    //接收DB块号
-    device{{no}}_recvDBB : INT;    //接收DB起始地址CRC{{#endfor}}
+  {{module.polls_name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for no, poll in module.polls}}
+    poll{{no}} : STRUCT
+      device_ID : BYTE;    //{{#if poll.deivce_ID}}子站地址
+      MFunction : BYTE;    //modbus 功能号
+      address : WORD;    //起始地址
+      data : WORD;    //数据，对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
+      CRC : WORD;    //检验字{{#else}}常量0
+      send_length : BYTE;    //发送字节数
+      send_data : ARRAY  [0 .. {{poll.send_data.length - 1}}] OF BYTE;    //发送数据{{#endif}}
+      recvDB : INT;    //接收DB块号
+      recvDBB : INT;    //接收DB起始地址CRC
+    END_STRUCT;{{#endfor poll}}
   END_STRUCT;{{#endfor module}}
 END_STRUCT;
 BEGIN{{#for module in modules}}
   // --- {{module.comment}} 轮询数据{{#for no, poll in module.polls}}
   {{#if poll.deivce_ID}}
-  {{module.polls_name}}.device{{no}}_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
-  {{module.polls_name}}.device{{no}}_function := B#16#{{poll.function}};
-  {{module.polls_name}}.device{{no}}_start := W#16#{{poll.started_addr}};
-  {{module.polls_name}}.device{{no}}_length := W#16#{{poll.length}};
-  {{module.polls_name}}.device{{no}}_CRC := W#16#{{poll.CRC}}; {{#else}}
-  {{module.polls_name}}.device{{no}}_ID := B#16#0;    // 非modbus
-  {{module.polls_name}}.device{{no}}_send_length := B#16#{{poll.send_length}};    //发送字节数{{#for index, databyte in poll.send_data}}
-  {{module.polls_name}}.device{{no}}_send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}{{#endfor}}{{#endif}}
-  {{module.polls_name}}.device{{no}}_recvDB := {{poll.recv_DB.block_no}};
-  {{module.polls_name}}.device{{no}}_recvDBB := {{poll.recv_start}};{{#endfor poll}}
+  {{module.polls_name}}.poll{{no}}.device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
+  {{module.polls_name}}.poll{{no}}.MFunction := B#16#{{poll.function}};
+  {{module.polls_name}}.poll{{no}}.address := W#16#{{poll.address}};
+  {{module.polls_name}}.poll{{no}}.data := W#16#{{poll.data}};{{#else}}
+  {{module.polls_name}}.poll{{no}}.device_ID := B#16#0;    // 非modbus
+  {{module.polls_name}}.poll{{no}}.send_length := B#16#{{poll.send_length}};    //发送字节数{{#for index, databyte in poll.send_data}}
+  {{module.polls_name}}.poll{{no}}.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}{{#endfor}}{{#endif}}
+  {{module.polls_name}}.poll{{no}}.recvDB := {{poll.recv_DB.block_no}};
+  {{module.polls_name}}.poll{{no}}.recvDBB := {{poll.recv_start}};{{#endfor poll}}
 {{#endfor module}}
 END_DATA_BLOCK
 
@@ -130,16 +132,10 @@ export function build(SC) {
     module.customTrigger ??= false;
     module.polls.forEach(poll => {
       if (poll.deivce_ID && !poll.send_data) {
-        // CRC must be a 4-character string
-        const CRCError = new SyntaxError(`"CRC:${poll.CRC}" —— CRC 必须是一个包含4位16进制数的字符串，建议最中间加一空格防止YAML识别为10进制数字。`);
-        assert.equal(typeof poll.CRC, 'string', CRCError);
-        assert(/^[0-9a-f]{2} *[0-9a-f]{2}$/i.test(poll.CRC.trim()), CRCError); ''.replaceAll
-        poll.CRC = poll.CRC.trim().replaceAll(' ', '');
-        assert.equal(poll.CRC.length, 4, CRCError);
         poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
         poll.function = fixed_hex(poll.function, 2);
-        poll.started_addr = fixed_hex(poll.started_addr, 4);
-        poll.length = fixed_hex(poll.length, 4);
+        poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
+        poll.data = fixed_hex(poll.data ?? poll.length, 4);
       } else if (!poll.deivce_ID && poll.send_data) {
         // send_data must be a space-separated hex string
         const send_data_error = new SyntaxError(`"send_data:${poll.send_data}" —— send_data 必须是一个由空格分隔的16进制字符串`);
@@ -151,15 +147,17 @@ export function build(SC) {
       } else { // poll configuration wrong!
         throw new SyntaxError(`poll.deivce_ID 和 poll.send_data 只能且必须有其中一个!\tdeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`);
       }
-      list.recv_DBs.add(poll.recv_DB);
+      const DB = poll.recv_DB;
+      DB.needInvoke = DB.type_name == 'FB' && !poll?.dynamic;
+      list.recv_DBs.add(DB);
     });
   });
-  let value = '';
-  list.recv_DBs.forEach(DB => {
-    const comment = DB.comment ? ` // ${DB.comment}` : '';
-    value += DB.type_name == 'FB' ? `"${DB.type}"."${DB.name}"();${comment}\n` : `// ${DB.name}${comment}\n`;
+  Object.defineProperty(list, 'recv_code', {
+    value: [...list.recv_DBs].map(DB => {
+      const comment = DB.comment ? ` // ${DB.comment}` : '';
+      return DB.needInvoke ? `"${DB.type}"."${DB.name}"();${comment}` : `// ${DB.name}${comment}`;
+    }).join('\n')
   });
-  Object.defineProperty(list, 'recv_code', { value });
 }
 
 export function gen(SC_list) {
@@ -186,17 +184,13 @@ export function gen(SC_list) {
 
 export function gen_copy_list(item) {
   const copy_list = [];
-  if (item.options.has_CP340) {
-    const filename = `${CP340_NAME}.scl`;
+  function push_copy_pair(filename) {
     const src = posix.join(context.module_path, 'CP_Poll', filename);
     const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
     copy_list.push({ src, dst });
   }
-  if (item.options.has_CP341) {
-    const filename = `${CP341_NAME}.scl`;
-    const src = posix.join(context.module_path, 'CP_Poll', filename);
-    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
-    copy_list.push({ src, dst });
-  }
+  if (item.options.has_CP340) push_copy_pair(`${CP340_NAME}.scl`);
+  if (item.options.has_CP341) push_copy_pair(`${CP341_NAME}.scl`);
+  push_copy_pair(`${CRC}.awl`);
   return copy_list;
 }
