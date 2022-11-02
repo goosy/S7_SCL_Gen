@@ -28,37 +28,55 @@ export function is_type(type) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{includes}}
 
-// 轮询DB块，含485发送数据，
+// 轮询DB块，含485调度指令和发送数据
 DATA_BLOCK "{{POLLS_NAME}}"
 STRUCT{{#for module in modules}}
-  {{module.polls_name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for no, poll in module.polls}}
-    poll{{no}} : STRUCT
-      device_ID : BYTE;    //{{#if poll.deivce_ID}}子站地址
-      MFunction : BYTE;    //modbus 功能号
-      address : WORD;    //起始地址
-      data : WORD;    //数据，对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
-      CRC : WORD;    //检验字{{#else}}常量0
-      send_length : BYTE;    //发送字节数
-      send_data : ARRAY  [0 .. {{poll.send_data.length - 1}}] OF BYTE;    //发送数据{{#endif}}
-      recvDB : INT;    //接收DB块号
-      recvDBB : INT;    //接收DB起始地址CRC
+  {{module.polls_name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for poll in module.polls}}
+    poll_{{poll.index}} : STRUCT
+      next: BOOL; // false为结尾，否则有下一个
+      enable: BOOL := TRUE; // 允许本poll通讯
+      modbusFlag : BOOL; // 是否为modbus协议
+      status: WORD;    // 预留
+      sendDB : INT; // 发送DB，为0时为本块
+      sendDBB : INT; // 发送DB起始地址
+      sendLength : INT; // 发送长度
+      recvDB : INT; // 接收DB
+      recvDBB : INT; // 接收DB起始地址
+      waitCount : INT; // 发送等待次数
     END_STRUCT;{{#endfor poll}}
-  END_STRUCT;{{#endfor module}}
+  END_STRUCT;{{#endfor module}}{{#for module in modules}}{{#for poll in module.polls}}{{#if !poll.extra_send_DB}}
+  poll_{{poll.index}}_data : STRUCT{{#if poll.send_data}}{{#
+    ----通用发送}}
+    send_data : ARRAY  [0 .. {{poll.send_data.length-1}}] OF BYTE;    //发送数据{{#else
+    ----modbus 发送}}
+    device_ID : BYTE;    //子站地址
+    MFunction : BYTE;    //modbus 功能号
+    address : WORD;    //起始地址
+    data : WORD;    //数据，对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
+    CRC : WORD;    //检验字{{#endif
+    ----poll_data 结束}}
+  END_STRUCT;{{#endif extra_send_DB}}{{#endfor poll}}{{#endfor module}}
 END_STRUCT;
 BEGIN{{#for module in modules}}
-  // --- {{module.comment}} 轮询数据{{#for no, poll in module.polls}}
-  {{#if poll.deivce_ID}}
-  {{module.polls_name}}.poll{{no}}.device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
-  {{module.polls_name}}.poll{{no}}.MFunction := B#16#{{poll.function}};
-  {{module.polls_name}}.poll{{no}}.address := W#16#{{poll.address}};
-  {{module.polls_name}}.poll{{no}}.data := W#16#{{poll.data}};{{#else}}
-  {{module.polls_name}}.poll{{no}}.device_ID := B#16#0;    // 非modbus
-  {{module.polls_name}}.poll{{no}}.send_length := B#16#{{poll.send_length}};    //发送字节数{{#for index, databyte in poll.send_data}}
-  {{module.polls_name}}.poll{{no}}.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}{{#endfor}}{{#endif}}
-  {{module.polls_name}}.poll{{no}}.recvDB := {{poll.recv_DB.block_no}};
-  {{module.polls_name}}.poll{{no}}.recvDBB := {{poll.recv_start}};{{#endfor poll}}
-{{#endfor module}}
-END_DATA_BLOCK
+  // --- {{module.comment}} 轮询数据
+  {{#for no,poll in module.polls}}
+  // poll {{poll.index}}  {{poll.comment}}
+  {{module.polls_name}}.poll_{{poll.index}}.next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
+  {{module.polls_name}}.poll_{{poll.index}}.modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
+  {{module.polls_name}}.poll_{{poll.index}}.sendDB := {{poll.send_DB.block_no}};
+  {{module.polls_name}}.poll_{{poll.index}}.sendDBB := {{poll.send_start}};
+  {{module.polls_name}}.poll_{{poll.index}}.sendLength := {{poll.send_length}};
+  {{module.polls_name}}.poll_{{poll.index}}.recvDB := {{poll.recv_DB.block_no}};
+  {{module.polls_name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};{{#if !poll.extra_send_DB}}
+  {{#----poll_send_data 开始}}// send data{{#if poll.send_data}}{{#for index, databyte in poll.send_data}}
+  poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}{{#endfor}}{{#else}}
+  poll_{{poll.index}}_data.device_ID := B#16#{{poll.deivce_ID}};
+  poll_{{poll.index}}_data.MFunction := B#16#{{poll.function}};
+  poll_{{poll.index}}_data.address := W#16#{{poll.address}};
+  poll_{{poll.index}}_data.data := W#16#{{poll.data}};{{#endif}}{{#endif
+  ----poll_send_data 结束}}
+  {{#endfor poll}}
+{{#endfor module}}END_DATA_BLOCK
 
 // 主调用
 FUNCTION "{{LOOP_NAME}}" : VOID
@@ -69,9 +87,9 @@ FUNCTION "{{LOOP_NAME}}" : VOID
   REQ           := {{module.REQ}},{{#endif}}
   Laddr         := {{module.module_addr.block_no}},  // CP模块地址
   DATA          := "{{POLLS_NAME}}".{{module.polls_name}});
-
-{{#endfor module}}// 接收块
-{{modules.recv_code}}
+{{#endfor module}}
+// 发送接收块
+{{invoke_code}}
 {{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
@@ -113,6 +131,9 @@ export function parse_symbols({ CPU, list, options }) {
     module.polls.forEach(poll => {
       if (Array.isArray(poll.recv_DB)) poll.recv_DB[3] ??= poll.comment;
       make_prop_symbolic(poll, 'recv_DB', CPU, { document });
+      poll.extra_send_DB = !!poll.send_DB;
+      poll.send_DB ??= POLLS_NAME;
+      make_prop_symbolic(poll, 'send_DB', CPU, { document });
     });
   })
 }
@@ -125,44 +146,57 @@ export function parse_symbols({ CPU, list, options }) {
  */
 export function build(SC) {
   const { CPU, list } = SC;
-  Object.defineProperty(list, 'recv_DBs', { value: new Set() });
+  const DBs = new Set(); // 去重
+  const polls = list.map(module => module.polls).flat();
+  polls.forEach((poll, index) => poll.index = index);
+  let sendDBB = polls.length * 16;
   list.forEach(module => { // 处理配置，形成完整数据
     assert(!Array.isArray(module.module_addr), Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`));
     module.polls_name ??= "polls_" + CPU.poll_list.push_new();
     module.customTrigger ??= false;
     module.polls.forEach(poll => {
-      if (poll.deivce_ID && !poll.send_data) {
+      poll.is_modbus = !poll.send_data;
+      assert(
+        poll.extra_send_DB && poll.send_start && poll.send_length || !poll.extra_send_DB,
+        new SyntaxError(`指定发送块 send_DB:${module.polls_name}/poll_${poll.index} 时，必须同时设置 send_start 和 send_length`)
+      );
+      if (poll.deivce_ID && poll.is_modbus) {
         poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
         poll.function = fixed_hex(poll.function, 2);
         poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
         poll.data = fixed_hex(poll.data ?? poll.length, 4);
-      } else if (!poll.deivce_ID && poll.send_data) {
+        poll.send_length = 8;
+      } else if (poll.send_data) {
         // send_data must be a space-separated hex string
         const send_data_error = new SyntaxError(`"send_data:${poll.send_data}" —— send_data 必须是一个由空格分隔的16进制字符串`);
         assert.equal(typeof poll.send_data, 'string', send_data_error);
         assert(/^[0-9a-f]{2}( +[0-9a-f]{2})+$/i.test(poll.send_data.trim()), send_data_error);
         const send_data = poll.send_data.trim().split(/ +/);
         poll.send_data = send_data.map(byte => fixed_hex(byte, 2));
-        poll.send_length = fixed_hex(send_data.length, 2);
-      } else { // poll configuration wrong!
-        throw new SyntaxError(`poll.deivce_ID 和 poll.send_data 只能且必须有其中一个!\tdeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`);
+        poll.send_length = send_data.length;
+      } else if (!poll.extra_send_DB) { // poll configuration wrong!
+        throw new SyntaxError(`发送数据在轮询DB中时，poll.deivce_ID 和 poll.send_data 必须有其中一个!\ndeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`);
       }
-      const DB = poll.recv_DB;
-      DB.needInvoke = DB.type_name == 'FB' && !poll?.dynamic;
-      list.recv_DBs.add(DB);
+      if (!poll.extra_send_DB) {
+        poll.send_start = sendDBB;
+        sendDBB += poll.send_length + poll.send_length % 2;
+      }
+      poll.uninvoke ??= false;
+      [poll.send_DB, poll.recv_DB].forEach(DB => {
+        DB.uninvoke ??= DB.type_name !== 'FB' || poll.uninvoke;
+      });
+      DBs.add(poll.send_DB).add(poll.recv_DB);
     });
   });
-  Object.defineProperty(list, 'recv_code', {
-    value: [...list.recv_DBs].map(DB => {
-      const comment = DB.comment ? ` // ${DB.comment}` : '';
-      return DB.needInvoke ? `"${DB.type}"."${DB.name}"();${comment}` : `// ${DB.name}${comment}`;
-    }).join('\n')
-  });
+  SC.invoke_code = [...DBs].map(DB => {
+    const comment = DB.comment ? ` // ${DB.comment}` : '';
+    return DB.uninvoke ? `// "${DB.name}" ${DB.comment ?? ''}` : `"${DB.type}"."${DB.name}"();${comment}`;
+  }).join('\n');
 }
 
 export function gen(SC_list) {
   const rules = [];
-  SC_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
+  SC_list.forEach(({ CPU, includes, loop_additional_code, invoke_code, list: modules, options }) => {
     const { name, output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
     rules.push({
@@ -172,6 +206,7 @@ export function gen(SC_list) {
         modules,
         includes,
         loop_additional_code,
+        invoke_code,
         CP340_NAME,
         CP341_NAME,
         LOOP_NAME,

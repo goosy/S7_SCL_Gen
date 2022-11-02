@@ -25,7 +25,7 @@ const device_id = { // 只需要填写设备型号
   "CPU414-3_PN/DP": "B#16#05",
   "CPU416-3_PN/DP": "B#16#05",
 }
-const device_X_id = { // 可能需要填写槽号的 
+const device_X_id = { // 可能需要填写槽号的
   //['', 'X2', 'X4']
   "CPU317-2_PN/DP": "B#16#02",
   "CPU317-2_PN/DP_X2": "B#16#02",
@@ -90,7 +90,7 @@ BEGIN
   TCON_Parameters.id := W#16#{{conn.ID}};             //连接ID 每个连接必须不一样！
   TCON_Parameters.connection_type := B#16#11;  //连接类型 11H=TCP/IP native, 12H=ISO on TCP, 13H=UDP, 01=TCP/IP comp
   TCON_Parameters.active_est := TRUE;          //是否主动（本功能调用必须为TRUE）
-  TCON_Parameters.local_device_id := {{conn.local_device_id}};  //{{conn.device}} {{conn.R}} {{conn.X}} 
+  TCON_Parameters.local_device_id := {{conn.local_device_id}};  //{{conn.device}} {{conn.R}} {{conn.X}}
   TCON_Parameters.local_tsap_id_len := B#16#0;
   TCON_Parameters.rem_subnet_id_len := B#16#0;
   TCON_Parameters.rem_staddr_len := B#16#4;
@@ -158,7 +158,7 @@ FUNCTION "{{LOOP_NAME}}" : VOID
   buff  := "{{POLLS_NAME}}".buff);
 
 {{#endfor conn}}// 接收块
-{{connections.recv_code}}
+{{invoke_code}}
 {{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
@@ -199,8 +199,9 @@ export function parse_symbols({ CPU, list }) {
   });
 }
 
-export function build({ CPU, list }) {
-  Object.defineProperty(list, 'recv_DBs', { value: new Set() });
+export function build(MT) {
+  const { CPU, list } = MT;
+  const DBs = new Set(); // 去重
   list.forEach(conn => { // 处理配置，形成完整数据
     const {
       conn_ID_list,
@@ -253,22 +254,20 @@ export function build({ CPU, list }) {
       poll.function = fixed_hex(poll.function, 2);
       poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
       poll.data = fixed_hex(poll.data ?? poll.length, 4);
-      const DB = poll.recv_DB;
-      DB.needInvoke = DB.type_name == 'FB' && !poll?.dynamic;
-      list.recv_DBs.add(DB);
+      poll.uninvoke ??= false;
+      poll.recv_DB.uninvoke ??= poll.recv_DB.type_name !== 'FB' || poll.uninvoke;
+      DBs.add(poll.recv_DB);
     });
   });
-  Object.defineProperty(list, 'recv_code', {
-    value: [...list.recv_DBs].map(DB => {
-      const comment = DB.comment ? ` // ${DB.comment}` : '';
-      return DB.needInvoke ? `"${DB.type}"."${DB.name}"();${comment}` : `// ${DB.name}${comment}`;
-    }).join('\n')
-  });
+  MT.invoke_code = [...DBs].map(DB => {
+    const comment = DB.comment ? ` // ${DB.comment}` : '';
+    return DB.uninvoke ? `// "${DB.name}" ${DB.comment ?? ''}` : `"${DB.type}"."${DB.name}"();${comment}`;
+  }).join('\n');
 }
 
 export function gen(MT_list) {
   const rules = [];
-  MT_list.forEach(({ CPU, includes, loop_additional_code, list: connections, options }) => {
+  MT_list.forEach(({ CPU, includes, loop_additional_code, invoke_code, list: connections, options }) => {
     const { name, output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
     rules.push({
@@ -277,6 +276,7 @@ export function gen(MT_list) {
         name,
         includes,
         loop_additional_code,
+        invoke_code,
         connections,
         NAME,
         LOOP_NAME,

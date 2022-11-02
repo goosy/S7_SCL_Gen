@@ -1,0 +1,92 @@
+(**
+symbols:
+- [FXGasFlow, FB803, ~, 福鑫天然气流量接收块]
+- [FXGasWrite, FB811, ~, 写气表参数处理块]
+desc: |
+  发送： XX 03 00 0A 00 14 CC CC
+  接收： XX 03 [28] {【4B 3C 61 56】 【44 9B 63 92】 【00 00 00 00】 【40 22 0C 4A】 【00 00 12 43 11 16】 【40 20 00 00】 【12 28 56 86 42 22】 【41 AD 31 27】 【42 CC 6C 8B】} [CC CC]
+  以上数据中，[28]表示返回数据字节数0x28=40个字节末尾[CC CC]为CRC值，{}中为当前仪表数据，依次为：
+  工况总量（浮点）:【4B 3C 61 56】 =12345686
+  标况总量（浮点）:【44 9B 63 92 】= 1243.1116
+  预置瞬时值（浮点）：【00 00 00 00】 = 0
+  标况瞬时（浮点）：【40 22 0C 4A】 = 2.53
+  标况总量（BCD码，小数4位） 【00 00 12 43 11 16】 = 1243.1116
+  工况瞬时（浮点）：【40 20 00 00】 =2.53
+  工况总量（BCD码，小数4位）【12 28 56 86 42 22】 = 12345686.4222
+  温度（浮点）：【41 AD 31 27】 = 21.7 °C
+  压力（浮点）：【42 CC 6C 8B】 = 102.2 kPa
+**)
+FUNCTION_BLOCK "FXGasFlow"
+TITLE='福鑫天然气流量接收块'
+VERSION:'1.0'
+AUTHOR:Goosy
+NAME:ZYGas
+FAMILY:JSLib
+
+VAR_INPUT
+  workOK {S7_m_c := 'true'} : BOOL ;
+  invalid {S7_m_c := 'true'} : BOOL ;
+  on_receive {S7_m_c := 'true'} : BOOL ;
+  sending {S7_m_c := 'true'} : BOOL;   //正在向设备发送标识
+  deviceID {S7_m_c := 'true'} : BYTE ; //设备号
+  funcNo : BYTE ;  //modbus功能号
+  len : BYTE ; //长度
+  flow_WC {S7_m_c := 'true'} : REAL; //工况总量（m3） 
+  flow_SC {S7_m_c := 'true'} : REAL; //标况总量（m3） 
+  flow_SP {S7_m_c := 'true'} : REAL; //预置瞬时值（m3/h） 
+  flow_rate_SC {S7_m_c := 'true'} : REAL; //标况瞬时（m3/h） 
+  flow_SC_BCD : ARRAY [0 .. 5] OF BYTE; //标况总量BCD码 小数4位 
+  flow_rate_WC {S7_m_c := 'true'} : REAL; //工况瞬时（m3/h） 
+  flow_WC_BCD : ARRAY [0 .. 5] OF BYTE; //工况总量BCD码 小数4位
+  tempterature {S7_m_c := 'true'} : REAL; //温度（0℃）
+  pressure {S7_m_c := 'true'} : REAL; //压力（Mpa）
+  CRC : WORD;
+END_VAR
+
+VAR_IN_OUT
+  has_received : BOOL;
+END_VAR
+
+BEGIN
+IF on_receive THEN
+  has_received := TRUE;
+END_IF;
+END_FUNCTION_BLOCK
+
+
+FUNCTION_BLOCK "write_cmd"
+TITLE='撬块写命令'
+VERSION:'1.0'
+AUTHOR:Goosy
+NAME:writecmd
+FAMILY:GooLib
+
+VAR_INPUT
+  recv: STRUCT
+    workOK : BOOL;     //设备正常指示
+    error : BOOL;      //设备错误指示
+    on_receive : BOOL; //设备接收指示
+    sending : BOOL;    //正在向设备发送标识
+    ID : BYTE;         //子站地址
+    func : BYTE;       //modbus 功能号
+    start : WORD;      //起始地址
+    data : WORD;       //数据
+    CRC : WORD;        //检验字
+  END_STRUCT;
+END_VAR
+
+VAR_OUTPUT
+  send: STRUCT
+    ID : BYTE := B#16#10;   //子站地址
+    func : BYTE := B#16#6;  //modbus 功能号
+    start : INT := 1226;    //起始地址
+    data : INT := 0;        //数据
+    CRC : WORD;             //检验字
+  END_STRUCT;
+END_VAR
+
+BEGIN
+IF recv.on_receive THEN
+  send.data := send.data + 1;
+END_IF;
+END_FUNCTION_BLOCK

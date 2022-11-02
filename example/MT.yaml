@@ -72,14 +72,14 @@ list : # modbus TCP 连接列表
 
   # deivce_ID function address data|length 配置项允许16进制字符串
   # 为了在SCL中对发送数据的进行符号引用，转换生成的轮询块发送数据层级为：
-  #   MT_polls_DB.{polls_name}[{poll序号}].{发送字段}
+  #   MT_polls_DB.{polls_name}[{序号}].{发送字段}
   # 以下方查询1为例：
   # * MT_polls_DB.polls_example[0].device_ID (BYTE) 子站号
   # * MT_polls_DB.polls_example[0].MFunction (BYTE) 功能码
   # * MT_polls_DB.polls_example[0].address (WORD)   开始地址
   # * MT_polls_DB.polls_example[0].data (WORD)      对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
   # * MT_polls_DB.polls_example[0].CRC (WORD)       CRC16校验码
-  # 每个poll可以使用 dynamic 属性，见 SC.yaml。这里不作该属性的示例。
+  # 每个poll可以使用 uninvoke 属性，见 SC.yaml。这里不作该属性的示例。
   
   - comment: 1#流量计                  # 本查询的注释，可省略。 类型: 字符串
     # 查询1
