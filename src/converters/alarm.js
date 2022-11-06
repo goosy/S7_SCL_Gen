@@ -67,7 +67,7 @@ END_FUNCTION
 export function parse_symbols({ CPU, list }) {
   const document = CPU.alarm;
   list.forEach(alarm => {
-    if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!"); // 空块不处理
+    if (!alarm.DB) throw new SyntaxError("alarm转换必须有DB块!");
     alarm.comment ??= '报警联锁';
     if (Array.isArray(alarm.DB)) alarm.DB[3] ??= alarm.comment;
     alarm.$enable = alarm.$enable !== false ? true : false;

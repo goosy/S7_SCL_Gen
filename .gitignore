@@ -70,7 +70,7 @@ pnpm-lock.yaml
 # production
 src/converter.js
 build-include/
-example/SCL
+example/**/
 dist/
 lib/
 .vscode/
