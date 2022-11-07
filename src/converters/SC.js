@@ -15,13 +15,7 @@ export const CP341_NAME = 'CP341_Poll';
 export const LOOP_NAME = 'SC_Loop';
 export const CRC = 'CRC16';
 export const POLLS_NAME = 'SC_polls_DB';
-export const BUILDIN = `
-- [${CP340_NAME}, FB340, ${CP340_NAME}, CP340 SC communicate main process]
-- [${CP341_NAME}, FB341, ${CP341_NAME}, CP341 SC communicate main process]
-- [${CRC}, FC464, ${CRC}, modbus CRC16 check]
-- [${LOOP_NAME}, FC341, ${LOOP_NAME}, main SC cyclic call function]
-- [${POLLS_NAME}, DB880, ${POLLS_NAME}, SC polls data]
-`;
+
 export function is_type(type) {
   return type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC';
 }

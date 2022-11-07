@@ -7,11 +7,6 @@ export const platforms = ['step7'];
 export const NAME = 'MT_Poll';
 export const LOOP_NAME = 'MT_Loop';
 export const POLLS_NAME = 'MT_polls_DB';
-export const BUILDIN = `
-- [${NAME}, FB344, ${NAME}, modbusTCP OUC main process]
-- [${LOOP_NAME}, FC344, ${LOOP_NAME}, main modbusTCP cyclic call function]
-- [${POLLS_NAME}, DB881, ${POLLS_NAME}, modbusTCP polls data]
-`;
 
 const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
 const device_id = { // 只需要填写设备型号

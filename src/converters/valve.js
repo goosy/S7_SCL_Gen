@@ -5,10 +5,7 @@ import { posix } from 'path';
 export const platforms = ['step7'];
 export const NAME = `Valve_Proc`;
 export const LOOP_NAME = 'Valve_Loop';
-export const BUILDIN = `
-- [${NAME}, FB513, ${NAME}, VALVE main AI FB]
-- [${LOOP_NAME}, FC513, ${LOOP_NAME}, main valve cyclic call function]
-`;
+
 export function is_type(type) {
     return type.toLowerCase() === 'valve';
 }

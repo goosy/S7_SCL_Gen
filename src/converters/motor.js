@@ -5,10 +5,7 @@ import { posix } from 'path';
 export const platforms = ['step7'];
 export const NAME = `Motor_Proc`;
 export const LOOP_NAME = 'Motor_Loop';
-export const BUILDIN = `
-- [${NAME}, FB514, ${NAME}, MOTOR main AI FB]
-- [${LOOP_NAME}, FC514, ${LOOP_NAME}, main motor cyclic call function]
-`;
+
 export function is_type(type) {
     return type.toLowerCase() === 'motor';
 }

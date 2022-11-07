@@ -5,10 +5,6 @@ import { posix } from 'path';
 export const platforms = ['step7'];
 export const NAME = 'AI_Proc';
 export const LOOP_NAME = 'AI_Loop';
-export const BUILDIN = `
-- [${NAME}, FB512, ${NAME}, AI main AI FB]
-- [${LOOP_NAME}, FC512, ${LOOP_NAME}, main AI cyclic call function]
-`;
 
 export function is_type(type) {
     return type.toUpperCase() === 'AI';

@@ -5,10 +5,6 @@ import { posix } from 'path';
 export const platforms = ['step7'];
 export const NAME = `Timer_Proc`;
 export const LOOP_NAME = 'Timer_Loop';
-export const BUILDIN = `
-- [${NAME}, FB520, ${NAME}, Timer main FB]
-- [${LOOP_NAME}, FC520, ${LOOP_NAME}, main timer cyclic call function]
-`;
 
 export function is_type(type) {
     return type.toLowerCase() === 'timer';

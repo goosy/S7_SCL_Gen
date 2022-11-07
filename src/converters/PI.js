@@ -12,11 +12,7 @@ export const platforms = ['step7'];
 export const NAME = 'PI_Proc';
 export const LOOP_NAME = 'PI_Loop';
 export const FM3502_CNT_NAME = 'FM350-2';
-export const BUILDIN = `
-- [${NAME}, FB350, ${NAME}, PI main FB]
-- [${LOOP_NAME}, FC350, ${LOOP_NAME}, main PI cyclic call function]
-- [${FM3502_CNT_NAME}, UDT350, ${FM3502_CNT_NAME}, FM350-2 count DB]
-`;
+
 export function is_type(type) {
   return type.toUpperCase() === 'PI';
 }

@@ -5,10 +5,6 @@ import { posix } from 'path';
 export const platforms = ['step7'];
 export const NAME = 'PV_Alarm';
 export const LOOP_NAME = 'PV_Loop';
-export const BUILDIN = `
-- [${NAME}, FB519, ${NAME}, PV_Alarm main FB]
-- [${LOOP_NAME}, FC519, ${LOOP_NAME}, main PV_Alarm cyclic call function]
-`;
 
 export function is_type(type) {
     return type.toUpperCase() === 'PV_ALARM' || type.toUpperCase() === 'PVALARM' || type.toUpperCase() === 'PV';
