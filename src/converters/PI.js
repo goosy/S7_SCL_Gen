@@ -8,6 +8,7 @@ import { fixed_hex, context } from '../util.js';
 import { make_prop_symbolic } from '../symbols.js';
 import { posix } from 'path';
 
+export const platforms = ['step7'];
 export const NAME = 'PI_Proc';
 export const LOOP_NAME = 'PI_Loop';
 export const FM3502_CNT_NAME = 'FM350-2';

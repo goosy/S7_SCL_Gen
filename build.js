@@ -1,7 +1,7 @@
 import { posix } from 'path';
 import { readdir, readFile } from 'fs/promises';
 import { context, write_file } from './src/util.js';
-import { convertRules } from 'gooconverter';
+import { convert } from 'gooconverter';
 import { rollup } from 'rollup';
 import pkg from './package.json' assert { type: 'json' };
 import { builtinModules } from 'module';
@@ -41,24 +41,58 @@ const CLIOutputOptionsList = [{
     banner: '#!/usr/bin/env node',
 }];
 
+function get_module_path(...filename) {
+    return posix.join(context.module_path, ...filename);
+}
+
 async function build() {
-    // build src/converter.js
-    const supported_types = (await readdir(posix.join(context.module_path, 'src/converters'))).map(
-        file => file.replace(/\.js$/, '')
+    // create fake src/symbols_buildin.yaml
+    await write_file(get_module_path('src', 'symbols_buildin.yaml'), '');
+
+    const files = await readdir(get_module_path('src', 'converters'));
+    const types = files.filter(file => file.endsWith('.js')).map(file => file.replace(/\.js$/, ''));
+    const converters = {};
+    for (const type of types) {
+        converters[type] = await import(`./src/converters/${type}.js`);
+    }
+    const supported_category = types.map(type =>
+        ({ type, platforms: JSON.stringify(converters[type].platforms) })
     );
-    const rules = [{
-        "name": `converter.js`,
-        "tags": {
-            supported_types,
+
+    // build src/symbols_buildin.yaml
+    const yamls = [];
+    for (const [type, converter] of Object.entries(converters)) {
+        if (files.includes(`${type}.yaml`)) {
+            const yaml_raw = await readFile(get_module_path('src', 'converters', `${type}.yaml`), { encoding: 'utf8' });
+            const yaml = convert(converters[type], yaml_raw.trim());
+            yamls.push(`---\nname: BUILDIN\ntype: ${type}\nsymbols: \n${yaml}\n...`);
+        } else if (converter.BUILDIN) {
+            yamls.push(`---\nname: BUILDIN\ntype: ${type}\nsymbols: \n${converter.BUILDIN.trim()}\n...`);
         }
-    }];
-    const template = await readFile('src/converter.template', { encoding: 'utf8' });
-    for (let { name, content } of convertRules(rules, template)) {
-        const output_file = posix.join(context.module_path, 'src', name);
-        await write_file(output_file, content, {});
-        console.log(`created ${output_file}`);
-    };
-    console.log(`file src/converter.js generated!`);
+    }
+    await write_file(
+        get_module_path('src', 'symbols_buildin.yaml'),
+        yamls.join('\n\n'),
+        { encoding: 'utf8' }
+    );
+    console.log(`file src / symbols_buildin.yaml generated!`);
+    await write_file(
+        get_module_path('lib', 'symbols_buildin.yaml'),
+        yamls.join('\n\n'),
+        { encoding: 'utf8' }
+    );
+    console.log(`file lib / symbols_buildin.yaml generated!`);
+
+    // build src/converter.js
+    await write_file(
+        get_module_path('src', 'converter.js'),
+        convert( // convert the content of src/converter.template
+            { converters, supported_category },
+            await readFile('src/converter.template', { encoding: 'utf8' })
+        ),
+        { encoding: 'utf8' }
+    );
+    console.log(`file src / converter.js generated!`);
 
     // build bundle files
     let main_bundle, cli_bundle;

@@ -2,6 +2,7 @@ import { make_prop_symbolic } from '../symbols.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
+export const platforms = ['step7'];
 export const NAME = `Motor_Proc`;
 export const LOOP_NAME = 'Motor_Loop';
 export const BUILDIN = `

@@ -114,7 +114,7 @@ export class GCL {
                 configurable
             });
             const type = doc.get('type') ?? options.type;
-            assert.equal(typeof type, 'string', new SyntaxError(' type 必须提供!'));
+            assert.equal(typeof type, 'string', new SyntaxError('type 必须提供，并且必须是字符串!'));
             Object.defineProperty(doc, 'type', {
                 get() {
                     return type;

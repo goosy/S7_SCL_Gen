@@ -2,6 +2,7 @@ import { make_prop_symbolic } from "../symbols.js";
 import { context } from '../util.js';
 import { posix } from 'path';
 
+export const platforms = ['step7'];
 export const NAME = 'PV_Alarm';
 export const LOOP_NAME = 'PV_Loop';
 export const BUILDIN = `

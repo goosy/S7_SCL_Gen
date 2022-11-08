@@ -2,26 +2,24 @@
 // ./src/converters 目录下为转换器文件，文件名称必须是 {type}.js 的格式。
 // 转换器文件定义了目前支持的转换类型
 // 每个转换器必须实现
-//   function is_type        判断是否为当前转换类型
+//   function is_supported   判断是否支持当前转换文档
 //   function gen            生成转换列表，列表可为空，列表的每一项是一个转换对象 { rules, template }
 //   function gen_copy_list  生成复制列表，列表可为空
 // 每个转换器可选实现
-//   Array BUILDIN           该转换类型的内置符号列表
 //   function parse_symbols  第一遍扫描文档时提取符号
 //   function build          第二遍扫描文档时构建完善的转换数据
+//   {type}.yaml             该转换类型的内置符号列表，yaml文件放在.js同一文件夹下
 
-import { BUILDIN_SYMBOLS } from './symbols.js';
-// 引入所有的转换器{{#for type in supported_types}}
-import * as {{type}} from './converters/{{type}}.js';{{#endfor}}
+// 引入所有的转换器{{#for type,converter in converters}}
+import * as {{type}} from './converters/{{type}}.js';{{#endfor converter}}
 
-export const supported_types = ['{{supported_types.join("', '")}}'];
-export const converter = { {{#for type in supported_types}}{{type}}, {{#endfor}}}
-// 创建内置符号对象
-await BUILDIN_SYMBOLS.load(
-    supported_types.map(type => {
-        const yaml = converter[type].BUILDIN;
-        if (yaml) return `---\ntype: ${type}\nsymbols: ${yaml}...`;
-        return '';
-    }).join('\n\n'),
-    { isFile: false, filename: 'buildin' }
-);
+export const supported_types = [{{#for cat in supported_category}}
+    '{{cat.type}}',{{#endfor}}
+];
+export const supported_categorys = {{'{'}}{{#for cat in supported_category}}
+    {{cat.type}}: {{cat.platforms}},{{#endfor}}
+}
+export const supported_platforms = ['step7', 'portal', 'pcs7'];
+export const converter = {
+{{#for type,converter in converters}}    {{type}}, 
+{{#endfor converter}}}

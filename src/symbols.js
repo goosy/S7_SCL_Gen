@@ -2,8 +2,11 @@ import assert from 'assert/strict';
 import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
 import { isSeq, YAMLSeq } from 'yaml';
 import { GCL } from './gcl.js';
+import { posix } from 'path';
+import { fileURLToPath } from 'url';
 
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
+await BUILDIN_SYMBOLS.load(posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), '../symbols_buildin.yaml'));
 
 // FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
 const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];

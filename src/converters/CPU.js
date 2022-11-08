@@ -2,6 +2,7 @@ import assert from 'assert/strict';
 import { add_symbols, make_prop_symbolic } from '../symbols.js';
 
 export const NAME = 'CPU';
+export const platforms = ['step7'];
 
 export const device_types = [
     "IM151-8PN/DP",

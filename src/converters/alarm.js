@@ -3,6 +3,7 @@ export const LOOP_NAME = 'Alarm_Loop';
 export const BUILDIN = `
 - [${LOOP_NAME}, FC518, ${LOOP_NAME}, main alarm cyclic call function]
 `;
+export const platforms = ['step7'];
 
 export function is_type(type) {
   return type.toLowerCase() === 'alarm';

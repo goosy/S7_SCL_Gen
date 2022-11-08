@@ -4,7 +4,7 @@ import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 import { GCL } from './gcl.js';
 import { globby } from 'globby';
 import { posix } from 'path';
-import { supported_types, converter } from './converter.js';
+import { supported_types, supported_platforms, supported_categorys, converter } from './converter.js';
 import assert from 'assert/strict';
 
 /** @type {string: {CPU, includes, files, list, options}[] }*/
@@ -19,6 +19,8 @@ const CPUs = { // CPU 资源
     // 从已有CPU中找，如没有则建立一个初始CPU资源数据
     return CPUs[CPU_name] ??= {
       name: CPU_name,
+      // platform, 由CPU文档设置，默认 'step7'
+      // device, 由CPU文档设置
       conn_ID_list: new IntIncHL(16), // 已用连接ID列表
       OB_list: new IntIncHL(100),     // 已用组织块列表
       DB_list: new IntIncHL(100),     // 已用数据块列表
@@ -68,37 +70,35 @@ async function parse_includes(includes, options) {
 }
 
 /**
- * check if its supported document type
- * returns the standard type name if supported
- * else return undefined
- * @param {string} type
- * @returns {string|undefined}
- */
-function is_supported_type(type) {
-  return supported_types.find(t => converter[t].is_type(type));
-}
-
-/**
  * 加载指定文档
  * 生命周期为第一遍扫描，主要功能是提取符号
  * @date 2022-07-03
  * @param {import('yaml').Document} doc
  */
 async function add_conf(doc) {
-  // 检查重复
-  const { CPU: CPU_name, type: doctype } = doc;
-  const type = is_supported_type(doctype);
-  if (!type) {
-    console.error(`${doc.gcl.file}文件 ${CPU_name}:${doctype}文档 : 该类型转换系统不支持`);
-    return;
+  // 检查
+  const CPU = CPUs.get(doc.CPU);
+  const type = supported_types.find(t => converter[t].is_type(doc.type));
+  if (type === 'CPU') {
+    CPU.device = doc.get('device');
+    const platform = doc.get('platform')?.toLowerCase() ?? 'step7';
+    if (!supported_platforms.includes(platform)) {
+      console.error(`"${doc.gcl.file}"文件的 CPU(${doc.CPU}) 配置平台 ${platform} 不支持`);
+      process.exit(2);
+    }
+    CPU.platform = platform;
   }
-  const CPU = CPUs.get(CPU_name);
-  if (type === 'CPU') CPU.device = doc.get('device');
   if (CPU[type]) {
-    console.error(`"${doc.gcl.file}"文件的配置 (${CPU_name}-${type}) 已存在`);
+    console.error(`"${doc.gcl.file}"文件的配置 (${doc.CPU}-${type}) 已存在`);
     process.exit(2);
   }
-  CPU.add_type(type, doc); // 按名称压入文档
+  if (!supported_categorys[type].includes(CPU.platform)) {
+    console.error(`${doc.gcl.file}文件 ${doc.CPU}:${doc.platform}:${doc.type} 文档的转换类别不支持`);
+    return;
+  }
+
+  // 按类型压入文档至CPU
+  CPU.add_type(type, doc);
 
   // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
   const conf = doc.toJS();
@@ -136,16 +136,22 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   // 第一遍扫描 加载配置\提取符号\建立诊断信息
   try {
     silent || console.log('readding file:');
+    const docs = [];
     for (const file of await readdir(work_path)) {
       if (/^.*\.ya?ml$/i.test(file)) {
         const filename = posix.join(work_path, file);
         const gcl = new GCL();
         await gcl.load(filename);
         for (const doc of gcl.documents) {
-          await add_conf(doc);
+          // 确保CPU优先处理
+          if (doc.type === 'CPU') docs.unshift(doc);
+          else docs.push(doc);
         }
         silent || console.log(`\t${filename}`);
       }
+    }
+    for (const doc of docs) {
+      await add_conf(doc);
     }
   } catch (e) {
     console.log(e);

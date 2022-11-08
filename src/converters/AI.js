@@ -2,6 +2,7 @@ import { make_prop_symbolic } from "../symbols.js";
 import { context } from '../util.js';
 import { posix } from 'path';
 
+export const platforms = ['step7'];
 export const NAME = 'AI_Proc';
 export const LOOP_NAME = 'AI_Loop';
 export const BUILDIN = `

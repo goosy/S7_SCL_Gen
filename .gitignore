@@ -69,6 +69,7 @@ pnpm-lock.yaml
 
 # production
 src/converter.js
+src/symbols_buildin.yaml
 build-include/
 example/**/
 dist/
