@@ -16,7 +16,8 @@
     "node": ">=16.7.0"
   },
   "dependencies": {
-    "iconv-lite": "^0.6.3"
+    "iconv-lite": "^0.6.3",
+    "nodemon": "^2.0.20"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.2",
@@ -41,7 +42,7 @@
     "dev": "pnpm clean && node ./dev.js",
     "build": "node ./build.js",
     "prepublish": "pnpm clean && pnpm build",
-    "watch": "rollup -c -w",
+    "watch": "nodemon ./build.js",
     "test": "mocha"
   },
   "keywords": [

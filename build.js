@@ -32,7 +32,7 @@ const CLIInputOptions = {
         }), // tells Rollup how to find XX in node_modules
         commonjs(), // converts XX to ES modules
     ],
-    external: [...builtinModules, './index.js'],
+    external: [...builtinModules, 'nodemon', './index.js'],
 };
 
 const CLIOutputOptionsList = [{

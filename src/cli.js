@@ -1,6 +1,7 @@
 import { convert, copy_file, context } from './index.js';
 import { posix } from 'path';
 import mri from 'mri';
+import nodemon from 'nodemon';
 
 function show_help() {
     console.log(`usage:
@@ -9,6 +10,7 @@ s7scl [subcommand] [path] [options]
 
 subcommand 子命令:
   convert     | conv         转换配置为SCL，省略时的默认子命令
+  watch       | monitor      监视配置文件并及时生成SCL
   help                       打印本帮助
   gcl  | init | template     在当前目录下产生一个配置目录，内含样板配置文件
                              默认目录名为GCL，也可以用path参数指定为其它目录
@@ -53,6 +55,22 @@ if (argv.version) {
     context.work_path = process.cwd().replace(/\\/g, '/');
     await convert({ output_zyml, noconvert, silent });
     noconvert || silent || console.log("converted all YAML to SCL!");
+} else if (cmd === 'watch' || cmd === 'monitor') {
+    process.chdir(path ?? '.');
+    nodemon({
+        restartable: "rs",
+        verbose: !silent,
+        script: posix.join(context.module_path, 'lib', 'cli.js'),
+        ext: 'yaml,scl'
+    });
+    nodemon.on('start', function () {
+        console.log('s7-scl-gen has started');
+    }).on('quit', function () {
+        console.log('s7-scl-gen has quit');
+        process.exit();
+    }).on('restart', function (files) {
+        console.log('s7-scl-gen restarted due to: ', files);
+    });
 } else if (cmd === 'gcl' || cmd === 'init' || cmd === 'template') {
     const dst = posix.join(context.work_path, path ?? 'GCL');
     await copy_file(posix.join(context.module_path, 'example'), dst);
