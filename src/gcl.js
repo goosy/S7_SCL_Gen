@@ -104,17 +104,19 @@ export class GCL {
         for (const doc of this.#documents) {
             doc.gcl = this;
             doc.offset ??= 0;
+            const is_buildin = options.filename === 'buildin';
             const CPU = doc.get('CPU') ?? doc.get('name') ?? options.CPU;
-            if (options.filename !== 'buildin') assert.equal(typeof CPU, 'string', new SyntaxError(' name (或者CPU) 必须提供!'));
-            Object.defineProperty(doc, 'CPU', {
+            const CPUs = isSeq(CPU)
+                ? CPU.items.map(item => String(item))
+                : is_buildin ? [] : [CPU];
+            Object.defineProperty(doc, 'CPUs', {
                 get() {
-                    return CPU;
+                    return CPUs;
                 },
                 enumerable,
                 configurable
             });
             const type = doc.get('type') ?? options.type;
-            assert.equal(typeof type, 'string', new SyntaxError('type 必须提供，并且必须是字符串!'));
             Object.defineProperty(doc, 'type', {
                 get() {
                     return type;

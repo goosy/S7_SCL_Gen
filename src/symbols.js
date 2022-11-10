@@ -193,9 +193,7 @@ export function add_symbol(CPU, symbol_raw, options = {}) {
  * @returns {Symbol[]}
  */
 export function add_symbols(CPU, symbol_list, options = {}) {
-    if (isSeq(symbol_list)) {
-        return symbol_list.items.map(symbol_node => add_symbol(CPU, symbol_node, options));
-    } else if (Array.isArray(symbol_list)) {
+    if (Array.isArray(symbol_list)) {
         return symbol_list.map(symbol_raw => add_symbol(CPU, symbol_raw, options));
     }
     return [];

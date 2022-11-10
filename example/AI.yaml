@@ -1,5 +1,5 @@
 ---
-CPU: AS1 # 指示属于哪一个CPU
+CPU: [AS1, AS2] # 指示属于哪一个CPU
 type: AI #  指示本配置为生成 AI 代码
 
 # 额外代码

@@ -1,4 +1,5 @@
 import assert from 'assert/strict';
+import { convert } from 'gooconverter';
 import { add_symbols, make_prop_symbolic } from '../symbols.js';
 
 export const NAME = 'CPU';
@@ -78,10 +79,12 @@ export function parse_symbols({ CPU, list }) {
 }
 
 export function build({ CPU, list, options = {} }) {
+    CPU.device = CPU.CPU.get('device');
     list.forEach(FN => {
         if (!['OB', 'FC'].includes(FN.block.block_name)) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项block必须是一个 OB 或 FC 符号!`);
     });
-    if (options.output_dir) CPU.output_dir = options.output_dir;
+    const name = CPU.name;
+    if (options.output_dir) CPU.output_dir = convert({ name, CPU: name }, options.output_dir);
 }
 
 export function gen(CPU_list) {
