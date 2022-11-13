@@ -2,7 +2,7 @@ import { make_prop_symbolic } from "../symbols.js";
 import { context } from '../util.js';
 import { posix } from 'path';
 
-export const platforms = ['step7'];
+export const platforms = ['step7', 'portal', 'pcs7'];
 export const NAME = 'AI_Proc';
 export const LOOP_NAME = 'AI_Loop';
 
@@ -14,7 +14,11 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 {{includes}}
 {{#for AI in list}}{{#if AI.DB}}
 // AI背景块: {{AI.comment}}
-DATA_BLOCK "{{AI.DB.name}}" "{{NAME}}"
+DATA_BLOCK "{{AI.DB.name}}"{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'FALSE' }{{#endif portal}}
+AUTHOR : Goosy
+FAMILY : GooLib
+"{{NAME}}"
 BEGIN{{#if AI.$enable_alarm != null}}
     enable_alarm := {{AI.$enable_alarm}};{{#endif}}{{#if AI.$zero_raw != null}}
     zero_raw := {{AI.$zero_raw}};{{#endif}}{{#if AI.$span_raw != null}}
@@ -33,8 +37,14 @@ END_DATA_BLOCK
 {{#endif AI.DB}}{{#endfor AI}}
 
 // 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID{{#for AI in list}}
-{{#if AI.DB}}"{{NAME}}"."{{AI.DB.name}}"(AI := {{AI.input.value}}{{#if AI.enable_alarm != undefined}}, enable_alarm := {{AI.enable_alarm}}{{#endif}}); {{#endif}}// {{AI.comment}}{{#endfor AI}}
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1{{#endif platform}}
+BEGIN{{#for AI in list}}
+{{#if AI.DB
+}}{{#if platform == 'step7'}}"{{NAME}}".{{#endif platform
+}}"{{AI.DB.name}}"(AI := {{AI.input.value}}{{#if AI.enable_alarm != undefined}}, enable_alarm := {{AI.enable_alarm}}{{#endif}}); {{
+#endif AI.DB}}// {{AI.comment}}{{#endfor AI}}
 {{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
@@ -60,12 +70,13 @@ export function parse_symbols({ CPU, list }) {
 export function gen(AI_list) {
     const rules = [];
     AI_list.forEach(({ CPU, includes, loop_additional_code, list, options = {} }) => {
-        const { name, output_dir } = CPU;
+        const { name, output_dir, platform } = CPU;
         const { output_file = LOOP_NAME } = options;
         rules.push({
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
                 NAME,
+                platform,
                 LOOP_NAME,
                 name,
                 includes,
@@ -78,7 +89,7 @@ export function gen(AI_list) {
 }
 
 export function gen_copy_list(item) {
-    const src = posix.join(context.module_path, `${NAME}/${NAME}(step7).scl`);
+    const src = posix.join(context.module_path, `${NAME}/${NAME}(${item.CPU.platform}).scl`);
     const dst = posix.join(context.work_path, item.CPU.output_dir, NAME + '.scl');
     return [{ src, dst }];
 }
