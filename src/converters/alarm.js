@@ -1,6 +1,6 @@
 import { make_prop_symbolic } from '../symbols.js';
 
-export const platforms = ['step7'];
+export const platforms = ['step7', 'portal'];
 export const LOOP_NAME = 'Alarm_Loop';
 
 export function is_type(type) {
@@ -10,8 +10,9 @@ export function is_type(type) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
 {{#for alarm in list}}
 // {{alarm.comment}}
-DATA_BLOCK "{{alarm.DB.name}}"
-{S7_m_c := 'true'}
+DATA_BLOCK "{{alarm.DB.name}}"{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'FALSE' }{{#else}}
+{ S7_m_c := 'true' }{{#endif portal}}
 AUTHOR:Goosy
 FAMILY:GooLib
 STRUCT
@@ -24,7 +25,8 @@ BEGIN
 END_DATA_BLOCK
 {{#endfor alarm}}
 
-FUNCTION "{{LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'TRUE' }{{#endif portal}}
 // 联锁保护主循环
 
 VAR_TEMP
@@ -140,11 +142,12 @@ export function build({ list }) {
 export function gen(alarm_list) {
   const rules = [];
   alarm_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
-    const { name, output_dir } = CPU;
+    const { name, output_dir, platform } = CPU;
     rules.push({
       "name": `${output_dir}/${LOOP_NAME}.scl`,
       "tags": {
         name,
+        platform,
         includes,
         loop_additional_code,
         LOOP_NAME,
