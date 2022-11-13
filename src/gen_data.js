@@ -88,12 +88,13 @@ async function add_conf(doc) {
     }
     CPU.platform = platform;
   }
+  CPU.platform ??= 'step7'; // 没有CPU配置的情况设置默认平台
   if (CPU[type]) {
     console.error(`"${doc.gcl.file}"文件的配置 (${doc.CPU}-${type}) 已存在`);
     process.exit(2);
   }
   if (!supported_categorys[type].includes(CPU.platform)) {
-    console.error(`${doc.gcl.file}文件 ${doc.CPU}:${doc.platform}:${doc.type} 文档的转换类别不支持`);
+    console.error(`${doc.gcl.file}文件 ${doc.CPU}:${CPU.platform}:${doc.type} 文档的转换类别不支持`);
     return;
   }
 

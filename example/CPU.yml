@@ -49,9 +49,9 @@ files:          # files 仅仅是复制该文件到输出文件夹中
 # 建议把不在转换器中使用但实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
 # 类型: 数组
 symbols:
-  # Clock_Memory 是一个特定的符号，仅在CPU配置下有效。
+  # Clock_Byte 是一个特定的符号，仅在CPU配置下有效。
   # 只有显式配置了该符号(本例为MB10)，转换程序才会自动生成以下符号：
-  # - [Clock_Memory, MB10, ~, clock memory]
+  # - [Clock_Byte, MB10, ~, clock memory]
   # - [Pulse_10Hz,   M10.0]
   # - [Pulse_5Hz,    M10.1]
   # - [Pulse_2.5Hz,  M10.2]
@@ -60,8 +60,8 @@ symbols:
   # - [Pulse_1Hz,    M10.5]
   # - [Pulse_0.62Hz, M10.6]
   # - [Pulse_0.5Hz,  M10.7]
-  # 没有配置 Clock_Memory 时，则不产生任何时钟存储器符号
-- [Clock_Memory, MB10] # 设置时钟存储器为MB10
+  # 没有配置 Clock_Byte 时，则不产生任何时钟存储器符号
+- [Clock_Byte, MB10] # 设置时钟存储器为MB10
 - [JS_flow, FB100]     # 修改JSFLow.scl文件中内置符号，地址由默认的FB01改变为FB100
 
   # 自定义符号
@@ -79,7 +79,7 @@ list:
 # 所有 OB 或 FC 块不能有参数，块内部建议仅使用简单的调用代码
 # 更复杂的代码更适合放在 includes 或 files 中
 - comment: 初始化
-  name: [init, FC10]
+  block: [init, FC10]
   code: |- # 该FC的代码
     M100.0 := TRUE;
     M100.1 := TRUE;
@@ -87,13 +87,14 @@ list:
     M100.3 := TRUE;
     M100.4 := TRUE;
 - comment: 重启
-  name: [COMPLETE RESTART, OB100]
+  block: [COMPLETE RESTART, OB100]
   code: '"init"();'
 - comment: 0.1S 循环
-  name: [Cyclic interrupt, OB30]
+  block: [Cyclic interrupt, OB30]
   code: '"AI_loop"();'
 - comment: 主循环
-  name: [main, OB1]
+  block: [main, OB1]
+  title: Main Program Sweep (Cycle)
   code: |- # OB1的代码
     "Alarm_Loop"(); // 报警
     "PI_Loop"();

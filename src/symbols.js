@@ -8,6 +8,25 @@ import { fileURLToPath } from 'url';
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
 await BUILDIN_SYMBOLS.load(posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), '../symbols_buildin.yaml'));
 
+/**
+ * @typedef {object} Source
+ * @property {string[]} raw
+ * @property {import('yaml').Document} document
+ * @property {number[]} range
+ */
+/**
+ * @typedef {object} Symbol
+ * @property {string} name
+ * @property {string} type
+ * @property {string} block_name
+ * @property {string|number} block_no
+ * @property {string} block_bit
+ * @property {string} type_name
+ * @property {string|number} type_no
+ * @property {string} comment
+ * @property {Source} source
+ */
+
 // FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
 const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];
 const INTEGER_PREFIX = [...INDEPENDENT_PREFIX, 'DB'];
@@ -26,7 +45,18 @@ const area_size = Object.fromEntries([
     ...DWORD_PREFIX.map(prefix => [prefix, 4.0]),
 ]);
 
+/**
+ * 抛出2个符号冲突异常
+ * @date 2022-11-09
+ * @param {string} message
+ * @param {Symbol} curr_symbol
+ * @param {Symbol} prev_symbol
+ */
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
+    /**
+     * @param {Symbol} symbol
+     * @return {string}
+     */
     const get_msg = symbol => {
         const doc = symbol.source.document;
         const gcl = doc.gcl;
@@ -53,11 +83,11 @@ function parse(raw, default_type) {
     if (!Array.isArray(raw)) return raw;
     const
         name = raw[0],
-        addr = raw[1]?.toUpperCase(),
-        comment = raw[3];
+        address = raw[1]?.toUpperCase(),
+        comment = raw[3] ?? '';
     const symbol_error = new SyntaxError(`${raw} is wrong!`);
     assert.equal(typeof name, 'string', symbol_error);
-    assert.equal(typeof addr, 'string', symbol_error);
+    assert.equal(typeof address, 'string', symbol_error);
     let type = raw[2] ?? default_type;
     if (typeof type === "string") {
         const UC = type.toUpperCase();
@@ -67,11 +97,11 @@ function parse(raw, default_type) {
     } else {
         type = null;
     }
-    if (type === addr) type = name;
+    if (type === address) type = name;
     // regexp = /^(OB|FB|FC|UDT|DB|MD|ID|PID|QD|PQD|MW|IW|PIW|QW|PQW|MB|IB|PIB|QB|PQB|M|I|Q)(\d+|\+)(\.(\d))?$/
     const prefix_str = [...INTEGER_PREFIX, ...S7MEM_PREFIX].join('|');
     const reg = new RegExp(`^(${prefix_str})(\\d+|\\+)(\\.(\\d))?$`);
-    let [, block_name, block_no, , block_bit = 0] = reg.exec(addr.toUpperCase()) ?? [];
+    let [, block_name, block_no, , block_bit = 0] = reg.exec(address.toUpperCase()) ?? [];
     if (!block_name || !block_no) return raw;
     if (INDEPENDENT_PREFIX.includes(block_name)) {
         // FB FC UDT 的类型是自己
@@ -99,7 +129,7 @@ function parse(raw, default_type) {
     let [, type_name, type_no] = reg.exec(type.toUpperCase()) ?? [type];
     const value = `"${name}"`;
     const source = { raw };
-    return { name, addr, type, value, block_name, block_no, block_bit, type_name, type_no, comment, source };
+    return { name, address, type, value, block_name, block_no, block_bit, type_name, type_no, comment, source };
 }
 
 function check_buildin_and_modify(CPU, symbol) {
@@ -108,12 +138,20 @@ function check_buildin_and_modify(CPU, symbol) {
     const ref = symbols_dict[symbol.name];
     if (!ref) return false;
     // modify address
-    ref.addr = symbol.addr;
+    ref.address = symbol.address;
     ref.block_no = symbol.block_no;
     ref.block_bit = symbol.block_bit;
     return true;
 }
 
+/**
+ * 将 原始符号 转换后加入到 CPU.symbols_dict 中
+ * @date 2022-11-09
+ * @param {any} CPU
+ * @param {string[]} symbol_raw
+ * @param {any} options
+ * @returns {Symbol}
+ */
 export function add_symbol(CPU, symbol_raw, options = {}) {
     const is_AST = isSeq(symbol_raw);
     const symbols_dict = CPU.symbols_dict;
@@ -193,64 +231,83 @@ export function build_symbols(CPU) {
     const symbols_dict = CPU.symbols_dict;
     const list = Object.values(symbols_dict);
     // 检查重复并建立索引
-    list.forEach(symbol => {
-        const name = symbol.name;
-        try {
-            if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC UDT 自动分配块号
-                if (symbol.block_no === '+') symbol.block_no = null;
-                else symbol.block_no = parseInt(symbol.block_no); //取整
-                symbol.block_bit = "";
-                symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
-                symbol.addr = symbol.block_name + symbol.block_no;
-            } else if (S7MEM_PREFIX.includes(symbol.block_name)) { // Area 自动分配地址
-                const s7addr = symbol.block_no === '+' ? [null, 0] : [parseInt(symbol.block_no), parseInt(symbol.block_bit)];
-                // list 为 CPU.PIA_list、CPU.PQA_list、CPU.MA_list、CPU.IA_list、CPU.QA_list 之一
-                const area_list = CPU[['PI', 'PQ', 'M', 'I', 'Q'].find(prefix => symbol.block_name.startsWith(prefix)) + 'A_list'];
-                const addr = area_list.push(s7addr, area_size[symbol.block_name]);
-                symbol.block_no = addr[0];
-                symbol.block_bit = addr[1];
-                symbol.addr = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
-            } else if (exist_bno[symbol.addr]) { // 其它情况下检查是否重复
-                throw new RangeError(`重复地址 ${name} ${symbol.addr}!`)
-            } else { // 不重复则标识该地址已存在
-                exist_bno[symbol.addr] = true;
+    list.forEach(
+        /**
+         * @param {Symbol} symbol
+         */
+        symbol => {
+            const name = symbol.name;
+            try {
+                if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC UDT 自动分配块号
+                    if (symbol.block_no === '+') symbol.block_no = null;
+                    else symbol.block_no = parseInt(symbol.block_no); //取整
+                    symbol.block_bit = "";
+                    symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
+                    symbol.address = symbol.block_name + symbol.block_no;
+                } else if (S7MEM_PREFIX.includes(symbol.block_name)) { // Area 自动分配地址
+                    const s7addr = symbol.block_no === '+' ? [null, 0] : [parseInt(symbol.block_no), parseInt(symbol.block_bit)];
+                    // list 为 CPU.PIA_list、CPU.PQA_list、CPU.MA_list、CPU.IA_list、CPU.QA_list 之一
+                    const area_list = CPU[['PI', 'PQ', 'M', 'I', 'Q'].find(prefix => symbol.block_name.startsWith(prefix)) + 'A_list'];
+                    const address = area_list.push(s7addr, area_size[symbol.block_name]);
+                    symbol.block_no = address[0];
+                    symbol.block_bit = address[1];
+                    symbol.address = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
+                } else if (exist_bno[symbol.address]) { // 其它情况下检查是否重复
+                    throw new RangeError(`重复地址 ${name} ${symbol.address}!`)
+                } else { // 不重复则标识该地址已存在
+                    exist_bno[symbol.address] = true;
+                }
+            } catch (e) {
+                if (e instanceof TypeError) {
+                    throw new TypeError(e.message, { cause: e });
+                } else if (e instanceof IncHLError || e instanceof RangeError) {
+                    throw_symbol_error(
+                        `符号地址错误: ${e.message}`,
+                        symbol,
+                        list.find(sym => symbol !== sym && sym.address === symbol.address)
+                    );
+                }
+                console.log(e.message);
             }
-        } catch (e) {
-            if (e instanceof TypeError) {
-                throw new TypeError(e.message, { cause: e });
-            } else if (e instanceof IncHLError || e instanceof RangeError) {
-                throw_symbol_error(
-                    `符号地址错误: ${e.message}`,
-                    symbol,
-                    list.find(sym => symbol !== sym && sym.addr === symbol.addr)
-                );
-            }
-            console.log(e.message);
+            symbols_dict[name] = symbol;
         }
-        symbols_dict[name] = symbol;
-    });
+    );
     // 补全类型
-    list.forEach(symbol => {
-        if (INDEPENDENT_PREFIX.includes(symbol.block_name) || symbol.type == null) {
-            symbol.type = symbol.name;
+    list.forEach(
+        /**
+         * @param {Symbol} symbol
+         */
+        symbol => {
+            if (INDEPENDENT_PREFIX.includes(symbol.block_name) || symbol.type == null) {
+                symbol.type = symbol.name;
+            }
+            if (COMMON_TYPE.includes(symbol.type)) {
+                symbol.type_name = symbol.type;
+                symbol.type_no = '';
+            } else {
+                const type_block = symbols_dict[symbol.type];
+                if (!type_block) throw new Error(`${symbol.type} is required, but not defined`);
+                symbol.type_name ??= type_block.block_name;
+                symbol.type_no ??= type_block.block_no;
+            }
         }
-        if (COMMON_TYPE.includes(symbol.type)) {
-            symbol.type_name = symbol.type;
-            symbol.type_no = '';
-        } else {
-            const type_block = symbols_dict[symbol.type];
-            if (!type_block) throw new Error(`${symbol.type} is required, but not defined`);
-            symbol.type_name ??= type_block.block_name;
-            symbol.type_no ??= type_block.block_no;
-        }
-    });
+    );
 }
 
 const SYMN_LEN = 23;
 const NAME_LEN = 4;
 const NO_LEN = 5;
 const BLANK_COMMENT_LEN = 80;
-function get_S7_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
+/**
+ * 生成 step7 符号源码行，固定长度，其中每个字段的表示为{字段说明 字符数}
+ * 
+ * * `126,{symname23} {block_name_str4}{block_no_str5}{block_bit_str2} {type_str4}{type_no_str5} {comment80}`
+ * 
+ * @date 2022-11-09
+ * @param {Symbol} symbol
+ * @returns {string}
+ */
+function get_step7_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
     const symname = str_padding_right(name, SYMN_LEN);
     const block_name_str = str_padding_right(block_name, NAME_LEN);
     const block_no_str = str_padding_left(block_no, NO_LEN);
@@ -258,8 +315,22 @@ function get_S7_symbol({ name, type, block_name, block_no, block_bit, type_name,
     const type_len = type_no === '' ? NAME_LEN + NO_LEN : NAME_LEN;
     const type_str = str_padding_right(type_name, type_len);
     const type_no_str = type_no === '' ? '' : str_padding_left(type_no, NO_LEN);
-    const cm = str_padding_right(comment ?? '', BLANK_COMMENT_LEN);
+    const cm = str_padding_right(comment, BLANK_COMMENT_LEN);
     return `126,${symname} ${block_name_str}${block_no_str}${block_bit_str} ${type_str}${type_no_str} ${cm}`;
+}
+
+/**
+ * 生成 portal 符号源码行，其中每个字段用引号包裹，引号中替换为实际值
+ * 
+ * * `"name","address","type","accessiable","visiable","retain","comment","supervision","writable"`
+ * 
+ * @date 2022-11-09
+ * @param {Symbol} symbol
+ * @returns {string}
+ */
+function get_portal_symbol({ name, type, address, block_name, comment }) {
+    if (INTEGER_PREFIX.includes(block_name)) return ''; // 不生成 OB, FB, FC, UDT 的符号
+    return `"${name}","%${address}","${type}","True","True","False","${comment}","","True"`;
 }
 
 const template = `{{#for sym in symbol_list}}{{sym}}
@@ -268,9 +339,13 @@ const template = `{{#for sym in symbol_list}}{{sym}}
 export function gen_symbols(CPUs) {
     const rules = [];
     for (const CPU of Object.values(CPUs)) {
-        const symbol_list = Object.values(CPU.symbols_dict).map(get_S7_symbol);
+        const symbol_list = Object.values(CPU.symbols_dict).map(
+            CPU.platform === "portal"
+                ? get_portal_symbol
+                : get_step7_symbol
+        ).filter(symbolstr=>symbolstr);
         if (symbol_list.length) rules.push({
-            "name": `${CPU.output_dir}/symbols.asc`,
+            "name": `${CPU.output_dir}/symbols.${CPU.platform === "portal" ? 'sdf' : 'asc'}`,
             "tags": { symbol_list }
         });
     };
