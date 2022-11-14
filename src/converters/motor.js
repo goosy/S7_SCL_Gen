@@ -2,7 +2,7 @@ import { make_prop_symbolic } from '../symbols.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
-export const platforms = ['step7'];
+export const platforms = ['step7', 'portal'];
 export const NAME = `Motor_Proc`;
 export const LOOP_NAME = 'Motor_Loop';
 
@@ -15,7 +15,11 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动�
 
 {{#for motor in list}}{{#if motor.DB}}
 // motor背景块: {{motor.comment}}
-DATA_BLOCK "{{motor.DB.name}}" "{{NAME}}"
+DATA_BLOCK {{motor.DB.value}}{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'FALSE' }{{#endif portal}}
+AUTHOR : Goosy
+FAMILY : GooLib
+"{{NAME}}"
 BEGIN{{#if motor.$stateless != null}}
     stateless := {{motor.$stateless}};{{#endif}}{{#if motor.$over_time != null}}
     over_time := {{motor.$over_time}};{{#endif}}
@@ -23,14 +27,27 @@ END_DATA_BLOCK
 {{#endif}}{{#endfor motor}}
 
 // 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{#for motor in list}}
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1{{#endif platform}}
+BEGIN{{#for motor in list}}
 // {{motor.comment}}{{#if motor.DB}}
-"{{NAME}}".{{motor.DB.value}}({{motor.input_paras}});{{#if motor.run_action}}
+{{#if platform == 'step7'}}"{{NAME}}".{{#endif platform
+}}{{motor.DB.value}}({{motor.input_paras}}{{
+
+#if platform == 'step7'}});{{#if motor.run_action}}
 {{motor.run_action.value}} := {{motor.DB.value}}.run_coil;{{#endif}}{{#if motor.start_action}}
 {{motor.start_action.value}} := {{motor.DB.value}}.start_coil;{{#endif}}{{#if motor.stop_action}}
 {{motor.stop_action.value}} := {{motor.DB.value}}.stop_coil;{{#endif}}{{#if motor.estop_action}}
-{{motor.estop_action.value}} := {{motor.DB.value}}.E_stop_coil;{{#endif}}
+{{motor.estop_action.value}} := {{motor.DB.value}}.E_stop_coil;{{#endif}}{{
+
+#else platform == 'portal'}}{{#if motor.run_action}},
+    run_coil    => {{motor.run_action.value}}{{#endif}}{{#if motor.start_action}},
+    start_coil  => {{motor.start_action.value}}{{#endif}}{{#if motor.stop_action}},
+    stop_coil   => {{motor.stop_action.value}}{{#endif}}{{#if motor.estop_action}},
+    E_stop_coil => {{motor.estop_action.value}}{{#endif}});{{
+
+#endif platform}}
 {{#endif motor.DB}}{{#endfor motor}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
@@ -96,19 +113,20 @@ export function build({ list }) {
         }
         // 只有一项时让SCL字串紧凑
         if (input_paras.length == 1) input_paras[0] = input_paras[0].replace(/ +/g, ' ');
-        if (input_paras.length > 1) input_paras[0] = '\n             ' + input_paras[0];
-        motor.input_paras = input_paras.join(',\n             ');
+        if (input_paras.length > 1) input_paras[0] = '\n    ' + input_paras[0];
+        motor.input_paras = input_paras.join(',\n    ');
     });
 }
 
 export function gen(motor_list) {
     const rules = [];
     motor_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
-        const { name, output_dir } = CPU;
+        const { name, output_dir, platform } = CPU;
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {
                 name,
+                platform,
                 includes,
                 loop_additional_code,
                 NAME,
@@ -121,8 +139,7 @@ export function gen(motor_list) {
 }
 
 export function gen_copy_list(item) {
-    const filename = `${NAME}.scl`;
-    const src = posix.join(context.module_path, 'Motor_Proc', filename);
-    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+    const src = posix.join(context.module_path, `${NAME}/${NAME}(${item.CPU.platform}).scl`);
+    const dst = posix.join(context.work_path, item.CPU.output_dir, `${NAME}.scl`);
     return [{ src, dst }];
 }
