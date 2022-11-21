@@ -71,7 +71,7 @@ pnpm-lock.yaml
 src/converter.js
 src/symbols_buildin.yaml
 build-include/
-example/**/
+example/*/
 dist/
 lib/
 .vscode/

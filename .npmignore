@@ -16,6 +16,6 @@ dev.js
 build.js
 dist/
 public/
-example/SCL/
+example/*/
 test/
 .pnp*

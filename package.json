@@ -1,6 +1,6 @@
 {
   "name": "s7-scl-gen",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "type": "module",
   "description": "S7 PLC SCL 代码自动生成",
   "main": "/lib/index.js",
@@ -38,7 +38,7 @@
     "s7scl": "./lib/cli.js"
   },
   "scripts": {
-    "clean": "rimraf ./example/SCL ./lib",
+    "clean": "rimraf ./example/*/ ./lib",
     "dev": "pnpm clean && node ./dev.js",
     "build": "node ./build.js",
     "prepublish": "pnpm clean && pnpm build",
