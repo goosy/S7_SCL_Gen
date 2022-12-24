@@ -40,8 +40,8 @@ s7scl
 
 ```YAML
 ---
-CPU: AS1 # 指示属于哪一个CPU
-type: AI # 指示本配置的功能
+CPU: AS1    # 指示属于哪一个CPU
+feature: AI # 指示本配置的功能
 
 list: # 功能项列表
 - comment: 气温
@@ -62,7 +62,7 @@ optins: ~
 * `...` YAML语法，它指示一个配置文档结束；
 * 一个配置文档为一个基本配置单位，不可分割；
 * 可以在一个文件里书写多个配置文档，当然也可以将配置文档分散在多个文件中；
-* 每个文档的根属性称为指令，比如上方的 `type` `CPU` `list` `options`
+* 每个文档的根属性称为指令，比如上方的 `feature` `CPU` `list` `options`
 
 注意指令兼容性，运行 `s7scl -v` 查看生成器的当前指令版本。
 
@@ -70,9 +70,9 @@ optins: ~
 
 ### 必须书写的指令
 
-配置文档必须有 CPU(name) 和 type 指令，CPU和type的值类型都是字符串，两者的组合确定唯一的配置，即相同CPU和type的配置文档只能有一个。
+配置文档必须有 CPU(name) 和 feature 指令，CPU 和 feature 的值类型都是字符串，两者的组合确定唯一的配置，即相同 CPU 和 feature 的配置文档只能有一个。
 
-目前只实现了9种类型配置文档——CPU文档和8种功能文档，由 `type` 指令指示，不区分大小写。分别是：
+目前只实现了9种类型配置文档——CPU文档和8种功能文档，由 `feature` 指令指示，不区分大小写。分别是：
 
 * `CPU`          CPU文档
   指示这是一个CPU空间，使用该CPU的其它配置文档都共享的资源、信息和指令，
@@ -143,7 +143,7 @@ END_FUNCTION_BLOCK
 
 ```yaml
 CPU: AS
-type: MT
+feature: MT
 includes:
 - JSFlow.scl # 该文件定义了内置符号 [JSFlow, FB801, ~, 智能表头接收处理]
 symbols: 

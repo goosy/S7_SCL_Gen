@@ -1,6 +1,6 @@
 ---
-type: PI #  指示本配置为生成 PI 文档
-CPU: AS1 # 指示属于哪一个CPU
+CPU: AS1    # 指示属于哪一个CPU
+feature: PI #  指示本配置为生成 PI 文档
 
 symbols:
   # 系统已有4个内置符号：

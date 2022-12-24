@@ -52,7 +52,7 @@ function throw_symbol_error(message, curr_symbol, prev_symbol) {
             const { ln, col, code } = gcl.get_coorinfo(...symbol.source.range);
             return `
             文件:${gcl.file}
-            文档:${doc.CPU}-${doc.type}
+            文档:${doc.CPU}-${doc.feature}
             符号:${symbol.name}
             行:${ln}
             列:${col}

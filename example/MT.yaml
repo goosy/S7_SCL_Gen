@@ -1,6 +1,6 @@
 ---
-type: modbusTCP #  指示本配置为生成 modbusTCP 文档 也可以写为 "type: MT"
-CPU: AS1        # 指示属于哪一个CPU
+CPU: AS1           # 指示属于哪一个CPU
+feature: modbusTCP #  指示本配置为生成 modbusTCP 文档 也可以写为 "feature: MT"
 description: |
   使用 modbusTCP 通信，必须在step7工程中加入以下库
   * FB63 TSEND
@@ -10,14 +10,14 @@ description: |
 
 # 符号定义
 symbols:
-  # 系统已有3个内置符号，其内容自动生成：
-  # - [MT_Poll, FB344]      modbusTCP通信主处理函数
-  # - [MT_Loop, FC344]      主循环调用FC，将这个加入OB1中
-  # - [MT_polls_DB, DB881]  用于保存轮询命令数据
-  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+# 系统已有3个内置符号，其内容自动生成：
+# - [MT_Poll, FB344]      modbusTCP通信主处理函数
+# - [MT_Loop, FC344]      主循环调用FC，将这个加入OB1中
+# - [MT_polls_DB, DB881]  用于保存轮询命令数据
+# 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 - [MT_polls_DB, DB901] # 修改内置DB块 MT_polls_DB 的地址
 
-  # 以下为自定义符号
+# 以下为自定义符号
 # - [JS_flow, FB801]  # JS_Flow 已在 CPU 文档中定义，这里禁止重复定义
 
 list : # modbus TCP 连接列表
@@ -111,7 +111,6 @@ list : # modbus TCP 连接列表
 # 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
-
   # 输出文件名，系统自动加后缀。
   # output_file : 'example'
 ...

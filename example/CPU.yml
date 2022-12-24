@@ -7,7 +7,7 @@ CPU: [AS1, AS2]
 # 比如输出文件夹，共用的符号和包含等
 # 所有`CPU`指令相同的配置文件，会在生成代码时：
 # 统一检查资源冲突情况、统一资源分配、自动合并符号表，避免占用同一DB块、同一连接等
-type: CPU
+feature: CPU
 
 # 运行平台
 # 目前暂只支持step7(也是默认值)，将来加入 portal 和 pcs
@@ -36,6 +36,11 @@ platform: step7
 # 类型: 字符串
 device: CPU410-5H
 
+# host IP 目前用暂不上，保留
+# 类型: 字符串
+host: sample.my.host
+# 类型: 字符串
+IP: 192.168.10.10
 
 # includes, files 的文件为用户自行指定，生成程序不会检查其中的错误。
 includes:       # includes 用来包含到该类型转换后的输出文件中，会解析文件中的符号定义
@@ -50,22 +55,22 @@ files:          # files 仅仅是复制该文件到输出文件夹中
 # 建议把不在转换器中使用但实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
 # 类型: 数组
 symbols:
-  # Clock_Byte 是一个特定的符号，仅在CPU配置下有效。
-  # 只有显式配置了该符号(本例为MB10)，转换程序才会自动生成以下符号：
-  # - [Clock_Byte, MB10, ~, clock memory]
-  # - [Pulse_10Hz,   M10.0]
-  # - [Pulse_5Hz,    M10.1]
-  # - [Pulse_2.5Hz,  M10.2]
-  # - [Pulse_2Hz,    M10.3]
-  # - [Pulse_1.25Hz, M10.4]
-  # - [Pulse_1Hz,    M10.5]
-  # - [Pulse_0.62Hz, M10.6]
-  # - [Pulse_0.5Hz,  M10.7]
-  # 没有配置 Clock_Byte 时，则不产生任何时钟存储器符号
+# Clock_Byte 是一个特定的符号，仅在CPU配置下有效。
+# 只有显式配置了该符号(本例为MB10)，转换程序才会自动生成以下符号：
+# - [Clock_Byte, MB10, ~, clock memory]
+# - [Pulse_10Hz,   M10.0]
+# - [Pulse_5Hz,    M10.1]
+# - [Pulse_2.5Hz,  M10.2]
+# - [Pulse_2Hz,    M10.3]
+# - [Pulse_1.25Hz, M10.4]
+# - [Pulse_1Hz,    M10.5]
+# - [Pulse_0.62Hz, M10.6]
+# - [Pulse_0.5Hz,  M10.7]
+# 没有配置 Clock_Byte 时，则不产生任何时钟存储器符号
 - [Clock_Byte, MB10] # 设置时钟存储器为MB10
 - [JS_flow, FB100]     # 修改JSFLow.scl文件中内置符号，地址由默认的FB01改变为FB100
 
-  # 自定义符号
+# 自定义符号
 - [vw1, MW1000] # 测试MW
 - [vd1, Md1000, Real] # 测试同地址 MD
 - [auto_data1, mw+] # 测试自动地址
@@ -110,18 +115,12 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # {{name}} 会自动替换为当前配置的 name(即CPU) 名称，多用于多CPU配置
   # output_dir 指令仅用在 CPU 文档中
   # 将下方指令取消注释后，会将输出文件夹改成 SCL
-  #output_dir : SCL
+  # output_dir : SCL
 
   # 输出CPU配置文件名，系统自动加后缀。
   # 类型: 字符串
   # 默认输出文件是 CPU.scl，可在名称中使用 {{name}} 替换
   # 将下方指令取消注释后，会将输出文件名改成 example.scl
-  #output_file : 'example'
-
-# host IP 目前用暂不上，保留
-# 类型: 字符串
-host: sample.my.host
-# 类型: 字符串
-IP: 192.168.10.10
+  # output_file : 'example'
 
 ... # YAML语法，指示一个文档结束

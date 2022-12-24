@@ -73,8 +73,8 @@ const device_R_X_id = { // 可能需要填写槽号和机架号的
   "CPU410-5H_R1_X8": "B#16#18",
 }
 
-export function is_type(type) {
-  return type.toUpperCase() === 'MT' || type.toLowerCase() === 'modbustcp';
+export function is_feature(feature) {
+  return feature.toUpperCase() === 'MT' || feature.toLowerCase() === 'modbustcp';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com

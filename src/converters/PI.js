@@ -13,8 +13,8 @@ export const NAME = 'PI_Proc';
 export const LOOP_NAME = 'PI_Loop';
 export const FM3502_CNT_NAME = 'FM350-2';
 
-export function is_type(type) {
-  return type.toUpperCase() === 'PI';
+export function is_feature(feature) {
+  return feature.toUpperCase() === 'PI';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com

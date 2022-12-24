@@ -50,24 +50,24 @@ async function build() {
     await write_file(get_module_path('src', 'symbols_buildin.yaml'), '');
 
     const files = await readdir(get_module_path('src', 'converters'));
-    const types = files.filter(file => file.endsWith('.js')).map(file => file.replace(/\.js$/, ''));
+    const features = files.filter(file => file.endsWith('.js')).map(file => file.replace(/\.js$/, ''));
     const converters = {};
-    for (const type of types) {
-        converters[type] = await import(`./src/converters/${type}.js`);
+    for (const feature of features) {
+        converters[feature] = await import(`./src/converters/${feature}.js`);
     }
-    const supported_category = types.map(type =>
-        ({ type, platforms: JSON.stringify(converters[type].platforms) })
+    const supported_category = features.map(feature =>
+        ({ feature, platforms: JSON.stringify(converters[feature].platforms) })
     );
 
     // build src/symbols_buildin.yaml
     const yamls = [];
-    for (const [type, converter] of Object.entries(converters)) {
-        if (files.includes(`${type}.yaml`)) {
-            const yaml_raw = await readFile(get_module_path('src', 'converters', `${type}.yaml`), { encoding: 'utf8' });
-            const yaml = convert(converters[type], yaml_raw.trim());
-            yamls.push(`---\nname: BUILDIN\ntype: ${type}\nsymbols: \n${yaml}\n...`);
+    for (const [feature, converter] of Object.entries(converters)) {
+        if (files.includes(`${feature}.yaml`)) {
+            const yaml_raw = await readFile(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
+            const yaml = convert(converters[feature], yaml_raw.trim());
+            yamls.push(`---\nname: BUILDIN\nfeature: ${feature}\nsymbols: \n${yaml}\n...`);
         } else if (converter.BUILDIN) {
-            yamls.push(`---\nname: BUILDIN\ntype: ${type}\nsymbols: \n${converter.BUILDIN.trim()}\n...`);
+            yamls.push(`---\nname: BUILDIN\nfeature: ${feature}\nsymbols: \n${converter.BUILDIN.trim()}\n...`);
         }
     }
     await write_file(

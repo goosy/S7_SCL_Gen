@@ -3,16 +3,16 @@ import { readdir } from 'fs/promises';
 import { globby } from 'globby';
 import { posix } from 'path';
 import { convert } from 'gooconverter';
-import { supported_types, supported_platforms, supported_categorys, converter } from './converter.js';
+import { supported_features, supported_platforms, supported_categorys, converter } from './converter.js';
 import { GCL } from './gcl.js';
 import { build_symbols, add_symbols, gen_symbols, BUILDIN_SYMBOLS } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 
 /** @type {string: {CPU, includes, files, list, options}[] }*/
 const conf_list = {};
-supported_types.forEach(type => {
+supported_features.forEach(feature => {
   // 初始化conf_list
-  conf_list[type] = [];
+  conf_list[feature] = [];
 });
 
 const CPUs = { // CPU 资源
@@ -40,8 +40,8 @@ const CPUs = { // CPU 资源
       ).flat(),                       // 该CPU的内置符号名称列表
       conn_host_list: {},             // 已用的连接地址列表
       output_dir: CPU_name,           // 输出文件夹
-      add_type(type, document) {      // 按类型压入Document
-        this[type] = document;
+      add_feature(feature, document) {      // 按类型压入Document
+        this[feature] = document;
       }
     };
   },
@@ -78,26 +78,26 @@ async function parse_includes(includes, options) {
  * @param {import('yaml').Document} document
  */
 async function add_conf(document) {
-  if (typeof document.type != 'string') {
-    console.error(`${document.gcl.file} 文件的 type 必须提供，并且必须是字符串!`);
+  if (typeof document.feature != 'string') {
+    console.error(`${document.gcl.file} 文件的 feature 必须提供，并且必须是字符串!`);
     return;
   }
-  const type = supported_types.find(_type => converter[_type].is_type(document.type));
-  if (!type) {
-    console.error(`不支持 ${document.gcl.file} 文件的 ${document.type} 转换功能!`);
+  const feature = supported_features.find(_feature => converter[_feature].is_feature(document.feature));
+  if (!feature) {
+    console.error(`不支持 ${document.gcl.file} 文件的 ${document.feature} 功能转换!`);
     return;
   }
   const platform = document.get('platform')?.toLowerCase();
   if (platform && !supported_platforms.includes(platform)) {
-    console.error(`不支持 ${document.gcl.file} 文件 ${type} 转换功能要求的 ${platform} 平台`);
+    console.error(`不支持 ${document.gcl.file} 文件 ${feature} 转换功能要求的 ${platform} 平台`);
     return;
   }
-  const options = { filename: 'buildin', CPU: document.CPUs, type: type };
+  const options = { filename: 'buildin', CPU: document.CPUs, feature };
   const { code: loop_additional_code, gcl_list: _ } = await parse_includes(document.get('loop_additional_code'), options);
   const { code: includes, gcl_list } = await parse_includes(document.get('includes'), options);
 
   // 内置符号文档
-  const buildin_doc = BUILDIN_SYMBOLS[type];
+  const buildin_doc = BUILDIN_SYMBOLS[feature];
   const symbols_of_buildin = buildin_doc ? buildin_doc.get('symbols').items : [];
   // 包含文件符号 [YAMLSeq symbol]
   const symbols_of_includes = gcl_list.map(
@@ -113,25 +113,25 @@ async function add_conf(document) {
     // 检查
     assert.equal(typeof _CPU, 'string', new SyntaxError(`"${document.gcl.file}"文件的 name 或者 CPU 必须提供，并且必须是字符串或字符串数组!`));
     const CPU = CPUs.get(_CPU);
-    if (CPU[type]) {
-      console.error(`"${document.gcl.file}"文件的配置 (${document.CPU}-${type}) 已存在`);
+    if (CPU[feature]) {
+      console.error(`"${document.gcl.file}"文件的配置 (${document.CPU}-${feature}) 已存在`);
       process.exit(2);
     }
     CPU.platform ??= platform ?? 'step7'; // 没有CPU配置情况的默认平台
     if (platform && CPU.platform != platform) {
       console.error(
         `${document.gcl.file} 文件：
-        ${type} 转换要求的 ${platform} 平台与该CPU下其它文档冲突
+        ${feature} 功能要求的 ${platform} 平台与该CPU下其它文档冲突
         建议删除 platform 指令，并统一在CPU文档中设置!`
       );
       return;
     }
-    if (!supported_categorys[type].includes(CPU.platform)) {
-      console.error(`文件:"${document.gcl.file}" 文档:[${document.CPUs.join(',')}]:${document.type} 的转换功能不支持`);
+    if (!supported_categorys[feature].includes(CPU.platform)) {
+      console.error(`文件:"${document.gcl.file}" 文档:[${document.CPUs.join(',')}]:${document.feature} 的转换功能不支持`);
       return; // 剩余的CPU也一定不满足条件
     }
     // 按类型压入文档至CPU
-    CPU.add_type(type, document);
+    CPU.add_feature(feature, document);
 
     // 压入内置符号
     // 将包含文件的符号扩展到内置符号名称列表
@@ -152,9 +152,9 @@ async function add_conf(document) {
     const name = CPU.name;
     if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
     const area = { CPU, list, includes, files, loop_additional_code, options, gcl: document.gcl };
-    const parse_symbols = converter[type].parse_symbols;
+    const parse_symbols = converter[feature].parse_symbols;
     if (typeof parse_symbols === 'function') parse_symbols(area);
-    conf_list[type].push(area);
+    conf_list[feature].push(area);
   }
 }
 
@@ -172,7 +172,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         await gcl.load(filename);
         for (const doc of gcl.documents) {
           // 确保CPU优先处理
-          if (doc.type === 'CPU') docs.unshift(doc);
+          if (doc.feature === 'CPU') docs.unshift(doc);
           else docs.push(doc);
         }
         silent || console.log(`\t${filename}`);
@@ -192,8 +192,8 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     build_symbols(CPU);
   }
 
-  for (const [type, list] of Object.entries(conf_list)) {
-    const build = converter[type].build;
+  for (const [feature, list] of Object.entries(conf_list)) {
+    const build = converter[feature].build;
     if (typeof build === 'function') list.forEach(build);
   };
 
@@ -209,8 +209,8 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     }
     for (const [name, CPU] of Object.entries(CPUs)) {
       // 生成无注释的配置
-      const yaml = supported_types.reduce(
-        (docs, type) => CPU[type] ? `${docs}\n\n${CPU[type].toString(options)}` : docs,
+      const yaml = supported_features.reduce(
+        (docs, feature) => CPU[feature] ? `${docs}\n\n${CPU[feature].toString(options)}` : docs,
         `# CPU ${name} configuration`
       );
       const filename = `${posix.join(work_path, CPU.output_dir, name)}.zyml`;
@@ -222,11 +222,11 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   // 第三遍扫描 生成最终待转换数据
   const copy_list = [];
   const convert_list = [];
-  for (const type of supported_types) {
-    for (const item of conf_list[type]) {
+  for (const feature of supported_features) {
+    for (const item of conf_list[feature]) {
       const output_dir = posix.join(work_path, item.CPU.output_dir);
-      const gen_copy_list = converter[type].gen_copy_list;
-      assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${type}_copy_list`);
+      const gen_copy_list = converter[feature].gen_copy_list;
+      assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
       const conf_files = [];
       for (const file of item.files) {
         if (/\\/.test(file)) throw new SyntaxError('路径分隔符要使用"/"!');
@@ -242,14 +242,14 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         }
       };
       const ret = gen_copy_list(item);
-      assert(Array.isArray(ret), `innal error: gen_${type}_copy_list(${item}) is not a Array`);
+      assert(Array.isArray(ret), `innal error: gen_${feature}_copy_list(${item}) is not a Array`);
       copy_list.push(...conf_files, ...ret);
     }
 
-    // push each gen_{type}(type_item) to convert_list
-    const gen = converter[type].gen;
+    // push each gen_{feature}(feature_item) to convert_list
+    const gen = converter[feature].gen;
     assert.equal(typeof gen, 'function', 'innal error');
-    convert_list.push(...gen(conf_list[type]));
+    convert_list.push(...gen(conf_list[feature]));
   };
   convert_list.push(gen_symbols(CPUs)); // symbols converter
   return [copy_list, convert_list];

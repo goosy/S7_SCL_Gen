@@ -1,6 +1,6 @@
 ---
 CPU: [AS1, AS2] # 指示属于哪一个CPU
-type: AI #  指示本配置为生成 AI 代码
+feature: AI #  指示本配置为生成 AI 代码
 
 # 额外代码
 # 字符串形式指示直接SCL代码，内容将合并输出在 AI_Loop.SCL 文件中

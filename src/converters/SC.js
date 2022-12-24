@@ -16,8 +16,8 @@ export const LOOP_NAME = 'SC_Loop';
 export const CRC = 'CRC16';
 export const POLLS_NAME = 'SC_polls_DB';
 
-export function is_type(type) {
-  return type.toUpperCase() === 'MB' || type.toUpperCase() === 'SC';
+export function is_feature(feature) {
+  return feature.toUpperCase() === 'MB' || feature.toUpperCase() === 'SC';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com

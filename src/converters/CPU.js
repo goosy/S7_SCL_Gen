@@ -26,8 +26,8 @@ export const device_types = [
 ];
 const DEFAULT_DEVICE = "CPU31x-2PN/DP"; //默认的CPU设备
 
-export function is_type(type) {
-    return type.toUpperCase() === 'CPU';
+export function is_feature(feature) {
+    return feature.toUpperCase() === 'CPU';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com

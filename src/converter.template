@@ -1,6 +1,6 @@
 // 本代码为 ./build.js 自动生成
-// ./src/converters 目录下为转换器文件，文件名称必须是 {type}.js 的格式。
-// 转换器文件定义了目前支持的转换类型
+// ./src/converters 目录下为转换器文件，文件名称必须是 {feature}.js 的格式。
+// 转换器文件定义了目前支持的转换功能
 // 每个转换器必须实现
 //   function is_supported   判断是否支持当前转换文档
 //   function gen            生成转换列表，列表可为空，列表的每一项是一个转换对象 { rules, template }
@@ -8,18 +8,18 @@
 // 每个转换器可选实现
 //   function parse_symbols  第一遍扫描文档时提取符号
 //   function build          第二遍扫描文档时构建完善的转换数据
-//   {type}.yaml             该转换类型的内置符号列表，yaml文件放在.js同一文件夹下
+//   {feature}.yaml             该转换类型的内置符号列表，yaml文件放在.js同一文件夹下
 
-// 引入所有的转换器{{#for type,converter in converters}}
-import * as {{type}} from './converters/{{type}}.js';{{#endfor converter}}
+// 引入所有的转换器{{#for feature,converter in converters}}
+import * as {{feature}} from './converters/{{feature}}.js';{{#endfor converter}}
 
-export const supported_types = [{{#for cat in supported_category}}
-    '{{cat.type}}',{{#endfor}}
+export const supported_features = [{{#for cat in supported_category}}
+    '{{cat.feature}}',{{#endfor}}
 ];
 export const supported_categorys = {{'{'}}{{#for cat in supported_category}}
-    {{cat.type}}: {{cat.platforms}},{{#endfor}}
+    {{cat.feature}}: {{cat.platforms}},{{#endfor}}
 }
 export const supported_platforms = ['step7', 'portal', 'pcs7'];
 export const converter = {
-{{#for type,converter in converters}}    {{type}}, 
+{{#for feature,converter in converters}}    {{feature}}, 
 {{#endfor converter}}}

@@ -1,6 +1,6 @@
 ---
 CPU: AS1    # 指示属于哪一个CPU
-type: alarm # 指示本配置为生成 Alarm 代码
+feature: alarm # 指示本配置为生成 Alarm 代码
 
 includes: ~
 

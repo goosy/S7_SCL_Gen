@@ -116,15 +116,15 @@ export class GCL {
                 enumerable,
                 configurable
             });
-            const type = doc.get('type') ?? options.type;
-            Object.defineProperty(doc, 'type', {
+            const feature = doc.get('feature') ?? doc.get('type') ?? options.feature;
+            Object.defineProperty(doc, 'feature', {
                 get() {
-                    return type;
+                    return feature;
                 },
                 enumerable,
                 configurable
             });
-            this[type] = doc;
+            this[feature] = doc;
         }
     }
 }

@@ -6,8 +6,8 @@ export const platforms = ['step7'];
 export const NAME = 'PV_Alarm';
 export const LOOP_NAME = 'PV_Loop';
 
-export function is_type(type) {
-    return type.toUpperCase() === 'PV_ALARM' || type.toUpperCase() === 'PVALARM' || type.toUpperCase() === 'PV';
+export function is_feature(feature) {
+    return feature.toUpperCase() === 'PV_ALARM' || feature.toUpperCase() === 'PVALARM' || feature.toUpperCase() === 'PV';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
