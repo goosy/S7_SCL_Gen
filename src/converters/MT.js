@@ -186,11 +186,11 @@ function get_device_id(device, R, X) {
 export function parse_symbols({ CPU, list }) {
   const document = CPU.MT;
   list.forEach(conn => {
-    if (Array.isArray(conn.DB)) conn.DB[3] ??= conn.comment;
-    make_prop_symbolic(conn, 'DB', CPU, { document, default_type: NAME });
+    const comment = conn.comment;
+    make_prop_symbolic(conn, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
     conn.polls.forEach(poll => {
-      if (Array.isArray(poll.recv_DB)) poll.recv_DB[3] ??= poll.comment;
-      make_prop_symbolic(poll, 'recv_DB', CPU, { document });
+      const comment = poll.comment;
+      make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment } });
     })
   });
 }

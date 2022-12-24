@@ -36,14 +36,13 @@ export function parse_symbols({ CPU, list }) {
     const document = CPU.timer;
     list.forEach(timer => {
         if (!timer.DB) throw new SyntaxError("timer转换必须有DB块!");
-        if (timer.comment && Array.isArray(timer.DB)) {
-            timer.DB[3] ??= `${timer.comment} DB`;
-        }
-        make_prop_symbolic(timer, 'DB', CPU, { document, default_type: NAME });
+        const comment = timer.comment ? `${timer.comment} DB` : '';
+        make_prop_symbolic(timer, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
         timer.PPS ??= '"Pulse_1Hz"';
-        make_prop_symbolic(timer, 'enable', CPU, { document, default_type: 'BOOL' });
-        make_prop_symbolic(timer, 'reset', CPU, { document, default_type: 'BOOL' });
-        make_prop_symbolic(timer, 'PPS', CPU, { document, default_type: 'BOOL' });
+        const options = { document, force: { type: 'BOOL' } };
+        make_prop_symbolic(timer, 'enable', CPU, options);
+        make_prop_symbolic(timer, 'reset', CPU, options);
+        make_prop_symbolic(timer, 'PPS', CPU, options);
     });
 }
 

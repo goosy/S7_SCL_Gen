@@ -53,18 +53,19 @@ END_FUNCTION
 export function parse_symbols({ CPU, list }) {
     const document = CPU.valve;
     list.forEach(valve => {
-        if (!valve.DB) return; // 空AI不处理
-
-        function symbolic(default_type, comment) {
-            if (comment) return function (prop) {
-                if (Array.isArray(valve[prop])) valve[prop][3] ??= `${comment} ${prop}`;
-                make_prop_symbolic(valve, prop, CPU, { document, default_type });
-            }
+        if (!valve.DB) return; // 空valve不处理
+        function symbolic(type, _comment) {
             return function (prop) {
-                make_prop_symbolic(valve, prop, CPU, { document, default_type });
+                let comment = null;
+                if (_comment) comment = `${_comment} ${prop}`;
+                const options = {
+                    document,
+                    force: { type },
+                    default: { comment }
+                };
+                make_prop_symbolic(valve, prop, CPU, options);
             }
         }
-
         symbolic(NAME, valve.comment)('DB');
         symbolic('WORD', valve.comment)('AI');
         ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(symbolic('BOOL', valve.comment));

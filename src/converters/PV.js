@@ -44,9 +44,8 @@ export function parse_symbols({ CPU, list }) {
     const document = CPU.PV;
     list.forEach(PV => {
         if (!PV.DB) return; // 空PV不处理
-        if (Array.isArray(PV.DB)) PV.DB[3] ??= PV.comment;
-        make_prop_symbolic(PV, 'DB', CPU, { document, default_type: NAME });
-        make_prop_symbolic(PV, 'input', CPU, { document, default_type: 'REAL' });
+        make_prop_symbolic(PV, 'DB', CPU, { document, force: { type: NAME }, default: { comment: PV.comment } });
+        make_prop_symbolic(PV, 'input', CPU, { document, force: { type: 'REAL' } });
     });
 }
 

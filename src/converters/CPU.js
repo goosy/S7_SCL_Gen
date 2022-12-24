@@ -73,8 +73,7 @@ export function parse_symbols({ CPU, list }) {
     const document = CPU.CPU;
     list.forEach(FN => {
         if (!FN.block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
-        if (Array.isArray(FN.block)) FN.block[3] ??= FN.comment;
-        make_prop_symbolic(FN, 'block', CPU, { document }); //强制类型
+        make_prop_symbolic(FN, 'block', CPU, { document, default: { comment: FN.comment } }); //S7函数类型
     });
 }
 

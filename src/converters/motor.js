@@ -63,20 +63,22 @@ export function parse_symbols({ CPU, list }) {
     const document = CPU.motor;
     list.forEach(motor => {
         if (!motor.DB) return; // 空块不处理
-
-        function symbolic(default_type, comment) {
-            if (comment) return function (prop) {
-                if (Array.isArray(motor[prop])) motor[prop][3] ??= `${comment} ${prop}`;
-                make_prop_symbolic(motor, prop, CPU, { document, default_type });
-            }
+        function symbolic(type, _comment) {
             return function (prop) {
-                make_prop_symbolic(motor, prop, CPU, { document, default_type });
+                let comment = null;
+                if (_comment) comment = `${_comment} ${prop}`;
+                const options = {
+                    document,
+                    force: { type },
+                    default: { comment }
+                };
+                make_prop_symbolic(motor, prop, CPU, options);
             }
         }
 
         symbolic(NAME, motor.comment)('DB');
         ['enable', 'run', 'error', 'remote'].forEach(symbolic('BOOL', motor.comment));
-        ['timer_pulse'].forEach(symbolic('BOOL'));
+        symbolic('BOOL')('timer_pulse');
         ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(symbolic('BOOL', motor.comment));
     });
 }

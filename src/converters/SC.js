@@ -119,13 +119,16 @@ export function parse_symbols({ CPU, list, options }) {
       type = CP340_NAME;
     }
     assert(type !== 'notype', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`));
-    module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
-    make_prop_symbolic(module, 'module_addr', CPU, { document, default_type: 'WORD' });
-    if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
-    make_prop_symbolic(module, 'DB', CPU, { document, default_type: type });
+    module.module_addr = [
+      `${module.type}_${++index}_addr`,
+      'IW' + module.module_addr,
+      'WORD',
+      `${module.type} module address`
+    ];
+    make_prop_symbolic(module, 'module_addr', CPU);
+    make_prop_symbolic(module, 'DB', CPU, { document, force: { type }, default: { comment: module.comment } });
     module.polls.forEach(poll => {
-      if (Array.isArray(poll.recv_DB)) poll.recv_DB[3] ??= poll.comment;
-      make_prop_symbolic(poll, 'recv_DB', CPU, { document });
+      make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment: poll.comment } });
       poll.extra_send_DB = !!poll.send_DB;
       poll.send_DB ??= POLLS_NAME;
       make_prop_symbolic(poll, 'send_DB', CPU, { document });

@@ -60,10 +60,9 @@ export function parse_symbols({ CPU, list }) {
     const document = CPU.AI;
     list.forEach(AI => {
         if (!AI.DB) return; // 空AI不处理
-        if (Array.isArray(AI.DB)) AI.DB[3] ??= AI.comment;
-        make_prop_symbolic(AI, 'DB', CPU, { document, force_type: NAME }); //强制类型
-        if (Array.isArray(AI.input)) AI.input[3] ??= AI.comment;
-        make_prop_symbolic(AI, 'input', CPU, { document, default_type: 'WORD' });
+        const comment = AI.comment;
+        make_prop_symbolic(AI, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
+        make_prop_symbolic(AI, 'input', CPU, { document, force: { type: 'WORD' }, default: { comment } });
     });
 }
 

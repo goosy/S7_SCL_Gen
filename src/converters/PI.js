@@ -56,19 +56,23 @@ export function parse_symbols({ CPU, list, options }) {
   const document = CPU.PI;
   let index = 0;
   list.forEach(module => {
-    if (!module?.DB) throw Error(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
-    module.type ??= FM3502_CNT_NAME;
+    if (!module?.DB) throw Error(`${CPU.name}:PI:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
+    module.type ??= FM3502_CNT_NAME; // 目前只支持FM350-2
     let type = 'notype';
     if (module.type === FM3502_CNT_NAME) {
       options.has_FM3502 = true;
       type = NAME;
     }
-    if (type === 'notype') throw new Error(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`);
-    module.module_addr = [`${module.type}_${++index}_addr`, 'IW' + module.module_addr];
-    make_prop_symbolic(module, 'module_addr', CPU, { document, default_type: 'WORD' });
-    if (Array.isArray(module.DB)) module.DB[3] ??= module.comment;
-    make_prop_symbolic(module, 'DB', CPU, { document, default_type: type });
-    make_prop_symbolic(module, 'count_DB', CPU, { document, default_type: FM3502_CNT_NAME });
+    if (type === 'notype') throw new Error(`${CPU.name}:PI:module${module.module_addr} 的类型 "${module.type}" 不支持`);
+    module.module_addr = [
+      `${module.type}_${++index}_addr`,
+      'IW' + module.module_addr,
+      'WORD',
+      'FM350-2 address'
+    ];
+    make_prop_symbolic(module, 'module_addr', CPU, { document });
+    make_prop_symbolic(module, 'DB', CPU, { document, force: { type }, default: { comment: module.comment } });
+    make_prop_symbolic(module, 'count_DB', CPU, { document, force: { type: FM3502_CNT_NAME } });
   });
 }
 
@@ -83,7 +87,7 @@ export function build(PI) {
   list.forEach(module => { // 处理配置，形成完整数据
     if (Array.isArray(module.module_addr)) throw Error(`${CPU.name}:PI 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
     const MNO = module.module_addr.block_no;
-    module.module_no = fixed_hex(MNO, 4);
+    module.module_no = fixed_hex(MNO * 1, 4);
     module.channel_no = fixed_hex(MNO * 8, 8);
   });
 }
