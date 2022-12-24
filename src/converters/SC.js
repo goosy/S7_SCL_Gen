@@ -76,8 +76,8 @@ BEGIN{{#for module in modules}}
 // 主调用
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
-// {{no+1}}. {{module.type}} {{module.comment}}
-"{{#if module.type == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customTrigger}}
+// {{no+1}}. {{module.model}} {{module.comment}}
+"{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customTrigger}}
   customTrigger := TRUE,
   REQ           := {{module.REQ}},{{#endif}}
   Laddr         := {{module.module_addr.block_no}},  // CP模块地址
@@ -109,24 +109,24 @@ export function parse_symbols({ CPU, list, options }) {
   let index = 0;
   list.forEach(module => {
     assert(module?.DB, SyntaxError(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`));
-    module.type ??= 'CP341';
-    let type = 'notype';
-    if (module.type === 'CP341') {
+    module.model ??= 'CP341';
+    let model = 'nomodel';
+    if (module.model === 'CP341') {
       options.has_CP341 = true;
-      type = CP341_NAME;
-    } else if (module.type === 'CP340') {
+      model = CP341_NAME;
+    } else if (module.model === 'CP340') {
       options.has_CP340 = true;
-      type = CP340_NAME;
+      model = CP340_NAME;
     }
-    assert(type !== 'notype', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.type}" 不支持`));
+    assert(model !== 'nomodel', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.model}" 不支持`));
     module.module_addr = [
-      `${module.type}_${++index}_addr`,
+      `${module.model}_${++index}_addr`,
       'IW' + module.module_addr,
       'WORD',
-      `${module.type} module address`
+      `${module.model} module address`
     ];
     make_prop_symbolic(module, 'module_addr', CPU);
-    make_prop_symbolic(module, 'DB', CPU, { document, force: { type }, default: { comment: module.comment } });
+    make_prop_symbolic(module, 'DB', CPU, { document, force: { type: model }, default: { comment: module.comment } });
     module.polls.forEach(poll => {
       make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment: poll.comment } });
       poll.extra_send_DB = !!poll.send_DB;

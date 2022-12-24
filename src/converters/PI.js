@@ -31,7 +31,7 @@ END_DATA_BLOCK{{#endfor module}}
 // 主调用
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
-// {{no+1}}. {{module.type}} {{module.comment}}
+// {{no+1}}. {{module.model}} {{module.comment}}
 "{{NAME}}"."{{module.DB.name}}"(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向"{{module.count_DB.name}}"
 {{#endfor module}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
@@ -57,21 +57,21 @@ export function parse_symbols({ CPU, list, options }) {
   let index = 0;
   list.forEach(module => {
     if (!module?.DB) throw Error(`${CPU.name}:PI:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
-    module.type ??= FM3502_CNT_NAME; // 目前只支持FM350-2
-    let type = 'notype';
-    if (module.type === FM3502_CNT_NAME) {
+    module.model ??= FM3502_CNT_NAME; // 目前只支持FM350-2
+    let model = 'nomodel';
+    if (module.model === FM3502_CNT_NAME) {
       options.has_FM3502 = true;
-      type = NAME;
+      model = NAME;
     }
-    if (type === 'notype') throw new Error(`${CPU.name}:PI:module${module.module_addr} 的类型 "${module.type}" 不支持`);
+    if (model === 'nomodel') throw new Error(`${CPU.name}:PI:module${module.module_addr} 的类型 "${module.model}" 不支持`);
     module.module_addr = [
-      `${module.type}_${++index}_addr`,
+      `${module.model}_${++index}_addr`,
       'IW' + module.module_addr,
       'WORD',
       'FM350-2 address'
     ];
     make_prop_symbolic(module, 'module_addr', CPU, { document });
-    make_prop_symbolic(module, 'DB', CPU, { document, force: { type }, default: { comment: module.comment } });
+    make_prop_symbolic(module, 'DB', CPU, { document, force: { type: model }, default: { comment: module.comment } });
     make_prop_symbolic(module, 'count_DB', CPU, { document, force: { type: FM3502_CNT_NAME } });
   });
 }

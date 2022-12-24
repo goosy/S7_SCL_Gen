@@ -50,7 +50,7 @@ list : # CP 模块列表
 #   recv_DB recv_start 必须指定CPU中的地址，不会自动生成。
 
 - comment: CP01 Module736 储罐液位
-  type: CP340                         # 类型: 字符串
+  model: CP340                         # 类型: 字符串
   # 指示由外部触发通信，这时由REQ来触发通信。这2个配置项省略时将自动使用顺序发送
   # 类型： BOOL
   customTrigger: TRUE
@@ -70,7 +70,7 @@ list : # CP 模块列表
     recv_start: 0                     # 类型: 正整数
 
 - comment: CP02 Module752 河口来油流量与天然气流量
-  type: CP341
+  model: CP341
   module_addr: 752
   DB: [CP02, DB882]
   polls_name: polls_flow

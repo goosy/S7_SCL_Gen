@@ -5,7 +5,7 @@ import { add_symbols, make_prop_symbolic } from '../symbols.js';
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal'];
 
-export const device_types = [
+export const devices = [
     "IM151-8PN/DP",
     "CPU31x-2PN/DP",
     "CPU314C-2PN/DP",
