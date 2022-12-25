@@ -125,6 +125,7 @@ function build_input(list, DB_name) {
       item.name = `input_${index++}`;
       item.edge = item.target.value;
     }
+    item.comment ??= '';
   }
 }
 
