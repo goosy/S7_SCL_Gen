@@ -10,9 +10,10 @@ export function is_feature(feature) {
     return feature.toLowerCase() === 'motor';
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{document.gcl.file}}
+// 摘要: {{document.gcl.MD5}}
 {{includes}}
-
 {{#for motor in list}}{{#if motor.DB}}
 // motor背景块: {{motor.comment}}
 DATA_BLOCK {{motor.DB.value}}{{#if platform == 'portal'}}
@@ -123,17 +124,18 @@ export function build({ list }) {
 export function gen(motor_list) {
     const rules = [];
     motor_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
-        const { name, output_dir, platform } = CPU;
+        const { output_dir, platform } = CPU;
+        const document = CPU.motor;
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {
-                name,
                 platform,
                 includes,
                 loop_additional_code,
                 NAME,
                 LOOP_NAME,
                 list,
+                document,
             }
         })
     });

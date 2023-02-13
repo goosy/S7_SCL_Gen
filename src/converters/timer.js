@@ -10,7 +10,9 @@ export function is_feature(feature) {
     return feature.toLowerCase() === 'timer';
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{document.gcl.file}}
+// 摘要: {{document.gcl.MD5}}
 {{includes}}
 
 // 主循环调用
@@ -49,16 +51,17 @@ export function parse_symbols({ CPU, list }) {
 export function gen(timer_list) {
     const rules = [];
     timer_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
-        const { name, output_dir } = CPU;
+        const { output_dir } = CPU;
+        const document = CPU.timer;
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {
-                name,
                 includes,
                 loop_additional_code,
                 NAME,
                 LOOP_NAME,
                 list,
+                document,
             }
         })
     });

@@ -77,7 +77,9 @@ export function is_feature(feature) {
   return feature.toUpperCase() === 'MT' || feature.toLowerCase() === 'modbustcp';
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{document.gcl.file}}
+// 摘要: {{document.gcl.MD5}}
 {{includes}}
 {{#for conn in connections}}
 DATA_BLOCK "{{conn.DB.name}}" "{{NAME}}" // {{conn.comment}}
@@ -264,12 +266,12 @@ export function build(MT) {
 export function gen(MT_list) {
   const rules = [];
   MT_list.forEach(({ CPU, includes, loop_additional_code, invoke_code, list: connections, options }) => {
-    const { name, output_dir } = CPU;
+    const { output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
+    const document = CPU.MT;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
-        name,
         includes,
         loop_additional_code,
         invoke_code,
@@ -277,6 +279,7 @@ export function gen(MT_list) {
         NAME,
         LOOP_NAME,
         POLLS_NAME,
+        document,
       }
     })
   });

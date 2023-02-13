@@ -30,7 +30,9 @@ export function is_feature(feature) {
     return feature.toUpperCase() === 'CPU';
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{document.gcl.file}}
+// 摘要: {{document.gcl.MD5}}
 {{includes}}
 {{#for FN in list}}{{#if FN.block.block_name === 'OB'}}
 ORGANIZATION_BLOCK "{{FN.block.name}}"{{#if FN.title}}
@@ -89,15 +91,16 @@ export function build({ CPU, list, options = {} }) {
 export function gen(CPU_list) {
     const CPU_rules = [];
     CPU_list.forEach(({ CPU, includes, list, options = {} }) => {
-        const { name, output_dir, platform } = CPU;
+        const { output_dir, platform } = CPU;
         const { output_file } = options;
+        const document = CPU.CPU;
         if (includes.length || list.length) CPU_rules.push({
             "name": `${output_dir}/${output_file ?? NAME}.scl`,
             "tags": {
-                name,
                 platform,
                 includes,
                 list,
+                document,
             }
         });
     });

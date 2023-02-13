@@ -17,7 +17,9 @@ export function is_feature(feature) {
   return feature.toUpperCase() === 'PI';
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{document.gcl.file}}
+// 摘要: {{document.gcl.MD5}}
 {{includes}}
 {{#for module in modules}}
 // FM350-2专用数据块"{{module.count_DB.name}}"
@@ -95,18 +97,19 @@ export function build(PI) {
 export function gen(PI_list) {
   const rules = [];
   PI_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
-    const { name, output_dir } = CPU;
+    const { output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
+    const document = CPU.PI;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
-        name,
         modules,
         includes,
         loop_additional_code,
         NAME,
         LOOP_NAME,
         FM3502_CNT_NAME,
+        document,
       }
     })
   });

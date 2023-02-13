@@ -10,7 +10,9 @@ export function is_feature(feature) {
     return feature.toUpperCase() === 'PV_ALARM' || feature.toUpperCase() === 'PVALARM' || feature.toUpperCase() === 'PV';
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{document.gcl.file}}
+// 摘要: {{document.gcl.MD5}}
 {{includes}}
 {{#for PV_item in list}}{{#if PV_item.DB}}
 // PV_Alarm 背景块：{{PV_item.comment}}
@@ -52,17 +54,18 @@ export function parse_symbols({ CPU, list }) {
 export function gen(PV_list) {
     const rules = [];
     PV_list.forEach(({ CPU, includes, loop_additional_code, list, options = {} }) => {
-        const { name, output_dir } = CPU;
+        const { output_dir } = CPU;
         const { output_file = LOOP_NAME } = options;
+        const document = CPU.PV;
         rules.push({
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
                 NAME,
                 LOOP_NAME,
-                name,
                 includes,
                 loop_additional_code,
                 list,
+                document,
             }
         })
     });

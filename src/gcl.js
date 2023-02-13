@@ -7,6 +7,7 @@ import {
     isPair, isScalar,
     parseAllDocuments, parseDocument,
 } from 'yaml';
+import { createHash } from 'crypto';
 
 export class GCL {
     #file;
@@ -42,6 +43,10 @@ export class GCL {
         } while (index > -1);
         if (position < this.#source.length) this.#lines.push([position, this.#source.length]);
     }
+    #MD5;
+    get MD5() {
+        return this.#MD5;
+    }
 
     constructor() { }
 
@@ -69,6 +74,7 @@ export class GCL {
         }
         this.get_lines();
         this.#documents = [];
+        this.#MD5 = createHash('md5').update(this.#source).digest('hex');
 
         if (inSCL) { // SCL中只能用注释进行符号定义
             this.#SCL = '';

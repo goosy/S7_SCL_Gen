@@ -20,7 +20,9 @@ export function is_feature(feature) {
   return feature.toUpperCase() === 'MB' || feature.toUpperCase() === 'SC';
 }
 
-const template = `// 本代码由 S7_SCL_SRC_GEN 依据配置 "{{name}}" 自动生成。 author: goosy.jo@gmail.com
+const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{document.gcl.file}}
+// 摘要: {{document.gcl.MD5}}
 {{includes}}
 
 // 轮询DB块，含485调度指令和发送数据
@@ -195,12 +197,12 @@ export function build(SC) {
 export function gen(SC_list) {
   const rules = [];
   SC_list.forEach(({ CPU, includes, loop_additional_code, invoke_code, list: modules, options }) => {
-    const { name, output_dir } = CPU;
+    const { output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
+    const document = CPU.SC;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
-        name,
         modules,
         includes,
         loop_additional_code,
@@ -209,6 +211,7 @@ export function gen(SC_list) {
         CP341_NAME,
         LOOP_NAME,
         POLLS_NAME,
+        document,
       }
     })
   });
