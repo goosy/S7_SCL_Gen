@@ -102,7 +102,7 @@ async function add_conf(document) {
   // 包含文件符号 [YAMLSeq symbol]
   const symbols_of_includes = gcl_list.map(
     gcl => gcl.documents.map(
-      doc => doc.get('symbols').items
+      doc => doc.get('symbols')?.items ?? []
     )
   ).flat(2);
   // 文档前置符号
