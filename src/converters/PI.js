@@ -7,6 +7,7 @@
 import { fixed_hex, context } from '../util.js';
 import { make_prop_symbolic } from '../symbols.js';
 import { posix } from 'path';
+import assert from 'assert/strict';
 
 export const platforms = ['step7'];
 export const NAME = 'PI_Proc';
@@ -58,7 +59,8 @@ export function parse_symbols({ CPU, list, options }) {
   const document = CPU.PI;
   let index = 0;
   list.forEach(module => {
-    if (!module?.DB) throw new Error(`${CPU.name}:PI:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
+    ++index;
+    if (!module?.DB) throw new Error(`${CPU.name}:PI 第${index}个module(${module.comment}) 没有正确定义背景块!`);
     module.model ??= FM3502_CNT_NAME; // 目前只支持FM350-2
     let model = 'nomodel';
     if (module.model === FM3502_CNT_NAME) {
@@ -66,13 +68,15 @@ export function parse_symbols({ CPU, list, options }) {
       model = NAME;
     }
     if (model === 'nomodel') throw new Error(`${CPU.name}:PI:module${module.module_addr} 的类型 "${module.model}" 不支持`);
-    module.module_addr = [
-      `${module.model}_${++index}_addr`,
-      'IW' + module.module_addr,
+    assert(module.module || module.module_addr, new SyntaxError(`${CPU.name}:PI 第${index}个module(${module.comment}) 未提供 module 或 module_addr!`));
+    module.module ??= [
+      `PI${index}_addr`,
+      `IW${module.module_addr}`,
       'WORD',
-      'FM350-2 address'
+      'HW module address'
     ];
-    make_prop_symbolic(module, 'module_addr', CPU, { document });
+    module.module[3] ??= 'HW module address';
+    make_prop_symbolic(module, 'module', CPU, { document });
     make_prop_symbolic(module, 'DB', CPU, { document, force: { type: model }, default: { comment: module.comment } });
     make_prop_symbolic(module, 'count_DB', CPU, { document, force: { type: FM3502_CNT_NAME } });
   });
@@ -87,8 +91,8 @@ export function parse_symbols({ CPU, list, options }) {
 export function build(PI) {
   const { CPU, list } = PI;
   list.forEach(module => { // 处理配置，形成完整数据
-    if (Array.isArray(module.module_addr)) throw new Error(`${CPU.name}:PI 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
-    const MNO = module.module_addr.block_no;
+    assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:PI 的模块(${module.comment}) 模块地址有误!`));
+    const MNO = module.module.block_no;
     module.module_no = fixed_hex(MNO * 1, 4);
     module.channel_no = fixed_hex(MNO * 8, 8);
   });

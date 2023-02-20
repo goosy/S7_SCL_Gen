@@ -82,7 +82,7 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 "{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customTrigger}}
   customTrigger := TRUE,
   REQ           := {{module.REQ}},{{#endif}}
-  Laddr         := {{module.module_addr.block_no}},  // CP模块地址
+  Laddr         := {{module.module.block_no}},  // CP模块地址
   DATA          := "{{POLLS_NAME}}".{{module.polls_name}});
 {{#endfor module}}
 // 发送接收块
@@ -110,7 +110,8 @@ export function parse_symbols({ CPU, list, options }) {
   const document = CPU.SC;
   let index = 0;
   list.forEach(module => {
-    assert(module?.DB, new SyntaxError(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`));
+    ++index;
+    assert(module?.DB, new SyntaxError(`${CPU.name}:SC 第${index}个module(${module.comment}) 没有正确定义背景块!`));
     module.model ??= 'CP341';
     let model = 'nomodel';
     if (module.model === 'CP341') {
@@ -121,13 +122,15 @@ export function parse_symbols({ CPU, list, options }) {
       model = CP340_NAME;
     }
     assert(model !== 'nomodel', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.model}" 不支持`));
-    module.module_addr = [
-      `${module.model}_${++index}_addr`,
-      'IW' + module.module_addr,
+    assert(module.module || module.module_addr, new SyntaxError(`${CPU.name}:SC:module(${module.comment}) 未提供 module 或 module_addr!`));
+    module.module ??= [ 
+      `CP${index}_addr`,
+      `IW${module.module_addr}`,
       'WORD',
-      `${module.model} module address`
+      'HW module address'
     ];
-    make_prop_symbolic(module, 'module_addr', CPU);
+    module.module[3] ??= 'HW module address';
+    make_prop_symbolic(module, 'module', CPU);
     make_prop_symbolic(module, 'DB', CPU, { document, force: { type: model }, default: { comment: module.comment } });
     module.polls.forEach(poll => {
       make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment: poll.comment } });
@@ -151,7 +154,7 @@ export function build(SC) {
   polls.forEach((poll, index) => poll.index = index);
   let sendDBB = polls.length * 16;
   list.forEach(module => { // 处理配置，形成完整数据
-    assert(!Array.isArray(module.module_addr), new Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`));
+    assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:SC:module(${module.comment}) 模块地址有误!`));
     module.polls_name ??= "polls_" + CPU.poll_list.push_new();
     module.customTrigger ??= false;
     module.polls.forEach(poll => {

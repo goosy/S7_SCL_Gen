@@ -57,8 +57,9 @@ list : # CP 模块列表
   customTrigger: TRUE
   # 类型: S7符号定义 | S7符号引用 | SCL表达式
   REQ: Pulse_1Hz
-  module_addr: 736                    # 类型: 正整数
-  DB: [CP01, DB881]                   # 类型: S7符号定义 | S7符号引用
+  # module 和 module_addr 必须有一个，用于指明使用哪一个CP模块硬件
+  module: [CP01, IW736]               # 类型: S7符号定义 | S7符号引用
+  DB: [CP_01, DB881]                  # 类型: S7符号定义 | S7符号引用
   polls_name: polls_LIT               # 类型: 字符串
   polls:
   - comment: '液位'                   # 类型: 字符串
@@ -72,8 +73,9 @@ list : # CP 模块列表
 
 - comment: CP02 Module752 河口来油流量与天然气流量
   model: CP341
-  module_addr: 752
-  DB: [CP02, DB882]
+  # module 和 module_addr 必须有一个，用于指明使用哪一个CP模块硬件
+  module_addr: 752                    # 类型: 正整数
+  DB: [CP_02, DB882]
   polls_name: polls_flow
   polls:
 

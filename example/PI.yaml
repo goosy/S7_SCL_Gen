@@ -11,12 +11,14 @@ symbols:
 
 list : # FM350-2 模块列表
 - comment: 模块1
-  model: FM350-2              # 类型: 字符串 目前只支持350-2模块，本字段可省略
-  module_addr: 992           # 类型: 正整数
+  model: FM350-2             # 类型: 字符串 目前只支持350-2模块，本字段可省略
+  # module 和 module_addr 必须有一个，用于指明使用哪一个CP模块硬件
+  module: [PI01, IW992]      # 类型: S7符号定义 | S7符号引用
   count_DB: [PI01_CNT, DB31] # 类型: S7符号定义 | S7符号引用 专用计数块
-  DB: [PI01, DB+]            # 背景块，存放最终结果
+  DB: [PI_01, DB+]            # 背景块，存放最终结果
 - comment: 模块2
-  module_addr: 1008
+  # module 和 module_addr 必须有一个，用于指明使用哪一个CP模块硬件
+  module_addr: 1008          # 类型: 正整数
   count_DB: [PI02_CNT, DB+]  # 专用计数块
-  DB: [PI02, DB+]            # 背景块，存放最终结果
+  DB: [PI_02, DB+]            # 背景块，存放最终结果
 ...
