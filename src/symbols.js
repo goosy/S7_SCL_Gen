@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
 await BUILDIN_SYMBOLS.load(posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), '../symbols_buildin.yaml'));
 
+export const NONSYMBOLS = [];
+
 /**
  * @typedef {object} Source
  * @property {string[]} raw
@@ -52,7 +54,7 @@ function throw_symbol_error(message, curr_symbol, prev_symbol) {
             const { ln, col, code } = gcl.get_coorinfo(...symbol.source.range);
             return `
             文件:${gcl.file}
-            文档:${doc.CPU}-${doc.feature}
+            文档:${symbol.CPU.name}-${doc.feature}
             符号:${symbol.name}
             行:${ln}
             列:${col}
@@ -214,6 +216,10 @@ export function add_symbol(CPU, symbol_raw, options = {}) {
     }
     // 生成符号
     const symbol = new S7Symbol(symbol_definition);
+    // 保存源信息
+    symbol.source.document = options.document;
+    symbol.source.range = is_Seq ? symbol_raw.range : [0, 0, 0];
+    symbol.CPU = CPU;
 
     const is_buildin = CPU.buildin_symbols.includes(symbol.name);
     const ref = symbols_dict[symbol.name];
@@ -221,15 +227,11 @@ export function add_symbol(CPU, symbol_raw, options = {}) {
         // 已存在该内置符号则应用新地址
         ref.address = symbol.address;
     } else if (ref) {
-        // 不允许重复
+        // 不允许符号名称重复
         throw_symbol_error(`符号"${symbol.name}"名称重复!`, symbol, symbols_dict[symbol.name]);
     } else {
         // 新符号则保存
         symbols_dict[symbol.name] = symbol;
-        // 保存源信息
-        symbol.source.document = options.document;
-        symbol.source.range = is_Seq ? symbol_raw.range : [0, 0, 0];
-        symbol.CPU = CPU;
     }
 
     return ref ?? symbol;
@@ -277,6 +279,7 @@ export function make_prop_symbolic(obj, prop, CPU, options = {}) {
         return symbol;
     }
     const value = obj[prop];
+    const comment = obj.comment;
     if (Array.isArray(value)) {
         // 如是数组，则返回符号
         obj[prop] = add_symbol(CPU, value, options);
@@ -295,11 +298,13 @@ export function make_prop_symbolic(obj, prop, CPU, options = {}) {
                     symbol.complete_type();
                     return symbol;
                 } else {
+                    if (value != null) NONSYMBOLS.push({ prop, value, comment });
                     return ref(value);
                 }
             });
         }
     } else {
+        if (value != null) NONSYMBOLS.push({ prop, value, comment });
         // 数字或布尔值返回引用对象
         // 其它直接值返回本身
         obj[prop] = ref(value);

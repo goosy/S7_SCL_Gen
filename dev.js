@@ -14,4 +14,4 @@ const noconvert = argv['zyml-only'];
 process.chdir('./example');
 context.work_path = process.cwd().replace(/\\/g, '/');
 await convert({ output_zyml, noconvert });
-if (!noconvert) console.log("converted all YAML to SCL!")
+if (!noconvert) console.log("\nconverted all YAML to SCL!")

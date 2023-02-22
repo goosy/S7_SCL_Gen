@@ -54,7 +54,7 @@ if (argv.version) {
     process.chdir(path ?? '.');
     context.work_path = process.cwd().replace(/\\/g, '/');
     await convert({ output_zyml, noconvert, silent });
-    noconvert || silent || console.log("converted all YAML to SCL!");
+    noconvert || silent || console.log("\nconverted all YAML to SCL!");
 } else if (cmd === 'watch' || cmd === 'monitor') {
     process.chdir(path ?? '.');
     nodemon({

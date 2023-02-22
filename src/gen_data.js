@@ -5,7 +5,7 @@ import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, supported_platforms, supported_categorys, converter } from './converter.js';
 import { GCL } from './gcl.js';
-import { build_symbols, add_symbols, gen_symbols, BUILDIN_SYMBOLS } from './symbols.js';
+import { build_symbols, add_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 
 /** @type {string: {CPU, includes, files, list, options}[] }*/
@@ -252,5 +252,13 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     convert_list.push(...gen(conf_list[feature]));
   };
   convert_list.push(gen_symbols(CPUs)); // symbols converter
+
+  // 非符号提示
+  if (NONSYMBOLS.length) console.log("\nsome item value isn't a symbol in GCL file, make sure it's a S7 expression.");
+  NONSYMBOLS.forEach(item => {
+    const comment = item.comment ?? '';
+    console.log(`\t${item.prop}:${item.value}   # ${comment}`);
+  });
+
   return [copy_list, convert_list];
 }
