@@ -14,7 +14,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 配置文件: {{document.gcl.file}}
 // 摘要: {{document.gcl.MD5}}
 {{includes}}
-{{#for AI in list}}{{#if AI.DB}}
+{{#for AI in list}}{{#if AI.DB && AI.input}}
 // AI背景块: {{AI.comment}}
 DATA_BLOCK "{{AI.DB.name}}"{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'FALSE' }{{#endif portal}}
@@ -36,17 +36,17 @@ BEGIN{{#if AI.$enable_alarm != null}}
     dead_zone := {{AI.$dead_zone}};{{#endif}}{{#if AI.$FT_time != null}}
     FT_time := L#{{AI.$FT_time}};{{#endif}}
 END_DATA_BLOCK
-{{#endif AI.DB}}{{#endfor AI}}
+{{#endif AI.}}{{#endfor AI}}
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
 BEGIN{{#for AI in list}}
-{{#if AI.DB
+{{#if AI.DB && AI.input
 }}{{#if platform == 'step7'}}"{{NAME}}".{{#endif platform
 }}"{{AI.DB.name}}"(AI := {{AI.input.value}}{{#if AI.enable_alarm != undefined}}, enable_alarm := {{AI.enable_alarm}}{{#endif}}); {{
-#endif AI.DB}}// {{AI.comment}}{{#endfor AI}}
+#endif AI.}}// {{AI.comment}}{{#endfor AI}}
 {{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
@@ -61,7 +61,8 @@ END_FUNCTION
 export function parse_symbols({ CPU, list }) {
     const document = CPU.AI;
     list.forEach(AI => {
-        if (!AI.DB) return; // 空AI不处理
+        if (!AI.DB && !AI.input) return; // 空AI不处理
+        if (!AI.DB || !AI.input) throw new Error(`AI 功能中 DB 和 input 不能只定义1个!`);
         const comment = AI.comment;
         make_prop_symbolic(AI, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
         make_prop_symbolic(AI, 'input', CPU, { document, force: { type: 'WORD' }, default: { comment } });

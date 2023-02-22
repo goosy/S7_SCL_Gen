@@ -14,7 +14,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 配置文件: {{document.gcl.file}}
 // 摘要: {{document.gcl.MD5}}
 {{includes}}
-{{#for PV_item in list}}{{#if PV_item.DB}}
+{{#for PV_item in list}}{{#if PV_item.DB && PV_item.input}}
 // PV_Alarm 背景块：{{PV_item.comment}}
 DATA_BLOCK "{{PV_item.DB.name}}" "{{NAME}}"
 BEGIN{{#if PV_item.$enable_alarm != null}}
@@ -26,11 +26,11 @@ BEGIN{{#if PV_item.$enable_alarm != null}}
     dead_zone := {{PV_item.$dead_zone}};{{#endif}}{{#if PV_item.$FT_time != null}}
     FT_time := L#{{PV_item.$FT_time}};{{#endif}}
 END_DATA_BLOCK
-{{#endif}}{{#endfor PV_item}}
+{{#endif PV_item.}}{{#endfor PV_item}}
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#for PV_item in list}}
-{{#if PV_item.DB}}"{{NAME}}"."{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{#if PV_item.enable_alarm != undefined}}, enable_alarm := {{PV_item.enable_alarm}}{{#endif}}); // {{PV_item.comment}}{{#endif}}{{#endfor PV_item}}
+{{#if PV_item.DB && PV_item.input}}"{{NAME}}"."{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{#if PV_item.enable_alarm != undefined}}, enable_alarm := {{PV_item.enable_alarm}}{{#endif}}); {{#endif PV_item.}}// {{PV_item.comment}}{{#endfor PV_item}}
 {{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
@@ -45,7 +45,8 @@ END_FUNCTION
 export function parse_symbols({ CPU, list }) {
     const document = CPU.PV;
     list.forEach(PV => {
-        if (!PV.DB) return; // 空PV不处理
+        if (!PV.DB && !PV.input) return; // 空PV不处理
+        if (!PV.DB || !PV.input) throw new Error(`PV 功能中 DB 和 input 不能只定义1个!`);
         make_prop_symbolic(PV, 'DB', CPU, { document, force: { type: NAME }, default: { comment: PV.comment } });
         make_prop_symbolic(PV, 'input', CPU, { document, force: { type: 'REAL' } });
     });

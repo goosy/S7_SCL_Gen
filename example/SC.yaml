@@ -37,6 +37,7 @@ symbols:
 - [Flow30, DB830, JS_flow]
 - [GAS, DB841, FXGasFlow]
 - [cmd_ret, DB+, FXGasWrite]
+# JS_Flow 已在 CPU 文档中定义
 
 list : # CP 模块列表
 

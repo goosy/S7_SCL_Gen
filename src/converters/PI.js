@@ -58,7 +58,7 @@ export function parse_symbols({ CPU, list, options }) {
   const document = CPU.PI;
   let index = 0;
   list.forEach(module => {
-    if (!module?.DB) throw Error(`${CPU.name}:PI:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
+    if (!module?.DB) throw new Error(`${CPU.name}:PI:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`);
     module.model ??= FM3502_CNT_NAME; // 目前只支持FM350-2
     let model = 'nomodel';
     if (module.model === FM3502_CNT_NAME) {
@@ -87,7 +87,7 @@ export function parse_symbols({ CPU, list, options }) {
 export function build(PI) {
   const { CPU, list } = PI;
   list.forEach(module => { // 处理配置，形成完整数据
-    if (Array.isArray(module.module_addr)) throw Error(`${CPU.name}:PI 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
+    if (Array.isArray(module.module_addr)) throw new Error(`${CPU.name}:PI 的模块${module?.DB.name}未提供 module_addr 或提供错误!`);
     const MNO = module.module_addr.block_no;
     module.module_no = fixed_hex(MNO * 1, 4);
     module.channel_no = fixed_hex(MNO * 8, 8);

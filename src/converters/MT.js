@@ -188,6 +188,7 @@ function get_device_id(device, R, X) {
 export function parse_symbols({ CPU, list }) {
   const document = CPU.MT;
   list.forEach(conn => {
+    assert(conn?.DB && conn?.polls_name, new SyntaxError(`${CPU.name}:MT:conn(${conn.name ?? conn.comment}) 没有正确定义背景块或轮询名!`));
     const comment = conn.comment;
     make_prop_symbolic(conn, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
     conn.polls.forEach(poll => {

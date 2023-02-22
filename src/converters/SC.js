@@ -110,7 +110,7 @@ export function parse_symbols({ CPU, list, options }) {
   const document = CPU.SC;
   let index = 0;
   list.forEach(module => {
-    assert(module?.DB, SyntaxError(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`));
+    assert(module?.DB, new SyntaxError(`${CPU.name}:SC:module(${module.module_addr ?? module.comment}) 没有正确定义背景块!`));
     module.model ??= 'CP341';
     let model = 'nomodel';
     if (module.model === 'CP341') {
@@ -151,7 +151,7 @@ export function build(SC) {
   polls.forEach((poll, index) => poll.index = index);
   let sendDBB = polls.length * 16;
   list.forEach(module => { // 处理配置，形成完整数据
-    assert(!Array.isArray(module.module_addr), Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`));
+    assert(!Array.isArray(module.module_addr), new Error(`${CPU.name}:SC 的模块${module?.DB.name}未提供 module_addr 或提供错误!`));
     module.polls_name ??= "polls_" + CPU.poll_list.push_new();
     module.customTrigger ??= false;
     module.polls.forEach(poll => {

@@ -18,7 +18,7 @@ symbols:
 - [MT_polls_DB, DB901] # 修改内置DB块 MT_polls_DB 的地址
 
 # 以下为自定义符号
-# - [JS_flow, FB801]  # JS_Flow 已在 CPU 文档中定义，这里禁止重复定义
+# JS_Flow 已在 CPU 文档中定义
 
 list : # modbus TCP 连接列表
 
