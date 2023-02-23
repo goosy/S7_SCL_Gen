@@ -163,7 +163,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
 
   // 第一遍扫描 加载配置\提取符号\建立诊断信息
   try {
-    silent || console.log('readding file:');
+    silent || console.log('\nreadding GCL files: 读取配置文件：');
     const docs = [];
     for (const file of await readdir(work_path)) {
       if (/^.*\.ya?ml$/i.test(file)) {
@@ -254,7 +254,12 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   convert_list.push(gen_symbols(CPUs)); // symbols converter
 
   // 非符号提示
-  if (NONSYMBOLS.length) console.log("\nsome item value isn't a symbol in GCL file, make sure it's a S7 expression.");
+  if (NONSYMBOLS.length) console.log(`
+warning: 警告：
+The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
+Converter treats them as S7 expressions without checking validity. 转换器将它们视为S7表达式不检验有效性
+Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
+  );
   NONSYMBOLS.forEach(item => {
     const comment = item.comment ?? '';
     console.log(`\t${item.prop}:${item.value}   # ${comment}`);

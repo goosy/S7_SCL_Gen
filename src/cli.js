@@ -54,7 +54,7 @@ if (argv.version) {
     process.chdir(path ?? '.');
     context.work_path = process.cwd().replace(/\\/g, '/');
     await convert({ output_zyml, noconvert, silent });
-    noconvert || silent || console.log("\nconverted all YAML to SCL!");
+    noconvert || silent || console.log("\nAll GCL files have been converted to SCL files! 所有GCL文件已转换成SCL文件。");
 } else if (cmd === 'watch' || cmd === 'monitor') {
     process.chdir(path ?? '.');
     nodemon({
@@ -77,7 +77,7 @@ if (argv.version) {
     await copy_file(posix.join(context.module_path, 'README.md'), dst + '/');
     const fullname_dst = posix.join(context.work_path, dst);
     const readme = posix.join(fullname_dst, 'README.md');
-    console.log(`已生成配置文件夹 ${fullname_dst}。\n可以参阅 ${readme} 内的说明。`);
+    console.log(`Generated configuration folder ${fullname_dst}. 已生成配置文件夹 ${fullname_dst}。\nSee instructions in ${readme}. 可以参阅 ${readme} 内的说明。`);
 } else {
     show_help();
 }
