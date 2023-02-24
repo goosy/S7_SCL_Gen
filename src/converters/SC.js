@@ -79,9 +79,9 @@ BEGIN{{#for module in modules}}
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
-"{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customTrigger}}
+"{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customREQ}}
   customTrigger := TRUE,
-  REQ           := {{module.REQ}},{{#endif}}
+  REQ           := {{module.customREQ.value}},{{#endif}}
   Laddr         := {{module.module.block_no}},  // CP模块地址
   DATA          := "{{POLLS_NAME}}".{{module.polls_name}});
 {{#endfor module}}
@@ -132,6 +132,7 @@ export function parse_symbols({ CPU, list, options }) {
     module.module[3] ??= 'HW module address';
     make_prop_symbolic(module, 'module', CPU);
     make_prop_symbolic(module, 'DB', CPU, { document, force: { type: model }, default: { comment: module.comment } });
+    make_prop_symbolic(module, 'customREQ', CPU, { document, force: { type: 'BOOL' }});
     module.polls.forEach(poll => {
       make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment: poll.comment } });
       poll.extra_send_DB = !!poll.send_DB;
@@ -156,7 +157,6 @@ export function build(SC) {
   list.forEach(module => { // 处理配置，形成完整数据
     assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:SC:module(${module.comment}) 模块地址有误!`));
     module.polls_name ??= "polls_" + CPU.poll_list.push_new();
-    module.customTrigger ??= false;
     module.polls.forEach(poll => {
       poll.is_modbus = !poll.send_data;
       assert(

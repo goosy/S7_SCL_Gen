@@ -51,34 +51,44 @@ list : # CP 模块列表
 #   recv_DB recv_start 必须指定CPU中的地址，不会自动生成。
 
 - comment: CP01 Module736 储罐液位
-  model: CP340                         # 类型: 字符串
-  # 指示由外部触发通信，这时由REQ来触发通信。这2个配置项省略时将自动使用顺序发送
-  # 类型： BOOL
-  customTrigger: TRUE
+  # 值: 字符串
+  model: CP340
+  # 值： BOOL
   # 类型: S7符号定义 | S7符号引用 | SCL表达式
-  REQ: Pulse_1Hz
+  # 指示由外部触发通信，省略时将自动使用顺序发送
+  customREQ: Pulse_1Hz
+  # 值: WORD
+  # 类型: S7符号定义 | S7符号引用
   # module 和 module_addr 必须有一个，用于指明使用哪一个CP模块硬件
-  module: [CP01, IW736]               # 类型: S7符号定义 | S7符号引用
-  DB: [CP_01, DB881]                  # 类型: S7符号定义 | S7符号引用
-  polls_name: polls_LIT               # 类型: 字符串
+  module: [CP01, IW736]
+  # 值: DB
+  # 类型: S7符号定义 | S7符号引用
+  DB: [CP_01, DB881]
+  # 值: 字符串
+  polls_name: polls_LIT
+
   polls:
-  - comment: '液位'                   # 类型: 字符串
-    # 没有 send_DB 配置项时，send_data 定义了通用485通信的发送数据
-    send_data: 31 31 30 30 0D         # send_data 必须是一个由空格分隔的16进制字节的字符串
+  - comment: '液位'                   # 值: 字符串
+    # 值: 字符串 必须是一个由空格分隔的16进制字节的字符串
+    # send_data 定义了通用485通信的发送数据，modbus数据见第二个CP模块的poll
+    send_data: 31 31 30 30 0D
+    # 值: DB
     # 类型: S7符号定义 | S7符号引用
     # 注意，同一个DB符号只允许定义一次
     # 如另一poll要使用相同的DB块，要在另一poll中使用S7符号引用指向这里
     recv_DB: [tankLitre, DB20, A101L]
-    recv_start: 0                     # 类型: 正整数
+    # 值: 正整数
+    recv_start: 0
 
 - comment: CP02 Module752 河口来油流量与天然气流量
   model: CP341
   # module 和 module_addr 必须有一个，用于指明使用哪一个CP模块硬件
-  module_addr: 752                    # 类型: 正整数
+  # 值: 正整数
+  module_addr: 752
   DB: [CP_02, DB882]
   polls_name: polls_flow
-  polls:
 
+  polls:
   - comment: 河口1#流量计 30
 
     # 没有 send_DB 和 send_data 配置项时， 由以下配置项定义 modbusRTU 发送数据
