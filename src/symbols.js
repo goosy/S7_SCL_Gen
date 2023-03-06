@@ -1,5 +1,5 @@
 import assert from 'assert/strict';
-import { IncHLError, lazyassign, str_padding_left, str_padding_right } from "./util.js";
+import { IncHLError, lazyassign, str_padding_left, str_padding_right, compare_str } from "./util.js";
 import { isSeq, YAMLSeq } from 'yaml';
 import { GCL } from './gcl.js';
 import { posix } from 'path';
@@ -373,16 +373,17 @@ const BLANK_COMMENT_LEN = 80;
  * @param {Symbol} symbol
  * @returns {string}
  */
-function get_step7_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
-    const symname = str_padding_right(name, SYMN_LEN);
-    const block_name_str = str_padding_right(block_name, NAME_LEN);
-    const block_no_str = str_padding_left(block_no, NO_LEN);
-    const block_bit_str = type === 'BOOL' ? '.' + block_bit : '  ';
+function get_step7_symbol({ name: symname, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
+    const name = str_padding_right(symname, SYMN_LEN);
+    const address = str_padding_right(block_name, NAME_LEN)
+        + str_padding_left(block_no, NO_LEN)
+        + (type === 'BOOL' ? '.' + block_bit : '  ');
     const type_len = type_no === '' ? NAME_LEN + NO_LEN : NAME_LEN;
     const type_str = str_padding_right(type_name, type_len);
     const type_no_str = type_no === '' ? '' : str_padding_left(type_no, NO_LEN);
     const cm = str_padding_right(comment, BLANK_COMMENT_LEN);
-    return `126,${symname} ${block_name_str}${block_no_str}${block_bit_str} ${type_str}${type_no_str} ${cm}`;
+    const line = `126,${name} ${address} ${type_str}${type_no_str} ${cm}`;
+    return { name, address, line };
 }
 
 /**
@@ -395,21 +396,22 @@ function get_step7_symbol({ name, type, block_name, block_no, block_bit, type_na
  * @returns {string}
  */
 function get_portal_symbol({ name, type, address, block_name, comment }) {
-    if (INTEGER_PREFIX.includes(block_name)) return ''; // 不生成 OB, FB, FC, UDT 的符号
-    return `"${name}","%${address}","${type}","True","True","False","${comment}","","True"`;
+    if (INTEGER_PREFIX.includes(block_name)) return null; // 不生成 OB, FB, FC, UDT 的符号
+    const line = `"${name}","%${address}","${type}","True","True","False","${comment}","","True"`;
+    return { name, address, line };
 }
 
-const template = `{{#for sym in symbol_list}}{{sym}}
-{{#endfor sym}}`;
+const template = `{{#for symbol in symbol_list}}{{symbol.line}}
+{{#endfor symbol}}`;
 
 export function gen_symbols(CPUs) {
     const rules = [];
     for (const CPU of Object.values(CPUs)) {
-        const symbol_list = Object.values(CPU.symbols_dict).map(
-            CPU.platform === "portal"
-                ? get_portal_symbol
-                : get_step7_symbol
-        ).filter(symbolstr => symbolstr);
+        const symbol_list = Object.values(CPU.symbols_dict)
+            .map(CPU.platform === "portal" ? get_portal_symbol : get_step7_symbol)
+            .filter(symbol => symbol) // 省略 portal 的 OB, FB, FC, UDT
+            .sort((a, b) => compare_str(a.name, b.name))
+            .sort((a, b) => compare_str(a.address, b.address));
         if (symbol_list.length) rules.push({
             "name": `${CPU.output_dir}/symbols.${CPU.platform === "portal" ? 'sdf' : 'asc'}`,
             "tags": { symbol_list }

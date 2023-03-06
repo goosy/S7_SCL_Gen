@@ -157,6 +157,12 @@ export class S7IncHL extends IncreaseHL {
     }
 }
 
+export function compare_str(a, b) {
+    if (a > b) return 1;
+    if (a < b) return -1;
+    return 0;
+}
+
 /**
  * 将item左侧用占位符填充至指定长度
  * @date 2021-11-17
