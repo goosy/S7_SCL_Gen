@@ -165,31 +165,31 @@ export function compare_str(a, b) {
 
 /**
  * 将item左侧用占位符填充至指定长度
+ * 如果item本身超过该长度，则截取item右侧该长度子串
  * @date 2021-11-17
  * @param {number|string} item
  * @param {number} length
  * @param {string} placeholder=''
  * @returns {string}
  */
-export function str_padding_left(item, length, placeholder = ' ') {
-    const str = Array(length).join(placeholder) + placeholder + item;
-    return str.slice(-length);
+export function pad_left(item, length, placeholder = ' ') {
+    return String(item).padStart(length, placeholder).slice(-length);
 }
 /**
  * 将item右侧用占位符填充至指定长度
+ * 如果item本身超过该长度，则截取item左侧该长度子串
  * @date 2021-11-17
  * @param {number|string} item
  * @param {number} length
  * @param {string} placeholder=''
  * @returns {string}
  */
-export function str_padding_right(item, length, placeholder = ' ') {
-    const str = item + placeholder + Array(length).join(placeholder);
-    return str.slice(0, length);
+export function pad_right(item, length, placeholder = ' ') {
+    return String(item).padEnd(length, placeholder).slice(0, length);
 }
 
 export function fixed_hex(num, length) {
-    return str_padding_left(num.toString(16), length, '0').toUpperCase();
+    return pad_left(num.toString(16), length, '0').toUpperCase();
 }
 
 

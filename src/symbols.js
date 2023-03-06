@@ -1,5 +1,5 @@
 import assert from 'assert/strict';
-import { IncHLError, lazyassign, str_padding_left, str_padding_right, compare_str } from "./util.js";
+import { IncHLError, lazyassign, pad_left, pad_right, compare_str } from "./util.js";
 import { isSeq, YAMLSeq } from 'yaml';
 import { GCL } from './gcl.js';
 import { posix } from 'path';
@@ -374,15 +374,13 @@ const BLANK_COMMENT_LEN = 80;
  * @returns {string}
  */
 function get_step7_symbol({ name: symname, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
-    const name = str_padding_right(symname, SYMN_LEN);
-    const address = str_padding_right(block_name, NAME_LEN)
-        + str_padding_left(block_no, NO_LEN)
+    const name = pad_right(symname, SYMN_LEN);
+    const address = pad_right(block_name, NAME_LEN)
+        + pad_left(block_no, NO_LEN)
         + (type === 'BOOL' ? '.' + block_bit : '  ');
-    const type_len = type_no === '' ? NAME_LEN + NO_LEN : NAME_LEN;
-    const type_str = str_padding_right(type_name, type_len);
-    const type_no_str = type_no === '' ? '' : str_padding_left(type_no, NO_LEN);
-    const cm = str_padding_right(comment, BLANK_COMMENT_LEN);
-    const line = `126,${name} ${address} ${type_str}${type_no_str} ${cm}`;
+    const type_str = pad_right(type_name, NAME_LEN) + pad_left(type_no, NO_LEN);
+    const cm = pad_right(comment, BLANK_COMMENT_LEN);
+    const line = `126,${name} ${address} ${type_str} ${cm}`;
     return { name, address, line };
 }
 
