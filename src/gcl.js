@@ -1,13 +1,12 @@
 import assert from 'assert/strict';
 import { readFile } from 'fs/promises';
-import {
-    Document,
+import { createHash } from 'crypto';
+import { Document, parseAllDocuments, isSeq, } from 'yaml';
+export {
     isDocument, isAlias, isNode,
     isCollection, isMap, isSeq,
     isPair, isScalar,
-    parseAllDocuments, parseDocument,
 } from 'yaml';
-import { createHash } from 'crypto';
 
 export class GCL {
     #file;

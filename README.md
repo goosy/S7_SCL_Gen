@@ -118,12 +118,34 @@ indludes指示要在当前功能输出文件中附加包含的SCL代码，并将
 
 includes指令值分2种：
 
-1. **字符串** 表示直接将字符串作为SCL代码合并
-2. **数组**   表示文件列表，列表项为同目录下的相对路径名称，转换程序会提取每一个文件内容作为合并来源
+I. **字符串** 表示直接将字符串作为SCL代码合并
+
+例：
+
+```yaml
+includes: |
+  DATA_BLOCK "RecvDB"
+  STRUCT
+    ID: INT;
+    Tank1 : WORD;
+  END_STRUCT;
+  BEGIN
+    Tank1 := W#16#02D0;
+  END_DATA_BLOCK
+```
+II. **数组**   表示文件列表，列表项为同目录下的相对路径名称，转换程序会提取每一个文件内容作为合并来源
+
+例：
+
+```yaml
+includes:
+- A101.scl
+- FXGasFlow.scl
+```
 
 includes只能采用上述2种之一，由于在YAML中书写SCL代码有很多局限，推荐用外部文件的方式。
 
-注意：生成器不检查 includes 要加入的代码错误，但会解析外部SCL文件中含的注释中的S7符号。
+注意： includes 所指向的额外SCL代码需要用户自己编写，生成程序不检查其语法错误。生成器会解析外部SCL文件中含的注释中的S7符号。
 
 【高级应用】
 

@@ -1,7 +1,6 @@
 import assert from 'assert/strict';
 import { IncHLError, lazyassign, pad_left, pad_right, compare_str } from "./util.js";
-import { isSeq, YAMLSeq } from 'yaml';
-import { GCL } from './gcl.js';
+import { isSeq, GCL } from './gcl.js';
 import { posix } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -243,7 +242,7 @@ export function add_symbol(CPU, symbol_raw, options = {}) {
  * 具体配置里的符号，应当用make_prop_symbolic。
  * @date 2022-07-05
  * @param {CPU} CPU
- * @param {String[]|YAMLSeq} symbol_list
+ * @param {String[]|import('yaml').YAMLSeq} symbol_list
  * @param {Object} options
  * @returns {Symbol[]}
  */

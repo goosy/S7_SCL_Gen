@@ -2,19 +2,6 @@
 CPU: [AS1, AS2] # 指示属于哪一个CPU
 feature: AI #  指示本配置为生成 AI 代码
 
-# 额外代码
-# 字符串形式指示直接SCL代码，内容将合并输出在 AI_Loop.SCL 文件中
-# includes的内容需要用户自己写，生成程序不检查其中的错误。
-includes: | # |符号是yaml语法，指示多行字符串末尾新增一空行
-  DATA_BLOCK "RecvDB"
-  STRUCT
-    ID: INT;
-    Tank1 : WORD;
-  END_STRUCT;
-  BEGIN
-    Tank1 := W#16#02D0;
-  END_DATA_BLOCK
-
 symbols: 
   # AI文档已有2个内置符号，其内容由本程序自动生成：
   # - [AI_Proc, FB512]  模拟量主处理函数
