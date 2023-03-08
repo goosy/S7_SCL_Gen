@@ -1,6 +1,6 @@
 {
   "name": "s7-scl-gen",
-  "version": "1.9.4",
+  "version": "1.10.0",
   "type": "module",
   "description": "S7 PLC SCL 代码自动生成",
   "main": "/lib/index.js",
@@ -17,12 +17,12 @@
   },
   "dependencies": {
     "iconv-lite": "^0.6.3",
-    "nodemon": "^2.0.20"
+    "nodemon": "^2.0.21"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.2",
     "@rollup/plugin-node-resolve": "^13.3.0",
-    "eslint": "^8.34.0",
+    "eslint": "^8.35.0",
     "globby": "^13.1.3",
     "gooconverter": "^0.3.6",
     "mri": "^1.2.0",

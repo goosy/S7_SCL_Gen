@@ -1,0 +1,127 @@
+---
+CPU: AS1    # 指示属于哪一个CPU
+feature: interlock # 指示本配置为生成联锁代码
+
+includes: ~
+
+symbols:  
+  # 系统已有1个内置符号，其内容由本程序自动生成:
+  # - [Interlock_Loop, FC518]   主调用函数，在OB中加入对它的调用。
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+  # 以下为自定义符号
+- [DI02-12, I5.3]
+- [DI02-13, I+]
+- [DI02-14, I+]
+- [DI02-15, I+]
+- [DO04-01, Q6.0]
+
+list :
+
+# 定义: interlock_item对象
+# 该对象包含以下属性:
+#   name    暴露给 OS 的变量名称，系统会自动加上 S7_m_c
+#   target  本项相关联过程值来源，类型为S7符号或SCL表达式。
+#           如果省略target，该项的值无法输入或输出，只能人工改变。
+#   comment 该项的注释
+
+- comment: 外输泵房间联锁
+
+  ############################################################
+  # 下方会自动生成DB块并构建必要的内部结构，大致结构为:
+  #     DB.<input_name_1>   输入1 名称由input_list的每项决定
+  #     DB.<input_name_2>   输入2 名称由input_list的每项决定
+  #     ......
+  #     DB.<input_name_n>   输入n 名称由input_list的每项决定
+  #     DB.test             测试用
+  #     DB.reset            重置输出用，会将DB.output置0
+  #     DB.<output_name>    联锁输出
+  #                         名称由output项决定，默认为output
+  #                         值由 input_list 每项的上升沿进行 OR 运算
+  #     DB.input_1_follower 内部数据用于跟踪上升沿
+  #     ......
+  #     DB.input_n_follower 内部数据数量与input_list对应
+  #     DB.test_follower    内部数据用于跟踪DB.test上升沿
+  # 类型: S7符号定义 | S7符号引用
+  DB: [pump_gas, DB121] # 本例DB块名为"pump_gas"
+  ############################################################
+
+  ############################################################
+  # 输入列表，每一输入项指代的值是一个布尔值，在输入项的上升沿去置位 DB.output
+  # 有 name 属性的input会加入到DB块的结构中
+  input_list:
+  # 每一输入项类型: interlock_item对象 | S7符号定义 | S7符号引用 | SCL表达式
+
+  # 以下输入项使用interlock_item对象
+  # 注意它的name值不允许等于"test"，它已保留为测试输入。
+  # 程序已内置 DB.test 的无数据源的输入项，相当于 `{name: test}`，用于测试。
+  - {target: DI02-13, name: GIA_1201A, comment: 外输泵可燃气浓度高报警}
+  - {target: DI02-14}          # 只有过程来源的项，没有s7_m_c属性，不会上传到HMI
+  - {name: mytest}             # 没有target属性时，指示该input没有过程数据源，只能通过HMI(OS)操作
+
+  # 如果interlock_item对象只有一个target属性，而该属性值为S7符号，则可以将输入项简写为S7符号。
+  # 符号定义和符号引用都可以。
+  # 这种输入项没有注释信息，也没有s7_m_c属性。
+  - DI02-15            # 符号引用作为输入项，与 `{target: DI02-15}` 等效
+  - [DI02-16, I5.7]    # 符号定义作为输入项，与 `{target: [DI02-16, I5.7]}` 等效
+
+  # 当输入项是一个SCL表达式时，运行中以表达式的值作为该输入项
+  # 这种输入项转换器不负责检查有效性，同样没有注释信息，更没有s7_m_c属性。
+  - '"TIT-1201".AH_Flag'
+  ############################################################
+
+  ############################################################
+  # 复位列表
+  # 有任何一项的值为 true ，就会将所有输出复位。
+  # DB内置一个 reset 复位项
+  reset_list:
+  # 类型: interlock_item对象 | S7符号定义 | S7符号引用 | SCL表达式
+  # 标准 reset 项
+  - {target: DI02-12, name: reset_button, comment: 复位按钮}
+  - Alarm_SL.reset     # SCL表达式作为reset输入之一
+  ############################################################
+
+  ############################################################
+  # 输出
+  # 联锁的输出包括2个方面：output 和 output_list
+  # 联锁输出值是一个BOOL项，由输入项上升沿 OR 运算而得。
+  # reset 会复位输出
+
+  # output 指令会自动生成 DB.<output_name> 暴露给OS，即自动加上 S7_m_c 属性。
+  # 类型: interlock_item对象 | 字符串 
+  # 值类型: bool (PLC会自动保持与联锁输出值一致)
+  # interlock_item对象不能设定过程源target，如果需要关联输出参见 output_list。
+  # interlock_item对象的 name 属性决定DB.<output_name>，本例会生成 DB.gas_action
+  # 大部分情况下不用配置 output 省略时会默认生成的 DB.output
+  output: {name: gas_action, comment: 复位按钮}
+  # 没有注释属性时，上一行可以简化成只使用字符串 `output: gas_action`
+
+  # 输出关联项，不会出现在DB结构中，DB.output 值会实时关联至 DB.output_list 的每一项。
+  output_list: 
+  # output_list 的每一个输出关联项都是布尔值，关联目标会保证与联锁输出值相同。
+  # 每一输出项类型: S7符号定义 | S7符号引用 | SCL表达式
+  # 无论是S7符号或SCL表达式，它指代的源必须可赋值的布尔地址，比如
+  #   正确: DO04-02                 错误: DI02-12
+  #   正确: AFan_1204A.start_CMD    错误: 'NOT AFan_1204A.run'
+  # 转换器无法查验输出项的合理性
+  # 如果省略，转换程序不生成任何关联输出。这时可以用 DB.<output_name> 来自行编程或HMI处理
+  - AFan_1204A.start_CMD # 轴流风机，注意
+  ############################################################
+
+- comment: 声光报警
+  DB: [sound_light, DB122]
+  $enable: false # boolean 字面量，值只能为true或false，代表初始时是否允许报警连锁，非法输入会默认为true。可在运行中由HMI改变本值
+  input_list:
+  - {name: MBN, target: [DI02-09, I5.0], comment: 人工报警按钮}
+  - '"pump_gas".output'
+  # 无 output 指令，则生成默认的 DB.output
+  output_list: 
+  - DO04-01 # 声光报警DO点
+
+# 更多的联锁设置，可以依照上方书写，注意对齐，以对齐表示层级
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+  # 输出文件名，系统自动加后缀。
+  # output_file : 'example'
+
+...

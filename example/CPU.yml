@@ -102,7 +102,7 @@ list:
   block: [main, OB1]
   title: Main Program Sweep (Cycle)
   code: |- # OB1的代码
-    "Alarm_Loop"(); // 报警
+    "Interlock_Loop"(); // 报警
     "PI_Loop"();
     "PV_Loop"();
     "SC_Loop"();
