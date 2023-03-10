@@ -1,5 +1,6 @@
 import assert from 'assert/strict';
-import { IncHLError, lazyassign, pad_left, pad_right, compare_str } from "./util.js";
+import { IncHLError, lazyassign, compare_str } from "./util.js";
+import { pad_left, pad_right } from "./value.js";
 import { isSeq, GCL } from './gcl.js';
 import { posix } from 'path';
 import { fileURLToPath } from 'url';

@@ -4,7 +4,8 @@
  * @file SC
  */
 
-import { fixed_hex, context } from '../util.js';
+import { context } from '../util.js';
+import { BOOL, STRING, fixed_hex, ensure_typed_value, ensure_PINT, nullable_typed_value, nullable_PINT } from '../value.js';
 import { make_prop_symbolic } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
@@ -110,34 +111,59 @@ export function parse_symbols({ CPU, list, options }) {
   const document = CPU.SC;
   let index = 0;
   list.forEach(module => {
+    module.comment = new STRING(module.comment ?? '');
+    const comment = module.comment.value;
     ++index;
-    assert(module?.DB, new SyntaxError(`${CPU.name}:SC 第${index}个module(${module.comment}) 没有正确定义背景块!`));
-    module.model ??= 'CP341';
-    let model = 'nomodel';
-    if (module.model === 'CP341') {
+    assert(module?.DB, new SyntaxError(`${CPU.name}:SC 第${index}个module(${comment}) 没有正确定义背景块!`));
+
+    let type = CP341_NAME;
+    const model = ensure_typed_value(STRING, module.model ??= 'CP341').value;
+    if (model === 'CP341') {
       options.has_CP341 = true;
-      model = CP341_NAME;
-    } else if (module.model === 'CP340') {
+      type = CP341_NAME;
+    } else if (model === 'CP340') {
       options.has_CP340 = true;
-      model = CP340_NAME;
+      type = CP340_NAME;
+    } else {
+      model = null;
     }
-    assert(model !== 'nomodel', new SyntaxError(`${CPU.name}:SC:module${module.module_addr} 的类型 "${module.model}" 不支持`));
-    assert(module.module || module.module_addr, new SyntaxError(`${CPU.name}:SC:module(${module.comment}) 未提供 module 或 module_addr!`));
-    module.module ??= [ 
+    // 目前只支持 CP341 CP340
+    assert(model !== null, new SyntaxError(`${CPU.name}:SC:module${comment} 的类型 "${module.model}" 不支持`));
+
+    const module_addr = nullable_PINT(module.module_addr);
+    assert(module.module || module_addr, new SyntaxError(`${CPU.name}:SC:module(${comment}) 未提供 module 或 module_addr!`));
+    module.module ??= [
       `CP${index}_addr`,
-      `IW${module.module_addr}`,
+      `IW${module_addr.value}`,
       'WORD',
       'HW module address'
     ];
     module.module[3] ??= 'HW module address';
+
     make_prop_symbolic(module, 'module', CPU);
-    make_prop_symbolic(module, 'DB', CPU, { document, force: { type: model }, default: { comment: module.comment } });
-    make_prop_symbolic(module, 'customREQ', CPU, { document, force: { type: 'BOOL' }});
+    make_prop_symbolic(module, 'DB', CPU, { document, force: { type: type }, default: { comment } });
+    make_prop_symbolic(module, 'customREQ', CPU, { document, force: { type: 'BOOL' } });
+
+    module.polls_name = ensure_typed_value(STRING, module.polls_name);
     module.polls.forEach(poll => {
-      make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment: poll.comment } });
+      poll.comment = ensure_typed_value(STRING, poll.comment ?? '');
+      const comment = poll.comment.value;
+      make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment } });
       poll.extra_send_DB = !!poll.send_DB;
       poll.send_DB ??= POLLS_NAME;
       make_prop_symbolic(poll, 'send_DB', CPU, { document });
+
+      poll.send_data = nullable_typed_value(STRING, poll.send_data);
+      if (!poll.send_data && !poll.extra_send_DB) {
+        poll.deivce_ID = ensure_PINT(poll.deivce_ID);
+        poll.function = ensure_PINT(poll.function);
+        poll.started_addr = nullable_PINT(poll.started_addr) ?? ensure_PINT(poll.address);
+        // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
+        poll.data = nullable_PINT(poll.data) ?? ensure_PINT(poll.length);
+        // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
+      }
+      poll.recv_start = ensure_PINT(poll.recv_start);
+      poll.uninvoke = nullable_typed_value(BOOL, poll.uninvoke) ?? new BOOL(false);
     });
   })
 }
@@ -163,20 +189,20 @@ export function build(SC) {
         poll.extra_send_DB && poll.send_start && poll.send_length || !poll.extra_send_DB,
         new SyntaxError(`指定发送块 send_DB:${module.polls_name}/poll_${poll.index} 时，必须同时设置 send_start 和 send_length`)
       );
-      if (poll.deivce_ID && poll.is_modbus) {
+      if (poll.send_data) {
+        const send_data = poll.send_data.value.trim();
+        // send_data must be a space-separated hex string
+        const send_data_error = new SyntaxError(`"send_data:${send_data}" —— send_data 必须是一个由空格分隔的16进制字符串`);
+        assert(/^[0-9a-f]{2}( +[0-9a-f]{2})+$/i.test(send_data), send_data_error);
+        const data_stream = send_data.split(/ +/);
+        poll.send_data = data_stream.map(byte => fixed_hex(byte, 2));
+        poll.send_length = data_stream.length;
+      } else if (poll.deivce_ID && poll.is_modbus) {
         poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
         poll.function = fixed_hex(poll.function, 2);
         poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
         poll.data = fixed_hex(poll.data ?? poll.length, 4);
         poll.send_length = 8;
-      } else if (poll.send_data) {
-        // send_data must be a space-separated hex string
-        const send_data_error = new SyntaxError(`"send_data:${poll.send_data}" —— send_data 必须是一个由空格分隔的16进制字符串`);
-        assert.equal(typeof poll.send_data, 'string', send_data_error);
-        assert(/^[0-9a-f]{2}( +[0-9a-f]{2})+$/i.test(poll.send_data.trim()), send_data_error);
-        const send_data = poll.send_data.trim().split(/ +/);
-        poll.send_data = send_data.map(byte => fixed_hex(byte, 2));
-        poll.send_length = send_data.length;
       } else if (!poll.extra_send_DB) { // poll configuration wrong!
         throw new SyntaxError(`发送数据在轮询DB中时，poll.deivce_ID 和 poll.send_data 必须有其中一个!\ndeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`);
       }
@@ -184,9 +210,9 @@ export function build(SC) {
         poll.send_start = sendDBB;
         sendDBB += poll.send_length + poll.send_length % 2;
       }
-      poll.uninvoke ??= false;
       [poll.send_DB, poll.recv_DB].forEach(DB => {
-        DB.uninvoke ??= DB.type_name !== 'FB' || poll.uninvoke;
+        // 用 ??= 确保共用块只遵循第一次的设置
+        DB.uninvoke ??= DB.type_name !== 'FB' || poll.uninvoke.value;
       });
       DBs.add(poll.send_DB).add(poll.recv_DB);
     });

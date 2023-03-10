@@ -1,4 +1,5 @@
 import { make_prop_symbolic } from '../symbols.js';
+import { STRING } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -38,6 +39,7 @@ export function parse_symbols({ CPU, list }) {
     const document = CPU.timer;
     list.forEach(timer => {
         if (!timer.DB) throw new SyntaxError("timer转换必须有DB块!");
+        timer.comment = new STRING(timer.comment ?? '');
         const comment = timer.comment ? `${timer.comment} DB` : '';
         make_prop_symbolic(timer, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
         timer.PPS ??= '"Pulse_1Hz"';

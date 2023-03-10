@@ -1,4 +1,5 @@
 import { make_prop_symbolic } from "../symbols.js";
+import { BOOL, INT, REAL, STRING, nullable_typed_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -21,19 +22,19 @@ DATA_BLOCK "{{AI.DB.name}}"{{#if platform == 'portal'}}
 AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
-BEGIN{{#if AI.$enable_alarm != null}}
-    enable_alarm := {{AI.$enable_alarm}};{{#endif}}{{#if AI.$zero_raw != null}}
-    zero_raw := {{AI.$zero_raw}};{{#endif}}{{#if AI.$span_raw != null}}
-    span_raw := {{AI.$span_raw}};{{#endif}}{{#if AI.$overflow_SP != null}}
-    overflow_SP := {{AI.$overflow_SP}};{{#endif}}{{#if AI.$underflow_SP != null}}
-    underflow_SP := {{AI.$underflow_SP}};{{#endif}}{{#if AI.$zero != null}}
-    zero := {{AI.$zero}};{{#endif}}{{#if AI.$span != null}}
-    span := {{AI.$span}};{{#endif}}{{#if AI.$AH_limit != null}}
-    AH_limit := {{AI.$AH_limit}};{{#endif}}{{#if AI.$WH_limit != null}}
-    WH_limit := {{AI.$WH_limit}};{{#endif}}{{#if AI.$WL_limit != null}}
-    WL_limit := {{AI.$WL_limit}};{{#endif}}{{#if AI.$AL_limit != null}}
-    AL_limit := {{AI.$AL_limit}};{{#endif}}{{#if AI.$dead_zone != null}}
-    dead_zone := {{AI.$dead_zone}};{{#endif}}{{#if AI.$FT_time != null}}
+BEGIN{{#if AI.$enable_alarm !== undefined}}
+    enable_alarm := {{AI.$enable_alarm}};{{#endif}}{{#if AI.$zero_raw !== undefined}}
+    zero_raw := {{AI.$zero_raw}};{{#endif}}{{#if AI.$span_raw !== undefined}}
+    span_raw := {{AI.$span_raw}};{{#endif}}{{#if AI.$overflow_SP !== undefined}}
+    overflow_SP := {{AI.$overflow_SP}};{{#endif}}{{#if AI.$underflow_SP !== undefined}}
+    underflow_SP := {{AI.$underflow_SP}};{{#endif}}{{#if AI.$zero !== undefined}}
+    zero := {{AI.$zero}};{{#endif}}{{#if AI.$span !== undefined}}
+    span := {{AI.$span}};{{#endif}}{{#if AI.$AH_limit !== undefined}}
+    AH_limit := {{AI.$AH_limit}};{{#endif}}{{#if AI.$WH_limit !== undefined}}
+    WH_limit := {{AI.$WH_limit}};{{#endif}}{{#if AI.$WL_limit !== undefined}}
+    WL_limit := {{AI.$WL_limit}};{{#endif}}{{#if AI.$AL_limit !== undefined}}
+    AL_limit := {{AI.$AL_limit}};{{#endif}}{{#if AI.$dead_zone !== undefined}}
+    dead_zone := {{AI.$dead_zone}};{{#endif}}{{#if AI.$FT_time !== undefined}}
     FT_time := L#{{AI.$FT_time}};{{#endif}}
 END_DATA_BLOCK
 {{#endif AI.}}{{#endfor AI}}
@@ -63,9 +64,23 @@ export function parse_symbols({ CPU, list }) {
     list.forEach(AI => {
         if (!AI.DB && !AI.input) return; // 空AI不处理
         if (!AI.DB || !AI.input) throw new Error(`AI 功能中 DB 和 input 不能只定义1个!`);
-        const comment = AI.comment;
+        AI.comment = new STRING(AI.comment ?? '');
+        const comment = AI.comment.value;
         make_prop_symbolic(AI, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
         make_prop_symbolic(AI, 'input', CPU, { document, force: { type: 'WORD' }, default: { comment } });
+        AI.$enable_alarm = nullable_typed_value(BOOL, AI.$enable_alarm);
+        AI.$zero_raw = nullable_typed_value(INT, AI.$zero_raw);
+        AI.$span_raw = nullable_typed_value(INT, AI.$span_raw);
+        AI.$overflow_SP = nullable_typed_value(INT, AI.$overflow_SP);
+        AI.$underflow_SP = nullable_typed_value(INT, AI.$underflow_SP);
+        AI.$zero = nullable_typed_value(REAL, AI.$zero);
+        AI.$span = nullable_typed_value(REAL, AI.$span);
+        AI.$AH_limit = nullable_typed_value(REAL, AI.$AH_limit);
+        AI.$WH_limit = nullable_typed_value(REAL, AI.$WH_limit);
+        AI.$WL_limit = nullable_typed_value(REAL, AI.$WL_limit);
+        AI.$AL_limit = nullable_typed_value(REAL, AI.$AL_limit);
+        AI.$dead_zone = nullable_typed_value(REAL, AI.$dead_zone);
+        AI.$FT_time = nullable_typed_value(INT, AI.$FT_time);
     });
 }
 

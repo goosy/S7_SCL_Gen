@@ -163,36 +163,6 @@ export function compare_str(a, b) {
     return 0;
 }
 
-/**
- * 将item左侧用占位符填充至指定长度
- * 如果item本身超过该长度，则截取item右侧该长度子串
- * @date 2021-11-17
- * @param {number|string} item
- * @param {number} length
- * @param {string} placeholder=''
- * @returns {string}
- */
-export function pad_left(item, length, placeholder = ' ') {
-    return String(item).padStart(length, placeholder).slice(-length);
-}
-/**
- * 将item右侧用占位符填充至指定长度
- * 如果item本身超过该长度，则截取item左侧该长度子串
- * @date 2021-11-17
- * @param {number|string} item
- * @param {number} length
- * @param {string} placeholder=''
- * @returns {string}
- */
-export function pad_right(item, length, placeholder = ' ') {
-    return String(item).padEnd(length, placeholder).slice(0, length);
-}
-
-export function fixed_hex(num, length) {
-    return pad_left(num.toString(16), length, '0').toUpperCase();
-}
-
-
 export function lazyassign(obj, prop, lazyvalue, options) {
     // must enumerable default
     const { writable = false, enumerable = true, configurable = false } = options ?? {};

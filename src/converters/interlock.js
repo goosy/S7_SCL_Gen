@@ -1,4 +1,5 @@
 import { make_prop_symbolic } from '../symbols.js';
+import { STRING } from '../value.js';
 
 export const platforms = ['step7', 'portal'];
 export const LOOP_NAME = 'Interlock_Loop';
@@ -71,7 +72,8 @@ export function parse_symbols({ CPU, list }) {
   const document = CPU.interlock;
   list.forEach(interlock => {
     if (!interlock.DB) throw new SyntaxError("interlock转换必须有DB块!");
-    let comment = interlock.comment ?? '报警联锁';
+    interlock.comment = new STRING(interlock.comment ?? '报警联锁');
+    const comment = interlock.comment.value;
     interlock.$enable = interlock.$enable !== false ? true : false;
     make_prop_symbolic(interlock, 'DB', CPU, { document, default: { comment } });
 
@@ -85,8 +87,13 @@ export function parse_symbols({ CPU, list }) {
       }
       if (!input.name && !input.target) throw new SyntaxError('interlock的input项必须name和target有一个!');
       if (input.name === "test") throw new SyntaxError('interlock input项不能起名"test"! 已有同名内置项。');
-      comment = input.comment ?? '';
-      if (input.target) make_prop_symbolic(input, 'target', CPU, { document, default: { type: 'BOOL', comment } });
+      input.comment = new STRING(input.comment ?? '');
+      const comment = input.comment.value;
+      if (input.target) make_prop_symbolic(input, 'target', CPU, {
+        document,
+        default: { comment },
+        force: { type: 'BOOL' },
+      });
     }
     list.push({ name: 'test', comment: '测试' });
 
@@ -94,13 +101,19 @@ export function parse_symbols({ CPU, list }) {
     list = interlock.reset_list;
     for (let [index, reset] of list.entries()) {
       // if reset is symbol then convert to object of reset type
-      if (typeof reset === 'string') {
+      if (typeof reset === 'string' || Array.isArray(reset)) {
         reset = { target: reset };
         list[index] = reset;
       }
       if (!reset.target) throw new SyntaxError('interlock的reset项必须有target!');
       if (reset.name === "reset") throw new SyntaxError('interlock reset 项不能起名"reset"! 已有同名内置项。');
-      make_prop_symbolic(reset, 'target', CPU, { document, force: { type: 'BOOL' } });
+      reset.comment = new STRING(reset.comment ?? '');
+      const comment = reset.comment.value;
+      make_prop_symbolic(reset, 'target', CPU, {
+        document,
+        default: { comment },
+        force: { type: 'BOOL' },
+      });
     }
     list.push({ name: 'reset', comment: '输出复位' });
 

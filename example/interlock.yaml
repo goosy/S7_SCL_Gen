@@ -5,15 +5,16 @@ feature: interlock # 指示本配置为生成联锁代码
 includes: ~
 
 symbols:  
-  # 系统已有1个内置符号，其内容由本程序自动生成:
-  # - [Interlock_Loop, FC518]   主调用函数，在OB中加入对它的调用。
-  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+# 系统已有1个内置符号，其内容由本程序自动生成:
+# - [Interlock_Loop, FC518]   主调用函数，在OB中加入对它的调用。
+# 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
-  # 以下为自定义符号
-- [DI02-12, I5.3]
-- [DI02-13, I+]
-- [DI02-14, I+]
-- [DI02-15, I+]
+# 以下为自定义符号
+- [DI02-10, I5.1]
+- [DI02-11, I+]
+- [DI02-13, I5.4]
+- [DI02-16, I5.7]
+- [DI02-18, I6.1]
 - [DO04-01, Q6.0]
 
 list :
@@ -55,15 +56,17 @@ list :
   # 以下输入项使用interlock_item对象
   # 注意它的name值不允许等于"test"，它已保留为测试输入。
   # 程序已内置 DB.test 的无数据源的输入项，相当于 `{name: test}`，用于测试。
-  - {target: DI02-13, name: GIA_1201A, comment: 外输泵可燃气浓度高报警}
-  - {target: DI02-14}          # 只有过程来源的项，没有s7_m_c属性，不会上传到HMI
-  - {name: mytest}             # 没有target属性时，指示该input没有过程数据源，只能通过HMI(OS)操作
+  - {target: [DI02-09, I5.0], name: GIA_1201A, comment: 外输泵可燃气浓度高报警}
+  # 没有 name 属性的项，指示不会建立DB字段，不会上传到HMI
+  - {target: DI02-10, comment: 加热炉可燃气浓度高报警}
+  # 没有 target 属性的项，指示该input没有过程数据源，只能通过HMI(OS)操作
+  - {name: mytest}
 
   # 如果interlock_item对象只有一个target属性，而该属性值为S7符号，则可以将输入项简写为S7符号。
   # 符号定义和符号引用都可以。
   # 这种输入项没有注释信息，也没有s7_m_c属性。
-  - DI02-15            # 符号引用作为输入项，与 `{target: DI02-15}` 等效
-  - [DI02-16, I5.7]    # 符号定义作为输入项，与 `{target: [DI02-16, I5.7]}` 等效
+  - DI02-11            # 符号引用作为输入项，与 `{target: DI02-11}` 等效
+  - [DI02-12, I5.3]    # 符号定义作为输入项，与 `{target: [DI02-12, I5.3]}` 等效
 
   # 当输入项是一个SCL表达式时，运行中以表达式的值作为该输入项
   # 这种输入项转换器不负责检查有效性，同样没有注释信息，更没有s7_m_c属性。
@@ -77,7 +80,10 @@ list :
   reset_list:
   # 类型: interlock_item对象 | S7符号定义 | S7符号引用 | SCL表达式
   # 标准 reset 项
-  - {target: DI02-12, name: reset_button, comment: 复位按钮}
+  - {target: DI02-13, name: reset_button, comment: 复位按钮1}
+  - {target: [DI02-14, I5.5], comment: 复位按钮2}
+  - [DI02-15, I5.6, ~, 复位按钮3]
+  - DI02-16
   - Alarm_SL.reset     # SCL表达式作为reset输入之一
   ############################################################
 
@@ -105,6 +111,8 @@ list :
   #   正确: AFan_1204A.start_CMD    错误: 'NOT AFan_1204A.run'
   # 转换器无法查验输出项的合理性
   # 如果省略，转换程序不生成任何关联输出。这时可以用 DB.<output_name> 来自行编程或HMI处理
+  - [DI02-17, I6.0, ~, 轴流风机电源]
+  - DI02-18
   - AFan_1204A.start_CMD # 轴流风机，注意
   ############################################################
 
@@ -112,7 +120,7 @@ list :
   DB: [sound_light, DB122]
   $enable: false # boolean 字面量，值只能为true或false，代表初始时是否允许报警连锁，非法输入会默认为true。可在运行中由HMI改变本值
   input_list:
-  - {name: MBN, target: [DI02-09, I5.0], comment: 人工报警按钮}
+  - {name: MBN, target: [DI02-19, I6.2], comment: 人工报警按钮}
   - '"pump_gas".output'
   # 无 output 指令，则生成默认的 DB.output
   output_list: 

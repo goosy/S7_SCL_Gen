@@ -92,10 +92,10 @@ list : # modbus TCP 连接列表
 
   - comment: '2#流量计'
     # 查询2
-    deivce_ID: 'F'                    # 16进制数用字符串形式
-    function: '4'                     # 16进制数用字符串形式
-    address: '10'                     # 16进制数用字符串形式
-    length: '28'                      # 16进制数用字符串形式
+    deivce_ID: 0xF                    # 16进制数
+    function: 0x4                     # 16进制数
+    address: 0x10                     # 16进制数
+    length: 0x28                      # 16进制数
     recv_DB: [Flow02, DB+, JS_flow]
     recv_start: 0
 

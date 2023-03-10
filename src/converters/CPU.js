@@ -1,6 +1,7 @@
 import assert from 'assert/strict';
 import { convert } from 'gooconverter';
 import { add_symbols, make_prop_symbolic } from '../symbols.js';
+import { STRING } from '../value.js';
 
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal'];
@@ -76,6 +77,7 @@ export function parse_symbols({ CPU, list }) {
     list.forEach(FN => {
         if (!FN.block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
         make_prop_symbolic(FN, 'block', CPU, { document, default: { comment: FN.comment } }); //S7函数类型
+        FN.code = new STRING(FN.code ?? '');
     });
 }
 

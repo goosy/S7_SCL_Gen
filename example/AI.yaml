@@ -15,13 +15,13 @@ template:
 - &tubepress               # 设置引用锚点，该锚点表示 & 符号位置所在的值（即右侧或下侧的value）可以在其它地方被引用
   # 以下类型为数字(浮点数要采用字符串形式)
   # 同时这些配置项指示的是初始值，即不会在循环周期赋值
-  $zero: "-0.2"
-  $span: "2.6"
-  $AH_limit: "2.5"
-  $WH_limit: "2.0"
-  $WL_limit: "-0.05"
-  $AL_limit: "-0.1"
-  $dead_zone: "0.01"
+  $zero: -0.2
+  $span: 2.6
+  $AH_limit: 2.5
+  $WH_limit: 2.0
+  $WL_limit: -0.05
+  $AL_limit: -0.1
+  $dead_zone: 0.01
 
 list: # 模拟量列表
 
@@ -37,15 +37,15 @@ list: # 模拟量列表
 - comment: 来油压力
   DB: [PIT002, DB101] 
   input: [AI01-02, PIW514] 
-  $dead_zone: "0.05"       # 可以对合并内容的部分属性进行更改
-  $AL_limit: ~             # 引用对象无法删除某个属性，但可以将该属性设置为null达到等效作用
+  $dead_zone: 0.05       # 可以对合并内容的部分属性进行更改
+  $AL_limit: ~             # 引用对象无法删除某个属性，但可以将该属性设置为 null 达到等效作用
   <<: *tubepress           # 合并tubepress
 
 - comment: 进站温度
   DB: [TIT001, DB+] 
   input: [AI01-03, PIW516] # AI通道
-  $zero: "-40.0"
-  $span: "80.0"
+  $zero: -40.0
+  $span: 80.0
   # 报警允许，运行期间由本表达式动态设定是否允许报警
   enable_alarm: 'pump1.run_state'
 

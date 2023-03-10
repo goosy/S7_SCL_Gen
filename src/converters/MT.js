@@ -1,5 +1,6 @@
-import { IntIncHL, fixed_hex, context } from '../util.js';
 import { make_prop_symbolic } from '../symbols.js';
+import { fixed_hex, BOOL, STRING, nullable_typed_value, ensure_typed_value, nullable_PINT, ensure_PINT } from '../value.js';
+import { IntIncHL, context } from '../util.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
 
@@ -186,14 +187,53 @@ function get_device_id(device, R, X) {
  * @returns {void}
  */
 export function parse_symbols({ CPU, list }) {
+  // CPU.device 必须第二遍扫描才有效
   const document = CPU.MT;
   list.forEach(conn => {
-    assert(conn?.DB && conn?.polls_name, new SyntaxError(`${CPU.name}:MT:conn(${conn.name ?? conn.comment}) 没有正确定义背景块或轮询名!`));
-    const comment = conn.comment;
-    make_prop_symbolic(conn, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
+    conn.comment = ensure_typed_value(STRING, conn.comment ?? '');
+    const comment = conn.comment.value;
+    assert(conn?.DB, new SyntaxError(
+      `${CPU.name}:MT:conn(${conn.name ?? conn.comment}) DB is not defined correctly! 没有正确定义DB!`
+    ));
+    make_prop_symbolic(conn, 'DB', CPU, {
+      document,
+      force: { type: NAME },
+      default: { comment }
+    });
+
+    // host IP
+    const host = Array.isArray(conn.host) ? conn.host.join('.') : conn.host;
+    assert(
+      /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host),
+      new SyntaxError(`配置项"host: ${host}"有误，必须提供IP地址，可以是数组形式!`)
+    );
+    conn.host = host;
+    conn.port = nullable_PINT(conn.port);
+    conn.IP = host.split('.').map(part => {
+      const ip = ensure_PINT(part);
+      assert(ip.value < 256, new SyntaxError(`配置项"host: ${host}"的IP地址越界!`));
+      return ip;
+    });
+    const R = nullable_PINT(conn.rack);
+    const X = nullable_PINT(conn.XSlot);
+    conn.R = R ? 'R' + R : '';
+    conn.X = X ? 'X' + X : '';
+    conn.$interval_time = nullable_PINT(conn.$interval_time);
+    conn.interval_time = nullable_PINT(conn.interval_time);
+
+    conn.polls_name = ensure_typed_value(STRING, conn.polls_name);
     conn.polls.forEach(poll => {
-      const comment = poll.comment;
+      poll.comment = ensure_typed_value(STRING, poll.comment ?? '');
+      const comment = poll.comment.value;
       make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment } });
+      poll.deivce_ID = ensure_PINT(poll.deivce_ID);
+      poll.function = ensure_PINT(poll.function);
+      poll.started_addr = nullable_PINT(poll.started_addr) ?? ensure_PINT(poll.address);
+      // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
+      poll.data = nullable_PINT(poll.data) ?? ensure_PINT(poll.length);
+      // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
+      poll.recv_start = ensure_PINT(poll.recv_start);
+      poll.uninvoke = nullable_typed_value(BOOL, poll.uninvoke) ?? new BOOL(false);
     })
   });
 }
@@ -209,34 +249,22 @@ export function build(MT) {
     } = CPU;
 
     conn.device ??= CPU.device;
-    conn.R = typeof conn.rack === 'number' ? 'R' + conn.rack : '';
-    conn.X = typeof conn.XSlot === 'number' ? 'X' + conn.XSlot : '';
     const {
       ID,
       local_device_id = get_device_id(conn.device, conn.R, conn.X), // 已是SCL字面量
-      host: hostraw,
-      port,
+      host,
       // interval_time, // 由SCL程序负责默认的间隔时长
     } = conn;
+    const port = conn.port.value;
 
     // 指定的device没有对应的通信设备号
     if (local_device_id === null && conn.device) throw new SyntaxError(`指定的通信设备号"${conn.device} rack${conn.rack} xslot${conn.XSlot}"不存在！`);
     // 如没指定device，则采用默认设备号
     conn.local_device_id = local_device_id ?? DEFAULT_DEVICE_ID;
 
-    // host IP
-    const host_str = Array.isArray(hostraw) ? hostraw.join('.') : hostraw;
-    assert.equal(typeof host_str, 'string', new SyntaxError(`配置项"host: ${host_str}"有误，必须提供IP地址，可以是数组形式!`));
-    assert(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host_str), new SyntaxError(`配置项"host: ${host_str}"的不是IP地址形式!`));
-    conn.host = host_str;
-    conn.IP = host_str.split('.').map(str => {
-      const ip = parseInt(str);
-      assert(ip >= 0 && ip < 256, new SyntaxError(`配置项"host: ${host_str}"的IP地址越界!`));
-      return ip;
-    });
     // port_list
-    conn_host_list[host_str] ??= new IntIncHL(502);
-    const port_list = conn_host_list[host_str];
+    conn_host_list[host] ??= new IntIncHL(502); // 默认一个host从502端口开始
+    const port_list = conn_host_list[host];
     port_list.push(port);
 
     conn.ID = fixed_hex(conn_ID_list.push(ID), 4);
@@ -247,14 +275,14 @@ export function build(MT) {
     conn.IP4 = fixed_hex(conn.IP[3], 2);
     conn.port1 = fixed_hex((port >>> 8), 2);
     conn.port2 = fixed_hex((port & 0xff), 2);
-    conn.polls_name ??= "polls_" + poll_list.push_new();
+    conn.polls_name ??= new STRING("polls_" + poll_list.push_new());
     conn.polls.forEach(poll => {
       poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
       poll.function = fixed_hex(poll.function, 2);
       poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
       poll.data = fixed_hex(poll.data ?? poll.length, 4);
-      poll.uninvoke ??= false;
-      poll.recv_DB.uninvoke ??= poll.recv_DB.type_name !== 'FB' || poll.uninvoke;
+      // 用 ??= 确保共用块只遵循第一次的设置
+      poll.recv_DB.uninvoke ??= poll.recv_DB.type_name !== 'FB' || poll.uninvoke.value;
       DBs.add(poll.recv_DB);
     });
   });

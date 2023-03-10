@@ -4,7 +4,8 @@
  * @file PI
  */
 
-import { fixed_hex, context } from '../util.js';
+import { context } from '../util.js';
+import { fixed_hex, STRING, ensure_typed_value, nullable_PINT } from '../value.js';
 import { make_prop_symbolic } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
@@ -59,26 +60,42 @@ export function parse_symbols({ CPU, list, options }) {
   const document = CPU.PI;
   let index = 0;
   list.forEach(module => {
+    module.comment = new STRING(module.comment ?? '');
+    const comment = module.comment.value;
     ++index;
-    if (!module?.DB) throw new Error(`${CPU.name}:PI 第${index}个module(${module.comment}) 没有正确定义背景块!`);
-    module.model ??= FM3502_CNT_NAME; // 目前只支持FM350-2
-    let model = 'nomodel';
-    if (module.model === FM3502_CNT_NAME) {
+    if (!module?.DB) throw new Error(`${CPU.name}:PI 第${index}个module(${comment}) 没有正确定义数据块!`);
+
+    let type = '';
+    const model = ensure_typed_value(STRING, module.model ??= FM3502_CNT_NAME).value; // 目前只支持FM350-2
+    if (model === FM3502_CNT_NAME) {
       options.has_FM3502 = true;
-      model = NAME;
+      type = NAME;
+    } else {
+      model = null;
     }
-    if (model === 'nomodel') throw new Error(`${CPU.name}:PI:module${module.module_addr} 的类型 "${module.model}" 不支持`);
-    assert(module.module || module.module_addr, new SyntaxError(`${CPU.name}:PI 第${index}个module(${module.comment}) 未提供 module 或 module_addr!`));
+    if (model === null) throw new Error(`${CPU.name}:PI:module${comment} 的类型 "${module.model}" 不支持`);
+    module.model = model;
+
+    const module_addr = nullable_PINT(module.module_addr);
+    assert(module.module || module_addr, new SyntaxError(`${CPU.name}:PI 第${index}个module(${comment}) 未提供 module 或 module_addr!`));
     module.module ??= [
       `PI${index}_addr`,
-      `IW${module.module_addr}`,
+      `IW${module_addr.value}`,
       'WORD',
       'HW module address'
     ];
     module.module[3] ??= 'HW module address';
+
     make_prop_symbolic(module, 'module', CPU, { document });
-    make_prop_symbolic(module, 'DB', CPU, { document, force: { type: model }, default: { comment: module.comment } });
-    make_prop_symbolic(module, 'count_DB', CPU, { document, force: { type: FM3502_CNT_NAME } });
+    make_prop_symbolic(module, 'DB', CPU, {
+      document,
+      force: { type },
+      default: { comment }
+    });
+    make_prop_symbolic(module, 'count_DB', CPU, {
+      document,
+      force: { type: FM3502_CNT_NAME }
+    });
   });
 }
 

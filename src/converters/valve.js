@@ -1,4 +1,5 @@
 import { make_prop_symbolic } from '../symbols.js';
+import { STRING } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -56,6 +57,8 @@ export function parse_symbols({ CPU, list }) {
     const document = CPU.valve;
     list.forEach(valve => {
         if (!valve.DB) return; // 空valve不处理
+        valve.comment = new STRING(valve.comment ?? '');
+        const comment = valve.comment.value;
         function symbolic(type, _comment) {
             return function (prop) {
                 let comment = null;
@@ -68,9 +71,9 @@ export function parse_symbols({ CPU, list }) {
                 make_prop_symbolic(valve, prop, CPU, options);
             }
         }
-        symbolic(NAME, valve.comment)('DB');
-        symbolic('WORD', valve.comment)('AI');
-        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(symbolic('BOOL', valve.comment));
+        symbolic(NAME, comment)('DB');
+        symbolic('WORD', comment)('AI');
+        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(symbolic('BOOL', comment));
     });
 }
 

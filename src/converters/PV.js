@@ -1,5 +1,6 @@
 import { make_prop_symbolic } from "../symbols.js";
 import { context } from '../util.js';
+import { BOOL, INT, REAL, STRING, nullable_typed_value } from '../value.js';
 import { posix } from 'path';
 
 export const platforms = ['step7'];
@@ -30,7 +31,7 @@ END_DATA_BLOCK
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#for PV_item in list}}
-{{#if PV_item.DB && PV_item.input}}"{{NAME}}"."{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{#if PV_item.enable_alarm != undefined}}, enable_alarm := {{PV_item.enable_alarm}}{{#endif}}); {{#endif PV_item.}}// {{PV_item.comment}}{{#endfor PV_item}}
+{{#if PV_item.DB && PV_item.input}}"{{NAME}}"."{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{#if PV_item.enable_alarm != undefined}}, enable_alarm := {{PV_item.enable_alarm.value}}{{#endif}}); {{#endif PV_item.}}// {{PV_item.comment}}{{#endfor PV_item}}
 {{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
@@ -47,8 +48,18 @@ export function parse_symbols({ CPU, list }) {
     list.forEach(PV => {
         if (!PV.DB && !PV.input) return; // 空PV不处理
         if (!PV.DB || !PV.input) throw new Error(`PV 功能中 DB 和 input 不能只定义1个!`);
-        make_prop_symbolic(PV, 'DB', CPU, { document, force: { type: NAME }, default: { comment: PV.comment } });
-        make_prop_symbolic(PV, 'input', CPU, { document, force: { type: 'REAL' } });
+        PV.comment = new STRING(PV.comment ?? '');
+        const comment = PV.comment.value;
+        make_prop_symbolic(PV, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
+        make_prop_symbolic(PV, 'input', CPU, { document, force: { type: 'REAL' }, default: { comment } });
+        make_prop_symbolic(PV, 'enable_alarm', CPU, { document, force: { type: 'BOOL' } });
+        PV.$enable_alarm = nullable_typed_value(BOOL, PV.$enable_alarm);
+        PV.$AH_limit = nullable_typed_value(REAL, PV.$AH_limit);
+        PV.$WH_limit = nullable_typed_value(REAL, PV.$WH_limit);
+        PV.$WL_limit = nullable_typed_value(REAL, PV.$WL_limit);
+        PV.$AL_limit = nullable_typed_value(REAL, PV.$AL_limit);
+        PV.$dead_zone = nullable_typed_value(REAL, PV.$dead_zone);
+        PV.$FT_time = nullable_typed_value(INT, PV.$FT_time);
     });
 }
 

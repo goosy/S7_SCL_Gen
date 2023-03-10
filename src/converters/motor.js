@@ -1,4 +1,5 @@
 import { make_prop_symbolic } from '../symbols.js';
+import { BOOL, INT, STRING, nullable_typed_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -77,10 +78,14 @@ export function parse_symbols({ CPU, list }) {
             }
         }
 
+        motor.comment = new STRING(motor.comment ?? '');
+        const comment = motor.comment.value;
         symbolic(NAME, motor.comment)('DB');
-        ['enable', 'run', 'error', 'remote'].forEach(symbolic('BOOL', motor.comment));
+        ['enable', 'run', 'error', 'remote'].forEach(symbolic('BOOL', comment));
         symbolic('BOOL')('timer_pulse');
-        ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(symbolic('BOOL', motor.comment));
+        ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(symbolic('BOOL', comment));
+        motor.$stateless = nullable_typed_value(BOOL, motor.$stateless);
+        motor.$over_time = nullable_typed_value(INT, motor.$over_time);
     });
 }
 
