@@ -1,15 +1,15 @@
 {
-    "restartable": "rs",
-    "verbose": true,
-    "watch": [
-        "build.js",
-        "src"
-    ],
-    "ext": "js,yaml",
-    "ignore": [
-        "src/converter.js",
-        "src/symbols_buildin.yaml"
-    ],
-    "delay": "3",
-    "execMap": {}
+  "restartable": "rs",
+  "verbose": true,
+  "watch": [
+    "build.js",
+    "src"
+  ],
+  "ext": "js,yaml",
+  "ignore": [
+    "src/converter.js",
+    "src/symbols_buildin.yaml"
+  ],
+  "delay": "3",
+  "execMap": {}
 }

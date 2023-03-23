@@ -202,18 +202,6 @@ export function add_symbol(CPU, symbol_raw, options = {}) {
     const symbols_dict = CPU.symbols_dict;
     const symbol_definition = is_Seq ? JSON.parse(symbol_raw) : symbol_raw;
     if (!Array.isArray(symbol_definition)) throw_symbol_error(`符号必须是一个定义正确数组！ 原始值:"${symbol_definition}"`);
-    // 默认类型和注释
-    symbol_definition[2] = symbol_definition[2] ?? options?.default?.type;
-    symbol_definition[3] = symbol_definition[3] ?? options?.default?.comment;
-    // 强制指定类型和注释，完全忽略用户的定义
-    const force_type = options?.force?.type;
-    if (typeof force_type === 'string') {
-        symbol_definition[2] = force_type;
-    }
-    const force_comment = options?.force?.comment;
-    if (typeof force_comment === 'string') {
-        symbol_definition[3] = force_comment;
-    }
     // 生成符号
     const symbol = new S7Symbol(symbol_definition);
     // 保存源信息
@@ -262,27 +250,36 @@ function ref(item) {
 }
 
 export function make_prop_symbolic(obj, prop, CPU, options = {}) {
+    function apply_default_force(symbol) {
+        const force_type = options?.force?.type;
+        if (typeof force_type === 'string') {
+            // 强制指定类型，完全忽略用户的定义
+            symbol.type = force_type;
+        } else {
+            // 默认类型
+            symbol.type ??= options?.default?.type;
+        }
+        const force_comment = options?.force?.comment;
+        if (typeof force_comment === 'string') {
+            // 强制指定注释，完全忽略用户的定义
+            symbol.comment = force_comment;
+        } else if (symbol.comment == '') {
+            // 默认注释
+            symbol.comment = options?.default?.comment;
+        }
+    }
     function do_ref(value) {
         const symbol = CPU.symbols_dict[value];
-        if (symbol) {
-            if (options?.force?.type) {
-                symbol.type = options.force.type;
-            } else {
-                symbol.type ??= options?.default?.type;
-            }
-            if (options?.force?.comment) {
-                symbol.comment = options.force.comment;
-            } else if (symbol.comment == '') {
-                symbol.comment = options?.default?.comment;
-            }
-        }
+        if (symbol) apply_default_force(symbol);
         return symbol;
     }
     const value = obj[prop];
     const comment = obj.comment;
     if (Array.isArray(value)) {
         // 如是数组，则返回符号
-        obj[prop] = add_symbol(CPU, value, options);
+        const symbol = add_symbol(CPU, value, options);
+        apply_default_force(symbol);
+        obj[prop] = symbol;
     } else if (typeof value === 'string') {
         // 如是字符串，则返回引用。
         const symbol = do_ref(value);
