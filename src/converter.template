@@ -16,10 +16,6 @@ import * as {{feature}} from './converters/{{feature}}.js';{{#endfor converter}}
 export const supported_features = [{{#for cat in supported_category}}
     '{{cat.feature}}',{{#endfor}}
 ];
-export const supported_categorys = {{'{'}}{{#for cat in supported_category}}
-    {{cat.feature}}: {{cat.platforms}},{{#endfor}}
-}
-export const supported_platforms = ['step7', 'portal', 'pcs7'];
 export const converter = {
 {{#for feature,converter in converters}}    {{feature}}, 
 {{#endfor converter}}}

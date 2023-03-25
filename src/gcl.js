@@ -111,9 +111,12 @@ export class GCL {
             doc.offset ??= 0;
             const is_buildin = options.filename === 'buildin';
             const CPU = doc.get('CPU') ?? doc.get('name') ?? options.CPU;
-            const CPUs = isSeq(CPU)
-                ? CPU.items.map(item => String(item))
-                : is_buildin ? [] : [CPU];
+            const CPUs = is_buildin
+                ? []
+                : isSeq(CPU) ? CPU.items.map(item => String(item)) : [CPU];
+            for (const CPU of CPUs) {
+                assert(typeof CPU === 'string' && CPU !== '', new SyntaxError(`"${this.file}"文件的 name 或者 CPU 必须提供，并且必须是字符串或字符串数组!`));
+            }
             Object.defineProperty(doc, 'CPUs', {
                 get() {
                     return CPUs;
@@ -122,6 +125,9 @@ export class GCL {
                 configurable
             });
             const feature = doc.get('feature') ?? doc.get('type') ?? options.feature;
+            if (!is_buildin) {
+                assert(typeof feature === 'string', new SyntaxError(`${this.file} 文件的 feature 必须提供，并且必须是字符串!`));
+            }
             Object.defineProperty(doc, 'feature', {
                 get() {
                     return feature;

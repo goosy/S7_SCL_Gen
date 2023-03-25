@@ -3,9 +3,9 @@ import { readdir } from 'fs/promises';
 import { globby } from 'globby';
 import { posix } from 'path';
 import { convert } from 'gooconverter';
-import { supported_features, supported_platforms, supported_categorys, converter } from './converter.js';
+import { supported_features, converter } from './converter.js';
 import { GCL } from './gcl.js';
-import { build_symbols, add_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS } from './symbols.js';
+import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 
 /** @type {string: {CPU, includes, files, list, options}[] }*/
@@ -78,21 +78,25 @@ async function parse_includes(includes, options) {
  * @param {import('yaml').Document} document
  */
 async function add_conf(document) {
-  if (typeof document.feature != 'string') {
-    console.error(`${document.gcl.file} 文件的 feature 必须提供，并且必须是字符串!`);
-    return;
-  }
-  const feature = supported_features.find(_feature => converter[_feature].is_feature(document.feature));
+  // feature
+  const feature = supported_features.find(name => converter[name].is_feature(document.feature));
   if (!feature) {
     console.error(`不支持 ${document.gcl.file} 文件的 ${document.feature} 功能转换!`);
     return;
   }
-  const platform = document.get('platform')?.toLowerCase();
-  if (platform && !supported_platforms.includes(platform)) {
-    console.error(`不支持 ${document.gcl.file} 文件 ${feature} 转换功能要求的 ${platform} 平台`);
+
+  // platform
+  // valid only in CPU documentation
+  const platform = feature === 'CPU'
+    ? document.get('platform')?.toLowerCase() ?? 'step7'
+    : undefined;
+  if (platform && !converter[feature].platforms.includes(platform)) {
+    console.error(`文件:"${document.gcl.file}" 文档:[${document.CPUs.join(',')}] 不支持${platform}平台的${feature}转换功能`);
     return;
   }
-  const options = { filename: 'buildin', CPU: document.CPUs, feature };
+
+  // external code
+  const options = { filename: 'buildin' };
   const { code: loop_additional_code, gcl_list: _ } = await parse_includes(document.get('loop_additional_code'), options);
   const { code: includes, gcl_list } = await parse_includes(document.get('includes'), options);
 
@@ -111,25 +115,12 @@ async function add_conf(document) {
   // CPU
   for (const _CPU of document.CPUs) {
     // 检查
-    assert.equal(typeof _CPU, 'string', new SyntaxError(`"${document.gcl.file}"文件的 name 或者 CPU 必须提供，并且必须是字符串或字符串数组!`));
     const CPU = CPUs.get(_CPU);
     if (CPU[feature]) {
       console.error(`"${document.gcl.file}"文件的配置 (${document.CPU}-${feature}) 已存在`);
       process.exit(2);
     }
-    CPU.platform ??= platform ?? 'step7'; // 没有CPU配置情况的默认平台
-    if (platform && CPU.platform != platform) {
-      console.error(
-        `${document.gcl.file} 文件：
-        ${feature} 功能要求的 ${platform} 平台与该CPU下其它文档冲突
-        建议删除 platform 指令，并统一在CPU文档中设置!`
-      );
-      return;
-    }
-    if (!supported_categorys[feature].includes(CPU.platform)) {
-      console.error(`文件:"${document.gcl.file}" 文档:[${document.CPUs.join(',')}]:${document.feature} 的转换功能不支持`);
-      return; // 剩余的CPU也一定不满足条件
-    }
+    CPU.platform ??= platform;
     // 按类型压入文档至CPU
     CPU.add_feature(feature, document);
 
@@ -186,13 +177,14 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   }
 
   // 第二遍扫描 补全数据
-
-  // 检查并补全符号表
   for (const CPU of Object.values(CPUs)) {
+    // the code below must run on all CPUs not just those with CPU document
+    CPU.platform ??= 'step7';
     build_symbols(CPU);
   }
 
-  for (const [feature, list] of Object.entries(conf_list)) {
+  for (const feature of supported_features) {
+    const list = conf_list[feature];
     const build = converter[feature].build;
     if (typeof build === 'function') list.forEach(build);
   };

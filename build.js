@@ -50,7 +50,13 @@ async function build() {
     await write_file(get_module_path('src', 'symbols_buildin.yaml'), '');
 
     const files = await readdir(get_module_path('src', 'converters'));
-    const features = files.filter(file => file.endsWith('.js')).map(file => file.replace(/\.js$/, ''));
+    const features = [];
+    files.filter(file => file.endsWith('.js')).forEach(file => {
+        const feature = file.replace(/\.js$/, '');
+        if (feature === 'CPU') features.unshift(feature); //保证CPU为第一个
+        else features.push(feature);
+    });
+
     const converters = {};
     for (const feature of features) {
         converters[feature] = await import(`./src/converters/${feature}.js`);
