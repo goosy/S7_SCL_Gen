@@ -68,7 +68,7 @@ export function parse_symbols({ CPU, list }) {
                     force: { type },
                     default: { comment }
                 };
-                make_prop_symbolic(valve, prop, CPU, options);
+                make_prop_symbolic(valve, prop, document, options);
             }
         }
         symbolic(NAME, comment)('DB');

@@ -66,8 +66,8 @@ export function parse_symbols({ CPU, list }) {
         if (!AI.DB || !AI.input) throw new Error(`AI 功能中 DB 和 input 不能只定义1个!`);
         AI.comment = new STRING(AI.comment ?? '');
         const comment = AI.comment.value;
-        make_prop_symbolic(AI, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
-        make_prop_symbolic(AI, 'input', CPU, { document, force: { type: 'WORD' }, default: { comment } });
+        make_prop_symbolic(AI, 'DB', document, { force: { type: NAME }, default: { comment } });
+        make_prop_symbolic(AI, 'input', document, { force: { type: 'WORD' }, default: { comment } });
         AI.$enable_alarm = nullable_typed_value(BOOL, AI.$enable_alarm);
         AI.$zero_raw = nullable_typed_value(INT, AI.$zero_raw);
         AI.$span_raw = nullable_typed_value(INT, AI.$span_raw);

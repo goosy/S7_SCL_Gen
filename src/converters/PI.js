@@ -86,16 +86,9 @@ export function parse_symbols({ CPU, list, options }) {
     ];
     module.module[3] ??= 'HW module address';
 
-    make_prop_symbolic(module, 'module', CPU, { document });
-    make_prop_symbolic(module, 'DB', CPU, {
-      document,
-      force: { type },
-      default: { comment }
-    });
-    make_prop_symbolic(module, 'count_DB', CPU, {
-      document,
-      force: { type: FM3502_CNT_NAME }
-    });
+    make_prop_symbolic(module, 'module', document);
+    make_prop_symbolic(module, 'DB', document, { force: { type }, default: { comment } });
+    make_prop_symbolic(module, 'count_DB', document, { force: { type: FM3502_CNT_NAME } });
   });
 }
 

@@ -195,11 +195,7 @@ export function parse_symbols({ CPU, list }) {
     assert(conn?.DB, new SyntaxError(
       `${CPU.name}:MT:conn(${conn.name ?? conn.comment}) DB is not defined correctly! 没有正确定义DB!`
     ));
-    make_prop_symbolic(conn, 'DB', CPU, {
-      document,
-      force: { type: NAME },
-      default: { comment }
-    });
+    make_prop_symbolic(conn, 'DB', document, { force: { type: NAME }, default: { comment } });
 
     // host IP
     const host = Array.isArray(conn.host) ? conn.host.join('.') : conn.host;
@@ -225,7 +221,7 @@ export function parse_symbols({ CPU, list }) {
     conn.polls.forEach(poll => {
       poll.comment = ensure_typed_value(STRING, poll.comment ?? '');
       const comment = poll.comment.value;
-      make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment } });
+      make_prop_symbolic(poll, 'recv_DB', document, { default: { comment } });
       poll.deivce_ID = ensure_PINT(poll.deivce_ID);
       poll.function = ensure_PINT(poll.function);
       poll.started_addr = nullable_PINT(poll.started_addr) ?? ensure_PINT(poll.address);

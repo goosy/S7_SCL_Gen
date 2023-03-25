@@ -56,6 +56,7 @@ END_FUNCTION{{#endif block_name}}
  * @returns {void}
  */
 export function parse_symbols({ CPU, list }) {
+    const document = CPU.CPU;
     const CM = CPU.symbols_dict.Clock_Byte ?? CPU.symbols_dict.Clock_Memory;
     if (CM) {
         assert(/^mb\d+$/i.test(CM.address), new SyntaxError(`${CPU.name}-CPU:符号 Clock_Byte 的地址 "${CM.address}" 无效！`));
@@ -74,12 +75,11 @@ export function parse_symbols({ CPU, list }) {
             ['Pulse_0.62Hz', `M${CM_address}.6`],
             ['Pulse_0.5Hz', `M${CM_address}.7`],
         ];
-        add_symbols(CPU, symbols);
+        add_symbols(document, symbols);
     }
-    const document = CPU.CPU;
     list.forEach(FN => {
         if (!FN.block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
-        make_prop_symbolic(FN, 'block', CPU, { document, default: { comment: FN.comment } }); //S7函数类型
+        make_prop_symbolic(FN, 'block', document, { default: { comment: FN.comment } }); //S7函数类型
         FN.code = new STRING(FN.code ?? '');
     });
 }

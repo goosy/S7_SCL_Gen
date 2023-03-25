@@ -85,68 +85,65 @@ async function add_conf(document) {
     return;
   }
 
+  // CPU
+  const CPU = document.CPU;
+  if (CPU[feature]) {
+    console.error(`"${document.gcl.file}"文件的配置 (${document.CPU}-${feature}) 已存在`);
+    process.exit(2);
+  }
+  // 按类型压入文档至CPU
+  CPU.add_feature(feature, document);
+
   // platform
   // valid only in CPU documentation
   const platform = feature === 'CPU'
     ? document.get('platform')?.toLowerCase() ?? 'step7'
     : undefined;
   if (platform && !converter[feature].platforms.includes(platform)) {
-    console.error(`文件:"${document.gcl.file}" 文档:[${document.CPUs.join(',')}] 不支持${platform}平台的${feature}转换功能`);
+    console.error(`文件:"${document.gcl.file}" 文档:[${document.CPU}] 不支持${platform}平台的${feature}转换功能`);
     return;
   }
+  CPU.platform ??= platform;
 
   // external code
-  const options = { filename: 'buildin' };
-  const { code: loop_additional_code, gcl_list: _ } = await parse_includes(document.get('loop_additional_code'), options);
-  const { code: includes, gcl_list } = await parse_includes(document.get('includes'), options);
+  const { code: loop_additional_code, gcl_list: _ } = await parse_includes(
+    document.get('loop_additional_code'),
+    { filename: 'buildin', CPU: CPU.name, feature }
+  );
+  const { code: includes, gcl_list } = await parse_includes(
+    document.get('includes'),
+    { filename: 'buildin', CPU: CPU.name, feature }
+  );
 
-  // 内置符号文档
-  const buildin_doc = BUILDIN_SYMBOLS[feature];
-  const symbols_of_buildin = buildin_doc ? buildin_doc.get('symbols').items : [];
   // 包含文件符号 [YAMLSeq symbol]
-  const symbols_of_includes = gcl_list.map(
-    gcl => gcl.documents.map(
-      doc => doc.get('symbols')?.items ?? []
-    )
-  ).flat(2);
+  gcl_list.forEach(gcl => {
+    gcl.documents.forEach(doc => {
+      doc.CPU = CPU;
+      const symbols_of_includes = add_symbols(doc, doc.get('symbols')?.items ?? []);
+      CPU.buildin_symbols.push(...symbols_of_includes.map(symbol=>symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
+    })
+  });
+  // 内置符号文档
+  const buildin_doc = BUILDIN_SYMBOLS.documents.find(doc => doc.feature === feature).clone();
+  buildin_doc.CPU = CPU;
+  buildin_doc.gcl = BUILDIN_SYMBOLS;
+  add_symbols(buildin_doc, buildin_doc ? buildin_doc.get('symbols').items : []);
+
   // 文档前置符号
-  const symbols_of_doc = document.get('symbols')?.items ?? [];
+  const raw_symbols_of_doc = document.get('symbols')?.items ?? [];
+  if (raw_symbols_of_doc) add_symbols(document, raw_symbols_of_doc,);
 
-  // CPU
-  for (const _CPU of document.CPUs) {
-    // 检查
-    const CPU = CPUs.get(_CPU);
-    if (CPU[feature]) {
-      console.error(`"${document.gcl.file}"文件的配置 (${document.CPU}-${feature}) 已存在`);
-      process.exit(2);
-    }
-    CPU.platform ??= platform;
-    // 按类型压入文档至CPU
-    CPU.add_feature(feature, document);
-
-    // 压入内置符号
-    // 将包含文件的符号扩展到内置符号名称列表
-    CPU.buildin_symbols.push(...symbols_of_includes.map(
-      symbol => symbol.items[0].value
-    ));
-    add_symbols(CPU, symbols_of_includes, { document })
-    add_symbols(CPU, symbols_of_buildin, { document: buildin_doc });
-
-    // 加入前置符号
-    if (symbols_of_doc) add_symbols(CPU, symbols_of_doc, { document });
-
-    // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
-    const conf = document.toJS();
-    const list = conf.list ?? [];
-    const files = conf.files ?? [];
-    const options = conf.options ?? {};
-    const name = CPU.name;
-    if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
-    const area = { CPU, list, includes, files, loop_additional_code, options, gcl: document.gcl };
-    const parse_symbols = converter[feature].parse_symbols;
-    if (typeof parse_symbols === 'function') parse_symbols(area);
-    conf_list[feature].push(area);
-  }
+  // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
+  const conf = document.toJS();
+  const list = conf.list ?? [];
+  const files = conf.files ?? [];
+  const options = conf.options ?? {};
+  const name = CPU.name;
+  if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
+  const area = { CPU, list, includes, files, loop_additional_code, options, gcl: document.gcl };
+  const parse_symbols = converter[feature].parse_symbols;
+  if (typeof parse_symbols === 'function') parse_symbols(area);
+  conf_list[feature].push(area);
 }
 
 export async function gen_data({ output_zyml, noconvert, silent } = {}) {
@@ -162,6 +159,11 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         const gcl = new GCL();
         await gcl.load(filename);
         for (const doc of gcl.documents) {
+          doc.CPU = CPUs.get(doc.CPU);
+          Object.defineProperty(doc, 'CPU', {
+            enumerable: true,
+            configurable: false,
+          });
           // 确保CPU优先处理
           if (doc.feature === 'CPU') docs.unshift(doc);
           else docs.push(doc);
@@ -243,7 +245,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     assert.equal(typeof gen, 'function', 'innal error');
     convert_list.push(...gen(conf_list[feature]));
   };
-  convert_list.push(gen_symbols(CPUs)); // symbols converter
+  convert_list.push(gen_symbols(Object.values(CPUs))); // symbols converter
 
   // 非符号提示
   if (NONSYMBOLS.length) console.log(`

@@ -140,18 +140,18 @@ export function parse_symbols({ CPU, list, options }) {
     ];
     module.module[3] ??= 'HW module address';
 
-    make_prop_symbolic(module, 'module', CPU);
-    make_prop_symbolic(module, 'DB', CPU, { document, force: { type: type }, default: { comment } });
-    make_prop_symbolic(module, 'customREQ', CPU, { document, force: { type: 'BOOL' } });
+    make_prop_symbolic(module, 'module', document);
+    make_prop_symbolic(module, 'DB', document, { force: { type: type }, default: { comment } });
+    make_prop_symbolic(module, 'customREQ', document, { force: { type: 'BOOL' } });
 
     module.polls_name = ensure_typed_value(STRING, module.polls_name);
     module.polls.forEach(poll => {
       poll.comment = ensure_typed_value(STRING, poll.comment ?? '');
       const comment = poll.comment.value;
-      make_prop_symbolic(poll, 'recv_DB', CPU, { document, default: { comment } });
+      make_prop_symbolic(poll, 'recv_DB', document, { default: { comment } });
       poll.extra_send_DB = !!poll.send_DB;
       poll.send_DB ??= POLLS_NAME;
-      make_prop_symbolic(poll, 'send_DB', CPU, { document });
+      make_prop_symbolic(poll, 'send_DB', document);
 
       poll.send_data = nullable_typed_value(STRING, poll.send_data);
       if (!poll.send_data && !poll.extra_send_DB) {

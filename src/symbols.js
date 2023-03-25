@@ -1,12 +1,11 @@
 import assert from 'assert/strict';
-import { IncHLError, lazyassign, compare_str } from "./util.js";
+import { IncHLError, lazyassign, compare_str, context } from "./util.js";
 import { pad_left, pad_right } from "./value.js";
 import { isSeq, GCL } from './gcl.js';
 import { posix } from 'path';
-import { fileURLToPath } from 'url';
 
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
-await BUILDIN_SYMBOLS.load(posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), '../symbols_buildin.yaml'));
+await BUILDIN_SYMBOLS.load(posix.join(context.module_path, 'src/symbols_buildin.yaml'));
 
 export const NONSYMBOLS = [];
 
@@ -192,34 +191,35 @@ class S7Symbol {
 /**
  * 将 原始符号 转换后加入到 CPU.symbols_dict 中
  * @date 2022-11-09
- * @param {any} CPU
- * @param {import('yaml').Node|string[]} symbol_raw
- * @param {any} options
+ * @param {import('yaml').Document} document - 符号所在的文档
+ * @param {import('yaml').Node|string[]} symbol_raw - 符号的输入值
  * @returns {S7Symbol}
  */
-export function add_symbol(CPU, symbol_raw, options = {}) {
+export function add_symbol(document, symbol_raw) {
     const is_Seq = isSeq(symbol_raw);
-    const symbols_dict = CPU.symbols_dict;
     const symbol_definition = is_Seq ? JSON.parse(symbol_raw) : symbol_raw;
     if (!Array.isArray(symbol_definition)) throw_symbol_error(`符号必须是一个定义正确数组！ 原始值:"${symbol_definition}"`);
+    const CPU = document.CPU;
+    const symbols_dict = CPU.symbols_dict;
     // 生成符号
     const symbol = new S7Symbol(symbol_definition);
     // 保存源信息
-    symbol.source.document = options.document;
+    symbol.source.document = document;
     symbol.source.range = is_Seq ? symbol_raw.range : [0, 0, 0];
     symbol.CPU = CPU;
 
-    const is_buildin = CPU.buildin_symbols.includes(symbol.name);
-    const ref = symbols_dict[symbol.name];
+    const name = symbol.name;
+    const is_buildin = CPU.buildin_symbols.includes(name);
+    const ref = symbols_dict[name];
     if (is_buildin && ref) {
         // 已存在该内置符号则应用新地址
         ref.address = symbol.address;
     } else if (ref) {
         // 不允许符号名称重复
-        throw_symbol_error(`符号"${symbol.name}"名称重复!`, symbol, symbols_dict[symbol.name]);
+        throw_symbol_error(`符号"${name}"名称重复!`, symbol, symbols_dict[name]);
     } else {
         // 新符号则保存
-        symbols_dict[symbol.name] = symbol;
+        symbols_dict[name] = symbol;
     }
 
     return ref ?? symbol;
@@ -230,14 +230,13 @@ export function add_symbol(CPU, symbol_raw, options = {}) {
  * 应只用于单纯增加某个CPU的符号
  * 具体配置里的符号，应当用make_prop_symbolic。
  * @date 2022-07-05
- * @param {CPU} CPU
+ * @param {import('yaml').Document} document
  * @param {String[]|import('yaml').YAMLSeq} symbol_list
- * @param {Object} options
- * @returns {Symbol[]}
+ * @returns {S7Symbol[]>}
  */
-export function add_symbols(CPU, symbol_list, options = {}) {
+export function add_symbols(document, symbol_list) {
     if (Array.isArray(symbol_list)) {
-        return symbol_list.map(symbol_raw => add_symbol(CPU, symbol_raw, options));
+        return symbol_list.map(symbol_raw => add_symbol(document, symbol_raw));
     }
     return [];
 }
@@ -249,7 +248,7 @@ function ref(item) {
     return item;
 }
 
-export function make_prop_symbolic(obj, prop, CPU, options = {}) {
+export function make_prop_symbolic(obj, prop, document, options = {}) {
     function apply_default_force(symbol) {
         const force_type = options?.force?.type;
         if (typeof force_type === 'string') {
@@ -269,7 +268,7 @@ export function make_prop_symbolic(obj, prop, CPU, options = {}) {
         }
     }
     function do_ref(value) {
-        const symbol = CPU.symbols_dict[value];
+        const symbol = document.CPU.symbols_dict[value];
         if (symbol) apply_default_force(symbol);
         return symbol;
     }
@@ -277,7 +276,7 @@ export function make_prop_symbolic(obj, prop, CPU, options = {}) {
     const comment = obj.comment;
     if (Array.isArray(value)) {
         // 如是数组，则返回符号
-        const symbol = add_symbol(CPU, value, options);
+        const symbol = add_symbol(document, value, options);
         apply_default_force(symbol);
         obj[prop] = symbol;
     } else if (typeof value === 'string') {
@@ -399,18 +398,19 @@ function get_portal_symbol({ name, type, address, block_name, comment }) {
 const template = `{{#for symbol in symbol_list}}{{symbol.line}}
 {{#endfor symbol}}`;
 
-export function gen_symbols(CPUs) {
-    const rules = [];
-    for (const CPU of Object.values(CPUs)) {
-        const symbol_list = Object.values(CPU.symbols_dict)
-            .map(CPU.platform === "portal" ? get_portal_symbol : get_step7_symbol)
-            .filter(symbol => symbol) // 省略 portal 的 OB, FB, FC, UDT
-            .sort((a, b) => compare_str(a.name, b.name))
-            .sort((a, b) => compare_str(a.address, b.address));
-        if (symbol_list.length) rules.push({
-            "name": `${CPU.output_dir}/symbols.${CPU.platform === "portal" ? 'sdf' : 'asc'}`,
-            "tags": { symbol_list }
-        });
+export function gen_symbols(CPU_list) {
+    return {
+        rules: CPU_list.map(CPU => {
+            const symbol_list = Object.values(CPU.symbols_dict)
+                .map(CPU.platform === "portal" ? get_portal_symbol : get_step7_symbol)
+                .filter(symbol => symbol) // 省略 portal 的 OB, FB, FC, UDT
+                .sort((a, b) => compare_str(a.name, b.name))
+                .sort((a, b) => compare_str(a.address, b.address));
+            return {
+                "name": `${CPU.output_dir}/symbols.${CPU.platform === "portal" ? 'sdf' : 'asc'}`,
+                "tags": { symbol_list }
+            };
+        }),
+        template,
     };
-    return { rules, template };
 }

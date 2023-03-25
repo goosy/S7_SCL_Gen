@@ -50,9 +50,9 @@ export function parse_symbols({ CPU, list }) {
         if (!PV.DB || !PV.input) throw new Error(`PV 功能中 DB 和 input 不能只定义1个!`);
         PV.comment = new STRING(PV.comment ?? '');
         const comment = PV.comment.value;
-        make_prop_symbolic(PV, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
-        make_prop_symbolic(PV, 'input', CPU, { document, force: { type: 'REAL' }, default: { comment } });
-        make_prop_symbolic(PV, 'enable_alarm', CPU, { document, force: { type: 'BOOL' } });
+        make_prop_symbolic(PV, 'DB', document, { force: { type: NAME }, default: { comment } });
+        make_prop_symbolic(PV, 'input', document, { force: { type: 'REAL' }, default: { comment } });
+        make_prop_symbolic(PV, 'enable_alarm', document, { force: { type: 'BOOL' } });
         PV.$enable_alarm = nullable_typed_value(BOOL, PV.$enable_alarm);
         PV.$AH_limit = nullable_typed_value(REAL, PV.$AH_limit);
         PV.$WH_limit = nullable_typed_value(REAL, PV.$WH_limit);

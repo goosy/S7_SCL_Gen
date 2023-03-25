@@ -70,11 +70,10 @@ export function parse_symbols({ CPU, list }) {
                 let comment = null;
                 if (_comment) comment = `${_comment} ${prop}`;
                 const options = {
-                    document,
                     force: { type },
                     default: { comment }
                 };
-                make_prop_symbolic(motor, prop, CPU, options);
+                make_prop_symbolic(motor, prop, document, options);
             }
         }
 

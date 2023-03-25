@@ -41,12 +41,12 @@ export function parse_symbols({ CPU, list }) {
         if (!timer.DB) throw new SyntaxError("timer转换必须有DB块!");
         timer.comment = new STRING(timer.comment ?? '');
         const comment = timer.comment ? `${timer.comment} DB` : '';
-        make_prop_symbolic(timer, 'DB', CPU, { document, force: { type: NAME }, default: { comment } });
+        make_prop_symbolic(timer, 'DB', document, { force: { type: NAME }, default: { comment } });
         timer.PPS ??= '"Pulse_1Hz"';
-        const options = { document, force: { type: 'BOOL' } };
-        make_prop_symbolic(timer, 'enable', CPU, options);
-        make_prop_symbolic(timer, 'reset', CPU, options);
-        make_prop_symbolic(timer, 'PPS', CPU, options);
+        const options = { force: { type: 'BOOL' } };
+        make_prop_symbolic(timer, 'enable', document, options);
+        make_prop_symbolic(timer, 'reset', document, options);
+        make_prop_symbolic(timer, 'PPS', document, options);
     });
 }
 

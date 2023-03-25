@@ -71,34 +71,36 @@ async function build() {
         if (files.includes(`${feature}.yaml`)) {
             const yaml_raw = await readFile(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
             const yaml = convert(converters[feature], yaml_raw.trim());
-            yamls.push(`---\nname: BUILDIN\nfeature: ${feature}\nsymbols: \n${yaml}\n...`);
-        } else if (converter.BUILDIN) {
-            yamls.push(`---\nname: BUILDIN\nfeature: ${feature}\nsymbols: \n${converter.BUILDIN.trim()}\n...`);
+            yamls.push(`name: BUILDIN\nfeature: ${feature}\nsymbols: \n${yaml}`);
+        } else {
+            yamls.push(`name: BUILDIN\nfeature: ${feature}\nsymbols: []`);
         }
     }
-    await write_file(
+    const buildin_yaml = '---\n\n' + yamls.join('\n\n---\n\n') + '\n\n...\n';
+    const filenames = [
         get_module_path('src', 'symbols_buildin.yaml'),
-        yamls.join('\n\n'),
-        { encoding: 'utf8' }
-    );
-    console.log(`file src / symbols_buildin.yaml generated!`);
-    await write_file(
-        get_module_path('lib', 'symbols_buildin.yaml'),
-        yamls.join('\n\n'),
-        { encoding: 'utf8' }
-    );
-    console.log(`file lib / symbols_buildin.yaml generated!`);
+        get_module_path('lib', 'symbols_buildin.yaml')
+    ];
+    for (const filename of filenames) {
+        await write_file(
+            filename,
+            buildin_yaml,
+            { encoding: 'utf8' }
+        );
+        console.log(`file ${filename} generated!`);
+    }
 
     // build src/converter.js
+    const filename = get_module_path('src', 'converter.js');
     await write_file(
-        get_module_path('src', 'converter.js'),
+        filename,
         convert( // convert the content of src/converter.template
             { converters, supported_category },
             await readFile('src/converter.template', { encoding: 'utf8' })
         ),
         { encoding: 'utf8' }
     );
-    console.log(`file src / converter.js generated!`);
+    console.log(`file ${filename} generated!`);
 
     // build bundle files
     let main_bundle, cli_bundle;

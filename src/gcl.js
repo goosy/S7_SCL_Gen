@@ -103,39 +103,33 @@ export class GCL {
                 }
             }
         }
-        this.#documents = parseAllDocuments(yaml, { version: '1.1' }); // only YAML 1.1 support merge key
-        const enumerable = true;
-        const configurable = false;
-        for (const doc of this.#documents) {
-            doc.gcl = this;
-            doc.offset ??= 0;
-            const is_buildin = options.filename === 'buildin';
-            const CPU = doc.get('CPU') ?? doc.get('name') ?? options.CPU;
-            const CPUs = is_buildin
-                ? []
-                : isSeq(CPU) ? CPU.items.map(item => String(item)) : [CPU];
-            for (const CPU of CPUs) {
-                assert(typeof CPU === 'string' && CPU !== '', new SyntaxError(`"${this.file}"文件的 name 或者 CPU 必须提供，并且必须是字符串或字符串数组!`));
-            }
-            Object.defineProperty(doc, 'CPUs', {
-                get() {
-                    return CPUs;
-                },
-                enumerable,
-                configurable
-            });
-            const feature = doc.get('feature') ?? doc.get('type') ?? options.feature;
-            if (!is_buildin) {
+        const documents = [];
+        for (const document of parseAllDocuments(yaml, { version: '1.1' })) { // only YAML 1.1 support merge key
+            const CPU_error = new SyntaxError(`"${this.file}"文件的 name 或者 CPU 必须提供，并且必须是字符串或字符串数组!`);
+            const feature = document.get('feature') ?? document.get('type') ?? options.feature;
+            const CPU = document.get('CPU') ?? document.get('name') ?? options.CPU;
+            const CPUs = isSeq(CPU) ? CPU.items.map(item => String(item)) : [CPU];
+            if (options.filename !== 'buildin') {
                 assert(typeof feature === 'string', new SyntaxError(`${this.file} 文件的 feature 必须提供，并且必须是字符串!`));
+                if (CPUs.length === 0) throw CPU_error;
             }
-            Object.defineProperty(doc, 'feature', {
-                get() {
-                    return feature;
-                },
-                enumerable,
-                configurable
+            CPUs.forEach((CPU, index) => {
+                assert(typeof CPU === 'string' && CPU !== '', CPU_error);
+                // if multi CPU then clone document
+                const doc = index === 0 ? document : document.clone();
+                doc.gcl = this;
+                doc.offset ??= 0;
+                doc.CPU = CPU;
+                documents.push(doc);
+                Object.defineProperty(doc, 'feature', {
+                    get() {
+                        return feature;
+                    },
+                    enumerable: true,
+                    configurable: false,
+                });
             });
-            this[feature] = doc;
         }
+        this.#documents = documents;
     }
 }

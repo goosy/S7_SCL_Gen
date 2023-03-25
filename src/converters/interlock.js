@@ -75,7 +75,7 @@ export function parse_symbols({ CPU, list }) {
     interlock.comment = new STRING(interlock.comment ?? '报警联锁');
     const comment = interlock.comment.value;
     interlock.$enable = interlock.$enable !== false ? true : false;
-    make_prop_symbolic(interlock, 'DB', CPU, { document, default: { comment } });
+    make_prop_symbolic(interlock, 'DB', document, { default: { comment } });
 
     if (!interlock.input_list || interlock.input_list.length < 1) throw new SyntaxError("interlock的input_list必须有1项以上!"); // 不能为空项
     let list = interlock.input_list;
@@ -89,11 +89,7 @@ export function parse_symbols({ CPU, list }) {
       if (input.name === "test") throw new SyntaxError('interlock input项不能起名"test"! 已有同名内置项。');
       input.comment = new STRING(input.comment ?? '');
       const comment = input.comment.value;
-      if (input.target) make_prop_symbolic(input, 'target', CPU, {
-        document,
-        default: { comment },
-        force: { type: 'BOOL' },
-      });
+      if (input.target) make_prop_symbolic(input, 'target', document, { default: { comment }, force: { type: 'BOOL' } });
     }
     list.push({ name: 'test', comment: '测试' });
 
@@ -109,11 +105,7 @@ export function parse_symbols({ CPU, list }) {
       if (reset.name === "reset") throw new SyntaxError('interlock reset 项不能起名"reset"! 已有同名内置项。');
       reset.comment = new STRING(reset.comment ?? '');
       const comment = reset.comment.value;
-      make_prop_symbolic(reset, 'target', CPU, {
-        document,
-        default: { comment },
-        force: { type: 'BOOL' },
-      });
+      make_prop_symbolic(reset, 'target', document, { default: { comment }, force: { type: 'BOOL' } });
     }
     list.push({ name: 'reset', comment: '输出复位' });
 
@@ -127,7 +119,7 @@ export function parse_symbols({ CPU, list }) {
     list = interlock.output_list;
     for (let [index, output] of list.entries()) {
       if (typeof output !== 'string' && !Array.isArray(output)) throw new SyntaxError('interlock的output项必须必须是一个S7符号或SCL表达式!');
-      make_prop_symbolic(list, index, CPU, { document, force: { type: 'BOOL' } });
+      make_prop_symbolic(list, index, document, { force: { type: 'BOOL' } });
     }
   });
 }
