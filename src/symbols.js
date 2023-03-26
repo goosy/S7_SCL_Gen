@@ -50,12 +50,12 @@ function throw_symbol_error(message, curr_symbol, prev_symbol) {
         const doc = symbol.source.document;
         const gcl = doc.gcl;
         if (gcl) {
-            const { ln, col, code } = gcl.get_coorinfo(...symbol.source.range);
+            const { line, col, code } = gcl.get_pos_info(...symbol.source.range);
             return `
             文件:${gcl.file}
             文档:${symbol.CPU.name}-${doc.feature}
             符号:${symbol.name}
-            行:${ln}
+            行:${line}
             列:${col}
             代码:${code}`;
         }

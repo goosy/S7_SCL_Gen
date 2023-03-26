@@ -1,7 +1,7 @@
 import assert from 'assert/strict';
 import { readFile } from 'fs/promises';
 import { createHash } from 'crypto';
-import { Document, parseAllDocuments, isSeq, } from 'yaml';
+import { Document, parseAllDocuments, isSeq, LineCounter } from 'yaml';
 export {
     isDocument, isAlias, isNode,
     isCollection, isMap, isSeq,
@@ -26,34 +26,19 @@ export class GCL {
     get SCL() {
         return this.#SCL;
     }
-    #lines;
-    get lines() {
-        return this.#lines;
-    }
-    get_lines() {
-        this.#lines = [];
-        let index, position = 0;
-        do {
-            index = this.#source.indexOf('\n', position);
-            if (index > -1) {
-                this.#lines.push([position, index]);
-                position = index + 1;
-            }
-        } while (index > -1);
-        if (position < this.#source.length) this.#lines.push([position, this.#source.length]);
+    #line_counter;
+    get_pos_info(start, end) {
+        const pos = this.#line_counter.linePos(start);
+        const code = this.#source.substring(start, end).trim();
+        return { ...pos, code };
     }
     #MD5;
     get MD5() {
         return this.#MD5;
     }
 
-    constructor() { }
-
-    get_coorinfo(start, end) {
-        const ln = 1 + this.#lines.findIndex(([s, e]) => s <= start && start < e);
-        const col = start - this.#lines[ln - 1][0];
-        const code = this.#source.substring(start, end + 1);
-        return { ln, col, code };
+    constructor() {
+        this.#line_counter = new LineCounter();
     }
 
     async load(yaml, options = {}) {
@@ -69,18 +54,22 @@ export class GCL {
         } else {
             inSCL = false; //只有在文件中才能是SCL
             this.#file = filename;
-            yaml = this.#source = yaml;
+            this.#source = yaml;
         }
-        this.get_lines();
-        this.#documents = [];
         this.#MD5 = createHash('md5').update(this.#source).digest('hex');
 
+        const line_starts = [...this.#source.matchAll(/^/gm)].map(match => {
+            const index = match.index;
+            this.#line_counter.addNewLine(index);
+            return index;
+        });
         if (inSCL) { // SCL中只能用注释进行符号定义
             this.#SCL = '';
             let inYAML = false;
             yaml = '';
-            for (const [start, end] of this.#lines) {
-                const line = this.#source.substring(start, end + 1);
+            let start = 0;
+            for (const end of line_starts.slice(1)) {
+                const line = this.#source.substring(start, end);
                 const isStart = line.startsWith('(**');
                 const isEnd = line.startsWith('**)');
                 const flag_error = new SyntaxError(`SCL文件${this.#file}文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。`);
@@ -99,11 +88,12 @@ export class GCL {
                     yaml += line;
                 } else {
                     this.#SCL += line;
-                    yaml += '#' + line.substr(1);
+                    yaml += line.trim() === '' ? line : '#' + line.substr(1);
                 }
+                start = end;
             }
         }
-        const documents = [];
+        const documents = this.#documents = [];
         for (const document of parseAllDocuments(yaml, { version: '1.1' })) { // only YAML 1.1 support merge key
             const CPU_error = new SyntaxError(`"${this.file}"文件的 name 或者 CPU 必须提供，并且必须是字符串或字符串数组!`);
             const feature = document.get('feature') ?? document.get('type') ?? options.feature;
@@ -130,6 +120,5 @@ export class GCL {
                 });
             });
         }
-        this.#documents = documents;
     }
 }
