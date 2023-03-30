@@ -8,7 +8,16 @@ import { GCL } from './gcl.js';
 import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 
-/** @type {string: {CPU, includes, files, list, options}[] }*/
+/** 
+ * @typeof {object} Area 
+ * @property {import('yaml').Document} document - 文档
+ * @property {Array} list - 列表
+ * @property {string|string[]} includes - 包括列表
+ * @property {string[]} files - 文件列表
+ * @property {object} options - 选项
+ */
+
+/** @type {object.<string, Area[]>}*/
 const conf_list = {};
 supported_features.forEach(feature => {
   // 初始化conf_list
@@ -63,7 +72,7 @@ async function parse_includes(includes, options) {
       await gcl.load(filename, { ...options, encoding: 'utf8', inSCL: true });
       gcl_list.push(gcl);
     };
-    code = gcl_list.map(gcl => gcl.SCL).join('\n');
+    code = gcl_list.map(gcl => gcl.SCL).join('\n\n');
   } catch (err) {
     code = '';
     console.error(err.message);
@@ -120,7 +129,7 @@ async function add_conf(document) {
     gcl.documents.forEach(doc => {
       doc.CPU = CPU;
       const symbols_of_includes = add_symbols(doc, doc.get('symbols')?.items ?? []);
-      CPU.buildin_symbols.push(...symbols_of_includes.map(symbol=>symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
+      CPU.buildin_symbols.push(...symbols_of_includes.map(symbol => symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
     })
   });
   // 内置符号文档
@@ -133,14 +142,13 @@ async function add_conf(document) {
   const raw_symbols_of_doc = document.get('symbols')?.items ?? [];
   if (raw_symbols_of_doc) add_symbols(document, raw_symbols_of_doc,);
 
-  // conf 存在属性为 null 但不是 undefined 的情况，故不能解构赋值
-  const conf = document.toJS();
-  const list = conf.list ?? [];
-  const files = conf.files ?? [];
-  const options = conf.options ?? {};
+  // 传递节点以便定位源码位置
+  const list = document.get('list')?.items ?? [];
+  const files = document.get('files')?.items ?? [];
+  const options = document.get('options')?.toJSON() ?? {};
   const name = CPU.name;
   if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
-  const area = { CPU, list, includes, files, loop_additional_code, options, gcl: document.gcl };
+  const area = { document, list, includes, files, loop_additional_code, options };
   const parse_symbols = converter[feature].parse_symbols;
   if (typeof parse_symbols === 'function') parse_symbols(area);
   conf_list[feature].push(area);
@@ -218,13 +226,13 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   const convert_list = [];
   for (const feature of supported_features) {
     for (const item of conf_list[feature]) {
-      const output_dir = posix.join(work_path, item.CPU.output_dir);
+      const output_dir = posix.join(work_path, item.document.CPU.output_dir);
       const gen_copy_list = converter[feature].gen_copy_list;
       assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
       const conf_files = [];
       for (const file of item.files) {
-        if (/\\/.test(file)) throw new SyntaxError('路径分隔符要使用"/"!');
-        let [base, rest] = file.split('//');
+        if (/\\/.test(file.value)) throw new SyntaxError('路径分隔符要使用"/"!');
+        let [base, rest] = file.value.split('//');
         if (rest == undefined) {
           rest = base;
           base = '';

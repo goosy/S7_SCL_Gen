@@ -12,8 +12,8 @@ export function is_feature(feature) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 
 // 主循环调用
@@ -53,8 +53,10 @@ END_FUNCTION
  * @param {S7Item} valve_area
  * @returns {void}
  */
-export function parse_symbols({ CPU, list }) {
-    const document = CPU.valve;
+export function parse_symbols(area) {
+    const document = area.document;
+    const list = area.list.map(item => item.toJSON());
+    area.list = list;
     list.forEach(valve => {
         if (!valve.DB) return; // 空valve不处理
         valve.comment = new STRING(valve.comment ?? '');
@@ -80,9 +82,9 @@ export function parse_symbols({ CPU, list }) {
 export function gen(valve_list) {
     const rules = [];
 
-    valve_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
+    valve_list.forEach(({ document, includes, loop_additional_code, list }) => {
+        const { CPU, gcl } = document;
         const { output_dir } = CPU;
-        const document = CPU.valve;
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {
@@ -91,7 +93,7 @@ export function gen(valve_list) {
                 NAME,
                 LOOP_NAME,
                 list,
-                document,
+                gcl,
             }
         })
     });
@@ -101,6 +103,6 @@ export function gen(valve_list) {
 export function gen_copy_list(item) {
     const filename = `${NAME}.scl`;
     const src = posix.join(context.module_path, NAME, filename);
-    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
     return [{ src, dst }];
 }

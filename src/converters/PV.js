@@ -12,8 +12,8 @@ export function is_feature(feature) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for PV_item in list}}{{#if PV_item.DB && PV_item.input}}
 // PV_Alarm 背景块：{{PV_item.comment}}
@@ -43,8 +43,10 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols({ CPU, list }) {
-    const document = CPU.PV;
+export function parse_symbols(area) {
+    const document = area.document;
+    const list = area.list.map(item => item.toJSON());
+    area.list = list;
     list.forEach(PV => {
         if (!PV.DB && !PV.input) return; // 空PV不处理
         if (!PV.DB || !PV.input) throw new Error(`PV 功能中 DB 和 input 不能只定义1个!`);
@@ -65,10 +67,10 @@ export function parse_symbols({ CPU, list }) {
 
 export function gen(PV_list) {
     const rules = [];
-    PV_list.forEach(({ CPU, includes, loop_additional_code, list, options = {} }) => {
+    PV_list.forEach(({ document, includes, loop_additional_code, list, options = {} }) => {
+        const { CPU, gcl } = document;
         const { output_dir } = CPU;
         const { output_file = LOOP_NAME } = options;
-        const document = CPU.PV;
         rules.push({
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
@@ -77,7 +79,7 @@ export function gen(PV_list) {
                 includes,
                 loop_additional_code,
                 list,
-                document,
+                gcl,
             }
         })
     });
@@ -87,6 +89,6 @@ export function gen(PV_list) {
 export function gen_copy_list(item) {
     const filename = `${NAME}.scl`;
     const src = posix.join(context.module_path, NAME, filename);
-    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
     return [{ src, dst }];
 }

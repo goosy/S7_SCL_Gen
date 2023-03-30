@@ -20,8 +20,8 @@ export function is_feature(feature) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for module in modules}}
 // FM350-2专用数据块"{{module.count_DB.name}}"
@@ -56,8 +56,12 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols({ CPU, list, options }) {
-  const document = CPU.PI;
+export function parse_symbols(area) {
+  const document = area.document;
+  const CPU = document.CPU;
+  const options = area.options;
+  const list = area.list.map(item => item.toJSON());
+  area.list = list;
   let index = 0;
   list.forEach(module => {
     module.comment = new STRING(module.comment ?? '');
@@ -98,8 +102,8 @@ export function parse_symbols({ CPU, list, options }) {
  * @param {S7Item} PI
  * @returns {void}
  */
-export function build(PI) {
-  const { CPU, list } = PI;
+export function build({ document, list }) {
+  const CPU = document.CPU;
   list.forEach(module => { // 处理配置，形成完整数据
     assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:PI 的模块(${module.comment}) 模块地址有误!`));
     const MNO = module.module.block_no;
@@ -110,10 +114,10 @@ export function build(PI) {
 
 export function gen(PI_list) {
   const rules = [];
-  PI_list.forEach(({ CPU, includes, loop_additional_code, list: modules, options }) => {
+  PI_list.forEach(({ document, includes, loop_additional_code, list: modules, options }) => {
+    const { CPU, gcl } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
-    const document = CPU.PI;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
@@ -123,7 +127,7 @@ export function gen(PI_list) {
         NAME,
         LOOP_NAME,
         FM3502_CNT_NAME,
-        document,
+        gcl,
       }
     })
   });
@@ -133,6 +137,6 @@ export function gen(PI_list) {
 export function gen_copy_list(item) {
   const filename = `${NAME}.scl`;
   const src = posix.join(context.module_path, NAME, filename);
-  const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+  const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
   return [{ src, dst }];
 }

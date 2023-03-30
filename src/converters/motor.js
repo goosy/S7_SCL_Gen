@@ -12,8 +12,8 @@ export function is_feature(feature) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for motor in list}}{{#if motor.DB}}
 // motor背景块: {{motor.comment}}
@@ -61,8 +61,10 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols({ CPU, list }) {
-    const document = CPU.motor;
+export function parse_symbols(area) {
+    const document = area.document;
+    const list = area.list.map(item => item.toJSON());
+    area.list = list;
     list.forEach(motor => {
         if (!motor.DB) return; // 空块不处理
         function symbolic(type, _comment) {
@@ -127,9 +129,9 @@ export function build({ list }) {
 
 export function gen(motor_list) {
     const rules = [];
-    motor_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
+    motor_list.forEach(({ document, includes, loop_additional_code, list }) => {
+        const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
-        const document = CPU.motor;
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {
@@ -139,7 +141,7 @@ export function gen(motor_list) {
                 NAME,
                 LOOP_NAME,
                 list,
-                document,
+                gcl,
             }
         })
     });
@@ -147,7 +149,7 @@ export function gen(motor_list) {
 }
 
 export function gen_copy_list(item) {
-    const src = posix.join(context.module_path, `${NAME}/${NAME}(${item.CPU.platform}).scl`);
-    const dst = posix.join(context.work_path, item.CPU.output_dir, `${NAME}.scl`);
+    const src = posix.join(context.module_path, `${NAME}/${NAME}(${item.document.CPU.platform}).scl`);
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
     return [{ src, dst }];
 }

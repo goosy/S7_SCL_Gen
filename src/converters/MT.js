@@ -79,8 +79,8 @@ export function is_feature(feature) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for conn in connections}}
 DATA_BLOCK "{{conn.DB.name}}" "{{NAME}}" // {{conn.comment}}
@@ -186,9 +186,12 @@ function get_device_id(device, R, X) {
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols({ CPU, list }) {
+export function parse_symbols(area) {
+  const document = area.document;
+  const CPU = document.CPU;
+  const list = area.list.map(item => item.toJSON());
+  area.list = list;
   // CPU.device 必须第二遍扫描才有效
-  const document = CPU.MT;
   list.forEach(conn => {
     conn.comment = ensure_typed_value(STRING, conn.comment ?? '');
     const comment = conn.comment.value;
@@ -235,7 +238,8 @@ export function parse_symbols({ CPU, list }) {
 }
 
 export function build(MT) {
-  const { CPU, list } = MT;
+  const { document, list } = MT
+  const CPU = document.CPU;
   const DBs = new Set(); // 去重
   list.forEach(conn => { // 处理配置，形成完整数据
     const {
@@ -290,10 +294,10 @@ export function build(MT) {
 
 export function gen(MT_list) {
   const rules = [];
-  MT_list.forEach(({ CPU, includes, loop_additional_code, invoke_code, list: connections, options }) => {
+  MT_list.forEach(({ document, includes, loop_additional_code, invoke_code, list: connections, options }) => {
+    const { CPU, gcl } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
-    const document = CPU.MT;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
@@ -304,7 +308,7 @@ export function gen(MT_list) {
         NAME,
         LOOP_NAME,
         POLLS_NAME,
-        document,
+        gcl,
       }
     })
   });
@@ -314,6 +318,6 @@ export function gen(MT_list) {
 export function gen_copy_list(item) {
   const filename = `${NAME}.scl`;
   const src = posix.join(context.module_path, NAME, filename);
-  const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+  const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
   return [{ src, dst }];
 }

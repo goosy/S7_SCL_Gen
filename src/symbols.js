@@ -1,7 +1,8 @@
 import assert from 'assert/strict';
 import { IncHLError, lazyassign, compare_str, context } from "./util.js";
 import { pad_left, pad_right } from "./value.js";
-import { isSeq, GCL } from './gcl.js';
+import { GCL } from './gcl.js';
+import { isSeq } from 'yaml';
 import { posix } from 'path';
 
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
@@ -35,6 +36,21 @@ const area_size = Object.fromEntries([
 ]);
 
 /**
+ * 取得符号信息
+ * @param {Symbol} symbol
+ * @return {string}
+ */
+function get_msg(symbol) {
+    const gcl = symbol.source.document.gcl;
+    if (gcl) {
+        const info = gcl.get_pos_info(...symbol.source.range);
+        return `${info}
+        符号:${symbol.name}`;
+    }
+    return `内置符号 symbol:${symbol.name}`
+};
+
+/**
  * 抛出2个符号冲突异常
  * @date 2022-11-09
  * @param {string} message
@@ -42,25 +58,6 @@ const area_size = Object.fromEntries([
  * @param {Symbol} prev_symbol
  */
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
-    /**
-     * @param {Symbol} symbol
-     * @return {string}
-     */
-    const get_msg = symbol => {
-        const doc = symbol.source.document;
-        const gcl = doc.gcl;
-        if (gcl) {
-            const { line, col, code } = gcl.get_pos_info(...symbol.source.range);
-            return `
-            文件:${gcl.file}
-            文档:${symbol.CPU.name}-${doc.feature}
-            符号:${symbol.name}
-            行:${line}
-            列:${col}
-            代码:${code}`;
-        }
-        return `内置符号 symbol:${symbol.name}`
-    };
     const prev_msg = prev_symbol ? `之前符号位置: ${get_msg(prev_symbol)}\n` : '';
     const curr_msg = curr_symbol ? `当前符号位置: ${get_msg(curr_symbol)}\n` : '';
     console.error(`${message}\n${prev_msg}${curr_msg}`);
@@ -242,69 +239,96 @@ export function add_symbols(document, symbol_list) {
 }
 
 function ref(item) {
+    let ret = null;
     if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-        return { value: item, type: 'ref' };
+        ret = {
+            value: item,
+            type: 'ref',
+            toString() {
+                return this.value.toString();
+            }
+        };
     }
-    return item;
+    return ret;
 }
 
-export function make_prop_symbolic(obj, prop, document, options = {}) {
-    function apply_default_force(symbol) {
-        const force_type = options?.force?.type;
-        if (typeof force_type === 'string') {
-            // 强制指定类型，完全忽略用户的定义
-            symbol.type = force_type;
-        } else {
-            // 默认类型
-            symbol.type ??= options?.default?.type;
-        }
-        const force_comment = options?.force?.comment;
-        if (typeof force_comment === 'string') {
-            // 强制指定注释，完全忽略用户的定义
-            symbol.comment = force_comment;
-        } else if (symbol.comment == '') {
-            // 默认注释
-            symbol.comment = options?.default?.comment;
-        }
+function check_type_compatibility(symbol, type) {
+    // @TODO
+    return true;
+}
+function apply_default_force(symbol, options) {
+    const force_type = options?.force?.type;
+    if (typeof force_type === 'string') {
+        // 强制指定类型，完全忽略用户的定义
+        if (check_type_compatibility(symbol, force_type)) symbol.type = force_type;
+        else throw new Error('符号类型不兼容');
+    } else {
+        // 默认类型
+        symbol.type ??= options?.default?.type;
     }
-    function do_ref(value) {
-        const symbol = document.CPU.symbols_dict[value];
-        if (symbol) apply_default_force(symbol);
+    const force_comment = options?.force?.comment;
+    if (typeof force_comment === 'string') {
+        // 强制指定注释，完全忽略用户的定义
+        symbol.comment = force_comment;
+    } else if (symbol.comment == '') {
+        // 默认注释
+        symbol.comment = options?.default?.comment;
+    }
+}
+
+export function make_s7express(obj, prop, value, document, options = {}) {
+    const comment = options.comment;
+    function s7express(value) {
+        if (value === undefined || !options.s7express) return undefined;
+        const ret = ref(value);
+        if (!ret) throw new Error('非有效项的值');  // 非表达式报错
+        // 数字或布尔值返回引用对象
+        NONSYMBOLS.push({ prop, value, comment });
+        return ret;
+    }
+    function get_linked_symbol(name) {
+        const symbol = document.CPU.symbols_dict[name];
+        if (symbol) apply_default_force(symbol, options);
         return symbol;
     }
-    const value = obj[prop];
-    const comment = obj.comment;
-    if (Array.isArray(value)) {
-        // 如是数组，则返回符号
+    options.definition ??= true; // 默认允许符号定义
+    if ((Array.isArray(value) || isSeq(value)) && options.definition) {
+        // 如是符号定义，则返回转换后的符号对象
         const symbol = add_symbol(document, value, options);
-        apply_default_force(symbol);
+        apply_default_force(symbol, options);
         obj[prop] = symbol;
-    } else if (typeof value === 'string') {
-        // 如是字符串，则返回引用。
-        const symbol = do_ref(value);
+        return;
+    }
+    if (typeof value === 'string' && options.link) {
+        // 如是引用存在，则返回引用符号。
+        const symbol = get_linked_symbol(value);
         if (symbol) {
             obj[prop] = symbol;
-        } else {
-            // 因为全部符号尚未完全加载完
-            // 如果引用不存在，返回惰性赋值,
-            // 下次调用时将赋值为最终符号引用或字串值引用对象
-            lazyassign(obj, prop, () => {
-                const symbol = do_ref(value);
-                if (symbol) {
-                    symbol.complete_type();
-                    return symbol;
-                } else {
-                    if (value != null) NONSYMBOLS.push({ prop, value, comment });
-                    return ref(value);
-                }
-            });
+            return;
         }
-    } else {
-        if (value != null) NONSYMBOLS.push({ prop, value, comment });
-        // 数字或布尔值返回引用对象
-        // 其它直接值返回本身
-        obj[prop] = ref(value);
+
+        // 如果引用不存在，返回惰性赋值,
+        // 因为全部符号尚未完全加载完
+        // 下次调用时将赋值为最终符号或S7表达式对象
+        lazyassign(obj, prop, () => {
+            const symbol = get_linked_symbol(value);
+            if (symbol) {
+                // 如是引用存在，则返回引用符号。
+                symbol.complete_type();
+                return symbol;
+            }
+            return s7express(value);
+        });
+        return;
     }
+    obj[prop] = s7express(value);
+}
+export function make_prop_symbolic(obj, prop, document, options = {}) {
+    const value = obj[prop];
+    options.comment = obj.comment ?? '';
+    options.link = true;
+    options.s7express = true;
+    if (value != null) make_s7express(obj, prop, value, document, options);
 }
 
 // 第二遍扫描，检查并补全符号表

@@ -47,7 +47,7 @@ export class BOOL extends S7Value {
         if (typeof value === 'string' &&
             (value.toLowerCase() === 'true' || value.toLowerCase() === 'false')
         ) value = Boolean(value);
-        assert(typeof value === 'boolean', `value:${value}. the value must be a boolean. 值必须是一个布尔值`);
+        assert(typeof value === 'boolean', `the value "${value}" must be a boolean. 值必须是一个布尔值`);
         this._value = value;
     }
     toString() {
@@ -59,7 +59,7 @@ class S7Number extends S7Value {
     constructor(value) {
         super();
         if (typeof value === 'string') value = Number(value);
-        assert(Number.isFinite(value), `value:${value}. the value must be a number. 值必须是一个有限数字`);
+        assert(Number.isFinite(value), `the value "${value}" must be a number. 值必须是一个有限数字`);
         this._value = value;
     }
 }
@@ -86,7 +86,7 @@ export class STRING extends S7Value {
         super();
         if (typeof value === 'number' && Number.isFinite(value)) value = String(value);
         if (typeof value === 'boolean') value = String(value);
-        assert(typeof value === 'string', `value:${value}. the value must be a string. 值必须是一个字符串`);
+        assert(typeof value === 'string', `the value "${value}" must be a string. 值必须是一个字符串`);
         this._value = value;
     }
     toString() {

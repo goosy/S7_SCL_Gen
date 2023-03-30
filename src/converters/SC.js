@@ -22,8 +22,8 @@ export function is_feature(feature) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 
 // 轮询DB块，含485调度指令和发送数据
@@ -107,8 +107,12 @@ END_FUNCTION
  * @param {S7Item} SC_area
  * @returns {void}
  */
-export function parse_symbols({ CPU, list, options }) {
-  const document = CPU.SC;
+export function parse_symbols(area) {
+  const document = area.document;
+  const CPU = document.CPU;
+  const options = area.options;
+  const list = area.list.map(item => item.toJSON());
+  area.list = list;
   let index = 0;
   list.forEach(module => {
     module.comment = new STRING(module.comment ?? '');
@@ -175,8 +179,9 @@ export function parse_symbols({ CPU, list, options }) {
  * @returns {void}
  */
 export function build(SC) {
-  const { CPU, list } = SC;
+  const CPU = SC.document.CPU;
   const DBs = new Set(); // 去重
+  const list = SC.list;
   const polls = list.map(module => module.polls).flat();
   polls.forEach((poll, index) => poll.index = index);
   let sendDBB = polls.length * 16;
@@ -225,10 +230,10 @@ export function build(SC) {
 
 export function gen(SC_list) {
   const rules = [];
-  SC_list.forEach(({ CPU, includes, loop_additional_code, invoke_code, list: modules, options }) => {
+  SC_list.forEach(({ document, includes, loop_additional_code, invoke_code, list: modules, options }) => {
+    const { CPU, gcl } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME } = options;
-    const document = CPU.SC;
     rules.push({
       "name": `${output_dir}/${output_file}.scl`,
       "tags": {
@@ -240,7 +245,7 @@ export function gen(SC_list) {
         CP341_NAME,
         LOOP_NAME,
         POLLS_NAME,
-        document,
+        gcl,
       }
     })
   });
@@ -251,7 +256,7 @@ export function gen_copy_list(item) {
   const copy_list = [];
   function push_copy_pair(filename) {
     const src = posix.join(context.module_path, 'CP_Poll', filename);
-    const dst = posix.join(context.work_path, item.CPU.output_dir, filename);
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
     copy_list.push({ src, dst });
   }
   if (item.options.has_CP340) push_copy_pair(`${CP340_NAME}.scl`);

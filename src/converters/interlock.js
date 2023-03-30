@@ -10,8 +10,8 @@ export function is_feature(name) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for interlock in list}}
 // {{interlock.comment}}
@@ -68,8 +68,10 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols({ CPU, list }) {
-  const document = CPU.interlock;
+export function parse_symbols(area) {
+  const document = area.document;
+  const list = area.list.map(item => item.toJSON());
+  area.list = list;
   list.forEach(interlock => {
     if (!interlock.DB) throw new SyntaxError("interlock转换必须有DB块!");
     interlock.comment = new STRING(interlock.comment ?? '报警联锁');
@@ -152,9 +154,9 @@ export function build({ list }) {
 
 export function gen(interlock_list) {
   const rules = [];
-  interlock_list.forEach(({ CPU, includes, loop_additional_code, list }) => {
+  interlock_list.forEach(({ document, includes, loop_additional_code, list }) => {
+    const { CPU, gcl } = document;
     const { output_dir, platform } = CPU;
-    const document = CPU.interlock;
     rules.push({
       "name": `${output_dir}/${LOOP_NAME}.scl`,
       "tags": {
@@ -163,13 +165,13 @@ export function gen(interlock_list) {
         loop_additional_code,
         LOOP_NAME,
         list,
-        document,
+        gcl,
       }
     })
   });
   return [{ rules, template }];
 }
 
-export function gen_copy_list(item) {
+export function gen_copy_list() {
   return [];
 }

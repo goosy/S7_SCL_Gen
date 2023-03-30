@@ -32,8 +32,8 @@ export function is_feature(feature) {
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{document.gcl.file}}
-// 摘要: {{document.gcl.MD5}}
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for FN in list}}{{#if FN.block.block_name === 'OB'}}
 ORGANIZATION_BLOCK "{{FN.block.name}}"{{#if FN.title}}
@@ -55,9 +55,12 @@ END_FUNCTION{{#endif block_name}}
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols({ CPU, list }) {
-    const document = CPU.CPU;
-    const CM = CPU.symbols_dict.Clock_Byte ?? CPU.symbols_dict.Clock_Memory;
+export function parse_symbols(area) {
+    const document = area.document;
+    const list = area.list.map(item => item.toJSON());
+    area.list = list;
+    const CPU = document.CPU;
+    const CM = CPU.symbols_dict.Clock_Byte;
     if (CM) {
         assert(/^mb\d+$/i.test(CM.address), new SyntaxError(`${CPU.name}-CPU:符号 Clock_Byte 的地址 "${CM.address}" 无效！`));
         CM.name = 'Clock_Byte';
@@ -84,8 +87,9 @@ export function parse_symbols({ CPU, list }) {
     });
 }
 
-export function build({ CPU, list, options = {} }) {
-    CPU.device = CPU.CPU.get('device');
+export function build({ document, list, options}) {
+    const CPU = document.CPU;
+    CPU.device = document.get('device');
     list.forEach(FN => {
         if (!['OB', 'FC'].includes(FN.block.block_name)) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项block必须是一个 OB 或 FC 符号!`);
     });
@@ -95,17 +99,17 @@ export function build({ CPU, list, options = {} }) {
 
 export function gen(CPU_list) {
     const CPU_rules = [];
-    CPU_list.forEach(({ CPU, includes, list, options = {} }) => {
+    CPU_list.forEach(({ document, includes, list, options }) => {
+        const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         const { output_file } = options;
-        const document = CPU.CPU;
         if (includes.length || list.length) CPU_rules.push({
             "name": `${output_dir}/${output_file ?? NAME}.scl`,
             "tags": {
                 platform,
                 includes,
                 list,
-                document,
+                gcl,
             }
         });
     });
