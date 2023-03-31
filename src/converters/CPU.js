@@ -55,7 +55,7 @@ END_FUNCTION{{#endif block_name}}
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols(area) {
+export function initialize_list(area) {
     const document = area.document;
     const list = area.list.map(item => item.toJSON());
     area.list = list;
@@ -87,7 +87,7 @@ export function parse_symbols(area) {
     });
 }
 
-export function build({ document, list, options}) {
+export function build_list({ document, list, options}) {
     const CPU = document.CPU;
     CPU.device = document.get('device');
     list.forEach(FN => {

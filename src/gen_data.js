@@ -149,8 +149,8 @@ async function add_conf(document) {
   const name = CPU.name;
   if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
   const area = { document, list, includes, files, loop_additional_code, options };
-  const parse_symbols = converter[feature].parse_symbols;
-  if (typeof parse_symbols === 'function') parse_symbols(area);
+  const initialize_list = converter[feature].initialize_list;
+  if (typeof initialize_list === 'function') initialize_list(area);
   conf_list[feature].push(area);
 }
 
@@ -195,8 +195,8 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
 
   for (const feature of supported_features) {
     const list = conf_list[feature];
-    const build = converter[feature].build;
-    if (typeof build === 'function') list.forEach(build);
+    const build_list = converter[feature].build_list;
+    if (typeof build_list === 'function') list.forEach(build_list);
   };
 
   // 校验完毕，由 noconvert 变量决定是否输出

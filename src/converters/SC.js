@@ -107,7 +107,7 @@ END_FUNCTION
  * @param {S7Item} SC_area
  * @returns {void}
  */
-export function parse_symbols(area) {
+export function initialize_list(area) {
   const document = area.document;
   const CPU = document.CPU;
   const options = area.options;
@@ -178,7 +178,7 @@ export function parse_symbols(area) {
  * @param {S7Item} SC
  * @returns {void}
  */
-export function build(SC) {
+export function build_list(SC) {
   const CPU = SC.document.CPU;
   const DBs = new Set(); // 去重
   const list = SC.list;

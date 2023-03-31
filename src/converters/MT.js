@@ -186,7 +186,7 @@ function get_device_id(device, R, X) {
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols(area) {
+export function initialize_list(area) {
   const document = area.document;
   const CPU = document.CPU;
   const list = area.list.map(item => item.toJSON());
@@ -237,7 +237,7 @@ export function parse_symbols(area) {
   });
 }
 
-export function build(MT) {
+export function build_list(MT) {
   const { document, list } = MT
   const CPU = document.CPU;
   const DBs = new Set(); // 去重

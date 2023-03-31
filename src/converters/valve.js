@@ -53,7 +53,7 @@ END_FUNCTION
  * @param {S7Item} valve_area
  * @returns {void}
  */
-export function parse_symbols(area) {
+export function initialize_list(area) {
     const document = area.document;
     const list = area.list.map(item => item.toJSON());
     area.list = list;

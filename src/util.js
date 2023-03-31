@@ -72,6 +72,7 @@ class IncreaseHL { // abstract class
 export class IntIncHL extends IncreaseHL {
     #list = [];
     check(num) {
+        num = num?.value ? num.value : num; // unbox ref object
         if (num == null || num === 0) {
             do {
                 num = super.check(null);

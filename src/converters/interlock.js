@@ -68,7 +68,7 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols(area) {
+export function initialize_list(area) {
   const document = area.document;
   const list = area.list.map(item => item.toJSON());
   area.list = list;
@@ -143,7 +143,7 @@ function build_input(list, DB_name) {
   }
 }
 
-export function build({ list }) {
+export function build_list({ list }) {
   list.forEach(interlock => { // 处理配置，形成完整数据
     build_input(interlock.input_list, interlock.DB.name);
     build_input(interlock.reset_list, interlock.DB.name);

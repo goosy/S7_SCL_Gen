@@ -56,7 +56,7 @@ END_FUNCTION
  * @param {S7Item} VItem
  * @returns {void}
  */
-export function parse_symbols(area) {
+export function initialize_list(area) {
   const document = area.document;
   const CPU = document.CPU;
   const options = area.options;
@@ -102,7 +102,7 @@ export function parse_symbols(area) {
  * @param {S7Item} PI
  * @returns {void}
  */
-export function build({ document, list }) {
+export function build_list({ document, list }) {
   const CPU = document.CPU;
   list.forEach(module => { // 处理配置，形成完整数据
     assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:PI 的模块(${module.comment}) 模块地址有误!`));

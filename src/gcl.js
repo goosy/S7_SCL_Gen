@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises';
 import { createHash } from 'crypto';
 import {
     Document, parseAllDocuments,
-    isMap, isSeq, isAlias,
+    isMap, isSeq, isAlias, isScalar,
     LineCounter,
     visit,
 } from 'yaml';
@@ -37,6 +37,11 @@ function merge(document) {
             return node.resolve(document);
         }
     })
+}
+
+export function isString(node) {
+    return isScalar(node) &&
+        ['PLAIN', 'QUOTE_DOUBLE', 'QUOTE_SINGLE'].includes(node.type);
 }
 
 export class GCL {

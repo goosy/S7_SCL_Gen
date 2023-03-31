@@ -1,7 +1,7 @@
 import assert from 'assert/strict';
 import { IncHLError, lazyassign, compare_str, context } from "./util.js";
 import { pad_left, pad_right } from "./value.js";
-import { GCL } from './gcl.js';
+import { GCL, isString } from './gcl.js';
 import { isSeq } from 'yaml';
 import { posix } from 'path';
 
@@ -292,6 +292,8 @@ export function make_s7express(obj, prop, value, document, options = {}) {
         return symbol;
     }
     options.definition ??= true; // 默认允许符号定义
+    options.link ??= true; // 默认允许符号引用
+
     if ((Array.isArray(value) || isSeq(value)) && options.definition) {
         // 如是符号定义，则返回转换后的符号对象
         const symbol = add_symbol(document, value, options);
@@ -299,15 +301,17 @@ export function make_s7express(obj, prop, value, document, options = {}) {
         obj[prop] = symbol;
         return;
     }
+
+    if (isString(value)) value = value.value;
     if (typeof value === 'string' && options.link) {
-        // 如是引用存在，则返回引用符号。
+        // 如是引用有效，则返回引用符号。
         const symbol = get_linked_symbol(value);
         if (symbol) {
             obj[prop] = symbol;
             return;
         }
 
-        // 如果引用不存在，返回惰性赋值,
+        // 如果引用不有效，返回惰性赋值,
         // 因为全部符号尚未完全加载完
         // 下次调用时将赋值为最终符号或S7表达式对象
         lazyassign(obj, prop, () => {

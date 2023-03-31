@@ -35,6 +35,9 @@ class S7Value {
     get value() {
         return this._value;
     }
+    constructor(value) {
+        this._value = value?.value ? value.value : value; // unbox ref object
+    }
     toString(...paras) {
         return this._value.toString(...paras);
     }
@@ -42,7 +45,8 @@ class S7Value {
 
 export class BOOL extends S7Value {
     constructor(value) {
-        super();
+        super(value);
+        value = this._value;
         if (value === 1 || value === 0) value = Boolean(value);
         if (typeof value === 'string' &&
             (value.toLowerCase() === 'true' || value.toLowerCase() === 'false')
@@ -57,7 +61,8 @@ export class BOOL extends S7Value {
 
 class S7Number extends S7Value {
     constructor(value) {
-        super();
+        super(value);
+        value = this._value;
         if (typeof value === 'string') value = Number(value);
         assert(Number.isFinite(value), `the value "${value}" must be a number. 值必须是一个有限数字`);
         this._value = value;
@@ -83,7 +88,8 @@ export class REAL extends S7Number {
 
 export class STRING extends S7Value {
     constructor(value) {
-        super();
+        super(value);
+        value = this._value;
         if (typeof value === 'number' && Number.isFinite(value)) value = String(value);
         if (typeof value === 'boolean') value = String(value);
         assert(typeof value === 'string', `the value "${value}" must be a string. 值必须是一个字符串`);
