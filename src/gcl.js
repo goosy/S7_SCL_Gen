@@ -7,6 +7,7 @@ import {
     LineCounter,
     visit,
 } from 'yaml';
+import { STRING, ensure_typed_value, nullable_typed_value } from './value.js';
 
 function merge(document) {
     visit(document, {
@@ -95,7 +96,6 @@ export class GCL {
         const {
             encoding = 'utf8',
             isFile = true,
-            filename = '',
         } = options;
         let inSCL = options.inSCL ?? false;
         if (isFile) {
@@ -104,7 +104,7 @@ export class GCL {
             yaml = inSCL ? '' : this.#source;
         } else {
             inSCL = false; //只有在文件中才能是SCL
-            this.#file = filename;
+            this.#file = '';
             this.#source = yaml;
         }
         this.#MD5 = createHash('md5').update(this.#source).digest('hex');
@@ -153,16 +153,32 @@ export class GCL {
                 console.error(`${error.message}:${this.get_pos_info(...error.range)}`);
                 process.exit(1);
             }
-            const CPU = document.get('CPU') ?? document.get('name') ?? options.CPU;
-            const CPU_error = new SyntaxError(`"${this.file}"文件中有一文档的 name 或者 CPU 没有提供，必须提供一个字符串或字符串数组!`);
-            const CPUs = isSeq(CPU) ? CPU.items.map(item => String(item)) : [CPU];
-            const feature = document.get('feature') ?? document.get('type') ?? options.feature;
-            if (options.filename !== 'buildin') {
-                assert(typeof feature === 'string', new SyntaxError(`${this.file} 文件的 feature 必须提供，并且必须是字符串!`));
-                if (CPUs.length === 0) throw CPU_error;
+
+            function get_from_name() {
+                const name = nullable_typed_value(STRING, document.get('name'))?.value;
+                if (name == null) return null;
+                assert(
+                    /^[a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*-[a-zA-Z]+$/.test(name),
+                    new Error(`name:${name} is not incorrect 名字不正确！`)
+                );
+                const [CPUs, feature] = name.split('-');
+                return [CPUs.split(','), feature];
+            };
+            function get_from_other() {
+                const CPU = document.get('CPU') ?? options.CPU;
+                const CPUs = isSeq(CPU)
+                    ? CPU.items.map(item => ensure_typed_value(STRING, item).value)
+                    : [CPU];
+                const feature = document.get('feature') ?? options.feature;
+                return [CPUs, feature];
             }
+            const [CPUs, feature] = get_from_name() ?? get_from_other();
+
+            const error = new SyntaxError(`"${this.file}"文件中有一文档的 name 或者 CPU,feature 没有正确提供!`);
+            assert(typeof feature === 'string', error);
+            assert(CPUs.length > 0, error);
             CPUs.forEach((CPU, index) => {
-                assert(typeof CPU === 'string' && CPU !== '', CPU_error);
+                assert(typeof CPU === 'string' && CPU !== '', error);
                 // if multi CPU then clone document
                 const doc = index === 0 ? document : document.clone();
                 if (index > 0) documents.push(doc);

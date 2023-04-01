@@ -1,6 +1,9 @@
 ---
-CPU: AS1           # 指示属于哪一个CPU
-feature: modbusTCP #  指示本配置为生成 modbusTCP 文档 也可以写为 "feature: MT"
+#CPU: AS1           # 指示属于哪一个CPU
+#feature: modbusTCP #  指示本配置为生成 modbusTCP 文档 也可以写为 "feature: MT"
+
+name: AS1-modbusTCP # 相当于上面2条被注释的指令
+
 description: |
   使用 modbusTCP 通信，必须在step7工程中加入以下库
   * FB63 TSEND

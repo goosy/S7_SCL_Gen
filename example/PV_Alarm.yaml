@@ -1,6 +1,8 @@
 ---
-CPU: AS1    # 指示属于哪一个CPU
-feature: PV # 指示生成 PV_Alarm 文档
+#CPU: AS1    # 指示属于哪一个CPU
+#feature: PV # 指示生成 PV_Alarm 文档
+
+name: AS1-PV # 相当于上面2条被注释的指令
 
 # 额外代码
 # 字符串形式指示直接SCL代码，内容将合并输出在 PV_Loop.SCL 文件中

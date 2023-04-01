@@ -1,7 +1,8 @@
 ---
-name: AS1    # 指示属于哪一个CPU
-feature: SC  # 指示生成串行通信(serial commnucation)文档
-             # 包括modbus协议，故也可以写为 "feature: MB modbusRTU"
+# 指示属于哪一个CPU和哪一种功能
+# 下例指示CPU名字为AS1，功能为SC(串行通信 serial commnucation)
+# SC 也可以写为 MB、modbusRTU
+name: AS1-SC
 
 description: |
   使用 CP340 通信，必须在step7工程中加入以下库

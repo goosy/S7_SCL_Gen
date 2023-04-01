@@ -1,6 +1,8 @@
 ---
-CPU: AS1       # 指示属于哪一个CPU
-feature: Motor # 指示本配置为生成 Motor 代码
+#CPU: AS1       # 指示属于哪一个CPU
+#feature: Motor # 指示本配置为生成 Motor 代码
+
+name: AS1-Motor # 相当于上面2条被注释的指令
 
 symbols:  
 # 系统已有2个内置符号，其内容由本程序自动生成：

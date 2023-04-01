@@ -1,6 +1,8 @@
 ---
-CPU: [AS1, AS2] # 指示属于哪一个CPU
-feature: AI #  指示本配置为生成 AI 代码
+#CPU: [AS1, AS2] # 指示属于2个CPU，名称分别是 AS1 AS2
+#feature: AI     # 指示本配置为生成 AI 代码
+
+name: AS1,AS2-AI # 相当于上面2条被注释的指令
 
 symbols: 
   # AI文档已有2个内置符号，其内容由本程序自动生成：

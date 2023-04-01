@@ -71,9 +71,9 @@ async function build() {
         if (files.includes(`${feature}.yaml`)) {
             const yaml_raw = await readFile(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
             const yaml = convert(converters[feature], yaml_raw.trim());
-            yamls.push(`name: BUILDIN\nfeature: ${feature}\nsymbols: \n${yaml}`);
+            yamls.push(`name: BUILDIN-${feature}\nsymbols: \n${yaml}`);
         } else {
-            yamls.push(`name: BUILDIN\nfeature: ${feature}\nsymbols: []`);
+            yamls.push(`name: BUILDIN-${feature}\nsymbols: []`);
         }
     }
     const buildin_yaml = '---\n\n' + yamls.join('\n\n---\n\n') + '\n\n...\n';

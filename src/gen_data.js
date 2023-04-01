@@ -43,12 +43,13 @@ const CPUs = { // CPU 资源
       PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
       PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
       symbols_dict: {},               // 符号字典
-      buildin_symbols: BUILDIN_SYMBOLS.documents.map(doc =>
-        doc.get('symbols').items.map(symbol => symbol.items[0].value)
-      ).flat(),                       // 该CPU的内置符号名称列表
+      buildin_symbols:                // 该CPU的内置符号名称列表
+        BUILDIN_SYMBOLS.documents.map(doc =>
+          doc.get('symbols').items.map(symbol => symbol.items[0].value)
+        ).flat(),
       conn_host_list: {},             // 已用的连接地址列表
       output_dir: CPU_name,           // 输出文件夹
-      add_feature(feature, document) {      // 按类型压入Document
+      add_feature(feature, document) {// 按功能压入Document
         this[feature] = document;
       }
     };
@@ -63,7 +64,7 @@ Object.defineProperty(CPUs, 'get', {
 async function parse_includes(includes, options) {
   let gcl_list = [], code = '';
   if (typeof includes == 'string') return { code: includes, gcl_list };
-  const filenames = includes ? JSON.parse(includes) : [];
+  const filenames = includes ? includes.toJSON() : [];
   if (!Array.isArray(filenames)) return { code, gcl_list };
   try {
     for (const filename of filenames) {
@@ -114,17 +115,18 @@ async function add_conf(document) {
   CPU.platform ??= platform;
 
   // external code
-  const { code: loop_additional_code, gcl_list: _ } = await parse_includes(
-    document.get('loop_additional_code'),
-    { filename: 'buildin', CPU: CPU.name, feature }
-  );
-  const { code: includes, gcl_list } = await parse_includes(
-    document.get('includes'),
-    { filename: 'buildin', CPU: CPU.name, feature }
-  );
+  const includes_options = { CPU: CPU.name, feature };
+  const {
+    code: loop_additional_code,
+    gcl_list: _
+  } = await parse_includes(document.get('loop_additional_code'), includes_options);
+  const {
+    code: includes,
+    gcl_list: includes_gcls
+  } = await parse_includes(document.get('includes'), includes_options);
 
   // 包含文件符号 [YAMLSeq symbol]
-  gcl_list.forEach(gcl => {
+  includes_gcls.forEach(gcl => {
     gcl.documents.forEach(doc => {
       doc.CPU = CPU;
       const symbols_of_includes = add_symbols(doc, doc.get('symbols')?.items ?? []);

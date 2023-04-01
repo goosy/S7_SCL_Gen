@@ -40,8 +40,10 @@ s7scl
 
 ```YAML
 ---
-CPU: AS1    # 指示属于哪一个CPU
-feature: AI # 指示本配置的功能
+# name 指令相当于 CPU 和 feature 指令的组合
+#CPU: AS1    # 指示属于哪一个CPU
+#feature: AI # 指示本配置的功能
+name: AS1-AI
 
 list: # 功能项列表
 - comment: 气温
@@ -70,7 +72,11 @@ optins: ~
 
 ### 必须书写的指令
 
-配置文档必须有 CPU(name) 和 feature 指令，CPU 和 feature 的值类型都是字符串，两者的组合确定唯一的配置，即相同 CPU 和 feature 的配置文档只能有一个。
+配置文档必须有 `name` 指令，或 `CPU`,`feature` 组合指令，两种方法用一种。
+
+这2个指令值类型都是字符串，name 相当于后2者组合而成  `<CPU>-<feature>` ，作用一样，推荐 name 便于理解文档唯一性。
+
+每个文档的 name 必须唯一，即相同 CPU 和 feature 组合的配置文档只能有一个。
 
 目前只实现了9种类型配置文档——CPU文档和8种功能文档，由 `feature` 指令指示，不区分大小写。分别是：
 

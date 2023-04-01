@@ -1,6 +1,8 @@
 ---
-CPU: AS1    # 指示属于哪一个CPU
-feature: interlock # 指示本配置为生成联锁代码
+#CPU: AS1           # 指示属于哪一个CPU
+#feature: interlock # 指示本配置为生成联锁代码
+
+name: AS1-interlock # 相当于上面2条被注释的指令
 
 includes: ~
 
