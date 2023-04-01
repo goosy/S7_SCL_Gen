@@ -5,8 +5,8 @@
  */
 
 import { context } from '../util.js';
-import { fixed_hex, STRING, ensure_typed_value, nullable_PINT } from '../value.js';
-import { make_prop_symbolic } from '../symbols.js';
+import { fixed_hex, STRING, ensure_typed_value, nullable_PINT, nullable_typed_value } from '../value.js';
+import { make_s7express } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
 
@@ -60,39 +60,43 @@ export function initialize_list(area) {
   const document = area.document;
   const CPU = document.CPU;
   const options = area.options;
-  const list = area.list.map(item => item.toJSON());
-  area.list = list;
-  let index = 0;
-  list.forEach(module => {
-    module.comment = new STRING(module.comment ?? '');
+  area.list = area.list.map((node, index) => {
+    const module = {
+      node,
+      comment: new STRING(node.get('comment') ?? ''),
+      model: ensure_typed_value(STRING, node.get('model') ?? FM3502_CNT_NAME), // 目前只支持FM350-2
+    };
+
     const comment = module.comment.value;
-    ++index;
-    if (!module?.DB) throw new Error(`${CPU.name}:PI 第${index}个module(${comment}) 没有正确定义数据块!`);
 
-    let type = '';
-    const model = ensure_typed_value(STRING, module.model ??= FM3502_CNT_NAME).value; // 目前只支持FM350-2
-    if (model === FM3502_CNT_NAME) {
-      options.has_FM3502 = true;
-      type = NAME;
-    } else {
-      model = null;
-    }
-    if (model === null) throw new Error(`${CPU.name}:PI:module${comment} 的类型 "${module.model}" 不支持`);
-    module.model = model;
+    const type = (model => {
+      if (model === FM3502_CNT_NAME) {
+        options.has_FM3502 = true;
+        return NAME;
+      }
+      throw new SyntaxError(`${CPU.name}: PI: module${comment} 的类型 "${module.model}" 不支持`);
+    })(module.model.value);
 
-    const module_addr = nullable_PINT(module.module_addr);
-    assert(module.module || module_addr, new SyntaxError(`${CPU.name}:PI 第${index}个module(${comment}) 未提供 module 或 module_addr!`));
-    module.module ??= [
-      `PI${index}_addr`,
-      `IW${module_addr.value}`,
-      'WORD',
-      'HW module address'
-    ];
-    module.module[3] ??= 'HW module address';
+    const DB = node.get('DB');
+    assert(DB, new SyntaxError(`${CPU.name}:PI 第${index + 1}个 module 没有正确定义背景块!`));
+    make_s7express(module, 'DB', DB, document, { force: { type }, default: { comment } });
 
-    make_prop_symbolic(module, 'module', document);
-    make_prop_symbolic(module, 'DB', document, { force: { type }, default: { comment } });
-    make_prop_symbolic(module, 'count_DB', document, { force: { type: FM3502_CNT_NAME } });
+    const module_symbol = node.get('module');
+    const module_addr = nullable_PINT(node.get('module_addr'));
+    assert(module_symbol || module_addr, new SyntaxError(`${CPU.name}:PI 第${index}个模块未提供 module 或 module_addr!`));
+    make_s7express(
+      module,
+      'module',
+      module_symbol ?? [`PI${index + 1}_addr`, `IW${module_addr.value}`],
+      document,
+      { link: true, force: { type: 'WORD' }, default: { comment: 'HW module address' } }
+    );
+
+    const count_DB = node.get('count_DB');
+    assert(count_DB, new SyntaxError(`${CPU.name}:PI 第${index + 1}个 module 没有正确定义专用数据块!`));
+    make_s7express(module, 'count_DB', count_DB, document, { force: { type: FM3502_CNT_NAME } });
+
+    return module;
   });
 }
 

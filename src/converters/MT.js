@@ -1,7 +1,8 @@
-import { make_prop_symbolic } from '../symbols.js';
+import { make_s7express } from '../symbols.js';
 import { fixed_hex, BOOL, STRING, nullable_typed_value, ensure_typed_value, nullable_PINT, ensure_PINT } from '../value.js';
 import { IntIncHL, context } from '../util.js';
 import { posix } from 'path';
+import { isSeq } from 'yaml';
 import assert from 'assert/strict';
 
 export const platforms = ['step7'];
@@ -110,7 +111,7 @@ DATA_BLOCK "{{POLLS_NAME}}"
 TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT{{#for conn in connections}}
-  {{conn.polls_name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
+  {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
     MBAP_seq : WORD ; //事务号 PLC自动填写
     MBAP_protocol : WORD ;  //必须为0
     MBAP_length : WORD  := W#16#6;  //长度，对读命令，通常为6
@@ -132,12 +133,12 @@ STRUCT{{#for conn in connections}}
 END_STRUCT ;
 BEGIN{{#for conn in connections}}
   // --- {{conn.comment}}{{#for no, poll in conn.polls}}
-  {{conn.polls_name}}[{{no}}].device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
-  {{conn.polls_name}}[{{no}}].MFunction := B#16#{{poll.function}};
-  {{conn.polls_name}}[{{no}}].address := W#16#{{poll.address}};
-  {{conn.polls_name}}[{{no}}].data := W#16#{{poll.data}};
-  {{conn.polls_name}}[{{no}}].recvDB := {{poll.recv_DB.block_no}};
-  {{conn.polls_name}}[{{no}}].recvDBB := {{poll.recv_start}};{{#endfor poll}}{{#endfor conn}}
+  {{conn.name}}[{{no}}].device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
+  {{conn.name}}[{{no}}].MFunction := B#16#{{poll.function}};
+  {{conn.name}}[{{no}}].address := W#16#{{poll.address}};
+  {{conn.name}}[{{no}}].data := W#16#{{poll.data}};
+  {{conn.name}}[{{no}}].recvDB := {{poll.recv_DB.block_no}};
+  {{conn.name}}[{{no}}].recvDBB := {{poll.recv_start}};{{#endfor poll}}{{#endfor conn}}
 END_DATA_BLOCK
 
 {{#for conn in connections}}{{#if conn.$interval_time}}
@@ -153,7 +154,7 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 // {{conn.comment}}
 "{{NAME}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
-  DATA  := "{{POLLS_NAME}}".{{conn.polls_name}},
+  DATA  := "{{POLLS_NAME}}".{{conn.name}},
   buff  := "{{POLLS_NAME}}".buff);
 
 {{#endfor conn}}// 接收块
@@ -189,51 +190,63 @@ function get_device_id(device, R, X) {
 export function initialize_list(area) {
   const document = area.document;
   const CPU = document.CPU;
-  const list = area.list.map(item => item.toJSON());
-  area.list = list;
   // CPU.device 必须第二遍扫描才有效
-  list.forEach(conn => {
-    conn.comment = ensure_typed_value(STRING, conn.comment ?? '');
+  area.list = area.list.map(node => {
+    const conn = {
+      node,
+      ID: nullable_PINT(node.get('ID')),
+      name: nullable_typed_value(STRING, node.get('name') ?? node.get('polls_name')),
+      comment: new STRING(node.get('comment') ?? '')
+    };
     const comment = conn.comment.value;
-    assert(conn?.DB, new SyntaxError(
-      `${CPU.name}:MT:conn(${conn.name ?? conn.comment}) DB is not defined correctly! 没有正确定义DB!`
+    const name = conn.name?.value;
+    const DB = node.get('DB');
+    assert(DB, new SyntaxError(
+      `${CPU.name}:MT:conn(${name ?? conn.ID}) DB is not defined correctly! 没有正确定义DB!`
     ));
-    make_prop_symbolic(conn, 'DB', document, { force: { type: NAME }, default: { comment } });
+    make_s7express(conn, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
 
     // host IP
-    const host = Array.isArray(conn.host) ? conn.host.join('.') : conn.host;
+    let host = node.get('host');
+    host = isSeq(host) ? host.items.join('.') : ensure_typed_value(STRING, host).value;
     assert(
       /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host),
       new SyntaxError(`配置项"host: ${host}"有误，必须提供IP地址，可以是数组形式!`)
     );
     conn.host = host;
-    conn.port = nullable_PINT(conn.port);
+    conn.port = nullable_PINT(node.get('port'));
     conn.IP = host.split('.').map(part => {
       const ip = ensure_PINT(part);
       assert(ip.value < 256, new SyntaxError(`配置项"host: ${host}"的IP地址越界!`));
       return ip;
     });
-    const R = nullable_PINT(conn.rack);
-    const X = nullable_PINT(conn.XSlot);
+    const R = nullable_PINT(node.get('rack'));
+    const X = nullable_PINT(node.get('XSlot'));
     conn.R = R ? 'R' + R : '';
     conn.X = X ? 'X' + X : '';
-    conn.$interval_time = nullable_PINT(conn.$interval_time);
-    conn.interval_time = nullable_PINT(conn.interval_time);
+    conn.$interval_time = nullable_PINT(node.get('$interval_time'));
+    conn.interval_time = nullable_PINT(node.get('interval_time'));
 
-    conn.polls_name = ensure_typed_value(STRING, conn.polls_name);
-    conn.polls.forEach(poll => {
-      poll.comment = ensure_typed_value(STRING, poll.comment ?? '');
+    const polls = node.get('polls');
+    assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
+    conn.polls = polls.items.map(item => {
+      const poll = {
+        comment: ensure_typed_value(STRING, item.get('comment') ?? ''),
+        deivce_ID: ensure_PINT(item.get('deivce_ID')),
+        function: ensure_PINT(item.get('function')),
+        started_addr: nullable_PINT(item.get('started_addr')) ?? ensure_PINT(item.get('address')),
+        // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
+        data: nullable_PINT(item.get('data')) ?? ensure_PINT(item.get('length')),
+        // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
+        recv_start: ensure_PINT(item.get('recv_start')),
+        uninvoke: nullable_typed_value(BOOL, item.get('uninvoke')) ?? new BOOL(false),
+      };
       const comment = poll.comment.value;
-      make_prop_symbolic(poll, 'recv_DB', document, { default: { comment } });
-      poll.deivce_ID = ensure_PINT(poll.deivce_ID);
-      poll.function = ensure_PINT(poll.function);
-      poll.started_addr = nullable_PINT(poll.started_addr) ?? ensure_PINT(poll.address);
-      // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
-      poll.data = nullable_PINT(poll.data) ?? ensure_PINT(poll.length);
-      // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
-      poll.recv_start = ensure_PINT(poll.recv_start);
-      poll.uninvoke = nullable_typed_value(BOOL, poll.uninvoke) ?? new BOOL(false);
+      const recv_DB = item.get('recv_DB');
+      make_s7express(poll, 'recv_DB', recv_DB, document, { default: { comment } });
+      return poll;
     })
+    return conn;
   });
 }
 
@@ -245,7 +258,6 @@ export function build_list(MT) {
     const {
       conn_ID_list,
       conn_host_list,
-      poll_list
     } = CPU;
 
     conn.device ??= CPU.device;
@@ -275,7 +287,7 @@ export function build_list(MT) {
     conn.IP4 = fixed_hex(conn.IP[3], 2);
     conn.port1 = fixed_hex((port >>> 8), 2);
     conn.port2 = fixed_hex((port & 0xff), 2);
-    conn.polls_name ??= new STRING("polls_" + poll_list.push_new());
+    conn.name ??= new STRING("polls_" + conn.ID);
     conn.polls.forEach(poll => {
       poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
       poll.function = fixed_hex(poll.function, 2);

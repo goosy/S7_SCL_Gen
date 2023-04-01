@@ -27,23 +27,30 @@ list : # modbus TCP 连接列表
 
   # 十进制连接号，自行指定，但不可重复。省略时，程序会自动生成一个从1开始且不重复的ID。
   # 类型: 正整数
-  # ID: 1
-  
-  # 背景连接块。不必填写type，会自动指定为 MT_Poll
+  #ID: 1
+
+  # 连接名称，不可与其它连接的重名。默认为 polls_<ID>
+  # 类型: 字符串
+  name: polls_flow
+
+  $interval_time: 1000 # 轮询间隔时间，初始值设定 (如果想保持运行期间固定，可使用 interval_time: 1000  )
+
+  # 背景块。不必填写type，会自动指定为 MT_Poll
   # 类型: S7符号定义 | S7符号引用
-  DB: [conn_example, DB891]
-  
-  # modbusTCP 对方IP 必填
+  DB: [conn_flow, DB891]
+
+  # modbusTCP 远程IP 必填
   # 类型: 字符串 | 整数数组
   host: 192.168.10.10 # 也可以用数组 `[192, 168, 10, 10]`
-  
-  # modbusTCP 对方端口，必填，注意host:port组合不得重复，否则报错
+
+  # modbusTCP 远程端口，必填，注意host:port组合不得重复，否则报错
   # 类型: 正整数
-  port: 502 
-  
+  port: 502
+
   # 用于通信的设备号，见 https://support.industry.siemens.com/cs/document/51339682/使用fb65-tcon-建立以太网的开放式用户通信连接时，如何参数化-loc
   # 本参数优先级最高，会忽略 local_device rack XSlot 3个参数
-  # local_device_id: B#16#02 # 建议不要填写本参数，采用直观的 local_device rack XSlot 参数
+  # 建议不要填写本参数，采用直观的 local_device rack XSlot 参数
+  #local_device_id: B#16#02
 
   # 由于local_device_id不直观，建议用下面三个参数进行直观配置，同时程序自动检验
   # 如果已经设置了local_device_id，则忽略下方参数。
@@ -59,20 +66,14 @@ list : # modbus TCP 连接列表
 
   # 发出查询的时间间隔，可省略，默认为200，单位ms
   # 类型: 正整数
-  # interval_time: 200
+  #interval_time: 200
 
-  # 自定义查询名称，必填，不可与其它连接的重名。
-  # 类型: 字符串
-  polls_name: polls_example
-
-  $interval_time: 1000 # 轮询间隔时间，初始值设定 (如果想保持运行期间固定，可使用 interval_time: 1000  )
-  
   # 该连接下的轮询定义，至少要有一个查询
-  polls: 
+  polls:
 
   # deivce_ID function address data|length 配置项允许16进制字符串
   # 为了在SCL中对发送数据的进行符号引用，转换生成的轮询块发送数据层级为：
-  #   MT_polls_DB.{polls_name}[{序号}].{发送字段}
+  #   MT_polls_DB.{name}[{序号}].{发送字段}
   # 以下方查询1为例：
   # * MT_polls_DB.polls_example[0].device_ID (BYTE) 子站号
   # * MT_polls_DB.polls_example[0].MFunction (BYTE) 功能码
@@ -80,7 +81,7 @@ list : # modbus TCP 连接列表
   # * MT_polls_DB.polls_example[0].data (WORD)      对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
   # * MT_polls_DB.polls_example[0].CRC (WORD)       CRC16校验码
   # 每个poll可以使用 uninvoke 属性，见 SC.yaml。这里不作该属性的示例。
-  
+
   - comment: 1#流量计                  # 本查询的注释，可省略。 类型: 字符串
     # 查询1
     deivce_ID: 1                      # 设备号，即RTU从站地址。 类型: 正整数

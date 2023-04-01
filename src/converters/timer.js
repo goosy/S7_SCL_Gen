@@ -1,4 +1,4 @@
-import { make_prop_symbolic } from '../symbols.js';
+import { make_s7express } from '../symbols.js';
 import { STRING } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -37,19 +37,22 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
-    const CPU = document.CPU;
-    const list = area.list.map(item => item.toJSON());
-    area.list = list;
-    list.forEach(timer => {
-        if (!timer.DB) throw new SyntaxError("timer转换必须有DB块!");
-        timer.comment = new STRING(timer.comment ?? '');
-        const comment = timer.comment ? `${timer.comment} DB` : '';
-        make_prop_symbolic(timer, 'DB', document, { force: { type: NAME }, default: { comment } });
-        timer.PPS ??= '"Pulse_1Hz"';
-        const options = { force: { type: 'BOOL' } };
-        make_prop_symbolic(timer, 'enable', document, options);
-        make_prop_symbolic(timer, 'reset', document, options);
-        make_prop_symbolic(timer, 'PPS', document, options);
+    area.list = area.list.map(node => {
+        const timer = {
+            node,
+            comment: new STRING(node.get('comment') ?? '')
+        };
+        const DB = node.get('DB');
+        if (!DB) throw new SyntaxError("timer转换必须有DB块!");
+        const comment = timer.comment.value;
+        make_s7express(timer, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+
+        const options = { s7express: true, force: { type: 'BOOL' } };
+        make_s7express(timer, 'enable', node.get('enable'), document, options);
+        make_s7express(timer, 'reset', node.get('reset'), document, options);
+        make_s7express(timer, 'PPS', node.get('PPS') ?? "Pulse_1Hz", document, options);
+
+        return timer;
     });
 }
 

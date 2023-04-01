@@ -1,7 +1,7 @@
 import assert from 'assert/strict';
 import { convert } from 'gooconverter';
-import { add_symbols, make_prop_symbolic } from '../symbols.js';
-import { STRING } from '../value.js';
+import { add_symbols, make_s7express } from '../symbols.js';
+import { STRING, nullable_typed_value } from '../value.js';
 
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal'];
@@ -57,8 +57,6 @@ END_FUNCTION{{#endif block_name}}
  */
 export function initialize_list(area) {
     const document = area.document;
-    const list = area.list.map(item => item.toJSON());
-    area.list = list;
     const CPU = document.CPU;
     const CM = CPU.symbols_dict.Clock_Byte;
     if (CM) {
@@ -80,14 +78,19 @@ export function initialize_list(area) {
         ];
         add_symbols(document, symbols);
     }
-    list.forEach(FN => {
-        if (!FN.block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
-        make_prop_symbolic(FN, 'block', document, { default: { comment: FN.comment } }); //S7函数类型
-        FN.code = new STRING(FN.code ?? '');
+    area.list = area.list.map(node => {
+        const FN = { node, comment: new STRING(node.get('comment') ?? '') };
+        const comment = FN.comment.value;
+        const block = node.get('block');
+        if (!block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
+        make_s7express(FN, 'block', block, document, { default: { comment } }); //S7函数类型
+        FN.title = nullable_typed_value(STRING, node.get('title'));
+        FN.code = new STRING(node.get('code') ?? '');
+        return FN;
     });
 }
 
-export function build_list({ document, list, options}) {
+export function build_list({ document, list, options }) {
     const CPU = document.CPU;
     CPU.device = document.get('device');
     list.forEach(FN => {

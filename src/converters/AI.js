@@ -1,8 +1,7 @@
-import { make_prop_symbolic } from "../symbols.js";
+import { make_s7express } from "../symbols.js";
 import { BOOL, INT, REAL, STRING, nullable_typed_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
-import { toJS } from 'yaml/util';
 
 export const platforms = ['step7', 'portal', 'pcs7'];
 export const NAME = 'AI_Proc';
@@ -62,28 +61,44 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
-    const list = area.list.map(item => toJS(item));
-    area.list = list;
-    list.forEach(AI => {
-        if (!AI.DB && !AI.input) return; // 空AI不处理
-        if (!AI.DB || !AI.input) throw new Error(`AI 功能中 DB 和 input 不能只定义1个!`);
-        AI.comment = new STRING(AI.comment ?? '');
+    const gcl = document.gcl;
+    area.list = area.list.map(node => {
+        const AI = {
+            node,
+            comment: new STRING(node.get('comment') ?? '')
+        };
+        const DB = node.get('DB');
+        const input = node.get('input');
+        let info = gcl.get_pos_info(...node.range);
+        if (!DB && !input) return AI; // 空AI不处理
+        if (!DB || !input) throw new Error(`AI 功能中 DB 和 input 不能只定义1个:${info}`);
         const comment = AI.comment.value;
-        make_prop_symbolic(AI, 'DB', document, { force: { type: NAME }, default: { comment } });
-        make_prop_symbolic(AI, 'input', document, { force: { type: 'WORD' }, default: { comment } });
-        AI.$enable_alarm = nullable_typed_value(BOOL, AI.$enable_alarm);
-        AI.$zero_raw = nullable_typed_value(INT, AI.$zero_raw);
-        AI.$span_raw = nullable_typed_value(INT, AI.$span_raw);
-        AI.$overflow_SP = nullable_typed_value(INT, AI.$overflow_SP);
-        AI.$underflow_SP = nullable_typed_value(INT, AI.$underflow_SP);
-        AI.$zero = nullable_typed_value(REAL, AI.$zero);
-        AI.$span = nullable_typed_value(REAL, AI.$span);
-        AI.$AH_limit = nullable_typed_value(REAL, AI.$AH_limit);
-        AI.$WH_limit = nullable_typed_value(REAL, AI.$WH_limit);
-        AI.$WL_limit = nullable_typed_value(REAL, AI.$WL_limit);
-        AI.$AL_limit = nullable_typed_value(REAL, AI.$AL_limit);
-        AI.$dead_zone = nullable_typed_value(REAL, AI.$dead_zone);
-        AI.$FT_time = nullable_typed_value(INT, AI.$FT_time);
+        make_s7express(AI, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+        make_s7express(AI, 'input', input, document, {
+            s7express: true,
+            force: { type: 'WORD' },
+            default: { comment }
+        });
+        const enable_alarm = node.get('enable_alarm');
+        make_s7express(AI, 'enable_alarm', enable_alarm, document, {
+            s7express: true,
+            force: { type: 'BOOL' },
+            default: { comment }
+        });
+        AI.$enable_alarm = nullable_typed_value(BOOL, node.get('$enable_alarm'));
+        AI.$zero_raw = nullable_typed_value(INT, node.get('$zero_raw'));
+        AI.$span_raw = nullable_typed_value(INT, node.get('$span_raw'));
+        AI.$overflow_SP = nullable_typed_value(INT, node.get('$overflow_SP'));
+        AI.$underflow_SP = nullable_typed_value(INT, node.get('$underflow_SP'));
+        AI.$zero = nullable_typed_value(REAL, node.get('$zero'));
+        AI.$span = nullable_typed_value(REAL, node.get('$span'));
+        AI.$AH_limit = nullable_typed_value(REAL, node.get('$AH_limit'));
+        AI.$WH_limit = nullable_typed_value(REAL, node.get('$WH_limit'));
+        AI.$WL_limit = nullable_typed_value(REAL, node.get('$WL_limit'));
+        AI.$AL_limit = nullable_typed_value(REAL, node.get('$AL_limit'));
+        AI.$dead_zone = nullable_typed_value(REAL, node.get('$dead_zone'));
+        AI.$FT_time = nullable_typed_value(INT, node.get('$FT_time'));
+        return AI;
     });
 }
 

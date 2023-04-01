@@ -6,8 +6,9 @@
 
 import { context } from '../util.js';
 import { BOOL, STRING, fixed_hex, ensure_typed_value, ensure_PINT, nullable_typed_value, nullable_PINT } from '../value.js';
-import { make_prop_symbolic } from '../symbols.js';
+import { make_s7express } from '../symbols.js';
 import { posix } from 'path';
+import { isSeq } from 'yaml';
 import assert from 'assert/strict';
 
 export const platforms = ['step7'];
@@ -29,7 +30,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 轮询DB块，含485调度指令和发送数据
 DATA_BLOCK "{{POLLS_NAME}}"
 STRUCT{{#for module in modules}}
-  {{module.polls_name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for poll in module.polls}}
+  {{module.name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for poll in module.polls}}
     poll_{{poll.index}} : STRUCT
       next: BOOL; // false为结尾，否则有下一个
       enable: BOOL := TRUE; // 允许本poll通讯
@@ -59,13 +60,13 @@ BEGIN{{#for module in modules}}
   // --- {{module.comment}} 轮询数据
   {{#for no,poll in module.polls}}
   // poll {{poll.index}}  {{poll.comment}}
-  {{module.polls_name}}.poll_{{poll.index}}.next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
-  {{module.polls_name}}.poll_{{poll.index}}.modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
-  {{module.polls_name}}.poll_{{poll.index}}.sendDB := {{poll.send_DB.block_no}};
-  {{module.polls_name}}.poll_{{poll.index}}.sendDBB := {{poll.send_start}};
-  {{module.polls_name}}.poll_{{poll.index}}.sendLength := {{poll.send_length}};
-  {{module.polls_name}}.poll_{{poll.index}}.recvDB := {{poll.recv_DB.block_no}};
-  {{module.polls_name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};{{#if !poll.extra_send_DB}}
+  {{module.name}}.poll_{{poll.index}}.next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
+  {{module.name}}.poll_{{poll.index}}.modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
+  {{module.name}}.poll_{{poll.index}}.sendDB := {{poll.send_DB.block_no}};
+  {{module.name}}.poll_{{poll.index}}.sendDBB := {{poll.send_start}};
+  {{module.name}}.poll_{{poll.index}}.sendLength := {{poll.send_length}};
+  {{module.name}}.poll_{{poll.index}}.recvDB := {{poll.recv_DB.block_no}};
+  {{module.name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};{{#if !poll.extra_send_DB}}
   {{#----poll_send_data 开始}}// send data{{#if poll.send_data}}{{#for index, databyte in poll.send_data}}
   poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}{{#endfor}}{{#else}}
   poll_{{poll.index}}_data.device_ID := B#16#{{poll.deivce_ID}};
@@ -84,7 +85,7 @@ FUNCTION "{{LOOP_NAME}}" : VOID
   customTrigger := TRUE,
   REQ           := {{module.customREQ.value}},{{#endif}}
   Laddr         := {{module.module.block_no}},  // CP模块地址
-  DATA          := "{{POLLS_NAME}}".{{module.polls_name}});
+  DATA          := "{{POLLS_NAME}}".{{module.name}});
 {{#endfor module}}
 // 发送接收块
 {{invoke_code}}
@@ -111,64 +112,82 @@ export function initialize_list(area) {
   const document = area.document;
   const CPU = document.CPU;
   const options = area.options;
-  const list = area.list.map(item => item.toJSON());
-  area.list = list;
-  let index = 0;
-  list.forEach(module => {
-    module.comment = new STRING(module.comment ?? '');
+  area.list = area.list.map((node, index) => {
+    const module = {
+      node,
+      name: nullable_typed_value(STRING, node.get('name') ?? node.get('polls_name')),
+      comment: new STRING(node.get('comment') ?? ''),
+      model: ensure_typed_value(STRING, node.get('model') ?? 'CP341'),
+    };
+
     const comment = module.comment.value;
-    ++index;
-    assert(module?.DB, new SyntaxError(`${CPU.name}:SC 第${index}个module(${comment}) 没有正确定义背景块!`));
 
-    let type = CP341_NAME;
-    const model = ensure_typed_value(STRING, module.model ??= 'CP341').value;
-    if (model === 'CP341') {
-      options.has_CP341 = true;
-      type = CP341_NAME;
-    } else if (model === 'CP340') {
-      options.has_CP340 = true;
-      type = CP340_NAME;
-    } else {
-      model = null;
-    }
-    // 目前只支持 CP341 CP340
-    assert(model !== null, new SyntaxError(`${CPU.name}:SC:module${comment} 的类型 "${module.model}" 不支持`));
+    const type = (model => {
+      if (model === 'CP341') {
+        options.has_CP341 = true;
+        return CP341_NAME;
+      }
+      if (model === 'CP340') {
+        options.has_CP340 = true;
+        return CP340_NAME;
+      }
+      throw new SyntaxError(`${CPU.name}:SC:module${comment} 的类型 "${module.model}" 不支持`);
+    })(module.model.value);
 
-    const module_addr = nullable_PINT(module.module_addr);
-    assert(module.module || module_addr, new SyntaxError(`${CPU.name}:SC:module(${comment}) 未提供 module 或 module_addr!`));
-    module.module ??= [
-      `CP${index}_addr`,
-      `IW${module_addr.value}`,
-      'WORD',
-      'HW module address'
-    ];
-    module.module[3] ??= 'HW module address';
+    const module_symbol = node.get('module');
+    const module_addr = nullable_PINT(node.get('module_addr'));
+    assert(module_symbol || module_addr, new SyntaxError(`${CPU.name}:SC:module(${comment}) 未提供 module 或 module_addr!`));
+    make_s7express(
+      module,
+      'module',
+      module_symbol ?? [`CP${index + 1}_addr`, `IW${module_addr.value}`],
+      document,
+      { link: true, force: { type: 'WORD' }, default: { comment: 'HW module address' } }
+    );
 
-    make_prop_symbolic(module, 'module', document);
-    make_prop_symbolic(module, 'DB', document, { force: { type: type }, default: { comment } });
-    make_prop_symbolic(module, 'customREQ', document, { force: { type: 'BOOL' } });
+    const DB = node.get('DB');
+    assert(DB, new SyntaxError(`${CPU.name}:SC 第${index + 1}个 module 没有正确定义背景块!`));
+    make_s7express(module, 'DB', DB, document, { force: { type }, default: { comment } });
 
-    module.polls_name = ensure_typed_value(STRING, module.polls_name);
-    module.polls.forEach(poll => {
-      poll.comment = ensure_typed_value(STRING, poll.comment ?? '');
+    const customREQ = node.get('customREQ');
+    if (customREQ) make_s7express(module, 'customREQ', customREQ, document, {
+      s7express: true,
+      force: { type: 'BOOL' },
+    });
+
+    const polls = node.get('polls');
+    assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
+    module.polls = polls.items.map(item => {
+      const poll = {
+        comment: ensure_typed_value(STRING, item.get('comment') ?? ''),
+        send_data: nullable_typed_value(STRING, item.get('send_data')),
+        recv_start: ensure_PINT(item.get('recv_start')),
+        uninvoke: ensure_typed_value(BOOL, item.get('uninvoke') ?? false),
+      }
+      poll.is_modbus = !poll.send_data;
       const comment = poll.comment.value;
-      make_prop_symbolic(poll, 'recv_DB', document, { default: { comment } });
-      poll.extra_send_DB = !!poll.send_DB;
-      poll.send_DB ??= POLLS_NAME;
-      make_prop_symbolic(poll, 'send_DB', document);
+      const recv_DB = item.get('recv_DB');
+      make_s7express(poll, 'recv_DB', recv_DB, document, { default: { comment } });
+      const send_DB = item.get('send_DB');
+      poll.extra_send_DB = !!send_DB;
+      make_s7express(poll, 'send_DB', send_DB ?? POLLS_NAME, document);
 
-      poll.send_data = nullable_typed_value(STRING, poll.send_data);
-      if (!poll.send_data && !poll.extra_send_DB) {
-        poll.deivce_ID = ensure_PINT(poll.deivce_ID);
-        poll.function = ensure_PINT(poll.function);
-        poll.started_addr = nullable_PINT(poll.started_addr) ?? ensure_PINT(poll.address);
+      if (poll.extra_send_DB) {
+        // 有外部发送块时，必须有 send_start 和 send_length
+        poll.send_start = ensure_PINT(item.get('send_start'));
+        poll.send_length = ensure_PINT(item.get('send_length'));
+      } else if (!poll.send_data) {
+        // 无外部发送块但有send_data时，必须有 deivce_ID、function、started_addr 和 data
+        poll.deivce_ID = ensure_PINT(item.get('deivce_ID'));
+        poll.function = ensure_PINT(item.get('function'));
+        poll.started_addr = nullable_PINT(item.get('started_addr')) ?? ensure_PINT(item.get('address'));
         // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
-        poll.data = nullable_PINT(poll.data) ?? ensure_PINT(poll.length);
+        poll.data = nullable_PINT(item.get('data')) ?? ensure_PINT(item.get('length'));
         // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
       }
-      poll.recv_start = ensure_PINT(poll.recv_start);
-      poll.uninvoke = nullable_typed_value(BOOL, poll.uninvoke) ?? new BOOL(false);
+      return poll;
     });
+    return module;
   })
 }
 
@@ -187,12 +206,11 @@ export function build_list(SC) {
   let sendDBB = polls.length * 16;
   list.forEach(module => { // 处理配置，形成完整数据
     assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:SC:module(${module.comment}) 模块地址有误!`));
-    module.polls_name ??= "polls_" + CPU.poll_list.push_new();
+    module.name ??= "polls_" + module.module.block_no;
     module.polls.forEach(poll => {
-      poll.is_modbus = !poll.send_data;
-      assert(
-        poll.extra_send_DB && poll.send_start && poll.send_length || !poll.extra_send_DB,
-        new SyntaxError(`指定发送块 send_DB:${module.polls_name}/poll_${poll.index} 时，必须同时设置 send_start 和 send_length`)
+      if (poll.extra_send_DB) assert(
+        poll.send_start && poll.send_length,
+        new SyntaxError(`指定发送块 send_DB:${module.name}/poll_${poll.index} 时，必须同时设置 send_start 和 send_length`)
       );
       if (poll.send_data) {
         const send_data = poll.send_data.value.trim();

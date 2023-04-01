@@ -40,11 +40,12 @@ list :
   run: DI05-02                   # 运行状态
   error: DI05-03                 # 电机故障输入
   remote: DI05-04                # 电机远程就地操作模式
-  # 以下为SCL表达式，值为boolean
+  # 以下为BOOL字面量
   $stateless: false               # 指示为无状态电机，正常省略，默认为false
-  # 以下为SCL表达式，值为正整数
+  # 以下为INT字面量，值为正整数
   $over_time: 1000                # 操作返回延时，超时后撤回信号并指示启停失败
   # 以下7项类型: S7符号定义 | S7符号引用 | SCL表达式
+  # 需要保证可赋值性
   run_action: DO05-01            # 接非自保持线路，控制启停
   start_action: DO05-02          # 启电机线路，设备侧自保持
   stop_action: DO05-03           # 停电机线路

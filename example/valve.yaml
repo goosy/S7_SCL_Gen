@@ -61,7 +61,7 @@ list :
   CP: DI01-05
   OP: DI01-06
   error: '"DI01-07" and "DI01-08"'
-  remote: TRUE
+  remote: TRUE           # 没有remote过程值时，必须赋值TRUE，也可以象下方C阀门一样省略，会默认为TRUE
   close_action: DO02-01
   open_action: DO02-02
   stop_action: DO02-03
@@ -71,8 +71,7 @@ list :
   AI: AI11-02
   CP: DI02-01
   OP: DI02-02
-  error: FALSE           # 没有error过程值时，可省略或赋值FALSE，省略时得注意PLC运行时的改变
-  remote: TRUE           # 没有remote过程值时，可省略或赋值TRUE，省略时得注意PLC运行时的改变
+  error: FALSE           # 没有error过程值时，可省略或赋值FALSE，省略时须注意PLC运行时的改变
   close_action: DO02-04  # 只能关阀
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。

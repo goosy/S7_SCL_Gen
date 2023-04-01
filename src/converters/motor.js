@@ -1,5 +1,5 @@
-import { make_prop_symbolic } from '../symbols.js';
-import { BOOL, INT, STRING, nullable_typed_value } from '../value.js';
+import { make_s7express } from '../symbols.js';
+import { BOOL, STRING, nullable_typed_value, nullable_PINT } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -63,30 +63,32 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
-    const list = area.list.map(item => item.toJSON());
-    area.list = list;
-    list.forEach(motor => {
-        if (!motor.DB) return; // 空块不处理
-        function symbolic(type, _comment) {
-            return function (prop) {
-                let comment = null;
-                if (_comment) comment = `${_comment} ${prop}`;
-                const options = {
-                    force: { type },
-                    default: { comment }
-                };
-                make_prop_symbolic(motor, prop, document, options);
-            }
-        }
-
-        motor.comment = new STRING(motor.comment ?? '');
+    area.list = area.list.map(node => {
+        const motor = {
+            node,
+            comment: new STRING(node.get('comment') ?? '')
+        };
         const comment = motor.comment.value;
-        symbolic(NAME, motor.comment)('DB');
-        ['enable', 'run', 'error', 'remote'].forEach(symbolic('BOOL', comment));
-        symbolic('BOOL')('timer_pulse');
-        ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(symbolic('BOOL', comment));
-        motor.$stateless = nullable_typed_value(BOOL, motor.$stateless);
-        motor.$over_time = nullable_typed_value(INT, motor.$over_time);
+        const DB = node.get('DB');
+        if (!DB) return motor; // 空块不处理
+        make_s7express(motor, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+
+        function make_bool_s7s(prop) {
+            const _comment = comment ? `${comment} ${prop}` : '';
+            const value = node.get(prop);
+            if (value !== undefined) make_s7express(motor, prop, value, document, {
+                s7express: true,
+                force: { type: 'BOOL' },
+                default: { comment: _comment }
+            });
+        }
+        ['enable', 'run', 'error', 'remote'].forEach(make_bool_s7s);
+        ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(make_bool_s7s);
+
+        motor.$stateless = nullable_typed_value(BOOL, node.get('$stateless'));
+        motor.$over_time = nullable_PINT(node.get('$over_time'));
+
+        return motor;
     });
 }
 
@@ -116,9 +118,6 @@ export function build_list({ list }) {
         }
         if (error) {
             input_paras.push(`error       := ${error.value}`);
-        }
-        if (over_time) {
-            input_paras.push(`over_time   := ${over_time}`); // over_time is not a symbol
         }
         // 只有一项时让SCL字串紧凑
         if (input_paras.length == 1) input_paras[0] = input_paras[0].replace(/ +/g, ' ');

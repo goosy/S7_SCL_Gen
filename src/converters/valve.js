@@ -1,4 +1,4 @@
-import { make_prop_symbolic } from '../symbols.js';
+import { make_s7express } from '../symbols.js';
 import { STRING } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -15,6 +15,18 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{includes}}
+{{#for valve in list}}{{#if valve.DB}}
+// valve 背景块: {{valve.comment}}
+DATA_BLOCK {{valve.DB.value}}{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'FALSE' }{{#endif portal}}
+AUTHOR : Goosy
+FAMILY : GooLib
+"{{NAME}}"
+BEGIN
+    AI := W#16#8000;{{#if valve.remote == null}}
+    remote := TRUE;{{#endif}}
+END_DATA_BLOCK
+{{#endif}}{{#endfor valve}}
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID
@@ -36,8 +48,8 @@ END_CONST
 "{{NAME}}".{{valve.DB.value}}(
     AI := {{#if valve.AI}}{{valve.AI.value}}{{#else}}S7_AI_MIN_WORD{{#endif}}{{#if valve.CP}},
     CP := {{valve.CP.value}}{{#endif}}{{#if valve.OP}},
-    OP := {{valve.OP.value}}{{#endif}}{{#if valve.error}},
-    error := {{valve.error.value}}{{#endif}}{{#if valve.remote}},
+    OP := {{valve.OP.value}}{{#endif}}{{#if valve.error != null}},
+    error := {{valve.error.value}}{{#endif}}{{#if valve.remote != null}},
     remote := {{valve.remote.value}}{{#endif}});{{#if valve.close_action}}
 {{valve.close_action.value}} := "{{valve.DB.name}}".close_action;{{#endif}}{{#if valve.open_action}}
 {{valve.open_action.value}} := "{{valve.DB.name}}".open_action;{{#endif}}{{#if valve.stop_action}}
@@ -55,27 +67,34 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
-    const list = area.list.map(item => item.toJSON());
-    area.list = list;
-    list.forEach(valve => {
-        if (!valve.DB) return; // 空valve不处理
-        valve.comment = new STRING(valve.comment ?? '');
+    area.list = area.list.map(node => {
+        const valve = {
+            node,
+            comment: new STRING(node.get('comment') ?? '')
+        };
         const comment = valve.comment.value;
-        function symbolic(type, _comment) {
-            return function (prop) {
-                let comment = null;
-                if (_comment) comment = `${_comment} ${prop}`;
-                const options = {
-                    document,
-                    force: { type },
-                    default: { comment }
-                };
-                make_prop_symbolic(valve, prop, document, options);
-            }
+        const DB = node.get('DB');
+        if (!DB) return valve; // 空valve不处理
+        make_s7express(valve, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+        const AI = node.get('AI');
+        make_s7express(valve, 'AI', AI, document, {
+            s7express: true,
+            force: { type: 'WORD' },
+            default: { comment: comment ? `${comment} AI` : '' }
+        });
+
+        function make_bool_s7s(prop) {
+            const _comment = comment ? `${comment} ${prop}` : '';
+            const value = node.get(prop);
+            if (value !== undefined) make_s7express(valve, prop, value, document, {
+                s7express: true,
+                force: { type: 'BOOL' },
+                default: { comment: _comment }
+            });
         }
-        symbolic(NAME, comment)('DB');
-        symbolic('WORD', comment)('AI');
-        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(symbolic('BOOL', comment));
+        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(make_bool_s7s);
+
+        return valve;
     });
 }
 

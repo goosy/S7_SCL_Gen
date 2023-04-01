@@ -1,5 +1,7 @@
-import { make_prop_symbolic } from '../symbols.js';
-import { STRING } from '../value.js';
+import { make_s7express } from '../symbols.js';
+import { BOOL, STRING, ensure_typed_value, nullable_typed_value } from '../value.js';
+import { isString } from '../gcl.js';
+import { isMap, isSeq } from 'yaml';
 
 export const platforms = ['step7', 'portal'];
 export const LOOP_NAME = 'Interlock_Loop';
@@ -70,59 +72,102 @@ END_FUNCTION
  */
 export function initialize_list(area) {
   const document = area.document;
-  const list = area.list.map(item => item.toJSON());
-  area.list = list;
-  list.forEach(interlock => {
-    if (!interlock.DB) throw new SyntaxError("interlock转换必须有DB块!");
-    interlock.comment = new STRING(interlock.comment ?? '报警联锁');
+  area.list = area.list.map(node => {
+    const interlock = {
+      node,
+      comment: new STRING(node.get('comment') ?? '报警联锁')
+    };
+    const DB = node.get('DB');
+    if (!DB) throw new SyntaxError("interlock转换必须有DB块!");
     const comment = interlock.comment.value;
-    interlock.$enable = interlock.$enable !== false ? true : false;
-    make_prop_symbolic(interlock, 'DB', document, { default: { comment } });
+    make_s7express(interlock, 'DB', DB, document, { default: { comment } });
 
-    if (!interlock.input_list || interlock.input_list.length < 1) throw new SyntaxError("interlock的input_list必须有1项以上!"); // 不能为空项
-    let list = interlock.input_list;
-    for (let [index, input] of list.entries()) {
-      // if input is symbol then convert to object of input type
-      if (typeof input === 'string' || Array.isArray(input)) {
-        input = { target: input };
-        list[index] = input;
+    interlock.$enable = ensure_typed_value(BOOL, node.get('$enable') ?? true);
+
+    const input_list = node.get('input_list');
+    if (!input_list || !isSeq(input_list) || input_list.items.length < 1) {
+      throw new SyntaxError("interlock的input_list必须有1项以上!"); // 不能为空项
+    }
+    interlock.input_list = input_list.items.map(item => {
+      // if input is symbol then convert to interlock_item
+      if (isString(item)) item = item.value;
+      if (typeof item === 'string' || isSeq(item)) {
+        const input = {};
+        make_s7express(input, 'target', item, document, {
+          s7express: true,
+          force: { type: 'BOOL' }
+        });
+        return input;
       }
-      if (!input.name && !input.target) throw new SyntaxError('interlock的input项必须name和target有一个!');
-      if (input.name === "test") throw new SyntaxError('interlock input项不能起名"test"! 已有同名内置项。');
-      input.comment = new STRING(input.comment ?? '');
+      if (!isMap(item)) throw new SyntaxError('interlock的input项输入错误!');
+      const name = nullable_typed_value(STRING, item.get('name'));
+      const target = item.get('target');
+      if (!name && !target) throw new SyntaxError('interlock的input项的 name 和 target 属性必须有一个!');
+      if (name?.value === "test") throw new SyntaxError('interlock input 项 name 属性不能起名"test"!');
+      const input = { name, comment: new STRING(item.get('comment') ?? '') };
       const comment = input.comment.value;
-      if (input.target) make_prop_symbolic(input, 'target', document, { default: { comment }, force: { type: 'BOOL' } });
-    }
-    list.push({ name: 'test', comment: '测试' });
+      make_s7express(input, 'target', target, document, {
+        s7express: true,
+        default: { comment },
+        force: { type: 'BOOL' }
+      });
+      return input;
+    });
+    interlock.input_list.push({ name: 'test', comment: '测试' });
 
-    interlock.reset_list ??= [];
-    list = interlock.reset_list;
-    for (let [index, reset] of list.entries()) {
-      // if reset is symbol then convert to object of reset type
-      if (typeof reset === 'string' || Array.isArray(reset)) {
-        reset = { target: reset };
-        list[index] = reset;
+    const reset_list = node.get('reset_list');
+    if (reset_list && !isSeq(reset_list)) throw new SyntaxError('interlock的 reset_list 项输入错误!');
+    interlock.reset_list = (reset_list?.items ?? []).map(item => {
+      // if reset is symbol then convert to interlock_item
+      if (isString(item)) item = item.value;
+      if (typeof item === 'string' || isSeq(item)) {
+        const reset = {};
+        make_s7express(reset, 'target', item, document, {
+          s7express: true,
+          force: { type: 'BOOL' }
+        });
+        return reset;
       }
-      if (!reset.target) throw new SyntaxError('interlock的reset项必须有target!');
-      if (reset.name === "reset") throw new SyntaxError('interlock reset 项不能起名"reset"! 已有同名内置项。');
-      reset.comment = new STRING(reset.comment ?? '');
-      const comment = reset.comment.value;
-      make_prop_symbolic(reset, 'target', document, { default: { comment }, force: { type: 'BOOL' } });
-    }
-    list.push({ name: 'reset', comment: '输出复位' });
+      if (!isMap(item)) throw new SyntaxError('interlock的reset项输入错误!');
+      const target = item.get('target');
+      if (!target) throw new SyntaxError('interlock的reset项必须有target!');
+      const name = nullable_typed_value(STRING, item.get('name'));
+      if (name?.value === "reset") throw new SyntaxError('interlock reset 项 name 属性不能起名"reset"!');
+      const comment = new STRING(item.get('comment') ?? '').value;
+      const reset = { name, comment };
+      make_s7express(reset, 'target', target, document, {
+        s7express: true,
+        default: { comment },
+        force: { type: 'BOOL' }
+      });
+      return reset;
+    });
+    interlock.reset_list.push({ name: 'reset', comment: '输出复位' });
 
-    interlock.output ??= { name: 'output' };
-    // if output is string then convert to object of output type
-    if (typeof interlock.output === 'string') {
-      interlock.output = { name: interlock.output };
+    const output = node.get('output') ?? 'output';
+    if (isString(output) || typeof output === 'string') {
+      const name = new STRING(output);
+      // if output is string then convert to object of output type
+      interlock.output = { name };
+    } else {
+      if (!isMap(output)) throw new SyntaxError("interlock.output 配置有误!");
+      const name = new STRING(output.get('name'));
+      if (!name) throw new SyntaxError("interlock.output 配置必须有name属性!");
+      const comment = new STRING(output.get('comment') || '').value;
+      interlock.output = { name, comment };
     }
-    if (!interlock.output.name) throw new SyntaxError("interlock.output 配置必须有name属性!");
-    interlock.output_list ??= [];
-    list = interlock.output_list;
-    for (let [index, output] of list.entries()) {
-      if (typeof output !== 'string' && !Array.isArray(output)) throw new SyntaxError('interlock的output项必须必须是一个S7符号或SCL表达式!');
-      make_prop_symbolic(list, index, document, { force: { type: 'BOOL' } });
-    }
+
+    const output_list = node.get('output_list');
+    if (output_list && !isSeq(output_list)) throw new SyntaxError('interlock的 output_list 项输入错误!');
+    const olist = interlock.output_list = [];
+    if (output_list) output_list.items.forEach((item, index) => {
+      if (!isString(item) && !isSeq(item)) throw new SyntaxError('interlock的output项必须必须是一个S7符号或SCL表达式!');
+      make_s7express(olist, index, item, document, {
+        s7express: true,
+        force: { type: 'BOOL' }
+      });
+    });
+    return interlock;
   });
 }
 

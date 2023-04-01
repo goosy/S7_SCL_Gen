@@ -1,4 +1,4 @@
-import { make_prop_symbolic } from "../symbols.js";
+import { make_s7express } from "../symbols.js";
 import { context } from '../util.js';
 import { BOOL, INT, REAL, STRING, nullable_typed_value } from '../value.js';
 import { posix } from 'path';
@@ -45,23 +45,38 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
-    const list = area.list.map(item => item.toJSON());
-    area.list = list;
-    list.forEach(PV => {
-        if (!PV.DB && !PV.input) return; // 空PV不处理
-        if (!PV.DB || !PV.input) throw new Error(`PV 功能中 DB 和 input 不能只定义1个!`);
-        PV.comment = new STRING(PV.comment ?? '');
+    area.list = area.list.map(node => {
+        const PV = {
+            node,
+            comment: new STRING(node.get('comment') ?? '')
+        };
+        const DB = node.get('DB');
+        const input = node.get('input');
+        if (!DB && !input) return PV; // 空PV不处理
+        if (!DB || !input) throw new Error(`PV 功能中 DB 和 input 不能只定义1个:`);
+
         const comment = PV.comment.value;
-        make_prop_symbolic(PV, 'DB', document, { force: { type: NAME }, default: { comment } });
-        make_prop_symbolic(PV, 'input', document, { force: { type: 'REAL' }, default: { comment } });
-        make_prop_symbolic(PV, 'enable_alarm', document, { force: { type: 'BOOL' } });
-        PV.$enable_alarm = nullable_typed_value(BOOL, PV.$enable_alarm);
-        PV.$AH_limit = nullable_typed_value(REAL, PV.$AH_limit);
-        PV.$WH_limit = nullable_typed_value(REAL, PV.$WH_limit);
-        PV.$WL_limit = nullable_typed_value(REAL, PV.$WL_limit);
-        PV.$AL_limit = nullable_typed_value(REAL, PV.$AL_limit);
-        PV.$dead_zone = nullable_typed_value(REAL, PV.$dead_zone);
-        PV.$FT_time = nullable_typed_value(INT, PV.$FT_time);
+        make_s7express(PV, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+        make_s7express(PV, 'input', input, document, {
+            s7express: true,
+            force: { type: 'REAL' },
+            default: { comment }
+        });
+        const enable_alarm = node.get('enable_alarm');
+        make_s7express(PV, 'enable_alarm', enable_alarm, document, {
+            s7express: true,
+            force: { type: 'BOOL' },
+        });
+
+        PV.$enable_alarm = nullable_typed_value(BOOL, node.get('$enable_alarm'));
+        PV.$AH_limit = nullable_typed_value(REAL, node.get('$AH_limit'));
+        PV.$WH_limit = nullable_typed_value(REAL, node.get('$WH_limit'));
+        PV.$WL_limit = nullable_typed_value(REAL, node.get('$WL_limit'));
+        PV.$AL_limit = nullable_typed_value(REAL, node.get('$AL_limit'));
+        PV.$dead_zone = nullable_typed_value(REAL, node.get('$dead_zone'));
+        PV.$FT_time = nullable_typed_value(INT, node.get('$FT_time'));
+
+        return PV;
     });
 }
 
