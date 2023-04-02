@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { fixed_hex, BOOL, STRING, nullable_typed_value, ensure_typed_value, nullable_PINT, ensure_PINT } from '../value.js';
+import { fixed_hex, BOOL, PINT, STRING, nullable_value, ensure_value } from '../value.js';
 import { IntIncHL, context } from '../util.js';
 import { posix } from 'path';
 import { isSeq } from 'yaml';
@@ -194,8 +194,8 @@ export function initialize_list(area) {
   area.list = area.list.map(node => {
     const conn = {
       node,
-      ID: nullable_PINT(node.get('ID')),
-      name: nullable_typed_value(STRING, node.get('name') ?? node.get('polls_name')),
+      ID: nullable_value(PINT, node.get('ID')),
+      name: nullable_value(STRING, node.get('name') ?? node.get('polls_name')),
       comment: new STRING(node.get('comment') ?? '')
     };
     const comment = conn.comment.value;
@@ -208,38 +208,38 @@ export function initialize_list(area) {
 
     // host IP
     let host = node.get('host');
-    host = isSeq(host) ? host.items.join('.') : ensure_typed_value(STRING, host).value;
+    host = isSeq(host) ? host.items.join('.') : ensure_value(STRING, host).value;
     assert(
       /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host),
       new SyntaxError(`配置项"host: ${host}"有误，必须提供IP地址，可以是数组形式!`)
     );
     conn.host = host;
-    conn.port = nullable_PINT(node.get('port'));
+    conn.port = nullable_value(PINT, node.get('port'));
     conn.IP = host.split('.').map(part => {
-      const ip = ensure_PINT(part);
+      const ip = ensure_value(PINT, part);
       assert(ip.value < 256, new SyntaxError(`配置项"host: ${host}"的IP地址越界!`));
       return ip;
     });
-    const R = nullable_PINT(node.get('rack'));
-    const X = nullable_PINT(node.get('XSlot'));
+    const R = nullable_value(PINT, node.get('rack'));
+    const X = nullable_value(PINT, node.get('XSlot'));
     conn.R = R ? 'R' + R : '';
     conn.X = X ? 'X' + X : '';
-    conn.$interval_time = nullable_PINT(node.get('$interval_time'));
-    conn.interval_time = nullable_PINT(node.get('interval_time'));
+    conn.$interval_time = nullable_value(PINT, node.get('$interval_time'));
+    conn.interval_time = nullable_value(PINT, node.get('interval_time'));
 
     const polls = node.get('polls');
     assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
     conn.polls = polls.items.map(item => {
       const poll = {
-        comment: ensure_typed_value(STRING, item.get('comment') ?? ''),
-        deivce_ID: ensure_PINT(item.get('deivce_ID')),
-        function: ensure_PINT(item.get('function')),
-        started_addr: nullable_PINT(item.get('started_addr')) ?? ensure_PINT(item.get('address')),
+        comment: ensure_value(STRING, item.get('comment') ?? ''),
+        deivce_ID: ensure_value(PINT, item.get('deivce_ID')),
+        function: ensure_value(PINT, item.get('function')),
+        started_addr: nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address')),
         // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
-        data: nullable_PINT(item.get('data')) ?? ensure_PINT(item.get('length')),
+        data: nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length')),
         // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
-        recv_start: ensure_PINT(item.get('recv_start')),
-        uninvoke: nullable_typed_value(BOOL, item.get('uninvoke')) ?? new BOOL(false),
+        recv_start: ensure_value(PINT, item.get('recv_start')),
+        uninvoke: nullable_value(BOOL, item.get('uninvoke')) ?? new BOOL(false),
       };
       const comment = poll.comment.value;
       const recv_DB = item.get('recv_DB');

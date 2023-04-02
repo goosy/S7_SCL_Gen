@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, STRING, ensure_typed_value, nullable_typed_value } from '../value.js';
+import { BOOL, STRING, ensure_value, nullable_value } from '../value.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
 
@@ -82,7 +82,7 @@ export function initialize_list(area) {
     const comment = interlock.comment.value;
     make_s7express(interlock, 'DB', DB, document, { default: { comment } });
 
-    interlock.$enable = ensure_typed_value(BOOL, node.get('$enable') ?? true);
+    interlock.$enable = ensure_value(BOOL, node.get('$enable') ?? true);
 
     const input_list = node.get('input_list');
     if (!input_list || !isSeq(input_list) || input_list.items.length < 1) {
@@ -100,7 +100,7 @@ export function initialize_list(area) {
         return input;
       }
       if (!isMap(item)) throw new SyntaxError('interlock的input项输入错误!');
-      const name = nullable_typed_value(STRING, item.get('name'));
+      const name = nullable_value(STRING, item.get('name'));
       const target = item.get('target');
       if (!name && !target) throw new SyntaxError('interlock的input项的 name 和 target 属性必须有一个!');
       if (name?.value === "test") throw new SyntaxError('interlock input 项 name 属性不能起名"test"!');
@@ -131,7 +131,7 @@ export function initialize_list(area) {
       if (!isMap(item)) throw new SyntaxError('interlock的reset项输入错误!');
       const target = item.get('target');
       if (!target) throw new SyntaxError('interlock的reset项必须有target!');
-      const name = nullable_typed_value(STRING, item.get('name'));
+      const name = nullable_value(STRING, item.get('name'));
       if (name?.value === "reset") throw new SyntaxError('interlock reset 项 name 属性不能起名"reset"!');
       const comment = new STRING(item.get('comment') ?? '').value;
       const reset = { name, comment };

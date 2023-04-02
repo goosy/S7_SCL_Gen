@@ -5,7 +5,7 @@
  */
 
 import { context } from '../util.js';
-import { fixed_hex, STRING, ensure_typed_value, nullable_PINT, nullable_typed_value } from '../value.js';
+import { STRING, PINT, PDINT, ensure_value, nullable_value } from '../value.js';
 import { make_s7express } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
@@ -27,8 +27,8 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // FM350-2专用数据块"{{module.count_DB.name}}"
 DATA_BLOCK "{{module.count_DB.name}}" "{{FM3502_CNT_NAME}}"
 BEGIN
-  MOD_ADR := W#16#{{module.module_no}}; // FM350-2模块地址
-  CH_ADR := DW#16#{{module.channel_no}}; // 通道地址，即模块地址乘8
+  MOD_ADR := {{module.module_no.wordHEX}}; // FM350-2模块地址
+  CH_ADR := {{module.channel_no.dwordHEX}}; // 通道地址，即模块地址乘8
 END_DATA_BLOCK{{#endfor module}}
 
 
@@ -64,7 +64,7 @@ export function initialize_list(area) {
     const module = {
       node,
       comment: new STRING(node.get('comment') ?? ''),
-      model: ensure_typed_value(STRING, node.get('model') ?? FM3502_CNT_NAME), // 目前只支持FM350-2
+      model: ensure_value(STRING, node.get('model') ?? FM3502_CNT_NAME), // 目前只支持FM350-2
     };
 
     const comment = module.comment.value;
@@ -82,7 +82,7 @@ export function initialize_list(area) {
     make_s7express(module, 'DB', DB, document, { force: { type }, default: { comment } });
 
     const module_symbol = node.get('module');
-    const module_addr = nullable_PINT(node.get('module_addr'));
+    const module_addr = nullable_value(PINT, node.get('module_addr'));
     assert(module_symbol || module_addr, new SyntaxError(`${CPU.name}:PI 第${index}个模块未提供 module 或 module_addr!`));
     make_s7express(
       module,
@@ -111,8 +111,8 @@ export function build_list({ document, list }) {
   list.forEach(module => { // 处理配置，形成完整数据
     assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:PI 的模块(${module.comment}) 模块地址有误!`));
     const MNO = module.module.block_no;
-    module.module_no = fixed_hex(MNO * 1, 4);
-    module.channel_no = fixed_hex(MNO * 8, 8);
+    module.module_no = new PINT(MNO * 1);
+    module.channel_no = new PDINT(MNO * 8);
   });
 }
 

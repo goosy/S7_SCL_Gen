@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, STRING, nullable_typed_value, nullable_PINT } from '../value.js';
+import { BOOL, STRING, nullable_value, DINT } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -85,8 +85,8 @@ export function initialize_list(area) {
         ['enable', 'run', 'error', 'remote'].forEach(make_bool_s7s);
         ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(make_bool_s7s);
 
-        motor.$stateless = nullable_typed_value(BOOL, node.get('$stateless'));
-        motor.$over_time = nullable_PINT(node.get('$over_time'));
+        motor.$stateless = nullable_value(BOOL, node.get('$stateless'));
+        motor.$over_time = nullable_value(DINT, node.get('$over_time'));
 
         return motor;
     });
@@ -100,7 +100,6 @@ export function build_list({ list }) {
             run,
             stateless,
             error,
-            over_time,
         } = motor;
         const input_paras = [];
 

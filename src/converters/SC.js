@@ -5,7 +5,7 @@
  */
 
 import { context } from '../util.js';
-import { BOOL, STRING, fixed_hex, ensure_typed_value, ensure_PINT, nullable_typed_value, nullable_PINT } from '../value.js';
+import { BOOL, STRING, PINT, fixed_hex, ensure_value, nullable_value } from '../value.js';
 import { make_s7express } from '../symbols.js';
 import { posix } from 'path';
 import { isSeq } from 'yaml';
@@ -69,10 +69,10 @@ BEGIN{{#for module in modules}}
   {{module.name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};{{#if !poll.extra_send_DB}}
   {{#----poll_send_data 开始}}// send data{{#if poll.send_data}}{{#for index, databyte in poll.send_data}}
   poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}{{#endfor}}{{#else}}
-  poll_{{poll.index}}_data.device_ID := B#16#{{poll.deivce_ID}};
-  poll_{{poll.index}}_data.MFunction := B#16#{{poll.function}};
-  poll_{{poll.index}}_data.address := W#16#{{poll.address}};
-  poll_{{poll.index}}_data.data := W#16#{{poll.data}};{{#endif}}{{#endif
+  poll_{{poll.index}}_data.device_ID := {{poll.deivce_ID.byteHEX}};
+  poll_{{poll.index}}_data.MFunction := {{poll.function.byteHEX}};
+  poll_{{poll.index}}_data.address := {{poll.started_addr.wordHEX}};
+  poll_{{poll.index}}_data.data := {{poll.data.wordHEX}};{{#endif}}{{#endif
   ----poll_send_data 结束}}
   {{#endfor poll}}
 {{#endfor module}}END_DATA_BLOCK
@@ -115,9 +115,9 @@ export function initialize_list(area) {
   area.list = area.list.map((node, index) => {
     const module = {
       node,
-      name: nullable_typed_value(STRING, node.get('name') ?? node.get('polls_name')),
-      comment: new STRING(node.get('comment') ?? ''),
-      model: ensure_typed_value(STRING, node.get('model') ?? 'CP341'),
+      name: nullable_value(STRING, node.get('name') ?? node.get('polls_name')),
+      comment: ensure_value(STRING, node.get('comment') ?? ''),
+      model: ensure_value(STRING, node.get('model') ?? 'CP341'),
     };
 
     const comment = module.comment.value;
@@ -135,7 +135,7 @@ export function initialize_list(area) {
     })(module.model.value);
 
     const module_symbol = node.get('module');
-    const module_addr = nullable_PINT(node.get('module_addr'));
+    const module_addr = nullable_value(PINT, node.get('module_addr'));
     assert(module_symbol || module_addr, new SyntaxError(`${CPU.name}:SC:module(${comment}) 未提供 module 或 module_addr!`));
     make_s7express(
       module,
@@ -159,10 +159,10 @@ export function initialize_list(area) {
     assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
     module.polls = polls.items.map(item => {
       const poll = {
-        comment: ensure_typed_value(STRING, item.get('comment') ?? ''),
-        send_data: nullable_typed_value(STRING, item.get('send_data')),
-        recv_start: ensure_PINT(item.get('recv_start')),
-        uninvoke: ensure_typed_value(BOOL, item.get('uninvoke') ?? false),
+        comment: ensure_value(STRING, item.get('comment') ?? ''),
+        send_data: nullable_value(STRING, item.get('send_data')),
+        recv_start: ensure_value(PINT, item.get('recv_start')),
+        uninvoke: ensure_value(BOOL, item.get('uninvoke') ?? false),
       }
       poll.is_modbus = !poll.send_data;
       const comment = poll.comment.value;
@@ -174,15 +174,15 @@ export function initialize_list(area) {
 
       if (poll.extra_send_DB) {
         // 有外部发送块时，必须有 send_start 和 send_length
-        poll.send_start = ensure_PINT(item.get('send_start'));
-        poll.send_length = ensure_PINT(item.get('send_length'));
+        poll.send_start = ensure_value(PINT, item.get('send_start'));
+        poll.send_length = ensure_value(PINT, item.get('send_length'));
       } else if (!poll.send_data) {
         // 无外部发送块但有send_data时，必须有 deivce_ID、function、started_addr 和 data
-        poll.deivce_ID = ensure_PINT(item.get('deivce_ID'));
-        poll.function = ensure_PINT(item.get('function'));
-        poll.started_addr = nullable_PINT(item.get('started_addr')) ?? ensure_PINT(item.get('address'));
+        poll.deivce_ID = ensure_value(PINT, item.get('deivce_ID'));
+        poll.function = ensure_value(PINT, item.get('function'));
+        poll.started_addr = nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address'));
         // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
-        poll.data = nullable_PINT(item.get('data')) ?? ensure_PINT(item.get('length'));
+        poll.data = nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length'));
         // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
       }
       return poll;
@@ -221,10 +221,6 @@ export function build_list(SC) {
         poll.send_data = data_stream.map(byte => fixed_hex(byte, 2));
         poll.send_length = data_stream.length;
       } else if (poll.deivce_ID && poll.is_modbus) {
-        poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
-        poll.function = fixed_hex(poll.function, 2);
-        poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
-        poll.data = fixed_hex(poll.data ?? poll.length, 4);
         poll.send_length = 8;
       } else if (!poll.extra_send_DB) { // poll configuration wrong!
         throw new SyntaxError(`发送数据在轮询DB中时，poll.deivce_ID 和 poll.send_data 必须有其中一个!\ndeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`);

@@ -1,6 +1,6 @@
 import { make_s7express } from "../symbols.js";
 import { context } from '../util.js';
-import { BOOL, INT, REAL, STRING, nullable_typed_value } from '../value.js';
+import { BOOL, DINT, REAL, STRING, nullable_value } from '../value.js';
 import { posix } from 'path';
 
 export const platforms = ['step7'];
@@ -25,7 +25,7 @@ BEGIN{{#if PV_item.$enable_alarm != null}}
     WL_limit := {{PV_item.$WL_limit}};{{#endif}}{{#if PV_item.$AL_limit != null}}
     AL_limit := {{PV_item.$AL_limit}};{{#endif}}{{#if PV_item.$dead_zone != null}}
     dead_zone := {{PV_item.$dead_zone}};{{#endif}}{{#if PV_item.$FT_time != null}}
-    FT_time := L#{{PV_item.$FT_time}};{{#endif}}
+    FT_time := {{PV_item.$FT_time}};{{#endif}}
 END_DATA_BLOCK
 {{#endif PV_item.}}{{#endfor PV_item}}
 
@@ -68,13 +68,13 @@ export function initialize_list(area) {
             force: { type: 'BOOL' },
         });
 
-        PV.$enable_alarm = nullable_typed_value(BOOL, node.get('$enable_alarm'));
-        PV.$AH_limit = nullable_typed_value(REAL, node.get('$AH_limit'));
-        PV.$WH_limit = nullable_typed_value(REAL, node.get('$WH_limit'));
-        PV.$WL_limit = nullable_typed_value(REAL, node.get('$WL_limit'));
-        PV.$AL_limit = nullable_typed_value(REAL, node.get('$AL_limit'));
-        PV.$dead_zone = nullable_typed_value(REAL, node.get('$dead_zone'));
-        PV.$FT_time = nullable_typed_value(INT, node.get('$FT_time'));
+        PV.$enable_alarm = nullable_value(BOOL, node.get('$enable_alarm'));
+        PV.$AH_limit = nullable_value(REAL, node.get('$AH_limit'));
+        PV.$WH_limit = nullable_value(REAL, node.get('$WH_limit'));
+        PV.$WL_limit = nullable_value(REAL, node.get('$WL_limit'));
+        PV.$AL_limit = nullable_value(REAL, node.get('$AL_limit'));
+        PV.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
+        PV.$FT_time = nullable_value(DINT, node.get('$FT_time'));
 
         return PV;
     });

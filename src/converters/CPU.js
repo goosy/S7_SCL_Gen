@@ -1,7 +1,7 @@
 import assert from 'assert/strict';
 import { convert } from 'gooconverter';
 import { add_symbols, make_s7express } from '../symbols.js';
-import { STRING, nullable_typed_value } from '../value.js';
+import { STRING, nullable_value } from '../value.js';
 
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal'];
@@ -84,7 +84,7 @@ export function initialize_list(area) {
         const block = node.get('block');
         if (!block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
         make_s7express(FN, 'block', block, document, { default: { comment } }); //S7函数类型
-        FN.title = nullable_typed_value(STRING, node.get('title'));
+        FN.title = nullable_value(STRING, node.get('title'));
         FN.code = new STRING(node.get('code') ?? '');
         return FN;
     });

@@ -26,7 +26,7 @@ export function pad_right(item, length, placeholder = ' ') {
 }
 
 export function fixed_hex(num, length) {
-    const HEX = num instanceof INT ? num.HEX : num?.toString(16);
+    const HEX = num instanceof Integer ? num.HEX : num?.toString(16);
     return pad_left(HEX, length, '0').toUpperCase();
 }
 
@@ -44,6 +44,9 @@ class S7Value {
 }
 
 export class BOOL extends S7Value {
+    static check(value){
+        assert(typeof value === 'boolean', `the value "${value}" must be a boolean. 值必须是一个布尔值`);
+    }
     constructor(value) {
         super(value);
         value = this._value;
@@ -51,7 +54,7 @@ export class BOOL extends S7Value {
         if (typeof value === 'string' &&
             (value.toLowerCase() === 'true' || value.toLowerCase() === 'false')
         ) value = Boolean(value);
-        assert(typeof value === 'boolean', `the value "${value}" must be a boolean. 值必须是一个布尔值`);
+        BOOL.check(value);
         this._value = value;
     }
     toString() {
@@ -60,22 +63,89 @@ export class BOOL extends S7Value {
 }
 
 class S7Number extends S7Value {
-    constructor(value) {
-        super(value);
-        value = this._value;
-        if (typeof value === 'string') value = Number(value);
+    static check(value) {
         assert(Number.isFinite(value), `the value "${value}" must be a number. 值必须是一个有限数字`);
-        this._value = value;
+    }
+    constructor(value) {
+        if (typeof value === 'string') value = Number(value);
+        super(value);
+        S7Number.check(this._value);
     }
 }
 
-export class INT extends S7Number {
+class Integer extends S7Number {
     constructor(value) {
+        value = parseInt(value);
         super(value);
-        this._value = parseInt(this._value);
+    }
+    TC(radix) {
+        const pow = Math.pow(2, radix);
+        let result = this._value;
+        if (this._value < 0) {
+            result = ~Math.abs(result) + 1;
+        }
+        return result & (pow - 1);
     }
     get HEX() {
-        return this._value.toString(16);
+        return this._value.toString(16).toUpperCase();
+    }
+    get byteHEX() {
+        return 'B#16#' + this.TC(8).toString(16).toUpperCase();
+    }
+    get wordHEX() {
+        return 'W#16#' + this.TC(16).toString(16).toUpperCase();
+    }
+    get dwordHEX() {
+        return 'DW#16#' + this.TC(32).toString(16).toUpperCase();
+    }
+}
+
+export class INT extends Integer {
+    static check(value) {
+        assert(-32769 < value && value < 32768, `the value "${value}" range must be within 16 binary numbers. 值范围必须在16位二进制数以内`);
+    }
+    constructor(value) {
+        super(value);
+        INT.check(this._value);
+    }
+}
+
+export class PINT extends Integer {
+    static check(value) {
+        assert(-1 < value && value < 65536, `the value "${value}" range must be within 16 binary numbers. 值范围必须在16位二进制数以内`);
+    }
+    constructor(value) {
+        super(value);
+        PINT.check(this._value);
+    }
+    toString() {
+        return this._value.toString();
+    }
+}
+
+export class DINT extends Integer {
+    static check(value) {
+        assert(-2147483649 < value && value < 2147483648, `the value "${value}" range must be within 32 binary numbers. 值范围必须在32位二进制数以内`);
+    }
+    constructor(value) {
+        super(value);
+        DINT.check(this._value);
+    }
+    toString() {
+        return 'L#' + this._value.toString();
+    }
+}
+
+export class PDINT extends Integer {
+    static check(value) {
+        assert(-1 < value && value < 4294967296, `the value "${value}" range must be within 32 binary numbers. 值范围必须在32位二进制数以内`);
+    }
+    constructor(value) {
+        super(value);
+        PDINT.check(this._value);
+    }
+    toString() {
+        return 'L#' + this._value.toString();
     }
 }
 
@@ -100,24 +170,11 @@ export class STRING extends S7Value {
     }
 }
 
-export function nullable_typed_value(type, value) {
+export function nullable_value(type, value) {
     if (value === undefined || value === null) return undefined;
     return new type(value);
 }
 
-export function ensure_typed_value(type, value) {
+export function ensure_value(type, value) {
     return new type(value);
-}
-
-export function nullable_PINT(value) {
-    if (value === undefined || value === null) return undefined;
-    return ensure_PINT(value);
-}
-
-export function ensure_PINT(value) {
-    const ret = new INT(value);
-    if (ret.value < 0) throw new SyntaxError(`
-value ${value} wrong, must be a positive integer.
-数值 ${value} 错误，必须是正整数!`);
-    return ret;
 }

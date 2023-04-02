@@ -7,7 +7,7 @@ import {
     LineCounter,
     visit,
 } from 'yaml';
-import { STRING, ensure_typed_value, nullable_typed_value } from './value.js';
+import { STRING, ensure_value, nullable_value } from './value.js';
 
 function merge(document) {
     visit(document, {
@@ -155,7 +155,7 @@ export class GCL {
             }
 
             function get_from_name() {
-                const name = nullable_typed_value(STRING, document.get('name'))?.value;
+                const name = nullable_value(STRING, document.get('name'))?.value;
                 if (name == null) return null;
                 assert(
                     /^[a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*-[a-zA-Z]+$/.test(name),
@@ -167,7 +167,7 @@ export class GCL {
             function get_from_other() {
                 const CPU = document.get('CPU') ?? options.CPU;
                 const CPUs = isSeq(CPU)
-                    ? CPU.items.map(item => ensure_typed_value(STRING, item).value)
+                    ? CPU.items.map(item => ensure_value(STRING, item).value)
                     : [CPU];
                 const feature = document.get('feature') ?? options.feature;
                 return [CPUs, feature];

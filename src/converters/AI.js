@@ -1,5 +1,5 @@
 import { make_s7express } from "../symbols.js";
-import { BOOL, INT, REAL, STRING, nullable_typed_value } from '../value.js';
+import { BOOL, INT, DINT, REAL, STRING, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -35,7 +35,7 @@ BEGIN{{#if AI.$enable_alarm !== undefined}}
     WL_limit := {{AI.$WL_limit}};{{#endif}}{{#if AI.$AL_limit !== undefined}}
     AL_limit := {{AI.$AL_limit}};{{#endif}}{{#if AI.$dead_zone !== undefined}}
     dead_zone := {{AI.$dead_zone}};{{#endif}}{{#if AI.$FT_time !== undefined}}
-    FT_time := L#{{AI.$FT_time}};{{#endif}}
+    FT_time := {{AI.$FT_time}};{{#endif}}
 END_DATA_BLOCK
 {{#endif AI.}}{{#endfor AI}}
 
@@ -85,19 +85,19 @@ export function initialize_list(area) {
             force: { type: 'BOOL' },
             default: { comment }
         });
-        AI.$enable_alarm = nullable_typed_value(BOOL, node.get('$enable_alarm'));
-        AI.$zero_raw = nullable_typed_value(INT, node.get('$zero_raw'));
-        AI.$span_raw = nullable_typed_value(INT, node.get('$span_raw'));
-        AI.$overflow_SP = nullable_typed_value(INT, node.get('$overflow_SP'));
-        AI.$underflow_SP = nullable_typed_value(INT, node.get('$underflow_SP'));
-        AI.$zero = nullable_typed_value(REAL, node.get('$zero'));
-        AI.$span = nullable_typed_value(REAL, node.get('$span'));
-        AI.$AH_limit = nullable_typed_value(REAL, node.get('$AH_limit'));
-        AI.$WH_limit = nullable_typed_value(REAL, node.get('$WH_limit'));
-        AI.$WL_limit = nullable_typed_value(REAL, node.get('$WL_limit'));
-        AI.$AL_limit = nullable_typed_value(REAL, node.get('$AL_limit'));
-        AI.$dead_zone = nullable_typed_value(REAL, node.get('$dead_zone'));
-        AI.$FT_time = nullable_typed_value(INT, node.get('$FT_time'));
+        AI.$enable_alarm = nullable_value(BOOL, node.get('$enable_alarm'));
+        AI.$zero_raw = nullable_value(INT, node.get('$zero_raw'));
+        AI.$span_raw = nullable_value(INT, node.get('$span_raw'));
+        AI.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
+        AI.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
+        AI.$zero = nullable_value(REAL, node.get('$zero'));
+        AI.$span = nullable_value(REAL, node.get('$span'));
+        AI.$AH_limit = nullable_value(REAL, node.get('$AH_limit'));
+        AI.$WH_limit = nullable_value(REAL, node.get('$WH_limit'));
+        AI.$WL_limit = nullable_value(REAL, node.get('$WL_limit'));
+        AI.$AL_limit = nullable_value(REAL, node.get('$AL_limit'));
+        AI.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
+        AI.$FT_time = nullable_value(DINT, node.get('$FT_time'));
         return AI;
     });
 }
