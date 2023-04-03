@@ -5,8 +5,9 @@ import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, converter } from './converter.js';
 import { GCL } from './gcl.js';
-import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS } from './symbols.js';
+import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS, LAZYASSIGN_LIST } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
+import { pad_right } from "./value.js";
 
 /** 
  * @typeof {object} Area 
@@ -188,6 +189,8 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   }
 
   // 第二遍扫描 补全数据
+  LAZYASSIGN_LIST.forEach(fn => fn());
+
   for (const CPU of Object.values(CPUs)) {
     // the code below must run on all CPUs not just those with CPU document
     CPU.platform ??= 'step7';
@@ -264,8 +267,7 @@ Converter treats them as S7 expressions without checking validity. 转换器将�
 Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
   );
   NONSYMBOLS.forEach(item => {
-    const comment = item.comment ?? '';
-    console.log(`\t${item.prop}:${item.value}   # ${comment}`);
+    console.log(`\t${pad_right(item.prop, 18)}: ${item.value}`);
   });
 
   return [copy_list, convert_list];

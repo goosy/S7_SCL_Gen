@@ -1,5 +1,5 @@
 import assert from 'assert/strict';
-import { IncHLError, lazyassign, compare_str, context } from "./util.js";
+import { IncHLError, compare_str, context } from "./util.js";
 import { pad_left, pad_right } from "./value.js";
 import { GCL, isString } from './gcl.js';
 import { isSeq } from 'yaml';
@@ -9,6 +9,7 @@ export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
 await BUILDIN_SYMBOLS.load(posix.join(context.module_path, 'src/symbols_buildin.yaml'));
 
 export const NONSYMBOLS = [];
+export const LAZYASSIGN_LIST = [];
 
 /**
  * @typedef {object} Source
@@ -314,14 +315,15 @@ export function make_s7express(obj, prop, value, document, options = {}) {
         // 如果引用不有效，返回惰性赋值,
         // 因为全部符号尚未完全加载完
         // 下次调用时将赋值为最终符号或S7表达式对象
-        lazyassign(obj, prop, () => {
+        LAZYASSIGN_LIST.push(() => {
             const symbol = get_linked_symbol(value);
             if (symbol) {
                 // 如是引用存在，则返回引用符号。
                 symbol.complete_type();
-                return symbol;
+                obj[prop] = symbol;
+            } else {
+                obj[prop] = s7express(value);
             }
-            return s7express(value);
         });
         return;
     }
