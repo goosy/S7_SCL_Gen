@@ -40,7 +40,11 @@ VAR_TEMP
   reset : BOOL ; // 复位
   output : BOOL ; // 输出
 END_VAR
-{{#for interlock in list}}
+
+BEGIN
+{{#if loop_additional_code}}
+{{loop_additional_code}}
+{{#endif}}{{#for interlock in list}}
 // {{interlock.comment}}{{#for assign in interlock.assign_list}}
 {{assign.assign_str}}{{#endfor assign}}
 reset := NOT "{{interlock.DB.name}}".enable{{#for reset in interlock.reset_list}} OR {{reset.edge}}{{#endfor reset}};

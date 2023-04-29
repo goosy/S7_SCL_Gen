@@ -128,6 +128,9 @@ list :
   output_list: 
   - DO04-01 # 声光报警DO点
 
+loop_additional_code: | #这里的代码会加入 Interlock_Loop 函数体中
+  // 在此写需要额外增加的SCL代码
+
 # 更多的联锁设置，可以依照上方书写，注意对齐，以对齐表示层级
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
