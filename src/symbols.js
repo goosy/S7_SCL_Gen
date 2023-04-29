@@ -18,8 +18,8 @@ export const LAZYASSIGN_LIST = [];
  * @property {number[]} range
  */
 
-// FB|FC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
-const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'UDT'];
+// FB|FC|SFB|SFC|DB|UDT|MD|PID|ID|PQD|QD|MW|PIW|IW|PQW|QW|MB|PIB|IB|PQB|QB|M|I|Q
+const INDEPENDENT_PREFIX = ['OB', 'FB', 'FC', 'SFB', 'SFC', 'UDT'];
 const INTEGER_PREFIX = [...INDEPENDENT_PREFIX, 'DB'];
 const DWORD_PREFIX = ['MD', 'ID', 'PID', 'QD', 'PQD'];
 const WORD_PREFIX = ['MW', 'IW', 'PIW', 'QW', 'PQW'];
@@ -77,7 +77,7 @@ class S7Symbol {
     #symbol_error() {
         return new SyntaxError(`symbol define ${this.source.raw} is wrong!`);
     }
-    // regexp = /^(OB|FB|FC|UDT|DB|MD|ID|PID|QD|PQD|MW|IW|PIW|QW|PQW|MB|IB|PIB|QB|PQB|M|I|Q)(\d+|\+)(\.(\d))?$/
+    // regexp = /^(OB|FB|FC||SFB|SFC|UDT|DB|MD|ID|PID|QD|PQD|MW|IW|PIW|QW|PQW|MB|IB|PIB|QB|PQB|M|I|Q)(\d+|\+)(\.(\d))?$/
     s7addr_reg = new RegExp(`^(${[...INTEGER_PREFIX, ...S7MEM_PREFIX].join('|')})(\\d+|\\+)(\\.(\\d))?$`);
     parse_s7addr(address) {
         const [, block_name, block_no, , block_bit = 0] = this.s7addr_reg.exec(address.toUpperCase()) ?? [];
@@ -122,7 +122,7 @@ class S7Symbol {
         }
         const block_name = this.block_name;
         if (type === this.address || INDEPENDENT_PREFIX.includes(block_name)) {
-            // FB FC UDT 的类型是自己
+            // FB FC SFB SFC UDT 的类型是自己
             type = this.name;
         }
         if (type) {
@@ -351,7 +351,7 @@ export function build_symbols(CPU) {
         symbol => {
             const name = symbol.name;
             try {
-                if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC UDT 自动分配块号
+                if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC SFB SFC UDT 自动分配块号
                     symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
                     symbol.address = symbol.block_name + symbol.block_no;
                 } else if (S7MEM_PREFIX.includes(symbol.block_name)) { // Area 自动分配地址
@@ -420,7 +420,7 @@ function get_step7_symbol({ name: symname, type, block_name, block_no, block_bit
  * @returns {string}
  */
 function get_portal_symbol({ name, type, address, block_name, comment }) {
-    if (INTEGER_PREFIX.includes(block_name)) return null; // 不生成 OB, FB, FC, UDT 的符号
+    if (INTEGER_PREFIX.includes(block_name)) return null; // 不生成 OB, FB, FC, SFB, SFC, UDT 的符号
     const line = `"${name}","%${address}","${type}","True","True","False","${comment}","","True"`;
     return { name, address, line };
 }
@@ -433,7 +433,7 @@ export function gen_symbols(CPU_list) {
         rules: CPU_list.map(CPU => {
             const symbol_list = Object.values(CPU.symbols_dict)
                 .map(CPU.platform === "portal" ? get_portal_symbol : get_step7_symbol)
-                .filter(symbol => symbol) // 省略 portal 的 OB, FB, FC, UDT
+                .filter(symbol => symbol) // 省略 portal 的 OB, FB, FC, SFB, SFC, UDT
                 .sort((a, b) => compare_str(a.name, b.name))
                 .sort((a, b) => compare_str(a.address, b.address));
             return {

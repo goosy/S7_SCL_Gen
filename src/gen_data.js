@@ -37,6 +37,8 @@ const CPUs = { // CPU 资源
       DB_list: new IntIncHL(100),     // 已用数据块列表
       FB_list: new IntIncHL(256),     // 已用函数块列表
       FC_list: new IntIncHL(256),     // 已用函数列表
+      SFB_list: new IntIncHL(256),    // 已用系统函数块列表
+      SFC_list: new IntIncHL(256),    // 已用系统函数列表
       UDT_list: new IntIncHL(256),    // 已用自定义类型列表
       MA_list: new S7IncHL([0, 0]),   // 已用M地址
       IA_list: new S7IncHL([0, 0]),   // 已用I地址

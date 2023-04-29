@@ -73,6 +73,8 @@ symbols:
 # 没有配置 Clock_Byte 时，则不产生任何时钟存储器符号
 - [Clock_Byte, MB10] # 设置时钟存储器为MB10
 - [JS_flow, FB100]     # 修改JSFLow.scl文件中内置符号，地址由默认的FB01改变为FB100
+- [GET, SFB14, GET, Read Data From a Remote CPU]
+- [PUT, SFB15, PUT, Write Data to a Remote CPU]
 
 # 自定义符号
 - [vw1, MW1000] # 测试MW
