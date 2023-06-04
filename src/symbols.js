@@ -1,12 +1,16 @@
 import assert from 'assert/strict';
-import { IncHLError, compare_str, context } from "./util.js";
+import { IncHLError, compare_str } from "./util.js";
 import { pad_left, pad_right } from "./value.js";
 import { GCL, isString } from './gcl.js';
 import { isSeq } from 'yaml';
 import { posix } from 'path';
+import { fileURLToPath } from 'url';
 
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
-await BUILDIN_SYMBOLS.load(posix.join(context.module_path, 'src/symbols_buildin.yaml'));
+await BUILDIN_SYMBOLS.load(posix.join(
+    fileURLToPath(import.meta.url).replace(/\\/g, '/'),
+    '../symbols_buildin.yaml'
+));
 
 export const NONSYMBOLS = [];
 export const LAZYASSIGN_LIST = [];
