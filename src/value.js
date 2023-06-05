@@ -71,6 +71,21 @@ class S7Number extends S7Value {
         super(value);
         S7Number.check(this._value);
     }
+    [Symbol.toPrimitive](hint) {
+        if (hint === 'number') {
+            return this._value;
+        }
+        return this.toString();
+    }
+    [Symbol.compare](other) {
+        if (this.value < other.value) {
+            return -1;
+        } else if (this.value > other.value) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 }
 
 class Integer extends S7Number {
