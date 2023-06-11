@@ -45,6 +45,7 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
+    const gcl = document.gcl;
     area.list = area.list.map(node => {
         const PV = {
             node,
@@ -54,6 +55,7 @@ export function initialize_list(area) {
         const input = node.get('input');
         if (!DB && !input) return PV; // 空PV不处理
         if (!DB || !input) throw new Error(`PV 功能中 DB 和 input 不能只定义1个:`);
+        let info = gcl.get_pos_info(...node.range);
 
         const comment = PV.comment.value;
         make_s7express(PV, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
@@ -70,9 +72,18 @@ export function initialize_list(area) {
 
         PV.$enable_alarm = nullable_value(BOOL, node.get('$enable_alarm'));
         PV.$AH_limit = nullable_value(REAL, node.get('$AH_limit'));
-        PV.$WH_limit = nullable_value(REAL, node.get('$WH_limit'));
-        PV.$WL_limit = nullable_value(REAL, node.get('$WL_limit'));
+        PV.$WH_limit = nullable_value(REAL, node.get('$WH_limit')) ?? PV.$AH_limit;
         PV.$AL_limit = nullable_value(REAL, node.get('$AL_limit'));
+        PV.$WL_limit = nullable_value(REAL, node.get('$WL_limit')) ?? PV.$AL_limit;
+        PV.$AH_limit ??= 100.0;
+        PV.$WH_limit ??= 100.0;
+        PV.$WL_limit ??= 0.0;
+        PV.$AL_limit ??= 0.0;
+        if (
+            PV.$WH_limit > PV.$AH_limit ||
+            PV.$WL_limit > PV.$WH_limit ||
+            PV.$AL_limit > PV.$WL_limit
+        ) throw new Error(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
         PV.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
         PV.$FT_time = nullable_value(DINT, node.get('$FT_time'));
 

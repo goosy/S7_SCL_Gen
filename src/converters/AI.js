@@ -90,12 +90,17 @@ export function initialize_list(area) {
         AI.$span_raw = nullable_value(INT, node.get('$span_raw'));
         AI.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
         AI.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
-        AI.$zero = nullable_value(REAL, node.get('$zero'));
-        AI.$span = nullable_value(REAL, node.get('$span'));
-        AI.$AH_limit = nullable_value(REAL, node.get('$AH_limit'));
-        AI.$WH_limit = nullable_value(REAL, node.get('$WH_limit'));
-        AI.$WL_limit = nullable_value(REAL, node.get('$WL_limit'));
-        AI.$AL_limit = nullable_value(REAL, node.get('$AL_limit'));
+        AI.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
+        AI.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(100);
+        AI.$AH_limit = nullable_value(REAL, node.get('$AH_limit')) ?? AI.$span;
+        AI.$WH_limit = nullable_value(REAL, node.get('$WH_limit')) ?? AI.$span;
+        AI.$WL_limit = nullable_value(REAL, node.get('$WL_limit')) ?? AI.$zero;
+        AI.$AL_limit = nullable_value(REAL, node.get('$AL_limit')) ?? AI.$zero;
+        if (
+            AI.$WH_limit > AI.$AH_limit ||
+            AI.$WL_limit > AI.$WH_limit ||
+            AI.$AL_limit > AI.$WL_limit
+        ) throw new Error(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
         AI.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
         AI.$FT_time = nullable_value(DINT, node.get('$FT_time'));
         return AI;
