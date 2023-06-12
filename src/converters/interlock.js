@@ -8,7 +8,7 @@ export const LOOP_NAME = 'Interlock_Loop';
 
 export function is_feature(name) {
   name = name.toLowerCase();
-  return name === 'interlock' || name === 'IL' || name === 'alarm';
+  return name === 'interlock' || name === 'IL';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com

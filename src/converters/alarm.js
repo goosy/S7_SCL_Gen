@@ -5,10 +5,11 @@ import { posix } from 'path';
 
 export const platforms = ['step7'];
 export const NAME = 'PV_Alarm';
-export const LOOP_NAME = 'PV_Loop';
+export const LOOP_NAME = 'Alarm_Loop';
 
 export function is_feature(feature) {
-    return feature.toUpperCase() === 'PV_ALARM' || feature.toUpperCase() === 'PVALARM' || feature.toUpperCase() === 'PV';
+    const name = feature.toUpperCase();
+    return name === 'ALARM' || name === 'PV_ALARM' || name === 'PV' || name === 'PVALARM';
 }
 
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
