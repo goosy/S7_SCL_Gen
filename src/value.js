@@ -57,6 +57,12 @@ export class BOOL extends S7Value {
         BOOL.check(value);
         this._value = value;
     }
+    [Symbol.toPrimitive](hint) {
+        if (hint === 'boolean') {
+            return this._value;
+        }
+        return this.toString();
+    }
     toString() {
         return this._value ? 'TRUE' : 'FALSE';
     }

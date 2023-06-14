@@ -1,24 +1,24 @@
 [submodule "AI_Proc"]
 	path = AI_Proc
 	url = git@github.com:goosy/AI_Proc.git
+[submodule "Alarm_Proc"]
+	path = Alarm_Proc
+	url = git@github.com:goosy/Alarm_Proc.git
 [submodule "CP_Poll"]
 	path = CP_Poll
 	url = git@github.com:goosy/CP_Poll.git
 [submodule "MT_Poll"]
 	path = MT_Poll
 	url = git@github.com:goosy/MT_Poll.git
-[submodule "Valve_Proc"]
-	path = Valve_Proc
-	url = git@github.com:goosy/Valve_Proc.git
-[submodule "PI_Proc"]
-	path = PI_Proc
-	url = git@github.com:goosy/PI_Proc.git
 [submodule "Motor_Proc"]
 	path = Motor_Proc
 	url = git@github.com:goosy/Motor_Proc.git
-[submodule "PV_Alarm"]
-	path = PV_Alarm
-	url = git@github.com:goosy/PV_Alarm.git
+[submodule "PI_Proc"]
+	path = PI_Proc
+	url = git@github.com:goosy/PI_Proc.git
 [submodule "Timer_Proc"]
 	path = Timer_Proc
 	url = git@github.com:goosy/Timer_Proc.git
+[submodule "Valve_Proc"]
+	path = Valve_Proc
+	url = git@github.com:goosy/Valve_Proc.git
