@@ -3,7 +3,7 @@ import { context } from '../util.js';
 import { BOOL, DINT, REAL, STRING, nullable_value, ensure_value } from '../value.js';
 import { posix } from 'path';
 
-export const platforms = ['step7'];
+export const platforms = ['step7', 'portal', 'pcs7'];
 export const NAME = 'Alarm_Proc';
 export const LOOP_NAME = 'Alarm_Loop';
 
@@ -18,7 +18,11 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 {{includes}}
 {{#for PV_item in list}}{{#if PV_item.DB && PV_item.input}}
 // Alarm_Proc 背景块：{{PV_item.comment}}
-DATA_BLOCK "{{PV_item.DB.name}}" "{{NAME}}"
+DATA_BLOCK "{{PV_item.DB.name}}"{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'FALSE' }{{#endif portal}}
+AUTHOR : Goosy
+FAMILY : GooLib
+"{{NAME}}"
 BEGIN
     enable_AH := {{PV_item.$enable_AH}};
     enable_WH := {{PV_item.$enable_WH}};
@@ -34,8 +38,13 @@ END_DATA_BLOCK
 {{#endif PV_item.}}{{#endfor PV_item}}
 
 // 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID{{#for PV_item in list}}
-{{#if PV_item.DB && PV_item.input}}"{{NAME}}"."{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1{{#endif platform}}
+BEGIN{{#for PV_item in list}}
+{{#if PV_item.DB && PV_item.input}}{{#if platform == 'step7' || platform == 'pcs7'
+}}"{{NAME}}".{{#endif platform
+}}"{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{
     #if PV_item.enable_AH != undefined}}, enable_AH := {{PV_item.enable_AH.value}}{{#endif}}{{
     #if PV_item.enable_WH != undefined}}, enable_WH := {{PV_item.enable_WH.value}}{{#endif}}{{
     #if PV_item.enable_WL != undefined}}, enable_WL := {{PV_item.enable_WL.value}}{{#endif}}{{
@@ -106,13 +115,14 @@ export function gen(PV_list) {
     const rules = [];
     PV_list.forEach(({ document, includes, loop_additional_code, list, options = {} }) => {
         const { CPU, gcl } = document;
-        const { output_dir } = CPU;
+        const { output_dir, platform } = CPU;
         const { output_file = LOOP_NAME } = options;
         rules.push({
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
                 NAME,
                 LOOP_NAME,
+                platform,
                 includes,
                 loop_additional_code,
                 list,
@@ -124,8 +134,7 @@ export function gen(PV_list) {
 }
 
 export function gen_copy_list(item) {
-    const filename = `${NAME}.scl`;
-    const src = posix.join(context.module_path, NAME, filename);
-    const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
+    const src = posix.join(context.module_path, NAME, `${NAME}(${item.document.CPU.platform}).scl`);
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
     return [{ src, dst }];
 }
