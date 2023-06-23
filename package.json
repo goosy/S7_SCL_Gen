@@ -22,8 +22,8 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.2",
     "@rollup/plugin-node-resolve": "^13.3.0",
-    "eslint": "^8.42.0",
-    "globby": "^13.1.4",
+    "eslint": "^8.43.0",
+    "globby": "^13.2.0",
     "gooconverter": "^0.3.6",
     "mri": "^1.2.0",
     "rimraf": "^3.0.2",
