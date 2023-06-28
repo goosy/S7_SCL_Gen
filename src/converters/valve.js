@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, REAL, STRING, ensure_value, nullable_value } from '../value.js';
+import { BOOL, DINT, REAL, STRING, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -28,7 +28,14 @@ BEGIN
     enable_WL := {{valve.$enable_WL}};
     enable_AL := {{valve.$enable_AL}};
     AI := W#16#8000;{{#if valve.remote == null}}
-    remote := TRUE;{{#endif}}
+    remote := TRUE;{{#endif}}{{#if valve.$AH_limit !== undefined}}
+    AH_limit := {{valve.$AH_limit}};{{#endif}}{{#if valve.$WH_limit !== undefined}}
+    WH_limit := {{valve.$WH_limit}};{{#endif}}{{#if valve.$WL_limit !== undefined}}
+    WL_limit := {{valve.$WL_limit}};{{#endif}}{{#if valve.$AL_limit !== undefined}}
+    AL_limit := {{valve.$AL_limit}};{{#endif}}{{#if valve.$FT_zone !== undefined}}
+    FT_zone := {{valve.$FT_zone}};{{#endif}}{{#if valve.$FT_time !== undefined}}
+    FT_time := {{valve.$FT_time}};{{#endif}}{{#if valve.$stop_delay !== undefined}}
+    stop_delay := {{valve.$stop_delay}};{{#endif}}
 END_DATA_BLOCK
 {{#endif}}{{#endfor valve}}
 
@@ -119,7 +126,7 @@ export function initialize_list(area) {
             });
         });
 
-        function make_bool_s7s(prop) {
+        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(prop => {
             const _comment = comment ? `${comment} ${prop}` : '';
             const value = node.get(prop);
             if (value !== undefined) make_s7express(valve, prop, value, document, {
@@ -127,8 +134,11 @@ export function initialize_list(area) {
                 force: { type: 'BOOL' },
                 default: { comment: _comment }
             });
-        }
-        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(make_bool_s7s);
+        });
+
+        valve.$FT_zone = nullable_value(REAL, node.get('$FT_zone'));
+        valve.$FT_time = nullable_value(DINT, node.get('$FT_time'));
+        valve.$stop_delay = nullable_value(DINT, node.get('$stop_delay'));
 
         return valve;
     });
