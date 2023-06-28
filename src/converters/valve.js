@@ -1,9 +1,9 @@
 import { make_s7express } from '../symbols.js';
-import { STRING } from '../value.js';
+import { BOOL, REAL, STRING, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
-export const platforms = ['step7'];
+export const platforms = ['step7', 'pcs7', 'portal'];
 export const NAME = `Valve_Proc`;
 export const LOOP_NAME = 'Valve_Loop';
 
@@ -23,13 +23,19 @@ AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
+    enable_AH := {{valve.$enable_AH}};
+    enable_WH := {{valve.$enable_WH}};
+    enable_WL := {{valve.$enable_WL}};
+    enable_AL := {{valve.$enable_AL}};
     AI := W#16#8000;{{#if valve.remote == null}}
     remote := TRUE;{{#endif}}
 END_DATA_BLOCK
 {{#endif}}{{#endfor valve}}
 
 // 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1{{#endif platform}}
 
 CONST
     S7_ZERO := 0;
@@ -43,18 +49,33 @@ CONST
     OPEN_STATUS := W#16#2;
     MARCH_STATUS :=  W#16#4;
 END_CONST
-{{#for valve in list}}
+
+BEGIN{{#for valve in list}}
 // {{valve.comment}}{{#if valve.DB}}
-"{{NAME}}".{{valve.DB.value}}(
+{{#if platform != 'portal'}}"{{NAME}}".{{#endif platform
+}}{{valve.DB.value}}({{#if valve.enable_AH != undefined}}
+    enable_AH := {{valve.enable_AH.value}}, {{#endif}}{{#if valve.enable_WH != undefined}}
+    enable_WH := {{valve.enable_WH.value}}, {{#endif}}{{#if valve.enable_WL != undefined}}
+    enable_WL := {{valve.enable_WL.value}}, {{#endif}}{{#if valve.enable_AL != undefined}}
+    enable_AL := {{valve.enable_AL.value}}, {{#endif}}
     AI := {{#if valve.AI}}{{valve.AI.value}}{{#else}}S7_AI_MIN_WORD{{#endif}}{{#if valve.CP}},
     CP := {{valve.CP.value}}{{#endif}}{{#if valve.OP}},
     OP := {{valve.OP.value}}{{#endif}}{{#if valve.error != null}},
     error := {{valve.error.value}}{{#endif}}{{#if valve.remote != null}},
-    remote := {{valve.remote.value}}{{#endif}});{{#if valve.close_action}}
+    remote := {{valve.remote.value}}{{#endif}}{{
+
+#if platform == 'step7'}});{{#if valve.close_action}}
 {{valve.close_action.value}} := "{{valve.DB.name}}".close_action;{{#endif}}{{#if valve.open_action}}
 {{valve.open_action.value}} := "{{valve.DB.name}}".open_action;{{#endif}}{{#if valve.stop_action}}
-{{valve.stop_action.value}} := "{{valve.DB.name}}".stop_action;{{#endif}}
-{{#endif}}{{#endfor valve}}{{#if loop_additional_code}}
+{{valve.stop_action.value}} := "{{valve.DB.name}}".stop_action;{{#endif}}{{
+
+#else platform == 'portal'}}{{#if valve.close_action}},
+    close_action    => {{valve.close_action.value}}{{#endif}}{{#if valve.open_action}},
+    open_action  => {{valve.open_action.value}}{{#endif}}{{#if valve.stop_action}},
+    stop_action   => {{valve.stop_action.value}}{{#endif}});{{
+
+#endif platform}}
+{{#endif valve.DB}}{{#endfor valve}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
@@ -83,6 +104,21 @@ export function initialize_list(area) {
             default: { comment: comment ? `${comment} AI` : '' }
         });
 
+        ['AH', 'WH', 'WL', 'AL'].forEach(limit => {
+            const enable_str = 'enable_' + limit;
+            const $enable_str = '$' + enable_str;
+            const $limit_str = '$' + limit + '_limit';
+            // as ex: valve.$AH_limit
+            valve[$limit_str] = nullable_value(REAL, node.get($limit_str));
+            // as ex: valve.$enable_AH
+            valve[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? valve[$limit_str] != null);
+            // as ex: valve.enable_AH
+            make_s7express(valve, enable_str, node.get(enable_str), document, {
+                s7express: true,
+                force: { type: 'BOOL' },
+            });
+        });
+
         function make_bool_s7s(prop) {
             const _comment = comment ? `${comment} ${prop}` : '';
             const value = node.get(prop);
@@ -103,10 +139,11 @@ export function gen(valve_list) {
 
     valve_list.forEach(({ document, includes, loop_additional_code, list }) => {
         const { CPU, gcl } = document;
-        const { output_dir } = CPU;
+        const { output_dir, platform } = CPU;
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {
+                platform,
                 includes,
                 loop_additional_code,
                 NAME,
@@ -120,8 +157,7 @@ export function gen(valve_list) {
 }
 
 export function gen_copy_list(item) {
-    const filename = `${NAME}.scl`;
-    const src = posix.join(context.module_path, NAME, filename);
-    const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
+    const src = posix.join(context.module_path, `${NAME}/${NAME}(${item.document.CPU.platform}).scl`);
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
     return [{ src, dst }];
 }
