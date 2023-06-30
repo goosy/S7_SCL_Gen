@@ -17,7 +17,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 {{includes}}
 {{#for AI in list}}{{#if AI.DB && AI.input}}
 // AI背景块: {{AI.comment}}
-DATA_BLOCK "{{AI.DB.name}}"{{#if platform == 'portal'}}
+DATA_BLOCK {{AI.DB.value}}{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'FALSE' }{{#endif portal}}
 AUTHOR : Goosy
 FAMILY : GooLib
@@ -49,7 +49,7 @@ VERSION : 0.1{{#endif platform}}
 BEGIN{{#for AI in list}}
 {{#if AI.DB && AI.input}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
-}}"{{AI.DB.name}}"(AI := {{AI.input.value}}{{
+}}{{AI.DB.value}}(AI := {{AI.input.value}}{{
     #if AI.enable_AH != undefined}}, enable_AH := {{AI.enable_AH.value}}{{#endif}}{{
     #if AI.enable_WH != undefined}}, enable_WH := {{AI.enable_WH.value}}{{#endif}}{{
     #if AI.enable_WL != undefined}}, enable_WL := {{AI.enable_WL.value}}{{#endif}}{{

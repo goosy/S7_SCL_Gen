@@ -81,7 +81,7 @@ BEGIN{{#for module in modules}}
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
-"{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}"."{{module.DB.name}}"({{#if module.customREQ}}
+"{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}".{{module.DB.value}}({{#if module.customREQ}}
   customTrigger := TRUE,
   REQ           := {{module.customREQ.value}},{{#endif}}
   Laddr         := {{module.module.block_no}},  // CP模块地址

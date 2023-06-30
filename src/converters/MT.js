@@ -84,7 +84,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for conn in connections}}
-DATA_BLOCK "{{conn.DB.name}}" "{{NAME}}" // {{conn.comment}}
+DATA_BLOCK {{conn.DB.value}} "{{NAME}}" // {{conn.comment}}
 BEGIN
   TCON_Parameters.block_length := W#16#40;     //固定为64
   TCON_Parameters.id := W#16#{{conn.ID}};             //连接ID 每个连接必须不一样！
@@ -142,7 +142,7 @@ BEGIN{{#for conn in connections}}
 END_DATA_BLOCK
 
 {{#for conn in connections}}{{#if conn.$interval_time}}
-DATA_BLOCK "{{conn.DB.name}}" "{{NAME}}"
+DATA_BLOCK {{conn.DB.value}} "{{NAME}}"
 BEGIN
     intervalTime := {{conn.$interval_time}};
 END_DATA_BLOCK
@@ -152,7 +152,7 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for conn in connections}}
 // {{conn.comment}}
-"{{NAME}}"."{{conn.DB.name}}" ( {{#if conn.interval_time}}
+"{{NAME}}".{{conn.DB.value}} ( {{#if conn.interval_time}}
   intervalTime := {{conn.interval_time}},{{#endif}}
   DATA  := "{{POLLS_NAME}}".{{conn.name}},
   buff  := "{{POLLS_NAME}}".buff);

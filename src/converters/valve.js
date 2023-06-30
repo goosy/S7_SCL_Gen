@@ -72,9 +72,9 @@ BEGIN{{#for valve in list}}
     remote := {{valve.remote.value}}{{#endif}}{{
 
 #if platform == 'step7'}});{{#if valve.close_action}}
-{{valve.close_action.value}} := "{{valve.DB.name}}".close_action;{{#endif}}{{#if valve.open_action}}
-{{valve.open_action.value}} := "{{valve.DB.name}}".open_action;{{#endif}}{{#if valve.stop_action}}
-{{valve.stop_action.value}} := "{{valve.DB.name}}".stop_action;{{#endif}}{{
+{{valve.close_action.value}} := {{valve.DB.value}}.close_action;{{#endif}}{{#if valve.open_action}}
+{{valve.open_action.value}} := {{valve.DB.value}}.open_action;{{#endif}}{{#if valve.stop_action}}
+{{valve.stop_action.value}} := {{valve.DB.value}}.stop_action;{{#endif}}{{
 
 #else platform == 'portal'}}{{#if valve.close_action}},
     close_action    => {{valve.close_action.value}}{{#endif}}{{#if valve.open_action}},

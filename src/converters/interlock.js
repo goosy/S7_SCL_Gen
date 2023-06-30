@@ -17,7 +17,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 {{includes}}
 {{#for interlock in list}}
 // {{interlock.comment}}
-DATA_BLOCK "{{interlock.DB.name}}"{{#if platform == 'portal'}}
+DATA_BLOCK {{interlock.DB.value}}{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'FALSE' }{{#else}}
 { S7_m_c := 'true' }{{#endif portal}}
 AUTHOR:Goosy
@@ -47,23 +47,23 @@ BEGIN
 {{#endif}}{{#for interlock in list}}
 // {{interlock.comment}}{{#for assign in interlock.assign_list}}
 {{assign.assign_str}}{{#endfor assign}}
-reset := NOT "{{interlock.DB.name}}".enable{{#for reset in interlock.reset_list}} OR {{reset.edge}}{{#endfor reset}};
+reset := NOT {{interlock.DB.value}}.enable{{#for reset in interlock.reset_list}} OR {{reset.edge}}{{#endfor reset}};
 IF reset THEN
-  "{{interlock.DB.name}}".{{interlock.output.name}} := FALSE;  // 复位output
-  "{{interlock.DB.name}}".reset := FALSE;  // 复位reset
+  {{interlock.DB.value}}.{{interlock.output.name}} := FALSE;  // 复位output
+  {{interlock.DB.value}}.reset := FALSE;  // 复位reset
   // 复位联锁输出{{#for output in interlock.output_list}} 
   {{output.value}} := FALSE;{{#endfor output}}
 ELSE
   output := {{#for no, input in interlock.input_list}}{{#if no}}
-    OR {{#endif}}{{input.edge}} AND NOT "{{interlock.DB.name}}".{{input.name}}_follower{{#endfor}};
+    OR {{#endif}}{{input.edge}} AND NOT {{interlock.DB.value}}.{{input.name}}_follower{{#endfor}};
   IF output THEN
-    "{{interlock.DB.name}}".{{interlock.output.name}} := TRUE; // 置位output
+    {{interlock.DB.value}}.{{interlock.output.name}} := TRUE; // 置位output
     // 置位联锁输出{{#for output in interlock.output_list}} 
     {{output.value}} := TRUE;{{#endfor output}}
   END_IF;
 END_IF;
 // 输入边沿维护{{#for input in interlock.input_list}}
-"{{interlock.DB.name}}".{{input.name}}_follower := {{input.edge}};{{#endfor}}
+{{interlock.DB.value}}.{{input.name}}_follower := {{input.edge}};{{#endfor}}
 {{#endfor interlock}}
 END_FUNCTION
 `

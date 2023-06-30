@@ -18,7 +18,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 {{includes}}
 {{#for PV_item in list}}{{#if PV_item.DB && PV_item.input}}
 // Alarm_Proc 背景块：{{PV_item.comment}}
-DATA_BLOCK "{{PV_item.DB.name}}"{{#if platform == 'portal'}}
+DATA_BLOCK {{PV_item.DB.value}}{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'FALSE' }{{#endif portal}}
 AUTHOR : Goosy
 FAMILY : GooLib
@@ -44,7 +44,7 @@ VERSION : 0.1{{#endif platform}}
 BEGIN{{#for PV_item in list}}
 {{#if PV_item.DB && PV_item.input}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
-}}"{{PV_item.DB.name}}"(PV := {{PV_item.input.value}}{{
+}}{{PV_item.DB.value}}(PV := {{PV_item.input.value}}{{
     #if PV_item.enable_AH != undefined}}, enable_AH := {{PV_item.enable_AH.value}}{{#endif}}{{
     #if PV_item.enable_WH != undefined}}, enable_WH := {{PV_item.enable_WH.value}}{{#endif}}{{
     #if PV_item.enable_WL != undefined}}, enable_WL := {{PV_item.enable_WL.value}}{{#endif}}{{

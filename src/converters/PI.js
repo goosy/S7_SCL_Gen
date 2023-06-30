@@ -24,8 +24,8 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 摘要: {{gcl.MD5}}
 {{includes}}
 {{#for module in modules}}
-// FM350-2专用数据块"{{module.count_DB.name}}"
-DATA_BLOCK "{{module.count_DB.name}}" "{{FM3502_CNT_NAME}}"
+// FM350-2专用数据块{{module.count_DB.value}}
+DATA_BLOCK {{module.count_DB.value}} "{{FM3502_CNT_NAME}}"
 BEGIN
   MOD_ADR := {{module.module_no.wordHEX}}; // FM350-2模块地址
   CH_ADR := {{module.channel_no.dwordHEX}}; // 通道地址，即模块地址乘8
@@ -36,7 +36,7 @@ END_DATA_BLOCK{{#endfor module}}
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
-"{{NAME}}"."{{module.DB.name}}"(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向"{{module.count_DB.name}}"
+"{{NAME}}".{{module.DB.value}}(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向{{module.count_DB.value}}
 {{#endfor module}}{{#if loop_additional_code}}
 {{loop_additional_code}}{{#endif}}
 END_FUNCTION

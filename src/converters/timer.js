@@ -3,7 +3,7 @@ import { STRING } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
-export const platforms = ['step7'];
+export const platforms = ['step7', 'portal', 'pcs7'];
 export const NAME = `Timer_Proc`;
 export const LOOP_NAME = 'Timer_Loop';
 
@@ -15,12 +15,25 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{includes}}
-
+{{#if platform == 'portal'}}{{#for timer in list}}{{#if timer.DB}}
+// timer背景块: {{timer.comment}}
+DATA_BLOCK {{timer.DB.value}}
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : Goosy
+FAMILY : GooLib
+"{{NAME}}"
+BEGIN
+END_DATA_BLOCK
+{{#endif timer.}}{{#endfor timer}}{{#endif portal}}
 // 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
+{ S7_Optimized_Access := 'TRUE' }{{#endif portal}}
+// 计时主循环
+BEGIN
 {{#for timer in list}}
 // {{timer.comment}}
-"{{NAME}}".{{timer.DB.value}}({{#if timer.enable}}
+{{#if platform != 'portal'}}"{{NAME}}".{{#endif platform
+}}{{timer.DB.value}}({{#if timer.enable}}
     enable := {{timer.enable.value}},{{#endif}}{{#if timer.reset}}
     reset := {{timer.reset.value}},{{#endif}}{{#if timer.enable || timer.reset}}
     {{#endif}}PPS := {{timer.PPS.value}});
@@ -45,9 +58,10 @@ export function initialize_list(area) {
         const DB = node.get('DB');
         if (!DB) throw new SyntaxError("timer转换必须有DB块!");
         const comment = timer.comment.value;
-        make_s7express(timer, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+        let options = { force: { type: NAME }, default: { comment } };
+        make_s7express(timer, 'DB', DB, document, options);
 
-        const options = { s7express: true, force: { type: 'BOOL' } };
+        options = { s7express: true, force: { type: 'BOOL' } };
         make_s7express(timer, 'enable', node.get('enable'), document, options);
         make_s7express(timer, 'reset', node.get('reset'), document, options);
         make_s7express(timer, 'PPS', node.get('PPS') ?? "Pulse_1Hz", document, options);
@@ -60,10 +74,11 @@ export function gen(timer_list) {
     const rules = [];
     timer_list.forEach(({ document, includes, loop_additional_code, list }) => {
         const { CPU, gcl } = document;
-        const { output_dir } = CPU;
+        const { output_dir, platform } = CPU;
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {
+                platform,
                 includes,
                 loop_additional_code,
                 NAME,
@@ -77,8 +92,8 @@ export function gen(timer_list) {
 }
 
 export function gen_copy_list(item) {
-    const filename = `${NAME}.scl`;
+    const filename = item.document.CPU.platform == 'portal' ? `${NAME}(portal).scl`: `${NAME}.scl`;
     const src = posix.join(context.module_path, NAME, filename);
-    const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
     return [{ src, dst }];
 }
