@@ -62,14 +62,14 @@ symbols:
 # Clock_Byte 是一个特定的符号，仅在CPU配置下有效。
 # 只有显式配置了该符号(本例为MB10)，转换程序才会自动生成以下符号：
 # - [Clock_Byte, MB10, ~, clock memory]
-# - [Pulse_10Hz,   M10.0]
-# - [Pulse_5Hz,    M10.1]
-# - [Pulse_2.5Hz,  M10.2]
-# - [Pulse_2Hz,    M10.3]
-# - [Pulse_1.25Hz, M10.4]
-# - [Pulse_1Hz,    M10.5]
-# - [Pulse_0.62Hz, M10.6]
-# - [Pulse_0.5Hz,  M10.7]
+# - [Clock_10Hz,    M10.0]
+# - [Clock_5Hz,     M10.1]
+# - [Clock_2.5Hz,   M10.2]
+# - [Clock_2Hz,     M10.3]
+# - [Clock_1.25Hz,  M10.4]
+# - [Clock_1Hz,     M10.5]
+# - [Clock_0.625Hz, M10.6]
+# - [Clock_0.5Hz,   M10.7]
 # 没有配置 Clock_Byte 时，则不产生任何时钟存储器符号
 - [Clock_Byte, MB10] # 设置时钟存储器为MB10
 - [JS_flow, FB100]     # 修改JSFLow.scl文件中内置符号，地址由默认的FB01改变为FB100

@@ -67,14 +67,14 @@ export function initialize_list(area) {
         const CM_address = CM.address.substring(2);
         CM.comment = 'clock memory';
         const symbols = [
-            ['Pulse_10Hz', `M${CM_address}.0`],
-            ['Pulse_5Hz', `M${CM_address}.1`],
-            ['Pulse_2.5Hz', `M${CM_address}.2`],
-            ['Pulse_2Hz', `M${CM_address}.3`],
-            ['Pulse_1.25Hz', `M${CM_address}.4`],
-            ['Pulse_1Hz', `M${CM_address}.5`],
-            ['Pulse_0.62Hz', `M${CM_address}.6`],
-            ['Pulse_0.5Hz', `M${CM_address}.7`],
+            ['Clock_10Hz', `M${CM_address}.0`],
+            ['Clock_5Hz', `M${CM_address}.1`],
+            ['Clock_2.5Hz', `M${CM_address}.2`],
+            ['Clock_2Hz', `M${CM_address}.3`],
+            ['Clock_1.25Hz', `M${CM_address}.4`],
+            ['Clock_1Hz', `M${CM_address}.5`],
+            ['Clock_0.625Hz', `M${CM_address}.6`],
+            ['Clock_0.5Hz', `M${CM_address}.7`],
         ];
         add_symbols(document, symbols);
     }

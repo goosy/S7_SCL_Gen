@@ -64,7 +64,7 @@ export function initialize_list(area) {
         options = { s7express: true, force: { type: 'BOOL' } };
         make_s7express(timer, 'enable', node.get('enable'), document, options);
         make_s7express(timer, 'reset', node.get('reset'), document, options);
-        make_s7express(timer, 'PPS', node.get('PPS') ?? "Pulse_1Hz", document, options);
+        make_s7express(timer, 'PPS', node.get('PPS') ?? "Clock_1Hz", document, options);
 
         return timer;
     });

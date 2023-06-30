@@ -72,7 +72,7 @@ list : # CP 模块列表
   # 值： BOOL
   # 类型: S7符号定义 | S7符号引用 | SCL表达式
   # 指示由外部触发通信，省略时将自动使用顺序发送
-  customREQ: Pulse_1Hz
+  customREQ: Clock_1Hz
 
   polls:
   - comment: '液位'                   # 值: 字符串
