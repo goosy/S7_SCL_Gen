@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, DINT, REAL, STRING, ensure_value, nullable_value } from '../value.js';
+import { BOOL, DINT, INT, REAL, STRING, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -26,7 +26,11 @@ BEGIN
     enable_AH := {{valve.$enable_AH}};
     enable_WH := {{valve.$enable_WH}};
     enable_WL := {{valve.$enable_WL}};
-    enable_AL := {{valve.$enable_AL}};
+    enable_AL := {{valve.$enable_AL}};{{#if valve.$zero_raw !== undefined}}
+    zero_raw := {{valve.$zero_raw}};{{#endif}}{{#if valve.$span_raw !== undefined}}
+    span_raw := {{valve.$span_raw}};{{#endif}}{{#if valve.$overflow_SP !== undefined}}
+    overflow_SP := {{valve.$overflow_SP}};{{#endif}}{{#if valve.$underflow_SP !== undefined}}
+    underflow_SP := {{valve.$underflow_SP}};{{#endif}}
     AI := W#16#8000;{{#if valve.remote == null}}
     remote := TRUE;{{#endif}}{{#if valve.$AH_limit !== undefined}}
     AH_limit := {{valve.$AH_limit}};{{#endif}}{{#if valve.$WH_limit !== undefined}}
@@ -136,6 +140,10 @@ export function initialize_list(area) {
             });
         });
 
+        valve.$zero_raw = nullable_value(INT, node.get('$zero_raw'));
+        valve.$span_raw = nullable_value(INT, node.get('$span_raw'));
+        valve.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
+        valve.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
         valve.$FT_zone = nullable_value(REAL, node.get('$FT_zone'));
         valve.$FT_time = nullable_value(DINT, node.get('$FT_time'));
         valve.$stop_delay = nullable_value(DINT, node.get('$stop_delay'));
