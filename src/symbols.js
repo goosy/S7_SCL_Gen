@@ -46,11 +46,14 @@ const area_size = Object.fromEntries([
  * @return {string}
  */
 function get_msg(symbol) {
+    /**
+     * @type {GCL}
+     */
     const gcl = symbol.source.document.gcl;
     if (gcl) {
         const info = gcl.get_pos_info(...symbol.source.range);
-        return `${info}
-        符号:${symbol.name}`;
+        return `
+        符号: ${symbol.name}${info}`;
     }
     return `内置符号 symbol:${symbol.name}`
 };
@@ -63,8 +66,8 @@ function get_msg(symbol) {
  * @param {Symbol} prev_symbol
  */
 function throw_symbol_error(message, curr_symbol, prev_symbol) {
-    const prev_msg = prev_symbol ? `之前符号位置: ${get_msg(prev_symbol)}\n` : '';
-    const curr_msg = curr_symbol ? `当前符号位置: ${get_msg(curr_symbol)}\n` : '';
+    const prev_msg = prev_symbol ? `previous symbol position 之前符号位置: ${get_msg(prev_symbol)}\n` : '';
+    const curr_msg = curr_symbol ? `current symbol position 当前符号位置: ${get_msg(curr_symbol)}\n` : '';
     console.error(`${message}\n${prev_msg}${curr_msg}`);
     process.exit(10);
 }
@@ -76,6 +79,9 @@ class S7Symbol {
     block_bit;
     type_name;
     type_no;
+    /**
+     * @type {Source}
+     */
     source = {};
     CPU;
     #symbol_error() {
@@ -160,7 +166,13 @@ class S7Symbol {
             this.type_no = '';
         } else {
             const type_block = this.CPU.symbols_dict[this.type];
-            if (!type_block) throw new Error(`${this.type} is required, but not defined`);
+            if (!type_block) {
+                console.error(`\n\nsymbol ERROR!!! 符号错误！！！`);
+                console.error(`type ${this.type} is required, but not defined`);
+                console.error(`需要符号类型${this.type}，但是该类型未定义`);
+                console.error(`current symbol information 当前符号信息: ${get_msg(this)}`);
+                process.exit(10);
+            }
             this.type_name = type_block.block_name;
             this.type_no = type_block.block_no;
         }

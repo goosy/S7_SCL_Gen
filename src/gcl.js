@@ -74,14 +74,11 @@ export class GCL {
             const range = doc.contents.range;
             return range[0] < start && end < range[2];
         })
-        const docinfo = document
-            ? `
-        文档:${document.get('CPU')}-${document.get('feature')}`
-            : '';
         const pos_data = this.get_pos_data(start, end);
         return `
-        文件:${this.#file}${docinfo}
-        代码:L${pos_data.line} C${pos_data.col}: ${pos_data.code}`;
+        位置: file:///${this.#file}:${pos_data.line}:${pos_data.col}` + (document ? `
+        文档: ${document.CPU.name}-${document.feature}` : '') + `
+        代码: \`${pos_data.code}\``;
     }
     #MD5;
     get MD5() {
@@ -148,6 +145,7 @@ export class GCL {
             documents.push(document);
             try {
                 // yaml library only support merge key in YAML 1.1
+                // so use our own merge function
                 merge(document);
             } catch (error) {
                 console.error(`${error.message}:${this.get_pos_info(...error.range)}`);
