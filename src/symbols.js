@@ -14,6 +14,7 @@ await BUILDIN_SYMBOLS.load(posix.join(
 
 export const NONSYMBOLS = [];
 export const LAZYASSIGN_LIST = [];
+export const WRONGTYPESYMBOLS = new Set();
 
 /**
  * @typedef {object} Source
@@ -65,9 +66,9 @@ function get_msg(symbol) {
  * @param {Symbol} curr_symbol
  * @param {Symbol} prev_symbol
  */
-function throw_symbol_error(message, curr_symbol, prev_symbol) {
-    const prev_msg = prev_symbol ? `previous symbol position 之前符号位置: ${get_msg(prev_symbol)}\n` : '';
-    const curr_msg = curr_symbol ? `current symbol position 当前符号位置: ${get_msg(curr_symbol)}\n` : '';
+function throw_symbol_conflict(message, curr_symbol, prev_symbol) {
+    const prev_msg = prev_symbol ? `previous symbol position 先前符号信息: ${get_msg(prev_symbol)}\n` : '';
+    const curr_msg = curr_symbol ? `current symbol position 当前符号信息: ${get_msg(curr_symbol)}\n` : '';
     console.error(`${message}\n${prev_msg}${curr_msg}`);
     process.exit(10);
 }
@@ -82,7 +83,7 @@ class S7Symbol {
     /**
      * @type {Source}
      */
-    source = {};
+    source;
     CPU;
     #symbol_error() {
         return new SyntaxError(`symbol define ${this.source.raw} is wrong!`);
@@ -95,6 +96,9 @@ class S7Symbol {
         return [block_name, block_no, block_bit];
     }
 
+    /**
+     * @type {string}
+     */
     _name;
     get name() {
         return this._name
@@ -104,6 +108,9 @@ class S7Symbol {
         this._name = name;
     }
 
+    /**
+     * @type {string}
+     */
     _address;
     get address() {
         return this._address;
@@ -117,6 +124,52 @@ class S7Symbol {
         this._address = address;
     }
 
+    /**
+     * Checks the compatibility with specified type.
+     *
+     * @param {string} type - The type to compare with this symbol.
+     * @return {boolean} True if this symbol is compatible with the type, false otherwise.
+     */
+    check_type_compatibility(type) {
+        // this.type startswith INDEPENDENT_PREFIX = itself
+        if (INDEPENDENT_PREFIX.includes(this.block_name)) {
+            return type == this.name;
+        }
+
+        // this.type startswith 'DB' must be a symbol name
+        if (this.block_name == 'DB') {
+            if (COMMON_TYPE.includes(type)) return false;
+            // the symbol of type must be one of DB FB SFB UDT
+            // it will checking on this.complete_type()
+            // if (type == this.name) return true;
+            return true;
+        }
+
+        // this.type startswith DWORD_PREFIX must one of 'DWORD' 'DINT' 'REAL'
+        if (DWORD_PREFIX.includes(this.block_name)) {
+            return ['DWORD', 'DINT', 'REAL'].includes(type);
+        }
+
+        // this.type startswith WORD_PREFIX must one of 'INT', 'WORD'
+        if (WORD_PREFIX.includes(this.block_name)) {
+            return ['WORD', 'INT'].includes(type);
+        }
+
+        // this.type startswith BYTE_PREFIX must be 'BYTE'
+        if (BYTE_PREFIX.includes(this.block_name)) {
+            return 'BYTE' == type;
+        }
+
+        // this.type startswith BIT_PREFIX must be 'BOOL'
+        if (BIT_PREFIX.includes(this.block_name)) {
+            return 'BOOL' == type;
+        }
+
+        return false;
+    }
+    /**
+     * @type {string|null}
+     */
     _type;
     get type() {
         return this._type;
@@ -154,7 +207,15 @@ class S7Symbol {
             // M I Q 的默认类型是 BOOL
             type = 'BOOL';
         }
-        this._type = type;
+
+        if (this.check_type_compatibility(type)) {
+            this._type = type;
+            if (this.userDefinedType && this.userDefinedType != type) {
+                WRONGTYPESYMBOLS.add(this);
+            }
+        } else {
+            throw_type_incompatible(this, type);
+        }
         // const [type_name, type_no] = parse_s7addr(type);
     }
     complete_type() {
@@ -173,6 +234,15 @@ class S7Symbol {
                 console.error(`current symbol information 当前符号信息: ${get_msg(this)}`);
                 process.exit(10);
             }
+            // DB符号的类型，必须是它自身，或者是一个 FB SFB UDT 符号名
+            if (
+                this.block_name == 'DB'
+                && this.name != this.type
+                && !['FB', 'SFB', 'UDT'].includes(type_block.block_name)
+            ) {
+                throw_type_incompatible(this, this.type);
+            }
+
             this.type_name = type_block.block_name;
             this.type_no = type_block.block_no;
         }
@@ -187,18 +257,21 @@ class S7Symbol {
         else this._comment = '';
     }
 
-    constructor(raw) {
-        this.source.raw = raw;
+    constructor(source) {
+        this.source = source;
+        const raw = source.raw;
         this.name = raw[0];
         this.address = raw[1];
-        this.type = raw[2];
+        let type = raw[2];
+        if (typeof type === "string") {
+            if (COMMON_TYPE.includes(type.toUpperCase())) {
+                type = type.toUpperCase();
+            }
+            this.userDefinedType = type;
+        }
+        this.type = type;
         this.comment = raw[3];
         this.value = `"${this.name}"`;
-    }
-    static from(raw) {
-        if (!Array.isArray(raw)) return raw;
-        raw[1] = raw[1]?.toUpperCase();
-        return new S7Symbol(raw);
     }
 }
 
@@ -212,14 +285,19 @@ class S7Symbol {
 export function add_symbol(document, symbol_raw) {
     const is_Seq = isSeq(symbol_raw);
     const symbol_definition = is_Seq ? JSON.parse(symbol_raw) : symbol_raw;
-    if (!Array.isArray(symbol_definition)) throw_symbol_error(`符号必须是一个定义正确数组！ 原始值:"${symbol_definition}"`);
+    if (!Array.isArray(symbol_definition)) throw_symbol_conflict(`符号必须是一个定义正确数组！ 原始值:"${symbol_definition}"`);
     const CPU = document.CPU;
     const symbols_dict = CPU.symbols_dict;
+    /**
+     * @type {Source}
+     */
+    const source = {
+        raw: symbol_definition,
+        document,
+        range: is_Seq ? symbol_raw.range : [0, 0, 0]
+    }
     // 生成符号
-    const symbol = new S7Symbol(symbol_definition);
-    // 保存源信息
-    symbol.source.document = document;
-    symbol.source.range = is_Seq ? symbol_raw.range : [0, 0, 0];
+    const symbol = new S7Symbol(source);
     symbol.CPU = CPU;
 
     const name = symbol.name;
@@ -230,7 +308,7 @@ export function add_symbol(document, symbol_raw) {
         ref.address = symbol.address;
     } else if (ref) {
         // 不允许符号名称重复
-        throw_symbol_error(`符号"${name}"名称重复!`, symbol, symbols_dict[name]);
+        throw_symbol_conflict(`符号"${name}"名称重复!`, symbol, symbols_dict[name]);
     } else {
         // 新符号则保存
         symbols_dict[name] = symbol;
@@ -269,16 +347,26 @@ function ref(item) {
     return ret;
 }
 
-function check_type_compatibility(symbol, type) {
-    // @TODO
-    return true;
+function throw_type_incompatible(symbol, type) {
+    console.error(`\n\nsymbol type incompatible! 符号类型不兼容!`);
+    console.error(`current symbol information 当前符号信息: ${get_msg(symbol)}
+        错误: ${type}`
+    );
+    process.exit(10);
 }
+
 function apply_default_force(symbol, options) {
     const force_type = options?.force?.type;
     if (typeof force_type === 'string') {
         // 强制指定类型，完全忽略用户的定义
-        if (check_type_compatibility(symbol, force_type)) symbol.type = force_type;
-        else throw new Error('符号类型不兼容');
+        if (symbol.check_type_compatibility(force_type)) {
+            symbol.type = force_type;
+            if (symbol.userDefinedType && symbol.userDefinedType != force_type) {
+                WRONGTYPESYMBOLS.add(symbol);
+            }
+        } else {
+            throw_type_incompatible(symbol, force_type);
+        }
     } else {
         // 默认类型
         symbol.type ??= options?.default?.type;
@@ -387,7 +475,7 @@ export function build_symbols(CPU) {
                 if (e instanceof TypeError) {
                     throw new TypeError(e.message, { cause: e });
                 } else if (e instanceof IncHLError || e instanceof RangeError) {
-                    throw_symbol_error(
+                    throw_symbol_conflict(
                         `符号地址错误: ${e.message}`,
                         symbol,
                         list.find(sym => symbol !== sym && sym.address === symbol.address)
