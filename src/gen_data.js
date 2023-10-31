@@ -4,18 +4,51 @@ import { globby } from 'globby';
 import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, converter } from './converter.js';
-import { GCL } from './gcl.js';
+import { GCL, get_Seq } from './gcl.js';
 import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS, WRONGTYPESYMBOLS, LAZYASSIGN_LIST } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 import { pad_right } from "./value.js";
 
+/**
+ * @typedef {import('yaml').Document} Document - YAML Document
+ */
+
 /** 
- * @typeof {object} Area 
- * @property {import('yaml').Document} document - 文档
+ * @typedef  {object} Area 
+ * @property {Document} document - 文档
  * @property {Array} list - 列表
  * @property {string|string[]} includes - 包括列表
  * @property {string[]} files - 文件列表
  * @property {object} options - 选项
+ */
+
+/** 
+ * @typedef  {object} CPU 
+ * @property {string} name - CPU name
+ * @property {string} platform - 由CPU文档设置，默认 'step7'
+ * @property {string} device - 由CPU文档设置
+ * @property {IntIncHL} conn_ID_list - 已用连接ID列表
+ * @property {IntIncHL} OB_list - 已用组织块列表
+ * @property {IntIncHL} DB_list - 已用数据块列表
+ * @property {IntIncHL} FB_list - 已用函数块列表
+ * @property {IntIncHL} FC_list - 已用函数列表
+ * @property {IntIncHL} SFB_list - 已用系统函数块列表
+ * @property {IntIncHL} SFC_list - 已用系统函数列表
+ * @property {IntIncHL} UDT_list - 已用自定义类型列表
+ * @property {S7IncHL} MA_list - 已用M地址
+ * @property {S7IncHL} IA_list - 已用I地址
+ * @property {S7IncHL} QA_list - 已用Q地址
+ * @property {S7IncHL} PIA_list - 已用PI地址
+ * @property {S7IncHL} PQA_list - 已用PQ地址
+ * @property {object} symbols_dict - 符号字典
+ * @property {string[]} buildin_symbols - 该CPU的内置符号名称列表
+ * @property {object} conn_host_list - 已用的连接地址列表
+ * @property {string} output_dir - 输出文件夹
+ * @function
+ * @name CPU#add_feature
+ * @param {string} feature - 功能名称
+ * @param {Document} document - 配置文档
+ * @returns {void}
  */
 
 /** @type {object.<string, Area[]>}*/
@@ -25,7 +58,12 @@ supported_features.forEach(feature => {
   conf_list[feature] = [];
 });
 
-const CPUs = { // CPU 资源
+const CPUs = {
+  /**
+   * 按照名称返回一个CPU，如果该名称CPU不存在，就产生一个新CPU
+   * @param {string} CPU_name
+   * @returns {CPU}
+   */
   get(CPU_name) {
     // 从已有CPU中找，如没有则建立一个初始CPU资源数据
     return CPUs[CPU_name] ??= {
@@ -46,12 +84,18 @@ const CPUs = { // CPU 资源
       PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
       PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
       symbols_dict: {},               // 符号字典
-      buildin_symbols:                // 该CPU的内置符号名称列表
-        BUILDIN_SYMBOLS.documents.map(doc =>
-          doc.get('symbols').items.map(symbol => symbol.items[0].value)
-        ).flat(),
+      // 该CPU的内置符号名称列表
+      buildin_symbols: BUILDIN_SYMBOLS.documents.map(doc =>
+        get_Seq(doc, 'symbols').map(symbol => symbol.items[0].value)
+      ).flat(),
       conn_host_list: {},             // 已用的连接地址列表
       output_dir: CPU_name,           // 输出文件夹
+      /**
+       * Description
+       * @param {string} feature
+       * @param {Document} document
+       * @returns {void}
+       */
       add_feature(feature, document) {// 按功能压入Document
         this[feature] = document;
       }
@@ -132,7 +176,7 @@ async function add_conf(document) {
   includes_gcls.forEach(gcl => {
     gcl.documents.forEach(doc => {
       doc.CPU = CPU;
-      const symbols_of_includes = add_symbols(doc, doc.get('symbols')?.items ?? []);
+      const symbols_of_includes = add_symbols(doc, get_Seq(doc, 'symbols'));
       CPU.buildin_symbols.push(...symbols_of_includes.map(symbol => symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
     })
   });
@@ -140,11 +184,33 @@ async function add_conf(document) {
   const buildin_doc = BUILDIN_SYMBOLS.documents.find(doc => doc.feature === feature).clone();
   buildin_doc.CPU = CPU;
   buildin_doc.gcl = BUILDIN_SYMBOLS;
-  add_symbols(buildin_doc, buildin_doc ? buildin_doc.get('symbols').items : []);
+  add_symbols(
+    buildin_doc,
+    get_Seq(buildin_doc, 'symbols')
+  );
+
+  // 符号引用
+  // 所有引用符号不导出
+  if (feature === 'CPU') {
+    // 内置引用
+    let symbols = add_symbols(
+      buildin_doc,
+      get_Seq(buildin_doc, 'reference_symbols')
+    );
+    symbols.forEach(symbol => symbol.exportable = false);
+    // 前置引用
+    symbols = add_symbols(
+      document,
+      get_Seq(document, 'reference_symbols')
+    );
+    symbols.forEach(symbol => symbol.exportable = false);
+  }
 
   // 文档前置符号
-  const raw_symbols_of_doc = document.get('symbols')?.items ?? [];
-  if (raw_symbols_of_doc) add_symbols(document, raw_symbols_of_doc,);
+  add_symbols(
+    document,
+    get_Seq(document, 'symbols')
+  );
 
   // 传递节点以便定位源码位置
   const list = document.get('list')?.items ?? [];

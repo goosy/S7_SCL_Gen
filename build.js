@@ -70,8 +70,11 @@ async function build() {
     for (const [feature, converter] of Object.entries(converters)) {
         if (files.includes(`${feature}.yaml`)) {
             const yaml_raw = await readFile(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
-            const yaml = convert(converters[feature], yaml_raw.trim());
-            yamls.push(`name: BUILDIN-${feature}\nsymbols: \n${yaml}`);
+            const yaml = convert(
+                converters[feature],
+                yaml_raw.replace('BUILDIN', `BUILDIN-${feature}`).trim()
+            );
+            yamls.push(yaml);
         } else {
             yamls.push(`name: BUILDIN-${feature}\nsymbols: []`);
         }

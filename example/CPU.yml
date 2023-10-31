@@ -55,8 +55,20 @@ includes:       # includes 用来包含到该类型转换后的输出文件中�
 files:          # files 仅仅是复制该文件到输出文件夹中
 - ..//README.md # 复制说明文件，也可以复件其它的手工代码的SCL、AWL文件
 
-# CPU文档下symbols列表定义其它文档需要共享的符号
-# 建议把不在转换器中使用但实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
+# reference_symbols部分是CPU中比较特殊的符号
+# 主要用于已在step7项目中已经存在的符号，比如涉及 step7 库中的符号
+# 建议把实际CPU中使用的符号也集中列在这里，以便转换器检查符号与地址冲突。
+# 由于这些符号已经在CPU中实际存在，所以转换器不会将它们输出到用于导入的符号定义文件中
+# 系统已经内置了如下的reference_symbols：
+#     TP TON TOF
+#     GET PUT
+#     P_RCV P_SEND P_RCV_RK P_SND_RK
+#     TSEND TRCV TCON TDISCON
+#     CNT2_CTR CNT2_WR CNT2_RD DIAG_RD
+reference_symbols:
+- [ATH, FC94, FC94, Ascii To HEX]
+
+# CPU文档下 symbols 定义其它文档需要共享的自定义符号
 # 类型: 数组
 symbols:
 # Clock_Byte 是一个特定的符号，仅在CPU配置下有效。
@@ -71,10 +83,8 @@ symbols:
 # - [Clock_0.625Hz, M10.6]
 # - [Clock_0.5Hz,   M10.7]
 # 没有配置 Clock_Byte 时，则不产生任何时钟存储器符号
-- [Clock_Byte, MB10] # 设置时钟存储器为MB10
+- [Clock_Byte, MB10]   # 设置时钟存储器为MB10，请务必保证该值与在step7项目中的设定一致
 - [JS_flow, FB100]     # 修改JSFLow.scl文件中内置符号，地址由默认的FB01改变为FB100
-- [GET, SFB14, GET, Read Data From a Remote CPU]
-- [PUT, SFB15, PUT, Write Data to a Remote CPU]
 
 # 自定义符号
 - [vw1, MW1000] # 测试MW

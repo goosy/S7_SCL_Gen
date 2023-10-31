@@ -1,3 +1,5 @@
+name: BUILDIN
+symbols: 
 - [{{NAME}}, FB350, {{NAME}}, PI main FB]
 - [{{LOOP_NAME}}, FC350, {{LOOP_NAME}}, main PI cyclic call function]
 - [{{FM3502_CNT_NAME}}, UDT350, {{FM3502_CNT_NAME}}, FM350-2 count DB]

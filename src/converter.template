@@ -1,5 +1,5 @@
 // 本代码为 ./build.js 自动生成
-// ./src/converters 目录下为转换器文件，文件名称必须是 {feature}.js 的格式。
+// ./src/converters 目录下为转换器文件，文件名称必须是 <feature_name>.js 的格式。
 // 转换器文件定义了目前支持的转换功能
 // 每个转换器必须实现
 //   function is_supported    判断是否支持当前转换文档
@@ -8,7 +8,8 @@
 // 每个转换器可选实现
 //   function initialize_list 第一遍扫描文档时构建转换项
 //   function build_list      第二遍扫描文档时完善转换项
-//   {feature}.yaml              该转换类型的内置符号列表，yaml文件放在.js同一文件夹下
+//   <feature_name>.yaml      该转换类型的内置符号列表，yaml文件放在.js同一文件夹下
+// 如果转换器引用了其它库里的符号，请保证在 `./src/convertersCPU.yaml` 中定义了该符号
 
 // 引入所有的转换器{{#for feature,converter in converters}}
 import * as {{feature}} from './converters/{{feature}}.js';{{#endfor converter}}

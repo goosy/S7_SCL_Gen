@@ -1,2 +1,4 @@
+name: BUILDIN
+symbols: 
 - [{{NAME}}, FB512, {{NAME}}, AI main AI FB]
 - [{{LOOP_NAME}}, FC512, {{LOOP_NAME}}, main AI cyclic call function]

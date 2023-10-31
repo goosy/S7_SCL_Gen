@@ -1,0 +1,20 @@
+name: BUILDIN
+
+reference_symbols:
+- [TP, SFB3]
+- [TON, SFB4]
+- [TOF, SFB5]
+- [GET, SFB14, GET, Read Data From a Remote CPU]
+- [PUT, SFB15, PUT, Write Data to a Remote CPU]
+- [P_RCV, FB2]
+- [P_SEND, FB3]
+- [P_RCV_RK, FB7]
+- [P_SND_RK, FB8]
+- [TSEND, FB63]
+- [TRCV, FB64]
+- [TCON, FB65]
+- [TDISCON, FB66]
+- [CNT2_CTR, FC2]
+- [CNT2_WR, FC3]
+- [CNT2_RD, FC4]
+- [DIAG_RD, FC5]

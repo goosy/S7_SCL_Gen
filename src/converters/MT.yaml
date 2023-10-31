@@ -1,3 +1,5 @@
+name: BUILDIN
+symbols: 
 - [{{NAME}}, FB344, {{NAME}}, modbusTCP OUC main process]
 - [{{LOOP_NAME}}, FC344, {{LOOP_NAME}}, main modbusTCP cyclic call function]
 - [{{POLLS_NAME}}, DB881, {{POLLS_NAME}}, modbusTCP polls data]

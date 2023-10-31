@@ -74,11 +74,29 @@ function throw_symbol_conflict(message, curr_symbol, prev_symbol) {
 }
 
 class S7Symbol {
+    /**
+     * @type {string}
+     */
     value;
+    /**
+     * @type {string}
+     */
     block_name;
+    /**
+     * @type {number}
+     */
     block_no;
+    /**
+     * @type {number}
+     */
     block_bit;
+    /**
+     * @type {string}
+     */
     type_name;
+    /**
+     * @type {number}
+     */
     type_no;
     /**
      * @type {Source}
@@ -123,6 +141,11 @@ class S7Symbol {
         this.block_bit = parseInt(block_bit);
         this._address = address;
     }
+
+    /**
+     * @type {boolean}
+     */
+    exportable = true; // 默认可导出到符号文件里
 
     /**
      * Checks the compatibility with specified type.
@@ -500,10 +523,11 @@ const BLANK_COMMENT_LEN = 80;
  * * `126,{symname23} {block_name_str4}{block_no_str5}{block_bit_str2} {type_str4}{type_no_str5} {comment80}`
  * 
  * @date 2022-11-09
- * @param {Symbol} symbol
+ * @param {S7Symbol} symbol
  * @returns {string}
  */
-function get_step7_symbol({ name: symname, type, block_name, block_no, block_bit, type_name, type_no = '', comment }) {
+function get_step7_symbol({ name: symname, type, block_name, block_no, block_bit, type_name, type_no = '', comment, exportable }) {
+    if (!exportable) return null;
     const name = pad_right(symname, SYMN_LEN);
     const address = pad_right(block_name, NAME_LEN)
         + pad_left(block_no, NO_LEN)
@@ -520,10 +544,11 @@ function get_step7_symbol({ name: symname, type, block_name, block_no, block_bit
  * * `"name","address","type","accessiable","visiable","retain","comment","supervision","writable"`
  * 
  * @date 2022-11-09
- * @param {Symbol} symbol
+ * @param {S7Symbol} symbol
  * @returns {string}
  */
-function get_portal_symbol({ name, type, address, block_name, comment }) {
+function get_portal_symbol({ name, type, address, block_name, comment, exportable }) {
+    if (!exportable) return null;
     if (INTEGER_PREFIX.includes(block_name)) return null; // 不生成 OB, FB, FC, SFB, SFC, UDT 的符号
     const line = `"${name}","%${address}","${type}","True","True","False","${comment}","","True"`;
     return { name, address, line };
@@ -537,7 +562,7 @@ export function gen_symbols(CPU_list) {
         rules: CPU_list.map(CPU => {
             const symbol_list = Object.values(CPU.symbols_dict)
                 .map(CPU.platform === "portal" ? get_portal_symbol : get_step7_symbol)
-                .filter(symbol => symbol) // 省略 portal 的 OB, FB, FC, SFB, SFC, UDT
+                .filter(symbol => symbol !== null) // 跳过被筛除的符号
                 .sort((a, b) => compare_str(a.name, b.name))
                 .sort((a, b) => compare_str(a.address, b.address));
             return {

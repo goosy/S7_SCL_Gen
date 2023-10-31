@@ -45,6 +45,17 @@ export function isString(node) {
         ['PLAIN', 'QUOTE_DOUBLE', 'QUOTE_SINGLE'].includes(node.type);
 }
 
+/**
+ * 取得指定节点下的列表，如果没有列表，返回空值
+ * @param {Document} doc
+ * @param {string} nodename
+ * @returns {array}
+ */
+export function get_Seq(doc, nodename) {
+    const symbols_node = doc.get(nodename);
+    return symbols_node?.items ?? [];
+}
+
 export class GCL {
     #file;
     get file() {

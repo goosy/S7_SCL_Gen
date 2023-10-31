@@ -1,2 +1,4 @@
+name: BUILDIN
+symbols: 
 - [{{NAME}}, FB519, {{NAME}}, Alarm_Proc main FB]
 - [{{LOOP_NAME}}, FC519, {{LOOP_NAME}}, main Alarm_Proc cyclic call function]
