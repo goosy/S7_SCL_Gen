@@ -30,6 +30,111 @@ export function fixed_hex(num, length) {
     return pad_left(HEX, length, '0').toUpperCase();
 }
 
+//#region parse
+/**
+ * Enum for ms per time unit.
+ * @readonly
+ * @enum {number}
+ */
+const ms_per = {
+    day: 86400000,
+    hour: 3600000,
+    minute: 60000,
+    second: 1000,
+}
+const time_base2ms = [10, 100, 1000, 10000];
+
+/**
+ * 将毫秒数转换成类似 24d_56h_33m_250ms 格式
+ * @param {number} ms
+ * @returns {string}
+ */
+function getTimeDurationStr(value) {
+    if(value == 0)return '0';
+    let strList = [];
+    let remainder;
+    if (value > 0) {
+        remainder = value % ms_per.second;
+        if (remainder > 0) strList.unshift(remainder + "MS");
+        value = value - remainder;
+    }
+    if (value > 0) {
+        remainder = value % ms_per.minute;
+        if (remainder > 0) strList.unshift(remainder / ms_per.second + "S");
+        value = value - remainder;
+    }
+    if (value > 0) {
+        remainder = value % ms_per.hour;
+        if (remainder > 0) strList.unshift(remainder / ms_per.minute + "M");
+        value = value - remainder;
+    }
+    if (value > 0) {
+        remainder = value % ms_per.day;
+        if (remainder > 0) strList.unshift(remainder / ms_per.hour + "H");
+        value = value - remainder;
+    }
+    if (value > 0) {
+        strList.unshift(value / ms_per.day + "D");
+    }
+    return strList.join("_");
+}
+
+/**
+ * 将其它单位时间字符串转换为毫秒数
+ * @param {string} str
+ */
+function parse_unit(str) {
+    if (str.endsWith('ms')) {
+        return parseInt(str.slice(0, -2));
+    }
+    let value = parseInt(str.slice(0, -1));
+    if (str.endsWith('s')) {
+        return value * ms_per.second;
+    }
+    if (str.endsWith('m')) {
+        return value * ms_per.minute;
+    }
+    if (str.endsWith('h')) {
+        return value * ms_per.hour;
+    }
+    if (str.endsWith('d')) {
+        return value * ms_per.day;
+    }
+    return 0;
+}
+
+/**
+ * 将字符串转换为毫秒数
+ * @param {string} str
+ */
+function parse2ms(str) {
+    let timeStrList = str.split("_");
+    let msList = timeStrList.map(parse_unit);
+    return msList.reduce((ms, value) => ms + value, 0);
+}
+
+/**
+ * 接受 TIME 字面量或毫秒数 
+ * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
+ * @param {string|number} value
+ */
+function get_ms_form(value) {
+    if (typeof value === 'number') {
+        return value;
+    }
+    if (typeof value !== "string") {
+        throw new Error("input error, parameter must be a string or a Number.");
+    }
+    let valStr = value.toLowerCase().replace("time#", "").replace("t#", "");
+    let sign = 1;
+    if (valStr[0] == '-') {
+        valStr = valStr.substring(1);
+        sign = -1;
+    }
+    return sign * parse2ms(valStr);
+}
+//#endregion parse
+
 class S7Value {
     _value;
     get value() {
@@ -44,7 +149,7 @@ class S7Value {
 }
 
 export class BOOL extends S7Value {
-    static check(value){
+    static check(value) {
         assert(typeof value === 'boolean', `the value "${value}" must be a boolean. 值必须是一个布尔值`);
     }
     constructor(value) {
@@ -156,6 +261,43 @@ export class DINT extends Integer {
         return 'L#' + this._value.toString();
     }
 }
+export class TIME extends DINT {
+    /**
+     * 原始值
+     * @return {number}
+     */
+    get rawValue() {
+        return this._value;
+    }
+    /**
+     * S7 TIME 字面量形式的字符串
+     * @return {string}
+     */
+    get value() {
+        let value = this._value;
+        let sign = "";
+        if (value < 0) {
+            value = -value;
+            sign = "-";
+        }
+        return `TIME#${sign}${getTimeDurationStr(value)}`;
+    }
+
+    /**
+     * 接受 TIME 字面量或毫秒数 
+     * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
+     * @param {string|number} value
+     */
+    set value(value) {
+        this._value = get_ms_form(value);
+    }
+
+    constructor(value) {
+        // unbox ref object
+        super(get_ms_form(value?.value ? value.value : value));
+    }
+}
+
 
 export class PDINT extends Integer {
     static check(value) {
