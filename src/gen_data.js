@@ -5,7 +5,7 @@ import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, converter } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
-import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS, WRONGTYPESYMBOLS, LAZYASSIGN_LIST } from './symbols.js';
+import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS, WRONGTYPESYMBOLS } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 import { pad_right } from "./value.js";
 
@@ -90,6 +90,7 @@ const CPUs = {
       ).flat(),
       conn_host_list: {},             // 已用的连接地址列表
       output_dir: CPU_name,           // 输出文件夹
+      unfinished_symbols: [],
       /**
        * Description
        * @param {string} feature
@@ -237,8 +238,9 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         const gcl = new GCL();
         await gcl.load(filename);
         for (const doc of gcl.documents) {
-          doc.CPU = CPUs.get(doc.CPU);
           Object.defineProperty(doc, 'CPU', {
+            value: CPUs.get(doc.CPU),
+            writable: false,
             enumerable: true,
             configurable: false,
           });
@@ -257,11 +259,26 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
   }
 
   // 第二遍扫描 补全数据
-  LAZYASSIGN_LIST.forEach(fn => fn());
 
   for (const CPU of Object.values(CPUs)) {
+    // create a blank CPU document if CPU.CPU desn't exist
+    if (CPU.CPU == null) {
+      const gcl = new GCL();
+      const yaml = `name: ${CPU.name}-CPU\nplatform: ${CPU.platform ?? 'step7'}\nsymbols:[]\nlist: []`;
+      await gcl.load(yaml, {isFile: false});
+      for (const doc of gcl.documents) {
+        Object.defineProperty(doc, 'CPU', {
+          value: CPU,
+          writable: false,
+          enumerable: true,
+          configurable: false,
+        });
+        await add_conf(doc);
+      }
+    }
+    // complete the symbol
+    CPU.unfinished_symbols.forEach(fn => fn());
     // the code below must run on all CPUs not just those with CPU document
-    CPU.platform ??= 'step7';
     build_symbols(CPU);
   }
 

@@ -13,7 +13,6 @@ await BUILDIN_SYMBOLS.load(posix.join(
 ));
 
 export const NONSYMBOLS = [];
-export const LAZYASSIGN_LIST = [];
 export const WRONGTYPESYMBOLS = new Set();
 
 /**
@@ -405,6 +404,7 @@ function apply_default_force(symbol, options) {
 }
 
 export function make_s7express(obj, prop, value, document, options = {}) {
+    const CPU = document.CPU;
     const comment = options.comment;
     function s7express(value) {
         if (value === undefined || !options.s7express) return undefined;
@@ -415,7 +415,7 @@ export function make_s7express(obj, prop, value, document, options = {}) {
         return ret;
     }
     function get_linked_symbol(name) {
-        const symbol = document.CPU.symbols_dict[name];
+        const symbol = CPU.symbols_dict[name];
         if (symbol) apply_default_force(symbol, options);
         return symbol;
     }
@@ -442,7 +442,7 @@ export function make_s7express(obj, prop, value, document, options = {}) {
         // 如果引用不有效，返回惰性赋值,
         // 因为全部符号尚未完全加载完
         // 下次调用时将赋值为最终符号或S7表达式对象
-        LAZYASSIGN_LIST.push(() => {
+        CPU.unfinished_symbols.push(() => {
             const symbol = get_linked_symbol(value);
             if (symbol) {
                 // 如是引用存在，则返回引用符号。

@@ -1,0 +1,5 @@
+name: BUILDIN
+symbols: 
+- [{{CP_NAME}}, FB824, {{CP_NAME}}, CP change pulse generator]
+- [{{DP_NAME}}, FB823, {{DP_NAME}}, DP debounce pulse generator]
+- [{{LOOP_NAME}}, FC521, {{LOOP_NAME}}, main RP call function]
