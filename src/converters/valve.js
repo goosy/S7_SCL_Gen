@@ -75,15 +75,15 @@ BEGIN{{#for valve in list}}
     error := {{valve.error.value}}{{#endif}}{{#if valve.remote != null}},
     remote := {{valve.remote.value}}{{#endif}}{{
 
-#if platform == 'step7'}});{{#if valve.close_action}}
-{{valve.close_action.value}} := {{valve.DB.value}}.close_action;{{#endif}}{{#if valve.open_action}}
-{{valve.open_action.value}} := {{valve.DB.value}}.open_action;{{#endif}}{{#if valve.stop_action}}
-{{valve.stop_action.value}} := {{valve.DB.value}}.stop_action;{{#endif}}{{
-
-#else platform == 'portal'}}{{#if valve.close_action}},
+#if platform == 'portal'}}{{#if valve.close_action}},
     close_action    => {{valve.close_action.value}}{{#endif}}{{#if valve.open_action}},
     open_action  => {{valve.open_action.value}}{{#endif}}{{#if valve.stop_action}},
     stop_action   => {{valve.stop_action.value}}{{#endif}});{{
+
+#else platform≠portal}});{{#if valve.close_action}}
+{{valve.close_action.value}} := {{valve.DB.value}}.close_action;{{#endif}}{{#if valve.open_action}}
+{{valve.open_action.value}} := {{valve.DB.value}}.open_action;{{#endif}}{{#if valve.stop_action}}
+{{valve.stop_action.value}} := {{valve.DB.value}}.stop_action;{{#endif}}{{
 
 #endif platform}}
 {{#endif valve.DB}}{{#endfor valve}}{{#if loop_additional_code}}

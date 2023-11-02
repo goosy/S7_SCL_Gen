@@ -4,7 +4,7 @@ import { add_symbols, make_s7express } from '../symbols.js';
 import { STRING, nullable_value } from '../value.js';
 
 export const NAME = 'CPU';
-export const platforms = ['step7', 'portal'];
+export const platforms = ['step7', 'portal', 'pcs7'];
 
 export const devices = [
     "IM151-8PN/DP",
