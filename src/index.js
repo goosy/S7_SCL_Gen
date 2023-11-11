@@ -11,7 +11,7 @@ async function convert2file(
   options = { encoding: "utf8", lineEndings: "linux" }
 ) {
   const silent = options.silent;
-  // for-of 实现异步顺序执行
+  // Asynchronous sequential execution 异步顺序执行
   for (let { name, content } of convertRules(rules, template)) {
     const output_file = posix.join(output_dir, `./${name}`);
     await write_file(output_file, content, options)

@@ -218,7 +218,8 @@ export async function copy_file(src, dst) {
         await cp(src, dst, { recursive: true });
     }
     if (Array.isArray(dst)) {
-        for (const item of dst) { // for-of 实现异步顺序执行
+        // Asynchronous sequential execution 异步顺序执行
+        for (const item of dst) {
             await _copy(src, item);
         }
     } else {

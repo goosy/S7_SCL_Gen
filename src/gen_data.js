@@ -115,9 +115,13 @@ async function parse_includes(includes, options) {
   const filenames = includes ? includes.toJSON() : [];
   if (!Array.isArray(filenames)) return { code, gcl_list };
   try {
+    const work_path = context.work_path;
     for (const filename of filenames) {
       const gcl = new GCL();
-      await gcl.load(filename, { ...options, encoding: 'utf8', inSCL: true });
+      await gcl.load(
+        posix.join(work_path, filename), 
+        { ...options, encoding: 'utf8', inSCL: true }
+      );
       gcl_list.push(gcl);
     };
     code = gcl_list.map(gcl => gcl.SCL).join('\n\n');
