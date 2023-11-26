@@ -4,7 +4,7 @@ import { add_symbols, make_s7express } from '../symbols.js';
 import { STRING, nullable_value } from '../value.js';
 
 export const NAME = 'CPU';
-export const platforms = ['step7', 'portal', 'pcs7'];
+export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 
 export const devices = [
     "IM151-8PN/DP",
@@ -42,7 +42,7 @@ TITLE = "{{FN.title}}"{{#endif title}}{{#if platform == 'portal'}}
 BEGIN
 {{FN.code}}
 END_ORGANIZATION_BLOCK{{#else}}
-FUNCTION "{{FN.block.name}}"
+FUNCTION "{{FN.block.name}}" : VOID
 BEGIN
 {{FN.code}}
 END_FUNCTION{{#endif block_name}}

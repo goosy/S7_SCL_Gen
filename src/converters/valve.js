@@ -3,7 +3,7 @@ import { BOOL, DINT, INT, REAL, STRING, ensure_value, nullable_value } from '../
 import { context } from '../util.js';
 import { posix } from 'path';
 
-export const platforms = ['step7', 'pcs7', 'portal'];
+export const platforms = ['step7', 'pcs7', 'portal']; // platforms supported by this feature
 export const NAME = `Valve_Proc`;
 export const LOOP_NAME = 'Valve_Loop';
 

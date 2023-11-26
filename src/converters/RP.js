@@ -4,7 +4,7 @@ import { STRING, ensure_value, DINT, TIME } from '../value.js';
 import { isString } from '../gcl.js';
 import { posix } from 'path';
 
-export const platforms = ['step7'];
+export const platforms = ['step7']; // platforms supported by this feature
 export const CP_NAME = 'CP';
 export const DP_NAME = 'DP';
 export const LOOP_NAME = 'RP_Loop';
@@ -77,7 +77,7 @@ export function initialize_list(area) {
         if (!DB) throw new SyntaxError("RP转换必须有DB块!");
         const comment = RP.comment.value;
         make_s7express(RP, 'DB', DB, document, {
-            force: { type: RP.FB }, 
+            force: { type: RP.FB },
             default: { comment }
         });
         make_s7express(RP, 'IN', node.get('input'), document, {

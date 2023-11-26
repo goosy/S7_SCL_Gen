@@ -11,7 +11,7 @@ import { posix } from 'path';
 import { isSeq } from 'yaml';
 import assert from 'assert/strict';
 
-export const platforms = ['step7'];
+export const platforms = ['step7']; // platforms supported by this feature
 export const CP340_NAME = 'CP340_Poll';
 export const CP341_NAME = 'CP341_Poll';
 export const LOOP_NAME = 'SC_Loop';

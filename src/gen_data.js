@@ -13,8 +13,8 @@ import { pad_right } from "./value.js";
  * @typedef {import('yaml').Document} Document - YAML Document
  */
 
-/** 
- * @typedef  {object} Area 
+/**
+ * @typedef  {object} Area
  * @property {Document} document - 文档
  * @property {Array} list - 列表
  * @property {string|string[]} includes - 包括列表
@@ -22,8 +22,8 @@ import { pad_right } from "./value.js";
  * @property {object} options - 选项
  */
 
-/** 
- * @typedef  {object} CPU 
+/**
+ * @typedef  {object} CPU
  * @property {string} name - CPU name
  * @property {string} platform - 由CPU文档设置，默认 'step7'
  * @property {string} device - 由CPU文档设置
@@ -119,7 +119,7 @@ async function parse_includes(includes, options) {
     for (const filename of filenames) {
       const gcl = new GCL();
       await gcl.load(
-        posix.join(work_path, filename), 
+        posix.join(work_path, filename),
         { ...options, encoding: 'utf8', inSCL: true }
       );
       gcl_list.push(gcl);

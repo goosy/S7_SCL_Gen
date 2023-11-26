@@ -5,7 +5,7 @@ import { posix } from 'path';
 import { isSeq } from 'yaml';
 import assert from 'assert/strict';
 
-export const platforms = ['step7'];
+export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'MT_Poll';
 export const LOOP_NAME = 'MT_Loop';
 export const POLLS_NAME = 'MT_polls_DB';

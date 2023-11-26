@@ -3,7 +3,7 @@ import { BOOL, STRING, nullable_value, DINT } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
-export const platforms = ['step7', 'portal'];
+export const platforms = ['step7', 'portal']; // platforms supported by this feature
 export const NAME = `Motor_Proc`;
 export const LOOP_NAME = 'Motor_Loop';
 

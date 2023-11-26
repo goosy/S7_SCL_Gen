@@ -10,7 +10,7 @@ import { make_s7express } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
 
-export const platforms = ['step7'];
+export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'PI_Proc';
 export const LOOP_NAME = 'PI_Loop';
 export const FM3502_CNT_NAME = 'FM350-2';

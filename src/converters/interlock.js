@@ -3,7 +3,7 @@ import { BOOL, STRING, ensure_value, nullable_value } from '../value.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
 
-export const platforms = ['step7', 'portal'];
+export const platforms = ['step7', 'portal']; // platforms supported by this feature
 export const LOOP_NAME = 'Interlock_Loop';
 
 export function is_feature(name) {
@@ -51,14 +51,14 @@ reset := NOT {{interlock.DB.value}}.enable{{#for reset in interlock.reset_list}}
 IF reset THEN
   {{interlock.DB.value}}.{{interlock.output.name}} := FALSE;  // 复位output
   {{interlock.DB.value}}.reset := FALSE;  // 复位reset
-  // 复位联锁输出{{#for output in interlock.output_list}} 
+  // 复位联锁输出{{#for output in interlock.output_list}}
   {{output.value}} := FALSE;{{#endfor output}}
 ELSE
   output := {{#for no, input in interlock.input_list}}{{#if no}}
     OR {{#endif}}{{input.edge}} AND NOT {{interlock.DB.value}}.{{input.name}}_follower{{#endfor}};
   IF output THEN
     {{interlock.DB.value}}.{{interlock.output.name}} := TRUE; // 置位output
-    // 置位联锁输出{{#for output in interlock.output_list}} 
+    // 置位联锁输出{{#for output in interlock.output_list}}
     {{output.value}} := TRUE;{{#endfor output}}
   END_IF;
 END_IF;

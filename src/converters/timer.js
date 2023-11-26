@@ -3,7 +3,7 @@ import { STRING } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
-export const platforms = ['step7', 'portal', 'pcs7'];
+export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = `Timer_Proc`;
 export const LOOP_NAME = 'Timer_Loop';
 

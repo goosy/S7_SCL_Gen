@@ -3,7 +3,7 @@ import { context } from '../util.js';
 import { BOOL, DINT, REAL, STRING, nullable_value, ensure_value } from '../value.js';
 import { posix } from 'path';
 
-export const platforms = ['step7', 'portal', 'pcs7'];
+export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'Alarm_Proc';
 export const LOOP_NAME = 'Alarm_Loop';
 
@@ -41,7 +41,9 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
-BEGIN{{#for alarm_item in list}}
+BEGIN{{#if loop_additional_code}}
+{{loop_additional_code}}
+{{#endif}}{{#for alarm_item in list}}
 {{#if alarm_item.DB}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
 }}{{alarm_item.DB.value}}({{#if alarm_item.input != undefined}}PV := {{alarm_item.input.value}}{{
@@ -50,8 +52,6 @@ BEGIN{{#for alarm_item in list}}
     #if alarm_item.enable_WL != undefined}}, enable_WL := {{alarm_item.enable_WL.value}}{{#endif}}{{
     #if alarm_item.enable_AL != undefined}}, enable_AL := {{alarm_item.enable_AL.value}}{{#endif}}{{
 #endif alarm_item.input}}); {{#endif alarm_item.DB}}// {{alarm_item.comment}}{{#endfor alarm_item}}
-{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
 END_FUNCTION
 `;
 
