@@ -84,10 +84,15 @@ const CPUs = {
       PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
       PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
       symbols_dict: {},               // 符号字典
-      // 该CPU的内置符号名称列表
-      buildin_symbols: BUILDIN_SYMBOLS.documents.map(doc =>
-        get_Seq(doc, 'symbols').map(symbol => symbol.items[0].value)
-      ).flat(),
+      buildin_symbols:                // 该CPU的内置符号名称列表
+        BUILDIN_SYMBOLS.documents.map(doc =>
+          [
+            ...get_Seq(doc, 'symbols'),
+            ...get_Seq(doc, 'reference_symbols')
+          ].map(
+            symbol => symbol.items[0].value
+          )
+        ).flat(),
       conn_host_list: {},             // 已用的连接地址列表
       output_dir: CPU_name,           // 输出文件夹
       unfinished_symbols: [],
@@ -269,7 +274,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     if (CPU.CPU == null) {
       const gcl = new GCL();
       const yaml = `name: ${CPU.name}-CPU\nplatform: ${CPU.platform ?? 'step7'}\nsymbols:[]\nlist: []`;
-      await gcl.load(yaml, {isFile: false});
+      await gcl.load(yaml, { isFile: false });
       for (const doc of gcl.documents) {
         Object.defineProperty(doc, 'CPU', {
           value: CPU,

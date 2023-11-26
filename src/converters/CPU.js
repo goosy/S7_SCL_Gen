@@ -78,6 +78,15 @@ export function initialize_list(area) {
         ];
         add_symbols(document, symbols);
     }
+    CPU.device = document.get('device');
+    if (CPU?.device?.startsWith("CPU31")) {
+        // 修改300CPU的内置符号 GET PUT
+        const symbols = [
+            ['GET', 'FB14'],
+            ['PUT', 'FB15']
+        ];
+        add_symbols(document, symbols);
+    }
     area.list = area.list.map(node => {
         const FN = { node, comment: new STRING(node.get('comment') ?? '') };
         const comment = FN.comment.value;
@@ -92,7 +101,6 @@ export function initialize_list(area) {
 
 export function build_list({ document, list, options }) {
     const CPU = document.CPU;
-    CPU.device = document.get('device');
     list.forEach(FN => {
         if (!['OB', 'FC'].includes(FN.block.block_name)) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项block必须是一个 OB 或 FC 符号!`);
     });
