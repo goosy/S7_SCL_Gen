@@ -41,9 +41,10 @@ list : # modbus TCP 连接列表
   # 该设置用于过滤过程值的突变，当为整数值时代表单位毫秒
   $interval_time: 1000
 
-  # 运行期间查询的时间间隔，可省略，默认为200，单位ms
-  # 类型: 正整数
-  #interval_time: 200
+  # 运行期间指定轮询间隔时间，可省略
+  # 类型: null | S7表达式 | S7符号定义 | S7符号引用
+  # 值类型: 整数 (注意不能是TIME字面量)
+  interval_time: [flow_interval, md200]
 
   # 背景块。不必填写type，会自动指定为 MT_Poll
   # 类型: S7符号定义 | S7符号引用

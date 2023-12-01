@@ -152,8 +152,8 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{#for conn in connections}}
 // {{conn.comment}}
-"{{NAME}}".{{conn.DB.value}} ( {{#if conn.interval_time}}
-    intervalTime := {{conn.interval_time}},{{#endif}}
+"{{NAME}}".{{conn.DB.value}} ( {{#if conn.interval_time != undefined}}
+    intervalTime := {{conn.interval_time.value}},{{#endif}}
     DATA  := "{{POLLS_NAME}}".{{conn.name}},
     buff  := "{{POLLS_NAME}}".buff);
 
@@ -225,7 +225,12 @@ export function initialize_list(area) {
         conn.R = R ? 'R' + R : '';
         conn.X = X ? 'X' + X : '';
         conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
-        conn.interval_time = nullable_value(PINT, node.get('interval_time'));
+        const interval_time = node.get('interval_time');
+        make_s7express(conn, 'interval_time', interval_time, document, {
+            s7express: true,
+            force: { type: 'DINT' },
+            default: { comment: `interval time of ${comment}` }
+        });
 
         const polls = node.get('polls');
         assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
