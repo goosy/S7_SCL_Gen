@@ -1,7 +1,6 @@
 import { make_s7express } from '../symbols.js';
 import { context } from '../util.js';
-import { STRING, ensure_value, DINT, TIME } from '../value.js';
-import { isString } from '../gcl.js';
+import { STRING, ensure_value, TIME } from '../value.js';
 import { posix } from 'path';
 
 export const platforms = ['step7']; // platforms supported by this feature

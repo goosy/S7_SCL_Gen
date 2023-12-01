@@ -6,36 +6,36 @@ import { gen_data } from './gen_data.js';
 export { convert, copy_file, context };
 
 async function convert2file(
-  { rules, template },
-  output_dir,
-  options = { encoding: "utf8", lineEndings: "linux" }
+    { rules, template },
+    output_dir,
+    options = { encoding: "utf8", lineEndings: "linux" }
 ) {
-  const silent = options.silent;
-  // Asynchronous sequential execution 异步顺序执行
-  for (let { name, content } of convertRules(rules, template)) {
-    const output_file = posix.join(output_dir, `./${name}`);
-    await write_file(output_file, content, options)
-    silent || console.log(`\t${output_file}`)
-  };
+    const silent = options.silent;
+    // Asynchronous sequential execution 异步顺序执行
+    for (let { name, content } of convertRules(rules, template)) {
+        const output_file = posix.join(output_dir, `./${name}`);
+        await write_file(output_file, content, options)
+        silent || console.log(`\t${output_file}`)
+    };
 }
 
 async function convert(options) {
-  const silent = options.silent;
-  silent || console.log(`current conversion folder 当前转换文件夹: ${context.work_path}`);
-  const [copy_list, convert_list] = await gen_data(options);
-  if (copy_list?.length) {
-    silent || console.log("\ncopy file to: 复制文件至：");
-    for (const { src, dst } of copy_list) {
-      await copy_file(src, dst);
-      silent || console.log(`\t${dst}`)
+    const silent = options.silent;
+    silent || console.log(`current conversion folder 当前转换文件夹: ${context.work_path}`);
+    const [copy_list, convert_list] = await gen_data(options);
+    if (copy_list?.length) {
+        silent || console.log("\ncopy file to: 复制文件至：");
+        for (const { src, dst } of copy_list) {
+            await copy_file(src, dst);
+            silent || console.log(`\t${dst}`)
+        }
     }
-  }
-  if (convert_list?.length) {
-    const OPT = { encoding: 'gbk', lineEndings: "windows" };
-    let output_dir = context.work_path;
-    silent || console.log("\ngenerate file: 生成文件：");
-    for (const item of convert_list) {
-      await convert2file(item, output_dir, { ...OPT, ...options });
+    if (convert_list?.length) {
+        const OPT = { encoding: 'gbk', lineEndings: "windows" };
+        let output_dir = context.work_path;
+        silent || console.log("\ngenerate file: 生成文件：");
+        for (const item of convert_list) {
+            await convert2file(item, output_dir, { ...OPT, ...options });
+        }
     }
-  }
 }
