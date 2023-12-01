@@ -1,6 +1,6 @@
 import { make_s7express } from "../symbols.js";
 import { context } from '../util.js';
-import { BOOL, DINT, REAL, STRING, nullable_value, ensure_value } from '../value.js';
+import { BOOL, REAL, STRING, TIME, nullable_value, ensure_value } from '../value.js';
 import { posix } from 'path';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
@@ -33,7 +33,7 @@ BEGIN
     WL_limit := {{alarm_item.$WL_limit}};{{#endif}}{{#if alarm_item.$AL_limit != null}}
     AL_limit := {{alarm_item.$AL_limit}};{{#endif}}{{#if alarm_item.$dead_zone != null}}
     dead_zone := {{alarm_item.$dead_zone}};{{#endif}}{{#if alarm_item.$FT_time != null}}
-    FT_time := {{alarm_item.$FT_time}};{{#endif}}
+    FT_time := {{alarm_item.$FT_time.DINT}};{{#endif}}
 END_DATA_BLOCK
 {{#endif alarm_item.DB}}{{#endfor alarm_item}}
 
@@ -104,7 +104,7 @@ export function initialize_list(area) {
         if (WH > AH || WL > WH || AL > WL)
             throw new Error(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
         alarm.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
-        alarm.$FT_time = nullable_value(DINT, node.get('$FT_time'));
+        alarm.$FT_time = nullable_value(TIME, node.get('$FT_time'));
 
         return alarm;
     });

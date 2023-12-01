@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, STRING, nullable_value, DINT } from '../value.js';
+import { BOOL, STRING, nullable_value, TIME } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -24,7 +24,7 @@ FAMILY : GooLib
 "{{NAME}}"
 BEGIN{{#if motor.$stateless != null}}
     stateless := {{motor.$stateless}};{{#endif}}{{#if motor.$over_time != null}}
-    over_time := {{motor.$over_time}};{{#endif}}
+    over_time := {{motor.$over_time.DINT}};{{#endif}}
 END_DATA_BLOCK
 {{#endif}}{{#endfor motor}}
 
@@ -86,7 +86,7 @@ export function initialize_list(area) {
         ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(make_bool_s7s);
 
         motor.$stateless = nullable_value(BOOL, node.get('$stateless'));
-        motor.$over_time = nullable_value(DINT, node.get('$over_time'));
+        motor.$over_time = nullable_value(TIME, node.get('$over_time'));
 
         return motor;
     });

@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, DINT, INT, REAL, STRING, ensure_value, nullable_value } from '../value.js';
+import { BOOL, DINT, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -38,8 +38,8 @@ BEGIN
     WL_limit := {{valve.$WL_limit}};{{#endif}}{{#if valve.$AL_limit !== undefined}}
     AL_limit := {{valve.$AL_limit}};{{#endif}}{{#if valve.$FT_zone !== undefined}}
     FT_zone := {{valve.$FT_zone}};{{#endif}}{{#if valve.$FT_time !== undefined}}
-    FT_time := {{valve.$FT_time}};{{#endif}}{{#if valve.$stop_delay !== undefined}}
-    stop_delay := {{valve.$stop_delay}};{{#endif}}
+    FT_time := {{valve.$FT_time.DINT}};{{#endif}}{{#if valve.$stop_delay !== undefined}}
+    stop_delay := {{valve.$stop_delay.DINT}};{{#endif}}
 END_DATA_BLOCK
 {{#endif}}{{#endfor valve}}
 
@@ -145,8 +145,8 @@ export function initialize_list(area) {
         valve.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
         valve.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
         valve.$FT_zone = nullable_value(REAL, node.get('$FT_zone'));
-        valve.$FT_time = nullable_value(DINT, node.get('$FT_time'));
-        valve.$stop_delay = nullable_value(DINT, node.get('$stop_delay'));
+        valve.$FT_time = nullable_value(TIME, node.get('$FT_time'));
+        valve.$stop_delay = nullable_value(TIME, node.get('$stop_delay'));
 
         return valve;
     });

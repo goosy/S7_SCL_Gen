@@ -50,7 +50,7 @@ const time_base2ms = [10, 100, 1000, 10000];
  * @returns {string}
  */
 function getTimeDurationStr(value) {
-    if(value == 0)return '0';
+    if (value == 0) return '0';
     let strList = [];
     let remainder;
     if (value > 0) {
@@ -108,24 +108,25 @@ function parse_unit(str) {
  * @param {string} str
  */
 function parse2ms(str) {
-    let timeStrList = str.split("_");
-    let msList = timeStrList.map(parse_unit);
+    const timeStrList = str.replace(/([dhms])(\d)/ig, '$1_$2').split("_");
+    const msList = timeStrList.map(parse_unit);
     return msList.reduce((ms, value) => ms + value, 0);
 }
 
 /**
- * 接受 TIME 字面量或毫秒数 
+ * 接受 TIME 字面量或毫秒数
  * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
  * @param {string|number} value
  */
 function get_ms_form(value) {
+    const INPUT_ERROR = new Error("input error, parameter must be a TIME or a Number.");
     if (typeof value === 'number') {
         return value;
     }
-    if (typeof value !== "string") {
-        throw new Error("input error, parameter must be a string or a Number.");
-    }
-    let valStr = value.toLowerCase().replace("time#", "").replace("t#", "");
+    if (typeof value !== "string") throw INPUT_ERROR;
+    let valStr = value.trim().toLowerCase();
+    if (!/^(t|time)#(\d+d_?)?(\d+h_?)?(\d+m_?)?(\d+s_?)?(\d+ms)?$/.test(valStr)) throw INPUT_ERROR;
+    valStr = valStr.replace(/(time|t)#/, "").replace(/([dhms])(\d)/ig, '$1_$2');
     let sign = 1;
     if (valStr[0] == '-') {
         valStr = valStr.substring(1);
@@ -204,13 +205,16 @@ class Integer extends S7Number {
         value = parseInt(value);
         super(value);
     }
-    TC(radix) {
-        const pow = Math.pow(2, radix);
+    /**
+     * get Two's Complement 获得补码
+     */
+    TC(exponent) {
         let result = this._value;
         if (this._value < 0) {
             result = ~Math.abs(result) + 1;
         }
-        return result & (pow - 1);
+        const mask = Math.pow(2, exponent) - 1;
+        return result & mask;
     }
     get HEX() {
         return this._value.toString(16).toUpperCase();
@@ -223,6 +227,9 @@ class Integer extends S7Number {
     }
     get dwordHEX() {
         return 'DW#16#' + this.TC(32).toString(16).toUpperCase();
+    }
+    get DINT(){
+        return 'L#' + this._value.toString();
     }
 }
 
@@ -258,7 +265,7 @@ export class DINT extends Integer {
         DINT.check(this._value);
     }
     toString() {
-        return 'L#' + this._value.toString();
+        return this.DINT;
     }
 }
 export class TIME extends DINT {
@@ -269,11 +276,35 @@ export class TIME extends DINT {
     get rawValue() {
         return this._value;
     }
+
+    /**
+     * 接受 TIME 字面量或毫秒数
+     * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
+     * @param {string|number} value
+     */
+    set S7Value(value) {
+        this._value = get_ms_form(value);
+    }
+
+    /**
+     * 接受 TIME 字面量或毫秒数
+     * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
+     * @param {string|number} value
+     */
+    set value(value) {
+        this.S7Value = value;
+    }
+
+    constructor(value) {
+        // unbox ref object
+        super(get_ms_form(value?.value ? value.value : value));
+    }
+
     /**
      * S7 TIME 字面量形式的字符串
      * @return {string}
      */
-    get value() {
+    get S7Value() {
         let value = this._value;
         let sign = "";
         if (value < 0) {
@@ -283,18 +314,8 @@ export class TIME extends DINT {
         return `TIME#${sign}${getTimeDurationStr(value)}`;
     }
 
-    /**
-     * 接受 TIME 字面量或毫秒数 
-     * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
-     * @param {string|number} value
-     */
-    set value(value) {
-        this._value = get_ms_form(value);
-    }
-
-    constructor(value) {
-        // unbox ref object
-        super(get_ms_form(value?.value ? value.value : value));
+    toString() {
+        return this.S7Value;
     }
 }
 

@@ -1,5 +1,5 @@
 import { make_s7express } from "../symbols.js";
-import { BOOL, INT, DINT, REAL, STRING, ensure_value, nullable_value } from '../value.js';
+import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -38,7 +38,7 @@ BEGIN
     WL_limit := {{AI.$WL_limit}};{{#endif}}{{#if AI.$AL_limit !== undefined}}
     AL_limit := {{AI.$AL_limit}};{{#endif}}{{#if AI.$dead_zone !== undefined}}
     dead_zone := {{AI.$dead_zone}};{{#endif}}{{#if AI.$FT_time !== undefined}}
-    FT_time := {{AI.$FT_time}};{{#endif}}
+    FT_time := {{AI.$FT_time.DINT}};{{#endif}}
 END_DATA_BLOCK
 {{#endif AI.}}{{#endfor AI}}
 
@@ -117,7 +117,7 @@ export function initialize_list(area) {
         if (WH > AH || WL > WH || AL > WL)
             throw new Error(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
         AI.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
-        AI.$FT_time = nullable_value(DINT, node.get('$FT_time'));
+        AI.$FT_time = nullable_value(TIME, node.get('$FT_time'));
         return AI;
     });
 }

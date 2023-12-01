@@ -25,9 +25,9 @@ DATA_BLOCK {{RP.DB.value}}{{#if platform == 'portal'}}
 AUTHOR:Goosy
 FAMILY:GooLib
 "{{RP.FB}}"
-BEGIN{{#if RP.$PT}}
-  PT := {{RP.$PT.value}}; // 脉冲时长{{#endif RP.$PT}}{{#if RP.IncludeFallingEdge != undefined}}
-  IncludeFallingEdge := {{RP.IncludeFallingEdge}}; // 是否包含下降沿{{#endif RP.IncludeFallingEdge}}
+BEGIN{{#if RP.$PT != undefined}}
+    PT := {{RP.$PT}}; // 脉冲时长{{#endif RP.$PT}}{{#if RP.IncludeFallingEdge != undefined}}
+    IncludeFallingEdge := {{RP.IncludeFallingEdge}}; // 是否包含下降沿{{#endif RP.IncludeFallingEdge}}
 END_DATA_BLOCK
 {{#endfor RP}}
 
@@ -41,7 +41,7 @@ BEGIN{{#if loop_additional_code}}
 {{#if platform == 'step7' || platform == 'pcs7'
 }}"{{RP.FB}}".{{#endif platform
 }}{{RP.DB.value}}(IN := {{RP.IN.value}}{{
-    #if RP.PT != undefined}}, PT := {{RP.PT.value}}{{#endif}}); // {{RP.comment}}{{#endfor RP}}
+    #if RP.PT != undefined}}, PT := {{RP.PT}}{{#endif}}); // {{RP.comment}}{{#endfor RP}}
 END_FUNCTION
 `
 

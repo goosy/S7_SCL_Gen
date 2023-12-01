@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { fixed_hex, BOOL, PINT, STRING, nullable_value, ensure_value } from '../value.js';
+import { fixed_hex, BOOL, PINT, STRING, TIME, nullable_value, ensure_value } from '../value.js';
 import { IntIncHL, context } from '../util.js';
 import { posix } from 'path';
 import { isSeq } from 'yaml';
@@ -112,23 +112,23 @@ TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT{{#for conn in connections}}
     {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
-        MBAP_seq : WORD ; //事务号 PLC自动填写
-        MBAP_protocol : WORD ;  //必须为0
+        MBAP_seq : WORD ;               //事务号 PLC自动填写
+        MBAP_protocol : WORD ;          //必须为0
         MBAP_length : WORD  := W#16#6;  //长度，对读命令，通常为6
-        device_ID : BYTE ;  //设备号，不关心的情况下可以填0
-        MFunction : BYTE ;  //modbus功能号
-        address : WORD ; //起始地址
-        data : WORD ; //长度
-        recvDB : INT ;  //接收数据块号
-        recvDBB : INT ; //接收数据块起始地址
+        device_ID : BYTE ;              //设备号，不关心的情况下可以填0
+        MFunction : BYTE ;              //modbus功能号
+        address : WORD ;                //起始地址
+        data : WORD ;                   //长度
+        recvDB : INT ;                  //接收数据块号
+        recvDBB : INT ;                 //接收数据块起始地址
     END_STRUCT ;{{#endfor conn}}
     buff : STRUCT // 接收缓冲区
-        MBAP_seq : WORD ;    //事务号 PLC自动填写
-        MBAP_protocol : WORD ;    //必须为0
-        MBAP_length : WORD ;    //长度，对读命令，通常为6
-        device_ID : BYTE ;    //设备号，不关心的情况下可以填0
-        MFunction : BYTE ;    //modbus功能号
-        data : ARRAY[0..251] OF BYTE ;    //数据
+        MBAP_seq : WORD ;               //事务号 PLC自动填写
+        MBAP_protocol : WORD ;          //必须为0
+        MBAP_length : WORD ;            //长度，对读命令，通常为6
+        device_ID : BYTE ;              //设备号，不关心的情况下可以填0
+        MFunction : BYTE ;              //modbus功能号
+        data : ARRAY[0..251] OF BYTE ;  //数据
     END_STRUCT ;
 END_STRUCT ;
 BEGIN{{#for conn in connections}}
@@ -141,10 +141,10 @@ BEGIN{{#for conn in connections}}
     {{conn.name}}[{{no}}].recvDBB := {{poll.recv_start}};{{#endfor poll}}{{#endfor conn}}
 END_DATA_BLOCK
 
-{{#for conn in connections}}{{#if conn.$interval_time}}
+{{#for conn in connections}}{{#if conn.$interval_time != undefined}}
 DATA_BLOCK {{conn.DB.value}} "{{NAME}}"
 BEGIN
-        intervalTime := {{conn.$interval_time}};
+        intervalTime := {{conn.$interval_time.DINT}};
 END_DATA_BLOCK
 {{#endif conn.$interval_time}}{{#endfor conn}}
 
@@ -224,7 +224,7 @@ export function initialize_list(area) {
         const X = nullable_value(PINT, node.get('XSlot'));
         conn.R = R ? 'R' + R : '';
         conn.X = X ? 'X' + X : '';
-        conn.$interval_time = nullable_value(PINT, node.get('$interval_time'));
+        conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
         conn.interval_time = nullable_value(PINT, node.get('interval_time'));
 
         const polls = node.get('polls');
