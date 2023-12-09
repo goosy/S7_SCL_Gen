@@ -25,6 +25,7 @@ symbols:
 - [DI02-02, I+]
 - [DO01-01, Q0.0]
 - [DO01-02, Q+]
+- [DO01-03, Q+]
 - [DO02-01, Q2.0]
 - [DO02-02, Q+]
 - [DO02-03, Q+]
@@ -43,36 +44,21 @@ list :
 # S7_AI_MAX := 32767;
 # S7_AI_MAX_WORD := W#16#7FFF;
 
-# 阀门1 2DO回路，即由CPU维护信号
-- comment: A阀门
-  DB: [MGV-1201A, DB111] # 阀门DB块 类型: S7符号定义 | S7符号引用
+- comment: A阀门 2DO回路，开与关都是得电动作、失电停止
+  DB: [MGV-1201A, DB111]   # 阀门DB块 类型: S7符号定义 | S7符号引用
+
   # 以下7项类型: S7符号定义 | S7符号引用 | SCL表达式
-  AI: AI11-01            # 阀位信号输入
-  # 以下值为 boolean，SLC符号与表达式结果必须也是 boolean
-  CP: DI01-01            # 关到位信号
-  OP: DI01-02            # 开到位信号
-  error: DI01-03         # 错误信号 可省略，默认为false
-  remote: DI01-04        # 远程信号 可省略，默认为true
-  close_action: DO01-01  # 关阀线圈
-  open_action: DO01-02   # 开阀线圈 以上2项类型: S7符号定义 | S7符号引用 | SCL表达式
 
-# 阀门2 3DO回路，开与关在执行机构处自保持，故必须有停信号
-- comment: B阀门
-  DB: [MGV-1201B, DB+]
-  AI: ~                  # 没有AI过程值时，可省略，省略时禁用行程命令，并将强制赋断线值以保证PLC运行期间不被改变
-  CP: DI01-05
-  OP: DI01-06
-  error: '"DI01-07" and "DI01-08"'
-  remote: TRUE           # 没有remote过程值时，必须赋值TRUE，也可以象下方C阀门一样省略，会默认为TRUE
-  close_action: DO02-01
-  open_action: DO02-02
-  stop_action: DO02-03
+  AI: AI11-01              # 阀位信号输入
 
-- comment: C阀门
-  DB: [MGV-1201C, DB+]
-  AI: AI11-02
-  CP: DI02-01
-  OP: DI02-02
+  # 以下6项类型: S7符号定义 | S7符号引用 | SCL表达式
+  # 值类型为 boolean，SLC符号与表达式结果必须也是 boolean
+  CP: DI01-01              # 关到位信号 可省略，将没有关位状态
+  OP: DI01-02              # 开到位信号 可省略，将没有开位状态
+  error: DI01-03           # 错误信号 可省略，默认为false
+  remote: DI01-04          # 远程信号 可省略，默认为true
+  close_action: DO01-01    # 关阀线圈 可省略
+  open_action: DO01-02     # 开阀线圈 可省略
 
   # $enable_AH $enable_WH $enable_WH $enable_WH 允许阀位报警，仅用于初始值
   # 类型: null | Bool字面量
@@ -99,12 +85,34 @@ list :
   # 该设置用于输出停阀信号，当为整数值时代表单位毫秒
   $stop_delay: TIME#1S # 也可以用 1000
 
-  # 阀门故障
-  # 没有error过程值时，可省略或赋值FALSE，省略时须注意PLC运行时的改变
-  error: FALSE
+- comment: B阀门 3DO回路，开与关信号会执行机构自保持，故必须有停止信号
+  DB: [MGV-1201B, DB+]
+  AI: ~                    # 没有AI过程值时，可省略，省略时禁用行程命令，并将强制赋断线值以保证PLC运行期间不被改变
+  CP: DI01-05
+  OP: DI01-06
+  error: '"DI01-07" and "DI01-08"'
+  remote: TRUE             # 没有remote过程值时，必须赋值TRUE，也可以象下方C阀门一样省略，会默认为TRUE
+  close_action: DO02-01
+  open_action: DO02-02
+  stop_action: DO02-03
+
+- comment: C阀门 1DO回路
+  DB: [MGV-1201C, DB+]
+  AI: AI11-02
+  CP: DI02-01
+  OP: DI02-02
+
+  # 控制信号输出
+  # 类型: S7符号定义 | S7符号引用 | SCL表达式
+  # 值类型为 boolean，SLC符号与表达式结果必须也是 boolean
+  # 得电开阀、失电关阀（通过常闭触点可翻转信号）
+  control_action: DO02-04
+
+- comment: D阀门 最简用例
+  DB: [MGV-1201D, DB+]
 
   # 本阀门只能关阀
-  close_action: DO02-04
+  close_action: DO01-03
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 输出文件名，系统自动加后缀。

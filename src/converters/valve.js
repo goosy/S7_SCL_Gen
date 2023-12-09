@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, DINT, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
+import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -76,14 +76,16 @@ BEGIN{{#for valve in list}}
     remote := {{valve.remote.value}}{{#endif}}{{
 
 #if platform == 'portal'}}{{#if valve.close_action}},
-    close_action    => {{valve.close_action.value}}{{#endif}}{{#if valve.open_action}},
-    open_action  => {{valve.open_action.value}}{{#endif}}{{#if valve.stop_action}},
-    stop_action   => {{valve.stop_action.value}}{{#endif}});{{
+    close_action => {{valve.close_action.value}}{{#endif}}{{#if valve.open_action}},
+    open_action => {{valve.open_action.value}}{{#endif}}{{#if valve.stop_action}},
+    stop_action => {{valve.stop_action.value}}{{#endif}}{{#if valve.control_action}},
+    control_action => {{valve.control_action.value}}{{#endif}});{{
 
 #else platform≠portal}});{{#if valve.close_action}}
 {{valve.close_action.value}} := {{valve.DB.value}}.close_action;{{#endif}}{{#if valve.open_action}}
 {{valve.open_action.value}} := {{valve.DB.value}}.open_action;{{#endif}}{{#if valve.stop_action}}
-{{valve.stop_action.value}} := {{valve.DB.value}}.stop_action;{{#endif}}{{
+{{valve.stop_action.value}} := {{valve.DB.value}}.stop_action;{{#endif}}{{#if valve.control_action}}
+{{valve.control_action.value}} := {{valve.DB.value}}.control_action;{{#endif}}{{
 
 #endif platform}}
 {{#endif valve.DB}}{{#endfor valve}}{{#if loop_additional_code}}
@@ -130,7 +132,7 @@ export function initialize_list(area) {
             });
         });
 
-        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action'].forEach(prop => {
+        ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action', 'control_action'].forEach(prop => {
             const _comment = comment ? `${comment} ${prop}` : '';
             const value = node.get(prop);
             if (value !== undefined) make_s7express(valve, prop, value, document, {
