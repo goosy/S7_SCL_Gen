@@ -2,7 +2,7 @@
 #CPU: AS1       # 指示属于哪一个CPU
 #feature: Motor # 指示本配置为生成 Motor 代码
 
-name: AS1-Motor # 相当于上面2条被注释的指令
+name: AS1,AS3-Motor # 相当于上面2条被注释的指令
 
 symbols:  
 # 系统已有2个内置符号，其内容由本程序自动生成：
@@ -43,7 +43,7 @@ list :
   error: DI05-03                 # 电机故障输入
   remote: DI05-04                # 电机远程就地操作模式
   # 以下为BOOL字面量
-  $stateless: false               # 指示为无状态电机，正常省略，默认为false
+  $stateless: false              # 指示为无状态电机，正常省略，默认为false
   # 操作返回延时，可省略，默认2000
   # 类型: null | 整数字面量 | TIME字面量
   # 该设置用于等待电机改变状态的时间，超时后撤回信号并指示启停失败。
@@ -74,7 +74,7 @@ list :
   DB: [PUMP-001C, DB+]
   # 省略 error(默认FALSE) remote(默认TRUE) 参数时，必须保证PLC运行时不被改变
   $stateless: true       # 指示没有运行状态
-  run_action: DO05-08   # run_action参数启停电机
+  run_action: DO05-08    # run_action参数启停电机
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 输出文件名，系统自动加后缀。

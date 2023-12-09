@@ -1,5 +1,5 @@
 import { make_s7express } from '../symbols.js';
-import { BOOL, STRING, nullable_value, TIME } from '../value.js';
+import { BOOL, STRING, nullable_value, TIME, pad_right } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 
@@ -32,22 +32,22 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
-BEGIN{{#for motor in list}}
+BEGIN{{#for motor in list}}{{len = motor.input_paras.length + motor.output_paras.length}}
 // {{motor.comment}}{{#if motor.DB}}
 {{#if platform == 'step7'}}"{{NAME}}".{{#endif platform
-}}{{motor.DB.value}}({{motor.input_paras}}{{
+}}{{motor.DB.value}}({{
 
-#if platform == 'step7'}});{{#if motor.run_action}}
-{{motor.run_action.value}} := {{motor.DB.value}}.run_coil;{{#endif}}{{#if motor.start_action}}
-{{motor.start_action.value}} := {{motor.DB.value}}.start_coil;{{#endif}}{{#if motor.stop_action}}
-{{motor.stop_action.value}} := {{motor.DB.value}}.stop_coil;{{#endif}}{{#if motor.estop_action}}
-{{motor.estop_action.value}} := {{motor.DB.value}}.E_stop_coil;{{#endif}}{{
+#if platform == 'portal'}}{{
+#for no,para in motor.input_paras}}{{#if len > 1}}{{#if no > 0}},{{#endif no}}
+    {{#endif length}}{{para}}{{#endfor para}}{{
+#for no,para in motor.output_paras}}{{#if len > 1}}{{#if no + motor.input_paras.length > 0}},{{#endif}}
+    {{#endif len}}{{para}}{{#endfor para}});{{
 
-#else platform == 'portal'}}{{#if motor.run_action}},
-    run_coil    => {{motor.run_action.value}}{{#endif}}{{#if motor.start_action}},
-    start_coil  => {{motor.start_action.value}}{{#endif}}{{#if motor.stop_action}},
-    stop_coil   => {{motor.stop_action.value}}{{#endif}}{{#if motor.estop_action}},
-    E_stop_coil => {{motor.estop_action.value}}{{#endif}});{{
+#else other platform}}{{
+#for no,para in motor.input_paras}}{{#if motor.input_paras.length > 1}}{{#if no > 0}},{{#endif no}}
+    {{#endif len}}{{para}}{{#endfor para}});{{
+#for para in motor.output_paras}}
+{{para}};{{#endfor para}}{{
 
 #endif platform}}
 {{#endif motor.DB}}{{#endfor motor}}{{#if loop_additional_code}}
@@ -94,34 +94,19 @@ export function initialize_list(area) {
 
 export function build_list({ list }) {
     list.forEach(motor => { // 处理配置，形成完整数据
-        const {
-            remote,
-            enable,
-            run,
-            stateless,
-            error,
-        } = motor;
-        const input_paras = [];
+        function make_paras(para_list, prop) {
+            para_list.forEach(_para => {
+                const para = motor[_para];
+                if (para) {
+                    prop.push([_para, para.value]);
+                }
+            });
+        }
 
-        if (remote) {
-            input_paras.push(`remote      := ${remote.value}`);
-        }
-        if (enable) {
-            input_paras.push(`enable_run  := ${enable.value}`);
-        }
-        if (run) {
-            input_paras.push(`run         := ${run.value}`);
-        }
-        if (stateless) {
-            input_paras.push(`stateless   := ${stateless}`); // stateless is not a symbol
-        }
-        if (error) {
-            input_paras.push(`error       := ${error.value}`);
-        }
-        // 只有一项时让SCL字串紧凑
-        if (input_paras.length == 1) input_paras[0] = input_paras[0].replace(/ +/g, ' ');
-        if (input_paras.length > 1) input_paras[0] = '\n    ' + input_paras[0];
-        motor.input_paras = input_paras.join(',\n    ');
+        motor.input_paras = [];
+        make_paras(['remote', 'enable', 'run', 'error'], motor.input_paras);
+        motor.output_paras = [];
+        make_paras(['run_action', 'start_action', 'stop_action', 'estop_action'], motor.output_paras);
     });
 }
 
@@ -130,6 +115,25 @@ export function gen(motor_list) {
     motor_list.forEach(({ document, includes, loop_additional_code, list }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
+        list.forEach(motor => {
+            const len = platform == 'portal'
+                ? motor.input_paras.length + motor.output_paras.length
+                : motor.input_paras.length;
+            motor.input_paras = motor.input_paras.map(([name, value]) => {
+                if (name === 'enable') name = 'enable_run';
+                name = len > 1 ? pad_right(name, 12) : name;
+                return `${name} := ${value}`;
+            });
+            motor.output_paras = motor.output_paras.map(([name, value]) => {
+                name = name.replace(/_action$/, '_coil').replace('estop', 'E_stop');
+                name = platform == 'portal' && len > 1 ? pad_right(name, 12) : name;
+                if (platform == 'portal') {
+                    return `${name} => ${value}`;
+                } else {
+                    return `${value} := ${motor.DB.value}.${name}`;
+                }
+            });
+        })
         rules.push({
             "name": `${output_dir}/${LOOP_NAME}.scl`,
             "tags": {

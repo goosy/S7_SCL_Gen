@@ -12,7 +12,7 @@
 name: AS1-CPU # 相当于上面2个被注释的指令
 
 # 运行平台
-# 可取值：step7 portal pcs
+# 可取值: step7 portal pcs
 # step7 平台时可省略该指令
 # 目前暂时只有 step7 支持所有功能，portal 和 pcs 平台仅支持部分功能
 platform: step7
@@ -138,5 +138,10 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 默认输出文件是 CPU.scl，可在名称中使用 {{name}} 替换
   # 将下方指令取消注释后，会将输出文件名改成 example.scl
   # output_file : 'example'
+
+---
+
+name: AS3-CPU
+platform: portal
 
 ... # YAML语法，指示一个文档结束
