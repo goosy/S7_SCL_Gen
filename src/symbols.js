@@ -32,6 +32,9 @@ const BIT_PREFIX = ['M', 'I', 'Q'];
 const S7MEM_PREFIX = [...DWORD_PREFIX, ...WORD_PREFIX, ...BYTE_PREFIX, ...BIT_PREFIX];
 const COMMON_TYPE = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
 
+// regexp = /^(OB|FB|FC||SFB|SFC|UDT|DB|MD|ID|PID|QD|PQD|MW|IW|PIW|QW|PQW|MB|IB|PIB|QB|PQB|M|I|Q)(\d+|\+)(\.(\d))?$/
+const S7ADDR_REG = new RegExp(`^(${[...INTEGER_PREFIX, ...S7MEM_PREFIX].join('|')})(\\d+|\\+)(\\.(\\d))?$`);
+
 // equal area_size = { M: 0.1, I: 0.1, Q: 0.1, MB: 1, ... PQD: 4};
 const area_size = Object.fromEntries([
     ...BIT_PREFIX.map(prefix => [prefix, 0.1]),
@@ -105,10 +108,9 @@ class S7Symbol {
     #symbol_error() {
         return new SyntaxError(`symbol define ${this.source.raw} is wrong!`);
     }
-    // regexp = /^(OB|FB|FC||SFB|SFC|UDT|DB|MD|ID|PID|QD|PQD|MW|IW|PIW|QW|PQW|MB|IB|PIB|QB|PQB|M|I|Q)(\d+|\+)(\.(\d))?$/
-    s7addr_reg = new RegExp(`^(${[...INTEGER_PREFIX, ...S7MEM_PREFIX].join('|')})(\\d+|\\+)(\\.(\\d))?$`);
+
     parse_s7addr(address) {
-        const [, block_name, block_no, , block_bit = 0] = this.s7addr_reg.exec(address.toUpperCase()) ?? [];
+        const [, block_name, block_no, , block_bit = 0] = S7ADDR_REG.exec(address.toUpperCase()) ?? [];
         if (!block_name || !block_no) throw this.#symbol_error();
         return [block_name, block_no, block_bit];
     }
