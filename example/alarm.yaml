@@ -22,9 +22,14 @@ list: # 过程量列表
   # 没有该项则忽略转换，只输出 comment
   DB: [LIT001,  DB200]
   # 输入值
-  # 类型:S7符号定义|S7符号引用|SCL表达式
+  # 类型:S7符号定义 | S7符号引用 | SCL表达式
   # 值: REAL
-  input: [LIT0101, PID256]
+  input: '"tank485".TIT0102'
+  # 指示过程值是否有效
+  # 在485通讯等情况下，可以避免无效报警
+  # 类型: null | S7符号定义 | S7符号引用 | SCL表达式
+  # 值: BOOL
+  invalid: '"tank485".invalid'
   # $enable_AH $enable_WH $enable_WH $enable_WH 用于运行期间的允许报警初始值
   # 类型: null | Bool字面量
   # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
@@ -46,7 +51,7 @@ list: # 过程量列表
   $FT_time: TIME#10S # 也可以用 100000 这样的整数
 - comment: 泵进口温度
   DB: [TIT0102, DB+] 
-  input: '"pump485".TIT0102'
+  input: [TIT0102_R, PID256]
   # 以下定义了初始时不允许AH报警，但设定了AH初始超限值
   $AL_limit: 0.2
   $enable_AL: false

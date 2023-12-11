@@ -47,6 +47,7 @@ BEGIN{{#if loop_additional_code}}
 {{#if alarm_item.DB}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
 }}{{alarm_item.DB.value}}({{#if alarm_item.input != undefined}}PV := {{alarm_item.input.value}}{{
+    #if alarm_item.invalid != undefined}}, invalid := {{alarm_item.invalid.value}}{{#endif}}{{
     #if alarm_item.enable_AH != undefined}}, enable_AH := {{alarm_item.enable_AH.value}}{{#endif}}{{
     #if alarm_item.enable_WH != undefined}}, enable_WH := {{alarm_item.enable_WH.value}}{{#endif}}{{
     #if alarm_item.enable_WL != undefined}}, enable_WL := {{alarm_item.enable_WL.value}}{{#endif}}{{
@@ -79,6 +80,12 @@ export function initialize_list(area) {
         make_s7express(alarm, 'input', input, document, {
             s7express: true,
             force: { type: 'REAL' },
+            default: { comment }
+        });
+        const invalid = node.get('invalid');
+        make_s7express(alarm, 'invalid', invalid, document, {
+            s7express: true,
+            force: { type: 'BOOL' },
             default: { comment }
         });
         ['AH', 'WH', 'WL', 'AL'].forEach(limit => {
