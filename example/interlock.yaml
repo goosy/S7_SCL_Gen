@@ -24,10 +24,10 @@ symbols:
 - [DI02-11, I+]
 - [DI02-13, I5.4]
 - [DI02-16, I5.7]
+- [DI02-17, I6.0]
 - [DI02-18, I6.1]
 - [DI02-19, I6.2]
 - [DI02-20, I6.3]
-- [DI02-21, I6.4]
 - [DO04-01, Q6.0]
 - [DO04-02, Q6.1]
 - [DO04-03, Q6.2]
@@ -38,10 +38,10 @@ list :
 - comment: 声光报警
   DB: [IL_ESDBTN, DB121]
   data:
-  - {name: ESDBTN, read: DI02-18, comment: 人工急停按钮}  # 表示ESDBTN字段从DI02-18读值
-  - {name: GIA001, read: DI02-20, comment: 可燃气报警}
-  - {name: RSTBTN, read: DI02-21, comment: 人工复位按钮}
-  - {name: SL, write: DO04-01, comment: 声光报警DO}      # 表示SL字段输出到DO04-01
+  - {name: ESDBTN, read: DI02-17, comment: 人工急停按钮}  # 表示ESDBTN字段从 DI02-17 读值
+  - {name: GIA001, read: DI02-18, comment: 可燃气报警}
+  - {name: RSTBTN, read: DI02-19, comment: 人工复位按钮}
+  - {name: SL, write: DO04-01, comment: 声光报警DO}      # 表示SL字段输出到 DO04-01
   input:
   - ESDBTN # 在人工急停按钮信号的上升沿触发
   - GIA001 # 在可燃气报警信号的上升沿触发
@@ -210,7 +210,7 @@ list :
   - [DO04-04, Q6.3]                        # S7符号
   ############################################################
 
-# === 例3
+# === 例3 type 和 extra_code
 - comment: 事件播报
   DB: [IL_sound, DB123]
 
@@ -224,19 +224,22 @@ list :
   type:  on
 
   data:
-  - {name: WCount, read: DI02-19, comment: 计件器}
+  - {name: WCounter_signal, read: DI02-20, comment: 计件器}
   input:
-  - WCount
-  - '"IL_ESDBTN".output'
+  - WCounter_signal
+  - '"WCounter".fix'         # 人工修正增加计件
   output:
   - comment: 广播设备DO点
     write: [DO04-05, Q6.4]
     inversion: TRUE        # 反相输出，代表断开时广播启动
 
-loop_additional_code: | #这里的代码会加入 Interlock_Loop 函数体中
-  // 在此写需要额外增加的SCL代码
-
-# 更多的联锁设置，可以依照上方书写，注意对齐，以对齐表示层级
+  # 自定义代码，用于编写与该联锁相关的复杂自定义功能
+  # 这里的代码会加入到当前联锁逻辑之后
+  extra_code: |-
+    IF IL_sound.output AND NOT "WCounter".follower THEN
+        "WCounter".count := "WCounter".count + 1;
+    ENDIF;
+    "WCounter".follower := IL_sound.output;
 
 options : # 选项，非必需，无需要时可以全部删除或注释掉。
   # 输出文件名，系统自动加后缀。

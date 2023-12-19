@@ -62,7 +62,8 @@ END_IF;
 // 输入边沿维护{{#for no, input in interlock.input_list}}{{#if input.edge_field}}
 {{interlock.DB.value}}.{{input.edge_field}} := {{input.read.value}};{{#endif}}{{#endfor}}
 // 附加输出{{#for assign in interlock.write_list}}
-{{assign.assign_write}}{{#endfor}}
+{{assign.assign_write}}{{#endfor}}{{#if interlock.extra_code}}
+{{interlock.extra_code}}{{#endif extra_code}}
 {{#endfor interlock}}
 END_FUNCTION
 `
@@ -101,6 +102,7 @@ export function initialize_list(area) {
         const interlock = {
             node,
             fields,
+            extra_code: nullable_value(STRING, node.get('extra_code'))?.value,
             comment: new STRING(node.get('comment') ?? '报警联锁')
         };
         const DB = node.get('DB');
