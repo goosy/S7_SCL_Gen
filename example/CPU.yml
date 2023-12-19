@@ -141,7 +141,7 @@ options : # 选项，非必需，无需要时可以全部删除或注释掉。
 
 ---
 
-name: AS3-CPU
+name: AS2-CPU
 platform: portal
 
 ... # YAML语法，指示一个文档结束

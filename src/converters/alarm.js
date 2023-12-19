@@ -27,7 +27,9 @@ BEGIN
     enable_AH := {{alarm_item.$enable_AH}};
     enable_WH := {{alarm_item.$enable_WH}};
     enable_WL := {{alarm_item.$enable_WL}};
-    enable_AL := {{alarm_item.$enable_AL}};{{#if alarm_item.$AH_limit != null}}
+    enable_AL := {{alarm_item.$enable_AL}};{{#if alarm_item.$zero !== undefined}}
+    zero := {{alarm_item.$zero}};{{#endif}}{{#if alarm_item.$span !== undefined}}
+    span := {{alarm_item.$span}};{{#endif}}{{#if alarm_item.$AH_limit != null}}
     AH_limit := {{alarm_item.$AH_limit}};{{#endif}}{{#if alarm_item.$WH_limit != null}}
     WH_limit := {{alarm_item.$WH_limit}};{{#endif}}{{#if alarm_item.$WL_limit != null}}
     WL_limit := {{alarm_item.$WL_limit}};{{#endif}}{{#if alarm_item.$AL_limit != null}}
@@ -82,6 +84,8 @@ export function initialize_list(area) {
             force: { type: 'REAL' },
             default: { comment }
         });
+        alarm.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
+        alarm.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(100);
         const invalid = node.get('invalid');
         make_s7express(alarm, 'invalid', invalid, document, {
             s7express: true,

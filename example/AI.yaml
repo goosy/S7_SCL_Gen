@@ -5,14 +5,18 @@
 name: AS1,AS2-AI # 相当于上面2条被注释的指令
 
 symbols:
-  # AI文档已有2个内置符号，其内容由本程序自动生成：
-  # - [AI_Proc, FB512]  模拟量主处理函数
-  # - [AI_Loop, FC512]  主循环调用FC，将这个加入OB1中
-  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+# AI文档已有2个内置符号，其内容由本程序自动生成：
+# - [AI_Proc, FB512]  模拟量主处理函数
+# - [AI_Loop, FC512]  主循环调用FC，将这个加入OB1中
+# 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 - [AI_Proc, FB600] # 可省略，修改内置AI_Proc地址
 - [AI_Loop, FC600] # 可省略，当名称为AI_Loop，指示这是AI主调用FC块，这个要加入到OB中
-- [PIT001,  DB100] # AI提前在这里，应用到AI项目中类型会自动变成AI_Proc
+# 可以把任何符号定义提前在这里，然后在list中对应符号引用项引用即可
+- [PIT001,  DB100]
 
+# 理论GCL转换可以在任何配置文档的任何地方使用 YAML1.1 的锚点和别名，实现数据的利用。
+# 为了清晰可读，不建议用锚点和别名
+# 如果必须使用，建议如下方式用template专门定义锚点，方便阅读
 template:
 - &tubepress       # 设置引用锚点，该锚点表示 & 符号位置所在的值（即右侧或下侧的value）可以在其它地方被引用
   $zero: -0.2
@@ -25,43 +29,64 @@ template:
 
 list: # 模拟量列表
 
-- comment: 泵进口压力         # 类型:字符串
+- comment: 来油压力
+
   # AI数据块
   # 类型: S7符号定义 | S7符号引用
   # 没有该项则忽略转换，只输出 comment
   DB: PIT001
-  # 输入值 类型:S7符号定义|S7符号引用|SCL表达式
-  input: [AI01-01, PIW512]
-  # $enable_AH $enable_WH $enable_WH $enable_WH 用于运行期间的允许报警初始值
-  # 类型: null | Bool字面量
-  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
-  $enable_AH: true   # 代表初始时允许AH报警，这时必须定义 $AH_limit
-  $enable_WH: true   # 代表初始时允许WH报警，这时必须定义 $WH_limit
-  $enable_WL: ~      # 相当于省略，这时由 $WL_limit 决定初始时是否允许WL报警
-  $enable_AL: false  # 代表初始时不允许AL报警，可以省略定义 $AL_limit
-  # 可以对模板内容的部分属性进行更改
-  $AL_limit: ~       # 引用对象无法删除某个属性，但可以将该属性设置为 null 达到等效作用
-  $WH_limit: 2.0     # 修改模板的值
-  <<: *tubepress     # yaml语法"<<: *anchor" 表示将锚点anchor的内容合并在这里
 
-- comment: 来油压力
-  DB: [PIT002, DB101]
+  # 输入值
+  # 类型: S7符号定义 | S7符号引用 | SCL表达式
   input: [AI01-02, PIW514]
+  # 零点初始值
+  # 类型: null | 浮点数字面量
   $zero: 0
+  # 量程初始值
+  # 类型: null | 浮点数字面量
   $span: 2.0
-  # 以下4项为初始值超限值, 类型: null | 浮点数字面量
+
+  # 超限值初始值
+  # 类型: null | 浮点数字面量
   # 省略或赋值为fasle时，代表该超限报警不启用。
   # 以下默认了相关超限报警都允许
   $AH_limit: 2.5
   $WH_limit: 2.0
   $WL_limit: -0.05
   $AL_limit: -0.1
-  # 死区初始值, 类型: null | 浮点数字面量
+
+  # 死区初始值
+  # 类型: null | 浮点数字面量
   $dead_zone: 0.05
+
   # 容错延时，可省略，默认0，即不延时
   # 类型: null | 整数字面量 | TIME字面量
-  # 该设置用于过滤过程值的突变，当为整数值时代表单位毫秒
-  $FT_time: 3000
+  # 该设置用于过滤过程值的突变，当为整数值时，代表毫秒数
+  $FT_time: 3000  # 也可以设置为 `T#3S`
+
+- comment: 泵进口压力         # 类型: 字符串
+  DB: [PIT002, DB101]
+  input: [AI01-01, PIW512]
+
+  # 报警便能初始值
+  # 类型: null | Bool字面量
+  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
+  # $enable_AH 高高报警值
+  $enable_AH: true   # 代表初始时允许AH报警，这时必须定义 $AH_limit
+  # $enable_WH 高警告值
+  $enable_WH: true   # 代表初始时允许WH报警，这时必须定义 $WH_limit
+  # $enable_WL 低警告值
+  $enable_WL: ~      # 相当于省略，这时由 $WL_limit 决定初始时是否允许WL报警
+  # $enable_AL 低低报警值
+  $enable_AL: false  # 代表初始时不允许AL报警，可以省略定义 $AL_limit
+
+  # 报警初始值
+  # 以下相当于把模板tubepress的部分数据进行更改
+  $AL_limit: ~       # 引用对象无法删除某个属性，但可以将该属性设置为 null 达到等效作用
+  $WH_limit: 2.0     # 修改$WH_limit模板的值
+
+  # yaml语法"<<: *anchor" 表示将锚点anchor的内容合并在这里
+  <<: *tubepress
 
 - comment: 泵进口温度
   DB: [TIT001, DB+]
