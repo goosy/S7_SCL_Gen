@@ -7,7 +7,7 @@ import { supported_features, converter } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
 import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS, WRONGTYPESYMBOLS } from './symbols.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
-import { pad_right } from "./value.js";
+import { pad_right, nullable_value, STRING } from "./value.js";
 
 /**
  * @typedef {import('yaml').Document} Document - YAML Document
@@ -172,15 +172,12 @@ async function add_conf(document) {
     CPU.platform ??= platform;
 
     // external code
-    const includes_options = { CPU: CPU.name, feature };
-    const {
-        code: loop_additional_code,
-        gcl_list: _
-    } = await parse_includes(document.get('loop_additional_code'), includes_options);
+    const loop_begin = nullable_value(STRING, document.get('loop_begin'))?.value;
+    const loop_end = nullable_value(STRING, document.get('loop_end'))?.value;
     const {
         code: includes,
         gcl_list: includes_gcls
-    } = await parse_includes(document.get('includes'), includes_options);
+    } = await parse_includes(document.get('includes'), { CPU: CPU.name, feature });
 
     // 包含文件符号 [YAMLSeq symbol]
     includes_gcls.forEach(gcl => {
@@ -228,7 +225,7 @@ async function add_conf(document) {
     const options = document.get('options')?.toJSON() ?? {};
     const name = CPU.name;
     if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
-    const area = { document, list, includes, files, loop_additional_code, options };
+    const area = { document, list, includes, files, loop_begin, loop_end, options };
     const initialize_list = converter[feature].initialize_list;
     if (typeof initialize_list === 'function') initialize_list(area);
     conf_list[feature].push(area);

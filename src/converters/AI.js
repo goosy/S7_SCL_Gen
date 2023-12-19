@@ -46,7 +46,9 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
-BEGIN{{#for AI in list}}
+BEGIN{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
+{{#for AI in list}}
 {{#if AI.DB && AI.input}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
 }}{{AI.DB.value}}(AI := {{AI.input.value}}{{
@@ -56,8 +58,8 @@ BEGIN{{#for AI in list}}
     #if AI.enable_AL != undefined}}, enable_AL := {{AI.enable_AL.value}}{{#endif
     }}); {{
 #endif AI.}}// {{AI.comment}}{{#endfor AI}}
-{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
+{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -124,7 +126,7 @@ export function initialize_list(area) {
 
 export function gen(AI_list) {
     const rules = [];
-    AI_list.forEach(({ document, includes, loop_additional_code, list, options = {} }) => {
+    AI_list.forEach(({ document, includes, loop_begin, loop_end, list, options = {} }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         const { output_file = LOOP_NAME } = options;
@@ -135,7 +137,8 @@ export function gen(AI_list) {
                 platform,
                 LOOP_NAME,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 list,
                 gcl,
             }

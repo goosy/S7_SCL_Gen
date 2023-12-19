@@ -23,4 +23,11 @@ list : # FM350-2 模块列表
   module_addr: 1008          # 类型: 正整数
   count_DB: [PI02_CNT, DB+]  # 专用计数块
   DB: [PI_02, DB+]            # 背景块，存放最终结果
+
+# 用户自写SCL代码，放在循环的开始和结束处。
+loop_begin: |-
+  // 这里的代码将在 PI_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 PI_Loop 循环结束时执行
+
 ...

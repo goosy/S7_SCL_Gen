@@ -51,4 +51,10 @@ list:
   input: [pump_run, I22.5]       # 泵运行
   $time: 300000                  # 屏蔽联锁时间
 
+# 用户自写SCL代码，放在循环的开始和结束处。
+loop_begin: |-
+  // 这里的代码将在 RP_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 RP_Loop 循环结束时执行
+
 ...

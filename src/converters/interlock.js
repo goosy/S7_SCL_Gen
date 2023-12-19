@@ -39,10 +39,9 @@ VAR_TEMP
     output : BOOL ; // 输出
 END_VAR
 
-BEGIN
-{{#if loop_additional_code}}
-{{loop_additional_code}}
-{{#endif}}{{#for interlock in list}}
+BEGIN{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
+{{#for interlock in list}}
 // {{interlock.comment}}{{#for assign in interlock.read_list}}
 {{assign.assign_read}}{{#endfor assign}}
 reset := NOT {{interlock.DB.value}}.enable{{#for reset in interlock.reset_list}}
@@ -64,7 +63,8 @@ END_IF;
 // 附加输出{{#for assign in interlock.write_list}}
 {{assign.assign_write}}{{#endfor}}{{#if interlock.extra_code}}
 {{interlock.extra_code}}{{#endif extra_code}}
-{{#endfor interlock}}
+{{#endfor interlock}}{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `
 
@@ -332,7 +332,7 @@ export function build_list({ list }) {
 
 export function gen(interlock_list) {
     const rules = [];
-    interlock_list.forEach(({ document, includes, loop_additional_code, list }) => {
+    interlock_list.forEach(({ document, includes, loop_begin, loop_end, list }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         rules.push({
@@ -340,7 +340,8 @@ export function gen(interlock_list) {
             "tags": {
                 platform,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 LOOP_NAME,
                 list,
                 gcl,

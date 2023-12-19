@@ -43,8 +43,8 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
-BEGIN{{#if loop_additional_code}}
-{{loop_additional_code}}
+BEGIN{{#if loop_begin}}
+{{loop_begin}}
 {{#endif}}{{#for alarm_item in list}}
 {{#if alarm_item.DB}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
@@ -55,6 +55,8 @@ BEGIN{{#if loop_additional_code}}
     #if alarm_item.enable_WL != undefined}}, enable_WL := {{alarm_item.enable_WL.value}}{{#endif}}{{
     #if alarm_item.enable_AL != undefined}}, enable_AL := {{alarm_item.enable_AL.value}}{{#endif}}{{
 #endif alarm_item.input}}); {{#endif alarm_item.DB}}// {{alarm_item.comment}}{{#endfor alarm_item}}
+{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -123,7 +125,7 @@ export function initialize_list(area) {
 
 export function gen(alarm_list) {
     const rules = [];
-    alarm_list.forEach(({ document, includes, loop_additional_code, list, options = {} }) => {
+    alarm_list.forEach(({ document, includes, loop_begin, loop_end, list, options = {} }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         const { output_file = LOOP_NAME } = options;
@@ -134,7 +136,8 @@ export function gen(alarm_list) {
                 LOOP_NAME,
                 platform,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 list,
                 gcl,
             }

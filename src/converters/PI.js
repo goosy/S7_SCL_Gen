@@ -33,12 +33,13 @@ END_DATA_BLOCK{{#endfor module}}
 
 
 // 主调用
-FUNCTION "{{LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
 {{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
 "{{NAME}}".{{module.DB.value}}(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向{{module.count_DB.value}}
-{{#endfor module}}{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
+{{#endfor module}}{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -118,7 +119,7 @@ export function build_list({ document, list }) {
 
 export function gen(PI_list) {
     const rules = [];
-    PI_list.forEach(({ document, includes, loop_additional_code, list: modules, options }) => {
+    PI_list.forEach(({ document, includes, loop_begin, loop_end, list: modules, options }) => {
         const { CPU, gcl } = document;
         const { output_dir } = CPU;
         const { output_file = LOOP_NAME } = options;
@@ -127,7 +128,8 @@ export function gen(PI_list) {
             "tags": {
                 modules,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 NAME,
                 LOOP_NAME,
                 FM3502_CNT_NAME,

@@ -61,7 +61,9 @@ CONST
     MARCH_STATUS :=  W#16#4;
 END_CONST
 
-BEGIN{{#for valve in list}}
+BEGIN{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
+{{#for valve in list}}
 // {{valve.comment}}{{#if valve.DB}}
 {{#if platform != 'portal'}}"{{NAME}}".{{#endif platform
 }}{{valve.DB.value}}({{#if valve.enable_AH != undefined}}
@@ -88,8 +90,8 @@ BEGIN{{#for valve in list}}
 {{valve.control_action.value}} := {{valve.DB.value}}.control_action;{{#endif}}{{
 
 #endif platform}}
-{{#endif valve.DB}}{{#endfor valve}}{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
+{{#endif valve.DB}}{{#endfor valve}}{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -157,7 +159,7 @@ export function initialize_list(area) {
 export function gen(valve_list) {
     const rules = [];
 
-    valve_list.forEach(({ document, includes, loop_additional_code, list }) => {
+    valve_list.forEach(({ document, includes, loop_begin, loop_end, list }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         rules.push({
@@ -165,7 +167,8 @@ export function gen(valve_list) {
             "tags": {
                 platform,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 NAME,
                 LOOP_NAME,
                 list,

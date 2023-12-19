@@ -32,7 +32,9 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
-BEGIN{{#for motor in list}}{{len = motor.input_paras.length + motor.output_paras.length}}
+BEGIN{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
+{{#for motor in list}}{{len = motor.input_paras.length + motor.output_paras.length}}
 // {{motor.comment}}{{#if motor.DB}}
 {{#if platform == 'step7'}}"{{NAME}}".{{#endif platform
 }}{{motor.DB.value}}({{
@@ -50,8 +52,8 @@ BEGIN{{#for motor in list}}{{len = motor.input_paras.length + motor.output_paras
 {{para}};{{#endfor para}}{{
 
 #endif platform}}
-{{#endif motor.DB}}{{#endfor motor}}{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
+{{#endif motor.DB}}{{#endfor motor}}{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -112,7 +114,7 @@ export function build_list({ list }) {
 
 export function gen(motor_list) {
     const rules = [];
-    motor_list.forEach(({ document, includes, loop_additional_code, list }) => {
+    motor_list.forEach(({ document, includes, loop_begin, loop_end, list }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         list.forEach(motor => {
@@ -139,7 +141,8 @@ export function gen(motor_list) {
             "tags": {
                 platform,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 NAME,
                 LOOP_NAME,
                 list,

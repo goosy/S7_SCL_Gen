@@ -78,7 +78,8 @@ BEGIN{{#for module in modules}}
 {{#endfor module}}END_DATA_BLOCK
 
 // 主调用
-FUNCTION "{{LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
 {{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
 "{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}".{{module.DB.value}}({{#if module.customREQ}}
@@ -89,8 +90,8 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 {{#endfor module}}
 // 发送接收块
 {{invoke_code}}
-{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
+{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -244,7 +245,7 @@ export function build_list(SC) {
 
 export function gen(SC_list) {
     const rules = [];
-    SC_list.forEach(({ document, includes, loop_additional_code, invoke_code, list: modules, options }) => {
+    SC_list.forEach(({ document, includes, loop_begin, loop_end, invoke_code, list: modules, options }) => {
         const { CPU, gcl } = document;
         const { output_dir } = CPU;
         const { output_file = LOOP_NAME } = options;
@@ -253,7 +254,8 @@ export function gen(SC_list) {
             "tags": {
                 modules,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 invoke_code,
                 CP340_NAME,
                 CP341_NAME,

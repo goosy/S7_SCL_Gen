@@ -34,14 +34,15 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }{{#endif portal}}
 // 主循环
-BEGIN{{#if loop_additional_code}}
-{{loop_additional_code}}
-
+BEGIN{{#if loop_begin}}
+{{loop_begin}}
 {{#endif}}{{#for RP in list}}
 {{#if platform == 'step7' || platform == 'pcs7'
 }}"{{RP.FB}}".{{#endif platform
 }}{{RP.DB.value}}(IN := {{RP.IN.value}}{{
     #if RP.PT != undefined}}, PT := {{RP.PT}}{{#endif}}); // {{RP.comment}}{{#endfor RP}}
+{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `
 
@@ -102,7 +103,7 @@ export function initialize_list(area) {
 
 export function gen(RP_list) {
     const rules = [];
-    RP_list.forEach(({ document, includes, loop_additional_code, list }) => {
+    RP_list.forEach(({ document, includes, loop_begin, loop_end, list }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         rules.push({
@@ -110,7 +111,8 @@ export function gen(RP_list) {
             "tags": {
                 platform,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 LOOP_NAME,
                 list,
                 gcl,

@@ -149,7 +149,8 @@ END_DATA_BLOCK
 {{#endif conn.$interval_time}}{{#endfor conn}}
 
 // 调用
-FUNCTION "{{LOOP_NAME}}" : VOID
+FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
 {{#for conn in connections}}
 // {{conn.comment}}
 "{{NAME}}".{{conn.DB.value}} ( {{#if conn.interval_time != undefined}}
@@ -159,8 +160,8 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 
 {{#endfor conn}}// 接收块
 {{invoke_code}}
-{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
+{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -311,7 +312,7 @@ export function build_list(MT) {
 
 export function gen(MT_list) {
     const rules = [];
-    MT_list.forEach(({ document, includes, loop_additional_code, invoke_code, list: connections, options }) => {
+    MT_list.forEach(({ document, includes, loop_begin, loop_end, invoke_code, list: connections, options }) => {
         const { CPU, gcl } = document;
         const { output_dir } = CPU;
         const { output_file = LOOP_NAME } = options;
@@ -319,7 +320,8 @@ export function gen(MT_list) {
             "name": `${output_dir}/${output_file}.scl`,
             "tags": {
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 invoke_code,
                 connections,
                 NAME,

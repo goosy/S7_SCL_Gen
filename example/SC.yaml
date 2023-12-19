@@ -118,13 +118,13 @@ list : # CP 模块列表
 
   - comment: 天然气3#流量计             # 非modbus发送，不要有deivce_ID属性，直接在send_data属性上写16进制发送数据
     # 可以通过设置 uninvoke 为 true，让转换程序不再自动调用FB，
-    # 这样方便自定义函数处理发送与接收数据，参见下方loop_additional_code处
+    # 这样方便自定义函数处理发送与接收数据，参见下方loop_end处
     # 自定义函数可通过 SC_polls_DB.poll_{序号}_data.{数据符号} 来处理发送数据
     # 比如本poll的发送数据SCL符号地址为：
     #   `"SC_polls_DB".polls_HK.poll_2.sendLength` 发送长度
     #   `"SC_polls_DB".poll_2_data.send_data` (ARRAY OF BYTE)
     # 如果 send_data 要动态变化，send_data要填充0满足最大长度
-    uninvoke: true                     # 取消自动调用，参看下方 loop_additional_code 处的手动调用
+    uninvoke: true                     # 取消自动调用，参看下方 loop_end 处的手动调用
     send_data: 03 03 00 00 18 8E 5D    # send_data 必须是一个由空格分隔的16进制字节的字符串
     recv_DB: GAS                       # 接收块，引用GAS符号
     recv_start: 20                     # 要注意开始地址不一样
@@ -139,9 +139,12 @@ list : # CP 模块列表
     recv_DB: cmd_ret
     recv_start: 0
 
-# 额外代码，合并到CP_Loop FC块结尾
-# uninvoke poll 的处理代码应当放在这里
-loop_additional_code: |
+# 用户自写SCL代码，放在循环的开始和结束处。
+loop_begin: |-
+  // 这里的代码将在 AI_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 AI_Loop 循环结束时执行
+  // uninvoke poll 的处理代码应当放在这里
   "FXGasFlow".GAS(has_received := M10.0);
 
 ...

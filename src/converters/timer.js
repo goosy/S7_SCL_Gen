@@ -29,7 +29,8 @@ END_DATA_BLOCK
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }{{#endif portal}}
 // 计时主循环
-BEGIN
+BEGIN{{#if loop_begin}}
+{{loop_begin}}{{#endif}}
 {{#for timer in list}}
 // {{timer.comment}}
 {{#if platform != 'portal'}}"{{NAME}}".{{#endif platform
@@ -37,8 +38,8 @@ BEGIN
     enable := {{timer.enable.value}},{{#endif}}{{#if timer.reset}}
     reset := {{timer.reset.value}},{{#endif}}{{#if timer.enable || timer.reset}}
     {{#endif}}PPS := {{timer.PPS.value}});
-{{#endfor timer}}{{#if loop_additional_code}}
-{{loop_additional_code}}{{#endif}}
+{{#endfor timer}}{{#if loop_end}}
+{{loop_end}}{{#endif}}
 END_FUNCTION
 `;
 
@@ -72,7 +73,7 @@ export function initialize_list(area) {
 
 export function gen(timer_list) {
     const rules = [];
-    timer_list.forEach(({ document, includes, loop_additional_code, list }) => {
+    timer_list.forEach(({ document, includes, loop_begin, loop_end, list }) => {
         const { CPU, gcl } = document;
         const { output_dir, platform } = CPU;
         rules.push({
@@ -80,7 +81,8 @@ export function gen(timer_list) {
             "tags": {
                 platform,
                 includes,
-                loop_additional_code,
+                loop_begin,
+                loop_end,
                 NAME,
                 LOOP_NAME,
                 list,
@@ -92,7 +94,7 @@ export function gen(timer_list) {
 }
 
 export function gen_copy_list(item) {
-    const filename = item.document.CPU.platform == 'portal' ? `${NAME}(portal).scl`: `${NAME}.scl`;
+    const filename = item.document.CPU.platform == 'portal' ? `${NAME}(portal).scl` : `${NAME}.scl`;
     const src = posix.join(context.module_path, NAME, filename);
     const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
     return [{ src, dst }];
