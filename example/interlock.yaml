@@ -1,12 +1,20 @@
 ---
+# interlock 实现根据信号状态触发输出，可以用于报警或联锁
+# 可以在本配置中定义多组联锁
+# 每一组联锁由以下几个部分组成：
+# - comment: 该组联锁的注释
+# - DB: 该组联锁使用的DB块
+# - data: 该组联锁的中间数据，每一项数据可以自动上传到HMI，即有S7_m_c属性
+# - input: 触发该组联锁的输入列表，每一项输入都可以定义触发条件
+# - output: 该组联锁的输出列表
+
 #CPU: AS1           # 指示属于哪一个CPU
 #feature: interlock # 指示本配置为生成联锁代码
-
 name: AS1-interlock # 相当于上面2条被注释的指令
 
 includes: ~
 
-symbols:  
+symbols:
 # 系统已有1个内置符号，其内容由本程序自动生成:
 # - [Interlock_Loop, FC518]   主调用函数，在OB中加入对它的调用。
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
@@ -17,116 +25,213 @@ symbols:
 - [DI02-13, I5.4]
 - [DI02-16, I5.7]
 - [DI02-18, I6.1]
+- [DI02-19, I6.2]
+- [DI02-20, I6.3]
+- [DI02-21, I6.4]
 - [DO04-01, Q6.0]
+- [DO04-02, Q6.1]
+- [DO04-03, Q6.2]
 
 list :
 
-# 定义: interlock_item对象
-# 该对象包含以下属性:
-#   name    暴露给 OS 的变量名称，系统会自动加上 S7_m_c
-#   target  本项相关联过程值来源，类型为S7符号或SCL表达式。
-#           如果省略target，该项的值无法输入或输出，只能人工改变。
-#   comment 该项的注释
+# === 例1 一个简单的联锁
+- comment: 声光报警
+  DB: [IL_ESDBTN, DB121]
+  data:
+  - {name: ESDBTN, read: DI02-18, comment: 人工急停按钮}  # 表示ESDBTN字段从DI02-18读值
+  - {name: GIA001, read: DI02-20, comment: 可燃气报警}
+  - {name: RSTBTN, read: DI02-21, comment: 人工复位按钮}
+  - {name: SL, write: DO04-01, comment: 声光报警DO}      # 表示SL字段输出到DO04-01
+  input:
+  - ESDBTN # 在人工急停按钮信号的上升沿触发
+  - GIA001 # 在可燃气报警信号的上升沿触发
+  reset:
+  - RSTBTN # 取消报警，即联锁复位
+  output:
+  - SL
 
+# === 例2 详细用例
 - comment: 外输泵房间联锁
 
   ############################################################
-  # 下方会自动生成DB块并构建必要的内部结构，大致结构为:
-  #     DB.<input_name_1>   输入1 名称由input_list的每项决定
-  #     DB.<input_name_2>   输入2 名称由input_list的每项决定
-  #     ......
-  #     DB.<input_name_n>   输入n 名称由input_list的每项决定
-  #     DB.test             测试用
-  #     DB.reset            重置输出用，会将DB.output置0
-  #     DB.<output_name>    联锁输出
-  #                         名称由output项决定，默认为output
-  #                         值由 input_list 每项的上升沿进行 OR 运算
-  #     DB.input_1_follower 内部数据用于跟踪上升沿
-  #     ......
-  #     DB.input_n_follower 内部数据数量与input_list对应
-  #     DB.test_follower    内部数据用于跟踪DB.test上升沿
+  # DB块定义
   # 类型: S7符号定义 | S7符号引用
-  DB: [pump_gas, DB121] # 本例DB块名为"pump_gas"
+
+  # 转换程序会自动生成DB块并构建必要的内部结构，大致结构为:
+  #     DB.enable           允许联锁，默认为true，可省略，该项具有S7_m_c属性
+  #     DB.test             测试用，该项具有S7_m_c属性
+  #     DB.reset            重置输出用，会将DB.output复位，该项具有S7_m_c属性
+  #     DB.output           联锁输出，该项具有S7_m_c属性
+  #                         值由 input 每项的触发条件进行 OR 运算
+  #
+  #     DB.<data_name_1>    名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+  #     DB.<data_name_2>    名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+  #     ......
+  #     DB.<data_name_n>    名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+  #
+  #     以下用于跟踪状态
+  #     DB.input_1_follower 内部数据用于跟踪边沿
+  #     ......
+  #     DB.input_n_follower 内部数据用于跟踪边沿，数量与边沿触发项对应
+  #     DB.test_follower    内部数据用于跟踪DB.test边沿
+
+  DB: [IL_pump, DB122] # 本例DB块名为"IL_pump"
+  ############################################################
+
+
+  # 注意：由上面的DB结构可知
+  # 同一个联锁大项下面
+  # data input reset output 四部分的每一小项的name不能重复
+  # 否则会造成DB字段重复，会报错。
+
+
+  ############################################################
+  # 改变所有输入项的默认触发方式，可省略
+  # 省略时为 rising
+  # 这也是能改变内置输入项 test 触发类型的唯一方式
+  # 以下为可用值：
+  #     rising     上升沿
+  #     falling    下降沿
+  #     change     变化边沿
+  #     on         信号接通
+  #     off        信号断开
+  type:  rising
+  ############################################################
+
+
+  ############################################################
+  # 中间数据列表，每一项的值是一个布尔值，可以自定义数据来源和数据目标。
+  # 中间数据独特作用是向HMI传递数据
+  # 同时，也能将它用于自定义值的传递，比如根据联锁的结果进行判断后，是否去关阀关电机。
+  # 注意，中间数据本身并不意味着一定参与联锁运算，但实际使用中一般代表要联锁的数据。
+  data:
+  # 每一输入项类型为 data_item 对象，包含以下属性:
+  #   name    暴露给 OS 的变量名称
+  #           必填项，系统会自动在对应DB字段加上 S7_m_c 属性
+  #   read    本项读取的过程值来源，可省略
+  #           类型为S7符号定义或S7符号引用或SCL表达式
+  #   write   本项写入至过程值目标，可省略
+  #           类型为S7符号定义或S7符号引用（不能是表达式）
+  #   comment 该项的注释，可省略
+  - comment: 温度高
+    # 自定义在DB中的名称
+    name: temperature_AH
+    # 读取值可以是一个SCL表达式
+    read: '"TIT-1201".AH_Flag'
+  - comment: 外输泵润滑系统正常
+    name: lubrication_work
+    # 读取值，可以是一个S7符号
+    read: [DI02-09, I5.0]
+  - comment: 停止冷却水电机                  # 用中间数据实现条件停电机
+    name: stop_WCM
+    read: IL_pump.output AND MOT0101.run    # 当联锁启动并且电机在运行时
+    write: MOT0101.E_stop_CMD               # 输出到S7表达式，发出关电机命令
+  - {name: PowerReady, read: DI02-12, comment: 高压到位}
+  - {name: reset_button, read: DI02-13, comment: 复位按钮}
+  - {name: HLAlarm, write: DO04-02, comment: 上级报警}
+  - name: mytest # 仅有名称，由HMI控制值
   ############################################################
 
   ############################################################
-  # 输入列表，每一输入项指代的值是一个布尔值，在输入项的上升沿去置位 DB.output
-  # 有 name 属性的input会加入到DB块的结构中
-  input_list:
-  # 每一输入项类型: interlock_item对象 | S7符号定义 | S7符号引用 | SCL表达式
+  # 输入列表，每一项代表一个信号，它的最终值是一个布尔值
+  input:
+  # 每一输入项可以包含以下属性:
+  #   read    本项的值读取自过程值，必填项
+  #           类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+  #   type    指示本输入项的触发类型，通常省略
+  #           省略时由上一级 type 决定每一个输入项的默认触发类型
+  #   comment 该项的注释，可省略
+  - comment: 外输泵错误
+    # 触发过程值是一个S7符号
+    read: DI02-10
+  - comment: 外输泵润滑系统
+    # 触发过程值是一个 data 项名称
+    read: lubrication_work
+    type: falling
+  - comment: 外输泵冷却水工作正常
+    # 触发过程值是一个SCL表达式
+    read: WCS.working XOR MOT0101.run
+    # 触发类型为接通，保证电机运行去总是联锁
+    type: on
+  - comment: 外输泵高压失电
+    # 触发过程值是一个SCL表达式
+    # 注意，表达式中不能直接写 data 项名称，必须如下使用加DB名称的完整SCL地址
+    read: '"IL_pump".PowerReady'
+    # 触发类型为断开，保证无高压时联锁报警
+    type: off
 
-  # 以下输入项使用interlock_item对象
-  # 注意它的name值不允许等于"test"，它已保留为测试输入。
-  # 程序已内置 DB.test 的无数据源的输入项，相当于 `{name: test}`，用于测试。
-  - {target: [DI02-09, I5.0], name: GIA_1201A, comment: 外输泵可燃气浓度高报警}
-  # 没有 name 属性的项，指示不会建立DB字段，不会上传到HMI
-  - {target: DI02-10, comment: 加热炉可燃气浓度高报警}
-  # 没有 target 属性的项，指示该input没有过程数据源，只能通过HMI(OS)操作
-  - {name: mytest}
-
-  # 如果interlock_item对象只有一个target属性，而该属性值为S7符号，则可以将输入项简写为S7符号。
-  # 符号定义和符号引用都可以。
-  # 这种输入项没有注释信息，也没有s7_m_c属性。
-  - DI02-11            # 符号引用作为输入项，与 `{target: DI02-11}` 等效
-  - [DI02-12, I5.3]    # 符号定义作为输入项，与 `{target: [DI02-12, I5.3]}` 等效
-
-  # 当输入项是一个SCL表达式时，运行中以表达式的值作为该输入项
-  # 这种输入项转换器不负责检查有效性，同样没有注释信息，更没有s7_m_c属性。
-  - '"TIT-1201".AH_Flag'
+  # 通常上面定义的完整形式过于复杂，日常使用时的情形通常比较简单，可以使用简化形式
+  # 即只使用输入项的 read 属性，整个输入项为简化为 read 的值
+  # 编译器会自动转换为完整的输入项对象，默认rising类型，不单独复位触发。
+  - temperature_AH        # data项名称作为输入项，与 `{read: temperature_AH}` 等效
+  - mytest                # data项名称作为输入项，与 `{read: mytest}` 等效
+  - DI02-11               # 符号引用作为输入项，与 `{read: DI02-11}` 等效
+  - [DI02-14, I5.5]       # 符号定义作为输入项，与 `{read: [DI02-14, I5.5]}` 等效
+  - '"PIT-1201".AH_Flag'  # SCL表达式作为该输入项，与 `{read: '"PIT-1201".AH_Flag'}` 等效
   ############################################################
 
   ############################################################
-  # 复位列表
-  # 有任何一项的值为 true ，就会将所有输出复位。
-  # DB内置一个 reset 复位项，故下方列表中的项，名称不能为 reset
-  reset_list:
-  # 类型: interlock_item对象 | S7符号定义 | S7符号引用 | SCL表达式
-  # 标准 reset 项
-  - {target: DI02-13, name: reset_button, comment: 复位按钮1}
-  - {target: [DI02-14, I5.5], comment: 复位按钮2}
-  - [DI02-15, I5.6, ~, 复位按钮3]
-  - DI02-16
-  - Alarm_SL.reset     # SCL表达式作为reset输入之一
+  # 复位列表，每一项为一个复位，它代表最终的值是一个布尔值
+  # 有任何一项为 true ，就会将本联锁输出复位。
+  reset:
+  # 每一个复位关联项类型为:
+  #   data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+  # 输出关联项的值都是布尔值
+  - reset_button       # data项名称
+  - [DI02-15, I5.6]    # S7符号定义
+  - DI02-16            # S7符号引用
+  - Alarm_SL.reset     # SCL表达式
   ############################################################
 
   ############################################################
-  # 输出
-  # 联锁的输出包括2个方面：output 和 output_list
-  # 联锁输出值是一个BOOL项，由输入项上升沿 OR 运算而得。
-  # reset 会复位输出
+  # 联锁输出
+  # 联锁输出值是一个BOOL项，由所有输入项的触发条件 OR 运算而得。
+  # 任何一 reset 项会复位输出
+  # 系统内置了 DB.output 字段，具有 S7_m_c 属性，可以被HMI读取，
+  output:
 
-  # output 指令会自动生成 DB.<output_name> 暴露给OS，即自动加上 S7_m_c 属性。
-  # 类型: interlock_item对象 | 字符串 
-  # 值类型: bool (PLC会自动保持与联锁输出值一致)
-  # interlock_item对象不能设定过程源target，如果需要关联输出参见 output_list。
-  # interlock_item对象的 name 属性决定DB.<output_name>，本例会生成 DB.gas_action
-  # 大部分情况下不用配置 output 省略时会默认生成的 DB.output
-  output: {name: gas_action, comment: 复位按钮}
-  # 没有注释属性时，上一行可以简化成只使用字符串 `output: gas_action`
-
-  # 输出关联项，不会出现在DB结构中，DB.output 值会实时关联至 DB.output_list 的每一项。
-  output_list: 
-  # output_list 的每一个输出关联项都是布尔值，关联目标会保证与联锁输出值相同。
-  # 每一输出项类型: S7符号定义 | S7符号引用 | SCL表达式
-  # 无论是S7符号或SCL表达式，它指代的源必须可赋值的布尔地址，比如
+  # 每一输出关联项可以包含以下属性:
+  #   write      本项的值输出的过程值，必填项
+  #              类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+  #   inversion  是否反相输出，boolean字面量，可省略，默认为false
+  #   comment    该项的注释，可省略
+  # 输出关联项的值都是布尔值，联锁程序会保证关联过程值与联锁输出值相同。
+  # output值必须指向一个可赋值的S7地址，比如：
   #   正确: DO04-02                 错误: DI02-12
   #   正确: AFan_1204A.start_CMD    错误: 'NOT AFan_1204A.run'
   # 转换器无法查验输出项的合理性
-  # 如果省略，转换程序不生成任何关联输出。这时可以用 DB.<output_name> 来自行编程或HMI处理
-  - [DI02-17, I6.0, ~, 轴流风机电源]
-  - DI02-18
-  - AFan_1204A.start_CMD # 轴流风机，注意
+  # 如果没有任何输出项，转换程序不生成任何关联输出。这时可以用 DB.output 来自行编程或HMI处理
+  - {write: DO04-03, comment: 本地声光报警} # 输出到S7符号
+
+  # 通常上面定义的完整形式过于复杂，日常使用时的情形通常比较简单，可以使用简化形式
+  # 即只使用输出项的 write 属性，整个输入项为简化为 write 的值
+  # 编译器会自动转换为完整的输入项对象，默认不反相，不单独复位。
+  - HLAlarm                                # data 项，该 data 项不能有input属性
+  - [DO04-04, Q6.3]                        # S7符号
   ############################################################
 
-- comment: 声光报警
-  DB: [sound_light, DB122]
-  $enable: false # boolean 字面量，值只能为true或false，代表初始时是否允许报警连锁，非法输入会默认为true。可在运行中由HMI改变本值
-  input_list:
-  - {name: MBN, target: [DI02-19, I6.2], comment: 人工报警按钮}
-  - '"pump_gas".output'
-  # 无 output 指令，则生成默认的 DB.output
-  output_list: 
-  - DO04-01 # 声光报警DO点
+# === 例3
+- comment: 事件播报
+  DB: [IL_sound, DB123]
+
+  # boolean 字面量，值只能为true或false
+  # 初始时是否允许报警连锁，可省略，默认为 true。
+  # 非 false 值的其它输入会都视为 true
+  $enable: false
+
+  # 默认触发方式为 on
+  # test 项的触发类型也会变更为 on
+  type:  on
+
+  data:
+  - {name: WCount, read: DI02-19, comment: 计件器}
+  input:
+  - WCount
+  - '"IL_ESDBTN".output'
+  output:
+  - comment: 广播设备DO点
+    write: [DO04-05, Q6.4]
+    inversion: TRUE        # 反相输出，代表断开时广播启动
 
 loop_additional_code: | #这里的代码会加入 Interlock_Loop 函数体中
   // 在此写需要额外增加的SCL代码

@@ -357,12 +357,19 @@ export function add_symbols(document, symbol_list) {
     return [];
 }
 
+function isS7Express(str){
+    if (typeof str !== 'string') return false;
+    str = str.replace(/"[^"]+"/g, '');
+    return /,|\+|-|\*|\/|\bnot\b|\band\b|\bor\b|\bxor\b|\bdiv\b|\bmod\b|\bshl\b|\bshr\b/i.test(str);
+}
 function ref(item) {
     let ret = null;
     if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+        const isExpress = isS7Express(item);
         ret = {
             value: item,
             type: 'ref',
+            isExpress,
             toString() {
                 return this.value.toString();
             }
