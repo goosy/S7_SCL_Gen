@@ -36,12 +36,13 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 // 主循环
 BEGIN{{#if loop_begin}}
 {{loop_begin}}
+
 {{#endif}}{{#for RP in list}}
-{{#if platform == 'step7' || platform == 'pcs7'
-}}"{{RP.FB}}".{{#endif platform
+{{#if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{#endif platform
 }}{{RP.DB.value}}(IN := {{RP.IN.value}}{{
-    #if RP.PT != undefined}}, PT := {{RP.PT}}{{#endif}}); // {{RP.comment}}{{#endfor RP}}
-{{#if loop_end}}
+    #if RP.PT != undefined}}, PT := {{RP.PT}}{{
+#endif}}); // {{RP.comment}}{{#endfor RP}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `

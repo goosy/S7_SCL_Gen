@@ -45,13 +45,11 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 VERSION : 0.1{{#endif platform}}
 BEGIN{{#if loop_begin}}
 {{loop_begin}}
+
 {{#endif}}{{#for alarm in list}}
-{{
-
-#if alarm.DB && alarm.input_paras}}{{#if platform == 'step7' || platform == 'pcs7'
-}}"{{NAME}}".{{#endif platform
+{{#if alarm.DB && alarm.input_paras
+}}{{#if platform == 'step7' || platform == 'pcs7'}}"{{NAME}}".{{#endif platform
 }}{{alarm.DB.value}}({{alarm.input_paras}}); {{#endif alarm invoke
-
 }}// {{alarm.comment}}{{#endfor alarm}}{{#if loop_end}}
 
 {{loop_end}}{{#endif}}

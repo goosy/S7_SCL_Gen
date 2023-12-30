@@ -31,14 +31,15 @@ BEGIN
     CH_ADR := {{module.channel_no.dwordHEX}}; // 通道地址，即模块地址乘8
 END_DATA_BLOCK{{#endfor module}}
 
-
 // 主调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for no, module in modules}}
+{{loop_begin}}
+
+{{#endif}}{{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
-"{{NAME}}".{{module.DB.value}}(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向{{module.count_DB.value}}
-{{#endfor module}}{{#if loop_end}}
+"{{NAME}}".{{module.DB.value}}(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向{{module.count_DB.value}}{{
+#endfor module}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;

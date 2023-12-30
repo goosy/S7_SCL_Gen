@@ -79,8 +79,9 @@ BEGIN{{#for module in modules}}
 
 // 主调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for no, module in modules}}
+{{loop_begin}}
+
+{{#endif}}{{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
 "{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}".{{module.DB.value}}({{#if module.customREQ}}
     customTrigger := TRUE,
@@ -89,8 +90,8 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
     DATA          := "{{POLLS_NAME}}".{{module.name}});
 {{#endfor module}}
 // 发送接收块
-{{invoke_code}}
-{{#if loop_end}}
+{{invoke_code}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;

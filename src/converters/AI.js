@@ -47,14 +47,12 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
 BEGIN{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for AI in list}}
-{{
+{{loop_begin}}
 
-#if AI.DB && AI.input_paras}}{{#if platform == 'step7' || platform == 'pcs7'
-}}"{{NAME}}".{{#endif platform
+{{#endif}}{{#for AI in list}}
+{{#if AI.DB && AI.input_paras
+}}{{#if platform == 'step7' || platform == 'pcs7'}}"{{NAME}}".{{#endif platform
 }}{{AI.DB.value}}({{AI.input_paras}}); {{#endif AI invoke
-
 }}// {{AI.comment}}{{#endfor AI}}{{#if loop_end}}
 
 {{loop_end}}{{#endif}}

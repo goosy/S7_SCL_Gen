@@ -62,8 +62,9 @@ CONST
 END_CONST
 
 BEGIN{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for valve in list}}
+{{loop_begin}}
+
+{{#endif}}{{#for valve in list}}
 // {{valve.comment}}{{#if valve.DB}}
 {{#if platform != 'portal'}}"{{NAME}}".{{#endif platform
 }}{{valve.DB.value}}({{#if valve.enable_AH != undefined}}
@@ -91,6 +92,7 @@ BEGIN{{#if loop_begin}}
 
 #endif platform}}
 {{#endif valve.DB}}{{#endfor valve}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;

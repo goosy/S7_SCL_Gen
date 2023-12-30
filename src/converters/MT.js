@@ -150,8 +150,9 @@ END_DATA_BLOCK
 
 // 调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for conn in connections}}
+{{loop_begin}}
+
+{{#endif}}{{#for conn in connections}}
 // {{conn.comment}}
 "{{NAME}}".{{conn.DB.value}} ( {{#if conn.interval_time != undefined}}
     intervalTime := {{conn.interval_time.value}},{{#endif}}
@@ -159,8 +160,8 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
     buff  := "{{POLLS_NAME}}".buff);
 
 {{#endfor conn}}// 接收块
-{{invoke_code}}
-{{#if loop_end}}
+{{invoke_code}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;

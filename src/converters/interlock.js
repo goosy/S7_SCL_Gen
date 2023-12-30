@@ -40,8 +40,9 @@ VAR_TEMP
 END_VAR
 
 BEGIN{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for interlock in list}}
+{{loop_begin}}
+
+{{#endif}}{{#for interlock in list}}
 // {{interlock.comment}}{{#for assign in interlock.read_list}}
 {{assign.assign_read}}{{#endfor assign}}
 reset := NOT {{interlock.DB.value}}.enable{{#for reset in interlock.reset_list}}
@@ -64,6 +65,7 @@ END_IF;
 {{assign.assign_write}}{{#endfor}}{{#if interlock.extra_code}}
 {{interlock.extra_code}}{{#endif extra_code}}
 {{#endfor interlock}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `

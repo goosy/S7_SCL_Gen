@@ -30,8 +30,9 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }{{#endif portal}}
 // 计时主循环
 BEGIN{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for timer in list}}
+{{loop_begin}}
+
+{{#endif}}{{#for timer in list}}
 // {{timer.comment}}
 {{#if platform != 'portal'}}"{{NAME}}".{{#endif platform
 }}{{timer.DB.value}}({{#if timer.enable}}
@@ -39,6 +40,7 @@ BEGIN{{#if loop_begin}}
     reset := {{timer.reset.value}},{{#endif}}{{#if timer.enable || timer.reset}}
     {{#endif}}PPS := {{timer.PPS.value}});
 {{#endfor timer}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;

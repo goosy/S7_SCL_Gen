@@ -33,8 +33,9 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
 BEGIN{{#if loop_begin}}
-{{loop_begin}}{{#endif}}
-{{#for motor in list}}{{len = motor.input_paras.length + motor.output_paras.length}}
+{{loop_begin}}
+
+{{#endif}}{{#for motor in list}}{{len = motor.input_paras.length + motor.output_paras.length}}
 // {{motor.comment}}{{#if motor.DB}}
 {{#if platform == 'step7'}}"{{NAME}}".{{#endif platform
 }}{{motor.DB.value}}({{
@@ -53,6 +54,7 @@ BEGIN{{#if loop_begin}}
 
 #endif platform}}
 {{#endif motor.DB}}{{#endfor motor}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;
