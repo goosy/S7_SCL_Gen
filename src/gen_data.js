@@ -265,8 +265,8 @@ async function add_conf(document) {
     const name = CPU.name;
     if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
     const area = { document, list, includes, files, loop_begin, loop_end, options };
-    const initialize_list = _converter.initialize_list;
-    if (typeof initialize_list === 'function') initialize_list(area);
+    // 将 area.list 的每一项由 YAMLNode 转换为可供模板使用的数据对象
+    _converter.initialize_list(area);
     conf_list[feature].push(area);
 }
 

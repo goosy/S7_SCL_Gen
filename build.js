@@ -59,7 +59,18 @@ async function build() {
 
     const converters = {};
     for (const feature of features) {
-        converters[feature] = await import(`./src/converters/${feature}.js`);
+        const converter = await import(`./src/converters/${feature}.js`);
+        converters[feature] = converter;
+        [
+            'is_feature',
+            'initialize_list',
+            'gen',
+            'gen_copy_list'
+        ].forEach(method => {
+            if (typeof converter[method] !== 'function') {
+                throw new Error(`there is no ${method} function in ${feature}.js file.`);
+            }
+        })
     }
     const supported_category = features.map(feature =>
         ({ feature, platforms: JSON.stringify(converters[feature].platforms) })

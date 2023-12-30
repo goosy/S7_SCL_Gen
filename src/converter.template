@@ -1,15 +1,26 @@
 // 本代码为 ./build.js 自动生成
 // ./src/converters 目录下为转换器文件，文件名称必须是 <feature_name>.js 的格式。
 // 转换器文件定义了目前支持的转换功能
+//
 // 每个转换器必须实现
-//   function is_supported    判断是否支持当前转换文档
-//   function gen             生成转换列表，列表可为空，列表的每一项是一个转换对象 { rules, template }
-//   function gen_copy_list   生成复制列表，列表可为空
+// - function is_feature(name: string): boolean
+//       判断是否为当前转换文档
+// - function gen(list: Item[]): ConverItem[]
+//       生成转换列表，列表可为空
+//       列表的每一项是一个转换对象，事实上这个列表就是 area.list
+//       返回一个转换列表，每一项ConverItem为 { rules, template }
+// - function gen_copy_list(area: Area)
+//       生成复制列表，列表可为空
+// - function initialize_list(area: Area)
+//       第一遍扫描文档时构建转换项
+//       主要是将 area.list 的每一项由 YAMLNode 转换为可供模板使用的数据对象
+//
 // 每个转换器可选实现
-//   function initialize_list 第一遍扫描文档时构建转换项
-//   function build_list      第二遍扫描文档时完善转换项
-//   <feature_name>.yaml      该转换类型的内置符号列表，yaml文件放在.js同一文件夹下
-// 如果转换器引用了其它库里的符号，请保证在 `./src/convertersCPU.yaml` 中定义了该符号
+//   function build_list(area: Area)
+//       第二遍扫描文档时完善转换项
+//   <feature_name>.yaml
+//       该yaml文件描述该转换类型的内置符号列表，文件放在.js同一文件夹下
+//       如果转换器引用了其它库里的符号，请保证在 `./src/convertersCPU.yaml` 中定义了该符号
 
 // 引入所有的转换器{{#for feature,converter in converters}}
 import * as {{feature}} from './converters/{{feature}}.js';{{#endfor converter}}
