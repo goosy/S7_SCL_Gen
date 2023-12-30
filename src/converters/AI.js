@@ -15,7 +15,7 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{includes}}
-{{#for AI in list}}{{#if AI.DB && AI.input}}
+{{#for AI in list}}{{#if AI.DB}}
 // AI背景块: {{AI.comment}}
 DATA_BLOCK {{AI.DB.value}}{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'FALSE' }{{#endif portal}}
@@ -40,7 +40,7 @@ BEGIN
     dead_zone := {{AI.$dead_zone}};{{#endif}}{{#if AI.$FT_time !== undefined}}
     FT_time := {{AI.$FT_time.DINT}};{{#endif}}
 END_DATA_BLOCK
-{{#endif AI.}}{{#endfor AI}}
+{{#endif AI.DB}}{{#endfor AI}}
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
@@ -49,16 +49,14 @@ VERSION : 0.1{{#endif platform}}
 BEGIN{{#if loop_begin}}
 {{loop_begin}}{{#endif}}
 {{#for AI in list}}
-{{#if AI.DB && AI.input}}{{#if platform == 'step7' || platform == 'pcs7'
+{{
+
+#if AI.DB && AI.input_paras}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
-}}{{AI.DB.value}}(AI := {{AI.input.value}}{{
-    #if AI.enable_AH != undefined}}, enable_AH := {{AI.enable_AH.value}}{{#endif}}{{
-    #if AI.enable_WH != undefined}}, enable_WH := {{AI.enable_WH.value}}{{#endif}}{{
-    #if AI.enable_WL != undefined}}, enable_WL := {{AI.enable_WL.value}}{{#endif}}{{
-    #if AI.enable_AL != undefined}}, enable_AL := {{AI.enable_AL.value}}{{#endif
-    }}); {{
-#endif AI.}}// {{AI.comment}}{{#endfor AI}}
-{{#if loop_end}}
+}}{{AI.DB.value}}({{AI.input_paras}}); {{#endif AI invoke
+
+}}// {{AI.comment}}{{#endfor AI}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;
@@ -81,7 +79,6 @@ export function initialize_list(area) {
         const input = node.get('input');
         let info = gcl.get_pos_info(...node.range);
         if (!DB && !input) return AI; // 空AI不处理
-        if (!DB || !input) throw new Error(`AI 功能中 DB 和 input 不能只定义1个:${info}`);
         const comment = AI.comment.value;
         make_s7express(AI, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
         make_s7express(AI, 'input', input, document, {
@@ -121,6 +118,30 @@ export function initialize_list(area) {
         AI.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
         AI.$FT_time = nullable_value(TIME, node.get('$FT_time'));
         return AI;
+    });
+}
+
+export function build_list({ list }) {
+    list.forEach(AI => { // 处理配置，形成完整数据
+        function make_paras(para_list) {
+            const input_paras = [];
+            para_list.forEach(_para => {
+                const para_name = _para[0];
+                const para_SCL = _para[1] ?? para_name;
+                const para = AI[para_name];
+                if (para) {
+                    input_paras.push(`${para_SCL} := ${para.value}`);
+                }
+            });
+            return input_paras;
+        }
+        AI.input_paras = make_paras([
+            ['input', 'AI'],
+            ['enable_AH'],
+            ['enable_WH'],
+            ['enable_WL'],
+            ['enable_AL'],
+        ]).join(', ');
     });
 }
 

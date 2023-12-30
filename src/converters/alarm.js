@@ -16,28 +16,28 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{includes}}
-{{#for alarm_item in list}}{{#if alarm_item.DB}}
-// Alarm_Proc 背景块：{{alarm_item.comment}}
-DATA_BLOCK {{alarm_item.DB.value}}{{#if platform == 'portal'}}
+{{#for alarm in list}}{{#if alarm.DB}}
+// Alarm_Proc 背景块：{{alarm.comment}}
+DATA_BLOCK {{alarm.DB.value}}{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'FALSE' }{{#endif portal}}
 AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-    enable_AH := {{alarm_item.$enable_AH}};
-    enable_WH := {{alarm_item.$enable_WH}};
-    enable_WL := {{alarm_item.$enable_WL}};
-    enable_AL := {{alarm_item.$enable_AL}};{{#if alarm_item.$zero !== undefined}}
-    zero := {{alarm_item.$zero}};{{#endif}}{{#if alarm_item.$span !== undefined}}
-    span := {{alarm_item.$span}};{{#endif}}{{#if alarm_item.$AH_limit != null}}
-    AH_limit := {{alarm_item.$AH_limit}};{{#endif}}{{#if alarm_item.$WH_limit != null}}
-    WH_limit := {{alarm_item.$WH_limit}};{{#endif}}{{#if alarm_item.$WL_limit != null}}
-    WL_limit := {{alarm_item.$WL_limit}};{{#endif}}{{#if alarm_item.$AL_limit != null}}
-    AL_limit := {{alarm_item.$AL_limit}};{{#endif}}{{#if alarm_item.$dead_zone != null}}
-    dead_zone := {{alarm_item.$dead_zone}};{{#endif}}{{#if alarm_item.$FT_time != null}}
-    FT_time := {{alarm_item.$FT_time.DINT}};{{#endif}}
+    enable_AH := {{alarm.$enable_AH}};
+    enable_WH := {{alarm.$enable_WH}};
+    enable_WL := {{alarm.$enable_WL}};
+    enable_AL := {{alarm.$enable_AL}};{{#if alarm.$zero !== undefined}}
+    zero := {{alarm.$zero}};{{#endif}}{{#if alarm.$span !== undefined}}
+    span := {{alarm.$span}};{{#endif}}{{#if alarm.$AH_limit != null}}
+    AH_limit := {{alarm.$AH_limit}};{{#endif}}{{#if alarm.$WH_limit != null}}
+    WH_limit := {{alarm.$WH_limit}};{{#endif}}{{#if alarm.$WL_limit != null}}
+    WL_limit := {{alarm.$WL_limit}};{{#endif}}{{#if alarm.$AL_limit != null}}
+    AL_limit := {{alarm.$AL_limit}};{{#endif}}{{#if alarm.$dead_zone != null}}
+    dead_zone := {{alarm.$dead_zone}};{{#endif}}{{#if alarm.$FT_time != null}}
+    FT_time := {{alarm.$FT_time.DINT}};{{#endif}}
 END_DATA_BLOCK
-{{#endif alarm_item.DB}}{{#endfor alarm_item}}
+{{#endif alarm.DB}}{{#endfor alarm}}
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
@@ -45,17 +45,15 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 VERSION : 0.1{{#endif platform}}
 BEGIN{{#if loop_begin}}
 {{loop_begin}}
-{{#endif}}{{#for alarm_item in list}}
-{{#if alarm_item.DB}}{{#if platform == 'step7' || platform == 'pcs7'
+{{#endif}}{{#for alarm in list}}
+{{
+
+#if alarm.DB && alarm.input_paras}}{{#if platform == 'step7' || platform == 'pcs7'
 }}"{{NAME}}".{{#endif platform
-}}{{alarm_item.DB.value}}({{#if alarm_item.input != undefined}}PV := {{alarm_item.input.value}}{{
-    #if alarm_item.invalid != undefined}}, invalid := {{alarm_item.invalid.value}}{{#endif}}{{
-    #if alarm_item.enable_AH != undefined}}, enable_AH := {{alarm_item.enable_AH.value}}{{#endif}}{{
-    #if alarm_item.enable_WH != undefined}}, enable_WH := {{alarm_item.enable_WH.value}}{{#endif}}{{
-    #if alarm_item.enable_WL != undefined}}, enable_WL := {{alarm_item.enable_WL.value}}{{#endif}}{{
-    #if alarm_item.enable_AL != undefined}}, enable_AL := {{alarm_item.enable_AL.value}}{{#endif}}{{
-#endif alarm_item.input}}); {{#endif alarm_item.DB}}// {{alarm_item.comment}}{{#endfor alarm_item}}
-{{#if loop_end}}
+}}{{alarm.DB.value}}({{alarm.input_paras}}); {{#endif alarm invoke
+
+}}// {{alarm.comment}}{{#endfor alarm}}{{#if loop_end}}
+
 {{loop_end}}{{#endif}}
 END_FUNCTION
 `;
@@ -120,6 +118,31 @@ export function initialize_list(area) {
         alarm.$FT_time = nullable_value(TIME, node.get('$FT_time'));
 
         return alarm;
+    });
+}
+
+export function build_list({ list }) {
+    list.forEach(alarm => { // 处理配置，形成完整数据
+        function make_paras(para_list) {
+            const input_paras = [];
+            para_list.forEach(_para => {
+                const para_name = _para[0];
+                const para_SCL = _para[1] ?? para_name;
+                const para = alarm[para_name];
+                if (para) {
+                    input_paras.push(`${para_SCL} := ${para.value}`);
+                }
+            });
+            return input_paras;
+        }
+        alarm.input_paras = make_paras([
+            ['input', 'PV'],
+            ['invalid'],
+            ['enable_AH'],
+            ['enable_WH'],
+            ['enable_WL'],
+            ['enable_AL'],
+        ]).join(', ');
     });
 }
 
