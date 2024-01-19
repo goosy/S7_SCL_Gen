@@ -51,15 +51,15 @@ async function build() {
 
     const files = await readdir(get_module_path('src', 'converters'));
     const features = [];
-    files.filter(file => file.endsWith('.js')).forEach(file => {
-        const feature = file.replace(/\.js$/, '');
+    files.filter(file => file.startsWith('converter_') && file.endsWith('.js')).forEach(file => {
+        const feature = file.replace('converter_', '').replace(/\.js$/, '');
         if (feature === 'CPU') features.unshift(feature); //保证CPU为第一个
         else features.push(feature);
     });
 
     const converters = {};
     for (const feature of features) {
-        const converter = await import(`./src/converters/${feature}.js`);
+        const converter = await import(`./src/converters/converter_${feature}.js`);
         converters[feature] = converter;
         [
             'is_feature',
