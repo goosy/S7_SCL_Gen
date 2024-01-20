@@ -1,7 +1,8 @@
 import { make_s7express } from "../symbols.js";
 import { context } from '../util.js';
-import { BOOL, REAL, STRING, TIME, nullable_value, ensure_value } from '../value.js';
+import { STRING, ensure_value } from '../value.js';
 import { posix } from 'path';
+import { make_alarm_props } from './alarm_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'Alarm_Proc';
@@ -64,56 +65,36 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
-    const gcl = document.gcl;
+    const alarms_list = document.CPU.alarms_list;
     area.list = area.list.map(node => {
+        const location = ensure_value(STRING, node.get('location') ?? '').value;
+        const type = ensure_value(STRING, node.get('type') ?? '').value;
+        const comment = ensure_value(STRING, node.get('comment') ?? location + type).value;
         const alarm = {
             node,
-            comment: new STRING(node.get('comment') ?? '')
+            location,
+            type,
+            comment,
         };
         const DB = node.get('DB');
         const input = node.get('input');
         if (!DB && !input) return alarm; // 空alarm不处理
-        let info = gcl.get_pos_info(...node.range);
 
-        const comment = alarm.comment.value;
         make_s7express(alarm, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
         make_s7express(alarm, 'input', input, document, {
             s7express: true,
             force: { type: 'REAL' },
             default: { comment }
         });
-        alarm.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
-        alarm.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(100);
         const invalid = node.get('invalid');
         make_s7express(alarm, 'invalid', invalid, document, {
             s7express: true,
             force: { type: 'BOOL' },
             default: { comment }
         });
-        ['AH', 'WH', 'WL', 'AL'].forEach(limit => {
-            const enable_str = 'enable_' + limit;
-            const $enable_str = '$' + enable_str;
-            const $limit_str = '$' + limit + '_limit';
-            // as ex: alarm.$AH_limit
-            alarm[$limit_str] = nullable_value(REAL, node.get($limit_str));
-            // as ex: alarm.$enable_AH
-            alarm[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? alarm[$limit_str] != null);
-            // as ex: alarm.enable_AH
-            make_s7express(alarm, enable_str, node.get(enable_str), document, {
-                s7express: true,
-                force: { type: 'BOOL' },
-            });
-        });
 
-        // limitation validity check
-        const AH = alarm.$AH_limit ?? alarm.$WH_limit ?? alarm.$WL_limit ?? alarm.$AL_limit;
-        const WH = alarm.$WH_limit ?? AH;
-        const WL = alarm.$WL_limit ?? WH;
-        const AL = alarm.$AL_limit ?? WL;
-        if (WH > AH || WL > WH || AL > WL)
-            throw new Error(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
-        alarm.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
-        alarm.$FT_time = nullable_value(TIME, node.get('$FT_time'));
+        const alarms = make_alarm_props(alarm, node, document);
+        alarms_list.push(...alarms);
 
         return alarm;
     });

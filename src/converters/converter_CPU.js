@@ -78,7 +78,7 @@ export function initialize_list(area) {
         ];
         add_symbols(document, symbols);
     }
-    CPU.device = document.get('device');
+    CPU.device = nullable_value(STRING, document.get('device'))?.value ?? 'CPU31x-2_PN/DP';
     if (CPU?.device?.startsWith("CPU31")) {
         // 修改300CPU的内置符号 GET PUT
         const symbols = [
@@ -87,6 +87,7 @@ export function initialize_list(area) {
         ];
         add_symbols(document, symbols);
     }
+    CPU.S7Program = nullable_value(STRING, document.get('S7Program'))?.value ?? 'S7Program';
     area.list = area.list.map(node => {
         const FN = { node, comment: new STRING(node.get('comment') ?? '') };
         const comment = FN.comment.value;

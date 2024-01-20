@@ -1,7 +1,8 @@
 import { make_s7express } from "../symbols.js";
-import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
+import { INT, STRING, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
+import { make_alarm_props } from './alarm_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'AI_Proc';
@@ -67,17 +68,20 @@ END_FUNCTION
  */
 export function initialize_list(area) {
     const document = area.document;
-    const gcl = document.gcl;
+    const alarms_list = document.CPU.alarms_list;
     area.list = area.list.map(node => {
+        const location = ensure_value(STRING, node.get('location') ?? '').value;
+        const type = ensure_value(STRING, node.get('type') ?? '').value;
+        const comment = ensure_value(STRING, node.get('comment') ?? location + type).value;
         const AI = {
             node,
-            comment: new STRING(node.get('comment') ?? '')
+            location,
+            type,
+            comment,
         };
         const DB = node.get('DB');
         const input = node.get('input');
-        let info = gcl.get_pos_info(...node.range);
         if (!DB && !input) return AI; // 空AI不处理
-        const comment = AI.comment.value;
         make_s7express(AI, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
         make_s7express(AI, 'input', input, document, {
             s7express: true,
@@ -85,36 +89,13 @@ export function initialize_list(area) {
             default: { comment }
         });
 
-        ['AH', 'WH', 'WL', 'AL'].forEach(limit => {
-            const enable_str = 'enable_' + limit;
-            const $enable_str = '$' + enable_str;
-            const $limit_str = '$' + limit + '_limit';
-            // as ex: AI.$AH_limit
-            AI[$limit_str] = nullable_value(REAL, node.get($limit_str));
-            // as ex: AI.$enable_AH
-            AI[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? AI[$limit_str] != null);
-            // as ex: AI.enable_AH
-            make_s7express(AI, enable_str, node.get(enable_str), document, {
-                s7express: true,
-                force: { type: 'BOOL' },
-            });
-        });
-
         AI.$zero_raw = nullable_value(INT, node.get('$zero_raw'));
         AI.$span_raw = nullable_value(INT, node.get('$span_raw'));
         AI.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
         AI.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
-        AI.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
-        AI.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(100);
-        // limitation validity check
-        const AH = AI.$AH_limit ?? AI.$WH_limit ?? AI.$WL_limit ?? AI.$AL_limit;
-        const WH = AI.$WH_limit ?? AH;
-        const WL = AI.$WL_limit ?? WH;
-        const AL = AI.$AL_limit ?? WL;
-        if (WH > AH || WL > WH || AL > WL)
-            throw new Error(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
-        AI.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
-        AI.$FT_time = nullable_value(TIME, node.get('$FT_time'));
+
+        const alarms = make_alarm_props(AI, node, document);
+        alarms_list.push(...alarms);
         return AI;
     });
 }

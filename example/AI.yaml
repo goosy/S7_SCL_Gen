@@ -29,7 +29,19 @@ template:
 
 list: # 模拟量列表
 
-- comment: 来油压力
+  # 该模拟量的说明
+  # 类型: 字符串字面量
+  # 可省略，默认为 location + type
+- comment: 来油入口压力
+
+  # 仪表的位置，用于产生报警记录
+  # 类型: 字符串字面量
+  location: 来油入口
+
+  # 仪表的类型，用于产生报警记录
+  # 类型: 字符串字面量
+  # 主要值有： 温度 压力 液位 振动 电流 电压 瞬时流量 ……
+  type: 压力
 
   # AI数据块
   # 类型: S7符号定义 | S7符号引用
@@ -64,7 +76,8 @@ list: # 模拟量列表
   # 该设置用于过滤过程值的突变，当为整数值时，代表毫秒数
   $FT_time: 3000  # 也可以设置为 `T#3S`
 
-- comment: 泵进口压力         # 类型: 字符串
+- location: 泵进口
+  type: 压力
   DB: [PIT002, DB101]
   input: [AI01-01, PIW512]
 
@@ -88,7 +101,8 @@ list: # 模拟量列表
   # yaml语法"<<: *anchor" 表示将锚点anchor的内容合并在这里
   <<: *tubepress
 
-- comment: 泵进口温度
+- location: 泵进口
+  type: 温度
   DB: [TIT001, DB+]
   input: [AI01-03, PIW516]   # AI通道
   $zero: -40.0
@@ -101,7 +115,8 @@ list: # 模拟量列表
   enable_AL: 'pump1.run_state'
   $FT_time: TIME#3M         # TIME字面量
 
-- comment: 气温
+- location: 气温
+  type: 温度
   DB: [TIT002, DB+]
   input: [M485-1, MW100]    # M区域
   # 这里取消了所有报警
@@ -112,7 +127,8 @@ list: # 模拟量列表
   $overflow_SP: 28000
   $underflow_SP: -500
 
-- comment: 液位
+- location: 1#储罐
+  type: 液位
   DB: [LIT0101, DB+]
   input: '"RecvDB".Tank1'   # SCL表达式，转换程序不检查正确性
   $span: 10.0

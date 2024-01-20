@@ -6,6 +6,7 @@ import { convert } from 'gooconverter';
 import { supported_features, converter } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
 import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS, WRONGTYPESYMBOLS } from './symbols.js';
+import { gen_alarms } from './alarms.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 import { pad_right, nullable_value, STRING } from "./value.js";
 
@@ -93,7 +94,8 @@ const CPUs = {
                     )
                 ).flat(),
             conn_host_list: {},             // 已用的连接地址列表
-            output_dir: name,           // 输出文件夹
+            alarms_list: [],                // 该CPU的报警列表
+            output_dir: name,               // 输出文件夹
             unfinished_symbols: [],
             /**
              * Description
@@ -379,7 +381,10 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         assert.equal(typeof gen, 'function', 'innal error');
         convert_list.push(...gen(conf_list[feature]));
     };
-    convert_list.push(gen_symbols(cpus)); // symbols converter
+    convert_list.push(
+        gen_symbols(cpus), // symbols converter
+        gen_alarms(cpus) // alarms converter
+    );
 
     // 非符号提示
     if (NONSYMBOLS.length) console.log(`
