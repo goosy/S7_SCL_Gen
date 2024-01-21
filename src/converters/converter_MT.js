@@ -1,4 +1,4 @@
-import { make_s7express } from '../symbols.js';
+import { make_s7_prop } from '../symbols.js';
 import { fixed_hex, BOOL, PINT, STRING, TIME, nullable_value, ensure_value } from '../value.js';
 import { IntIncHL, context } from '../util.js';
 import { posix } from 'path';
@@ -206,7 +206,11 @@ export function initialize_list(area) {
         assert(DB, new SyntaxError(
             `${CPU.name}:MT:conn(${name ?? conn.ID}) DB is not defined correctly! 没有正确定义DB!`
         ));
-        make_s7express(conn, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+        make_s7_prop(conn, 'DB', DB, document, {
+            disallow_s7express: true,
+            force: { type: NAME },
+            default: { comment }
+        });
 
         // host IP
         let host = node.get('host');
@@ -228,8 +232,7 @@ export function initialize_list(area) {
         conn.X = X ? 'X' + X : '';
         conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
         const interval_time = node.get('interval_time');
-        make_s7express(conn, 'interval_time', interval_time, document, {
-            s7express: true,
+        make_s7_prop(conn, 'interval_time', interval_time, document, {
             force: { type: 'DINT' },
             default: { comment: `interval time of ${comment}` }
         });
@@ -250,7 +253,10 @@ export function initialize_list(area) {
             };
             const comment = poll.comment.value;
             const recv_DB = item.get('recv_DB');
-            make_s7express(poll, 'recv_DB', recv_DB, document, { default: { comment } });
+            make_s7_prop(poll, 'recv_DB', recv_DB, document, {
+                disallow_s7express: true,
+                default: { comment }
+            });
             return poll;
         })
         return conn;

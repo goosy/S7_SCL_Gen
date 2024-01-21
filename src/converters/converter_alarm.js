@@ -1,4 +1,4 @@
-import { make_s7express } from "../symbols.js";
+import { make_s7_prop } from "../symbols.js";
 import { context } from '../util.js';
 import { STRING, ensure_value } from '../value.js';
 import { posix } from 'path';
@@ -80,15 +80,17 @@ export function initialize_list(area) {
         const input = node.get('input');
         if (!DB && !input) return alarm; // 空alarm不处理
 
-        make_s7express(alarm, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
-        make_s7express(alarm, 'input', input, document, {
-            s7express: true,
+        make_s7_prop(alarm, 'DB', DB, document, {
+            disallow_s7express: true,
+            force: { type: NAME },
+            default: { comment }
+        });
+        make_s7_prop(alarm, 'input', input, document, {
             force: { type: 'REAL' },
             default: { comment }
         });
         const invalid = node.get('invalid');
-        make_s7express(alarm, 'invalid', invalid, document, {
-            s7express: true,
+        make_s7_prop(alarm, 'invalid', invalid, document, {
             force: { type: 'BOOL' },
             default: { comment }
         });

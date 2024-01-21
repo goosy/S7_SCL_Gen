@@ -1,4 +1,4 @@
-import { make_s7express } from '../symbols.js';
+import { make_s7_prop } from '../symbols.js';
 import { context } from '../util.js';
 import { STRING, ensure_value, TIME } from '../value.js';
 import { posix } from 'path';
@@ -77,17 +77,16 @@ export function initialize_list(area) {
         const DB = node.get('DB');
         if (!DB) throw new SyntaxError("RP转换必须有DB块!");
         const comment = RP.comment.value;
-        make_s7express(RP, 'DB', DB, document, {
+        make_s7_prop(RP, 'DB', DB, document, {
+            disallow_s7express: true,
             force: { type: RP.FB },
             default: { comment }
         });
-        make_s7express(RP, 'IN', node.get('input'), document, {
-            s7express: true,
+        make_s7_prop(RP, 'IN', node.get('input'), document, {
             force: { type: 'BOOL' },
             default: { comment }
         });
-        make_s7express(RP, 'Q', node.get('output'), document, {
-            s7express: true,
+        make_s7_prop(RP, 'Q', node.get('output'), document, {
             force: { type: 'BOOL' },
             default: { comment }
         });

@@ -1,4 +1,4 @@
-import { make_s7express } from '../symbols.js';
+import { make_s7_prop } from '../symbols.js';
 import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -113,10 +113,13 @@ export function initialize_list(area) {
         const comment = valve.comment.value;
         const DB = node.get('DB');
         if (!DB) return valve; // 空valve不处理
-        make_s7express(valve, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
+        make_s7_prop(valve, 'DB', DB, document, {
+            disallow_s7express: true,
+            force: { type: NAME },
+            default: { comment }
+        });
         const AI = node.get('AI');
-        make_s7express(valve, 'AI', AI, document, {
-            s7express: true,
+        make_s7_prop(valve, 'AI', AI, document, {
             force: { type: 'WORD' },
             default: { comment: comment ? `${comment} AI` : '' }
         });
@@ -130,17 +133,19 @@ export function initialize_list(area) {
             // as ex: valve.$enable_AH
             valve[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? valve[$limit_str] != null);
             // as ex: valve.enable_AH
-            make_s7express(valve, enable_str, node.get(enable_str), document, {
-                s7express: true,
-                force: { type: 'BOOL' },
-            });
+            make_s7_prop(
+                valve,
+                enable_str,
+                node.get(enable_str),
+                document,
+                { force: { type: 'BOOL' } }
+            );
         });
 
         ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action', 'control_action'].forEach(prop => {
             const _comment = comment ? `${comment} ${prop}` : '';
             const value = node.get(prop);
-            if (value !== undefined) make_s7express(valve, prop, value, document, {
-                s7express: true,
+            if (value !== undefined) make_s7_prop(valve, prop, value, document, {
                 force: { type: 'BOOL' },
                 default: { comment: _comment }
             });

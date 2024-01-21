@@ -6,7 +6,7 @@
 
 import { context } from '../util.js';
 import { STRING, PINT, PDINT, ensure_value, nullable_value } from '../value.js';
-import { make_s7express } from '../symbols.js';
+import { make_s7_prop } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';
 
@@ -81,22 +81,28 @@ export function initialize_list(area) {
 
         const DB = node.get('DB');
         assert(DB, new SyntaxError(`${CPU.name}:PI 第${index + 1}个 module 没有正确定义背景块!`));
-        make_s7express(module, 'DB', DB, document, { force: { type }, default: { comment } });
+        make_s7_prop(module, 'DB', DB, document, {
+            disallow_s7express: true,
+            force: { type },
+            default: { comment }
+        });
 
-        const module_symbol = node.get('module');
+        let module_symbol = node.get('module');
         const module_addr = nullable_value(PINT, node.get('module_addr'));
         assert(module_symbol || module_addr, new SyntaxError(`${CPU.name}:PI 第${index}个模块未提供 module 或 module_addr!`));
-        make_s7express(
-            module,
-            'module',
-            module_symbol ?? [`PI${index + 1}_addr`, `IW${module_addr.value}`],
-            document,
-            { link: true, force: { type: 'WORD' }, default: { comment: 'HW module address' } }
-        );
+        module_symbol ??= [`PI${index + 1}_addr`, `IW${module_addr.value}`];
+        make_s7_prop(module, 'module', module_symbol, document, {
+            disallow_s7express: true,
+            force: { type: 'WORD' },
+            default: { comment: 'HW module address' }
+        });
 
         const count_DB = node.get('count_DB');
         assert(count_DB, new SyntaxError(`${CPU.name}:PI 第${index + 1}个 module 没有正确定义专用数据块!`));
-        make_s7express(module, 'count_DB', count_DB, document, { force: { type: FM3502_CNT_NAME } });
+        make_s7_prop(module, 'count_DB', count_DB, document, {
+            disallow_s7express: true,
+            force: { type: FM3502_CNT_NAME }
+        });
 
         return module;
     });

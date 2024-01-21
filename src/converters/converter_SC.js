@@ -6,7 +6,7 @@
 
 import { context } from '../util.js';
 import { BOOL, STRING, PINT, fixed_hex, ensure_value, nullable_value } from '../value.js';
-import { make_s7express } from '../symbols.js';
+import { make_s7_prop } from '../symbols.js';
 import { posix } from 'path';
 import { isSeq } from 'yaml';
 import assert from 'assert/strict';
@@ -136,24 +136,25 @@ export function initialize_list(area) {
             throw new SyntaxError(`${CPU.name}:SC:module${comment} 的类型 "${module.model}" 不支持`);
         })(module.model.value);
 
-        const module_symbol = node.get('module');
+        let module_symbol = node.get('module');
         const module_addr = nullable_value(PINT, node.get('module_addr'));
         assert(module_symbol || module_addr, new SyntaxError(`${CPU.name}:SC:module(${comment}) 未提供 module 或 module_addr!`));
-        make_s7express(
-            module,
-            'module',
-            module_symbol ?? [`CP${index + 1}_addr`, `IW${module_addr.value}`],
-            document,
-            { link: true, force: { type: 'WORD' }, default: { comment: 'HW module address' } }
-        );
+        module_symbol ??= [`CP${index + 1}_addr`, `IW${module_addr.value}`];
+        make_s7_prop(module, 'module', module_symbol, document, {
+            disallow_s7express: true,
+            force: { type: 'WORD' },
+            default: { comment: 'HW module address' }
+        });
 
         const DB = node.get('DB');
         assert(DB, new SyntaxError(`${CPU.name}:SC 第${index + 1}个 module 没有正确定义背景块!`));
-        make_s7express(module, 'DB', DB, document, { force: { type }, default: { comment } });
+        make_s7_prop(module, 'DB', DB, document, {
+            disallow_s7express: true,
+            force: { type }, default: { comment }
+        });
 
         const customREQ = node.get('customREQ');
-        if (customREQ) make_s7express(module, 'customREQ', customREQ, document, {
-            s7express: true,
+        if (customREQ) make_s7_prop(module, 'customREQ', customREQ, document, {
             force: { type: 'BOOL' },
         });
 
@@ -169,10 +170,13 @@ export function initialize_list(area) {
             poll.is_modbus = !poll.send_data;
             const comment = poll.comment.value;
             const recv_DB = item.get('recv_DB');
-            make_s7express(poll, 'recv_DB', recv_DB, document, { default: { comment } });
+            make_s7_prop(poll, 'recv_DB', recv_DB, document, {
+                disallow_s7express: true,
+                default: { comment }
+            });
             const send_DB = item.get('send_DB');
             poll.extra_send_DB = !!send_DB;
-            make_s7express(poll, 'send_DB', send_DB ?? POLLS_NAME, document);
+            make_s7_prop(poll, 'send_DB', send_DB ?? POLLS_NAME, document, { disallow_s7express: true });
 
             if (poll.extra_send_DB) {
                 // 有外部发送块时，必须有 send_start 和 send_length

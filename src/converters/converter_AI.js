@@ -1,4 +1,4 @@
-import { make_s7express } from "../symbols.js";
+import { make_s7_prop } from "../symbols.js";
 import { INT, STRING, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -82,9 +82,12 @@ export function initialize_list(area) {
         const DB = node.get('DB');
         const input = node.get('input');
         if (!DB && !input) return AI; // 空AI不处理
-        make_s7express(AI, 'DB', DB, document, { force: { type: NAME }, default: { comment } });
-        make_s7express(AI, 'input', input, document, {
-            s7express: true,
+        make_s7_prop(AI, 'DB', DB, document, {
+            disallow_s7express: true,
+            force: { type: NAME },
+            default: { comment }
+        });
+        make_s7_prop(AI, 'input', input, document, {
             force: { type: 'WORD' },
             default: { comment }
         });

@@ -1,6 +1,6 @@
 import assert from 'assert/strict';
 import { convert } from 'gooconverter';
-import { add_symbols, make_s7express } from '../symbols.js';
+import { add_symbols, make_s7_prop } from '../symbols.js';
 import { STRING, nullable_value } from '../value.js';
 
 export const NAME = 'CPU';
@@ -93,7 +93,10 @@ export function initialize_list(area) {
         const comment = FN.comment.value;
         const block = node.get('block');
         if (!block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
-        make_s7express(FN, 'block', block, document, { default: { comment } }); //S7函数类型
+        make_s7_prop(FN, 'block', block, document, {
+            disallow_s7express: true,
+            default: { comment }
+        }); //S7函数类型
         FN.title = nullable_value(STRING, node.get('title'));
         FN.code = new STRING(node.get('code') ?? '');
         return FN;

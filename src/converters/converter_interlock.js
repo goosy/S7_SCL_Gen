@@ -1,4 +1,4 @@
-import { make_s7express } from '../symbols.js';
+import { make_s7_prop } from '../symbols.js';
 import { BOOL, STRING, ensure_value, nullable_value } from '../value.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
@@ -109,12 +109,14 @@ export function initialize_list(area) {
         const DB = node.get('DB');
         if (!DB) throw new SyntaxError("interlock转换必须有DB块!");
         const comment = interlock.comment.value;
-        make_s7express(interlock, 'DB', DB, document, { default: { comment } });
+        make_s7_prop(interlock, 'DB', DB, document, {
+            disallow_s7express: true,
+            default: { comment }
+        });
 
         const enable = node.get('enable');
         if (enable) {
-            make_s7express(fields.enable, 'read', enable, document, {
-                s7express: true,
+            make_s7_prop(fields.enable, 'read', enable, document, {
                 force: { type: 'BOOL' },
             });
         }
@@ -134,13 +136,11 @@ export function initialize_list(area) {
             const read = item.get('read');
             const write = item.get('write');
             const comment = data.comment.value;
-            make_s7express(data, 'read', read, document, {
-                s7express: true,
+            make_s7_prop(data, 'read', read, document, {
                 default: { comment },
                 force: { type: 'BOOL' }
             });
-            make_s7express(data, 'write', write, document, {
-                s7express: true,
+            make_s7_prop(data, 'write', write, document, {
                 default: { comment },
                 force: { type: 'BOOL' }
             });
@@ -168,8 +168,7 @@ export function initialize_list(area) {
                     type: default_type,
                     comment: ''
                 };
-                make_s7express(input, 'read', item, document, {
-                    s7express: true,
+                make_s7_prop(input, 'read', item, document, {
                     force: { type: 'BOOL' }
                 });
                 fields.push(input);
@@ -188,8 +187,7 @@ export function initialize_list(area) {
                 input.in_ref = exist_item;
                 input.name = input.in_ref.name;
             } else {
-                make_s7express(input, 'read', read, document, {
-                    s7express: true,
+                make_s7_prop(input, 'read', read, document, {
                     default: { comment },
                     force: { type: 'BOOL' }
                 });
@@ -213,8 +211,7 @@ export function initialize_list(area) {
                 throw new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!');
             }
             const reset = { name: `reset_${index}` };
-            make_s7express(reset, 'read', item, document, {
-                s7express: true,
+            make_s7_prop(reset, 'read', item, document, {
                 force: { type: 'BOOL' }
             });
             return reset;
@@ -237,8 +234,7 @@ export function initialize_list(area) {
             }
             if (typeof item === 'string' || isSeq(item)) {
                 const output = { name: `output_${index}` };
-                make_s7express(output, 'write', item, document, {
-                    s7express: true,
+                make_s7_prop(output, 'write', item, document, {
                     force: { type: 'BOOL' }
                 });
                 return output;
@@ -256,8 +252,7 @@ export function initialize_list(area) {
                 output.out_ref = exist_item;
                 output.name = output.out_ref.name;
             } else {
-                make_s7express(output, 'write', write, document, {
-                    s7express: true,
+                make_s7_prop(output, 'write', write, document, {
                     default: { comment },
                     force: { type: 'BOOL' }
                 });
