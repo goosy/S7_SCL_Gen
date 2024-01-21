@@ -1,4 +1,4 @@
-import { make_s7_prop } from '../symbols.js';
+import { make_s7_prop, add_symbol } from '../symbols.js';
 import { BOOL, STRING, ensure_value, nullable_value } from '../value.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
@@ -15,20 +15,20 @@ const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{includes}}
-{{#for interlock in list}}
-// {{interlock.comment}}
-DATA_BLOCK {{interlock.DB.value}}{{#if platform == 'portal'}}
+{{#for DB in list}}
+// {{DB.comment}}
+DATA_BLOCK "{{DB.name}}"{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'FALSE' }{{#else}}
 { S7_m_c := 'true' }{{#endif portal}}
 AUTHOR:Goosy
 FAMILY:GooLib
-STRUCT{{#for fiels in interlock.declarations}}
-    {{fiels.declaration}} // {{fiels.comment}}{{#endfor fiels}}{{#for edge in interlock.edges}}
+STRUCT{{#for fields in DB.declarations}}
+    {{fields.declaration}} // {{fields.comment}}{{#endfor fields}}{{#for edge in DB.edges}}
     {{edge.edge_field}} : BOOL ; // 用于检测{{edge.name}}上升沿的追随变量{{#endfor edge}}
 END_STRUCT;
 BEGIN
 END_DATA_BLOCK
-{{#endfor interlock}}
+{{#endfor DB}}
 
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }{{#endif portal}}
@@ -41,14 +41,14 @@ END_VAR
 
 BEGIN{{#if loop_begin}}
 {{loop_begin}}
-
-{{#endif}}{{#for interlock in list}}
-// {{interlock.comment}}{{#for assign in interlock.read_list}}
-{{assign.assign_read}}{{#endfor assign}}
-reset := NOT {{interlock.DB.value}}.enable{{#for reset in interlock.reset_list}}
+{{#endif}}{{#for DB in list}}
+// DB "{{DB.name}}" 读入{{#for assign in DB.read_list}}
+{{assign.assign_read}}{{#endfor assign}}{{#for interlock in DB.interlocks}}
+// {{interlock.comment}}
+reset := NOT "{{DB.name}}".enable{{#for reset in interlock.reset_list}}
          OR {{reset.read.value}}{{#endfor reset}};
 IF reset THEN
-    {{interlock.DB.value}}.reset := FALSE;  // 复位reset
+    "{{DB.name}}".reset := FALSE;  // 复位reset
     // 复位联锁输出{{#for output in interlock.output_list}}
     {{output.write.value}} := {{output.resetvalue}};{{#endfor output}}
 ELSE
@@ -60,11 +60,13 @@ ELSE
     END_IF;
 END_IF;
 // 输入边沿维护{{#for no, input in interlock.input_list}}{{#if input.edge_field}}
-{{interlock.DB.value}}.{{input.edge_field}} := {{input.read.value}};{{#endif}}{{#endfor}}
-// 附加输出{{#for assign in interlock.write_list}}
-{{assign.assign_write}}{{#endfor}}{{#if interlock.extra_code}}
+"{{DB.name}}".{{input.edge_field}} := {{input.read.value}};{{#endif}}{{#endfor}}
+// 附加输出{{#if interlock.extra_code}}
 {{interlock.extra_code}}{{#endif extra_code}}
-{{#endfor interlock}}{{#if loop_end}}
+// DB "{{DB.name}}" 写出{{#endfor interlock}}
+{{#for assign in DB.write_list}}
+{{assign.assign_write}}{{#endfor}}
+{{#endfor DB}}{{#if loop_end}}
 
 {{loop_end}}{{#endif}}
 END_FUNCTION
@@ -90,6 +92,49 @@ function create_fields() {
     return fields;
 }
 
+function create_DB_dict(document) {
+    const DB_dict = {
+        _list: [], // DB 列表
+        /**
+         * 按照名称建立一个新DB
+         * @param {string} name
+         * @returns {DB}
+         */
+        create(name) {
+            const fields = create_fields();
+            const interlocks = [];
+            const edges = [];
+            const DB = { name, fields, interlocks, edges };
+            DB_dict[name] = DB;
+            DB_dict._list.push(DB);
+            make_s7_prop(DB, 'symbol', name, document, {
+                disallow_s7express: true,
+                disallow_symbol_def: true,
+            });
+            return DB;
+        },
+        /**
+         * 按照名称返回一个DB，如果该名称DB不存在，就产生一个新DB
+         * @param {string|node} name
+         * @returns {DB}
+         */
+        get(name) {
+            let symbol;
+            if (Array.isArray(name) || isSeq(name)) {
+                // 如是符号定义，则新建一个符号
+                symbol = add_symbol(document, name);
+                name = symbol.name;
+            }
+            if (isString(name)) name = name.value;
+            if (typeof name !== 'string') throw Error(`Interlock DB"${name}" 输入错误！`);
+            // 从已有DB中找，如没有则建立一个初始DB资源数据
+            const DB = DB_dict[name] ?? DB_dict.create(name);
+            return DB;
+        },
+    };
+    return DB_dict;
+}
+
 /**
  * 第一遍扫描 提取符号
  * @date 2021-12-07
@@ -97,22 +142,21 @@ function create_fields() {
  * @returns {void}
  */
 export function initialize_list(area) {
-    const document = area.document;
-    area.list = area.list.map(node => {
-        const fields = create_fields();
+    const { document, list } = area;
+    const DB_dict = create_DB_dict(document);
+    area.list = DB_dict._list;
+    list.forEach(node => {
+        const _DB = node.get('DB');
+        if (!_DB) throw new SyntaxError("interlock转换必须有DB块!");
+        const DB = DB_dict.get(_DB);
+
+        const fields = DB.fields;
+        const comment = new STRING(node.get('comment') ?? '报警联锁').value;
         const interlock = {
             node,
-            fields,
             extra_code: nullable_value(STRING, node.get('extra_code'))?.value,
-            comment: new STRING(node.get('comment') ?? '报警联锁')
+            comment
         };
-        const DB = node.get('DB');
-        if (!DB) throw new SyntaxError("interlock转换必须有DB块!");
-        const comment = interlock.comment.value;
-        make_s7_prop(interlock, 'DB', DB, document, {
-            disallow_s7express: true,
-            default: { comment }
-        });
 
         const enable = node.get('enable');
         if (enable) {
@@ -260,15 +304,19 @@ export function initialize_list(area) {
             return output;
         });
         interlock.output_list.unshift(fields.output);
-        return interlock;
+        DB.interlocks.push(interlock);
     });
 }
 
 export function build_list({ list }) {
-    list.forEach(interlock => { // 处理配置，形成完整数据
+    list.forEach(DB => {
+        const interlocks = DB.interlocks;
+        DB.symbol.comment ||= interlocks[0].comment;
+        DB.comment ??= DB.symbol.comment;
+
+        const DB_name = DB.name;
         const S7_m_c = "{S7_m_c := 'true'}";
-        const DB_name = interlock.DB.name;
-        const fields = interlock.fields;
+        const fields = DB.fields;
         const _fields = Object.values(fields);
         for (const item of _fields) {
             if (item.read) item.assign_read = `"${DB_name}".${item.name} := ${item.read.value};`;
@@ -279,55 +327,61 @@ export function build_list({ list }) {
             if (item.s7_m_c) item.declaration = `${item.name} ${S7_m_c} : BOOL${enable_str} ;`;
             item.comment ??= '';
         }
+
+        // the assignment of reset.read output.write must occur
+        // after loop of generating item.assign_read and item.assign_write
         fields.reset.read = { value: `"${DB_name}".reset` };
         fields.output.write = { value: `"${DB_name}".output` };
-        interlock.edges = [];
-        for (const input of interlock.input_list) {
-            if (input.in_ref) {
-                input.read = { value: `"${DB_name}".${input.in_ref.name}` };
-            }
-            const input_value = input.read.value;
-            const parenthesized_value = input.read.isExpress ? `(${input_value})` : input_value;
-            if (input.type === 'falling') {
-                const edge_field = input.edge_field = `${input.name}_fo`;
-                input.trigger = `NOT ${parenthesized_value} AND "${DB_name}".${edge_field}`;
-                interlock.edges.push(input);
-            } else if (input.type === 'change') {
-                const edge_field = input.edge_field = `${input.name}_fo`;
-                input.trigger = `${parenthesized_value} XOR "${DB_name}".${edge_field}`;
-                interlock.edges.push(input);
-            } else if (input.type === 'on') {
-                input.trigger = `${input_value}`;
-            } else if (input.type === 'off') {
-                input.trigger = `NOT ${input_value}`;
-            } else { // default rising
-                const edge_field = input.edge_field = `${input.name}_fo`;
-                input.trigger = `${parenthesized_value} AND NOT "${DB_name}".${edge_field}`;
-                interlock.edges.push(input);
-            }
-            input.ID = `${DB_name}_${input.name}`;
-            input.comment ??= '';
-        }
-        for (const reset of interlock.reset_list) {
-            if (reset.in_ref) {
-                reset.read = { value: `"${DB_name}".${reset.in_ref.name}` };
-            }
-        }
-        for (const output of interlock.output_list) {
-            if (output.out_ref) {
-                output.write = { value: `"${DB_name}".${output.out_ref.name}` };
-            }
-            output.setvalue = output.inversion ? 'FALSE' : 'TRUE';
-            output.resetvalue = output.inversion ? 'TRUE' : 'FALSE';
-        }
+
         const declarations = _fields.filter(field => field.s7_m_c);
-        interlock.declarations = declarations;
-        interlock.read_list = declarations.filter(
+        DB.declarations = declarations;
+        DB.read_list = declarations.filter(
             field => field.read && field.assign_read
         );
-        interlock.write_list = declarations.filter(
+        DB.write_list = declarations.filter(
             field => field.write && field.assign_write
         );
+        const edges = DB.edges;
+        interlocks.forEach(interlock => { // 处理配置，形成完整数据
+            for (const input of interlock.input_list) {
+                if (input.in_ref) {
+                    input.read = { value: `"${DB_name}".${input.in_ref.name}` };
+                }
+                const input_value = input.read.value;
+                const parenthesized_value = input.read.isExpress ? `(${input_value})` : input_value;
+                if (input.type === 'falling') {
+                    const edge_field = input.edge_field = `${input.name}_fo`;
+                    input.trigger = `NOT ${parenthesized_value} AND "${DB_name}".${edge_field}`;
+                    edges.push(input);
+                } else if (input.type === 'change') {
+                    const edge_field = input.edge_field = `${input.name}_fo`;
+                    input.trigger = `${parenthesized_value} XOR "${DB_name}".${edge_field}`;
+                    edges.push(input);
+                } else if (input.type === 'on') {
+                    input.trigger = `${input_value}`;
+                } else if (input.type === 'off') {
+                    input.trigger = `NOT ${input_value}`;
+                } else { // default rising
+                    const edge_field = input.edge_field = `${input.name}_fo`;
+                    input.trigger = `${parenthesized_value} AND NOT "${DB_name}".${edge_field}`;
+                    edges.push(input);
+                }
+                input.ID = `${DB_name}_${input.name}`;
+                input.comment ??= '';
+            }
+            for (const reset of interlock.reset_list) {
+                if (reset.in_ref) {
+                    reset.read = { value: `"${DB_name}".${reset.in_ref.name}` };
+                }
+            }
+            for (const output of interlock.output_list) {
+                if (output.out_ref) {
+                    output.write = { value: `"${DB_name}".${output.out_ref.name}` };
+                }
+                output.setvalue = output.inversion ? 'FALSE' : 'TRUE';
+                output.resetvalue = output.inversion ? 'TRUE' : 'FALSE';
+            }
+        });
     });
 }
 

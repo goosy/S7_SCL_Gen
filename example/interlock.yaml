@@ -1,12 +1,31 @@
 ---
 # interlock 实现根据信号状态触发输出，可以用于报警或联锁
 # 可以在本配置中定义多组联锁
-# 每一组联锁由以下几个部分组成：
+# 每一组联锁由以下几个指令组成：
 # - comment: 该组联锁的注释
+# - name: 该组联锁的名称
 # - DB: 该组联锁使用的DB块
 # - data: 该组联锁的中间数据，每一项数据可以自动上传到HMI，即有S7_m_c属性
 # - input: 触发该组联锁的输入列表，每一项输入都可以定义触发条件
 # - output: 该组联锁的输出列表
+
+# 转换程序会自动构造对应的DB块，大致内部结构为:
+#     DB.enable           允许联锁，默认为true，可省略，该项具有S7_m_c属性
+#     DB.<name1>_reset    重置输出用，会将DB.output复位，该项具有S7_m_c属性
+#     DB.<name1>_output   联锁输出，该项具有S7_m_c属性
+#     ......
+#
+#     DB.<data_1>         名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+#     DB.<data_2>         名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+#     ......
+#     DB.<data_n>         名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+#
+#     以下用于跟踪状态（用于类型为 rising falling change 的输入项）
+#     DB.input_1_fo       内部数据用于跟踪边沿
+#     ......
+#     DB.input_n_fo       内部数据用于跟踪边沿，数量与边沿触发项对应
+# 可1组联锁使用1个DB块，也可以多组联锁共用1个DB块
+# 共用情况下，enable项只有一个
 
 #CPU: AS1           # 指示属于哪一个CPU
 #feature: interlock # 指示本配置为生成联锁代码
@@ -36,7 +55,8 @@ list:
 
 # === 例1 一个简单的联锁
 - comment: 声光报警
-  DB: [IL_ESDBTN, DB121]
+  name: SL
+  DB: [IL_ESDBTN, DB121, ~, 声光报警联锁]
   data:
   - {name: ESDBTN, read: DI02-17, comment: 人工急停按钮}  # 表示ESDBTN字段从 DI02-17 读值
   - {name: GIA001, read: DI02-18, comment: 可燃气报警}
@@ -51,29 +71,18 @@ list:
   - SL
 
 # === 例2 详细用例
-- comment: 外输泵房间联锁
+- comment: 外输泵房间联锁  # 联锁说明，字符串，可省略
+
+  ############################################################
+  # 联锁名称
+  # 类型: 字符串
+  name: stop
+  ############################################################
 
   ############################################################
   # DB块定义
   # 类型: S7符号定义 | S7符号引用
-
-  # 转换程序会自动生成DB块并构建必要的内部结构，大致结构为:
-  #     DB.enable           允许联锁，默认为true，可省略，该项具有S7_m_c属性
-  #     DB.reset            重置输出用，会将DB.output复位，该项具有S7_m_c属性
-  #     DB.output           联锁输出，该项具有S7_m_c属性
-  #                         值由 input 每项的触发条件进行 OR 运算
-  #
-  #     DB.<data_name_1>    名称由data_list的对应项name属性决定，该项具有S7_m_c属性
-  #     DB.<data_name_2>    名称由data_list的对应项name属性决定，该项具有S7_m_c属性
-  #     ......
-  #     DB.<data_name_n>    名称由data_list的对应项name属性决定，该项具有S7_m_c属性
-  #
-  #     以下用于跟踪状态（用于类型为 rising falling change 的输入项）
-  #     DB.input_1_follower 内部数据用于跟踪边沿
-  #     ......
-  #     DB.input_n_follower 内部数据用于跟踪边沿，数量与边沿触发项对应
-
-  DB: [IL_pump, DB122] # 本例DB块名为"IL_pump"
+  DB: [IL_pump, DB122]
   ############################################################
 
 
