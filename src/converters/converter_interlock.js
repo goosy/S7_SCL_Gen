@@ -74,7 +74,6 @@ function create_fields() {
     const s7_m_c = true;
     const fields = {
         'enable': { name: 'enable', s7_m_c, comment: '允许报警或连锁' },
-        'test': { name: 'test', s7_m_c, comment: '联锁测试' },
         'reset': { name: 'reset', s7_m_c, comment: '复位输出' },
         'output': { name: 'output', s7_m_c, comment: '联锁输出' },
         push(item) {
@@ -112,9 +111,16 @@ export function initialize_list(area) {
         const comment = interlock.comment.value;
         make_s7express(interlock, 'DB', DB, document, { default: { comment } });
 
+        const enable = node.get('enable');
+        if (enable) {
+            make_s7express(fields.enable, 'read', enable, document, {
+                s7express: true,
+                force: { type: 'BOOL' },
+            });
+        }
+
         fields.enable.init = ensure_value(BOOL, node.get('$enable') ?? true);
         const default_type = nullable_value(STRING, node.get('type'))?.value.toLowerCase() ?? 'rising';
-        fields.test.type = default_type;
 
         const data_list = node.get('data')?.items ?? [];
         data_list.forEach(item => {
@@ -190,7 +196,6 @@ export function initialize_list(area) {
             }
             return input;
         });
-        interlock.input_list.unshift(fields.test);
 
         const reset_list = node.get('reset');
         if (reset_list && !isSeq(reset_list)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
@@ -279,7 +284,6 @@ export function build_list({ list }) {
             if (item.s7_m_c) item.declaration = `${item.name} ${S7_m_c} : BOOL${enable_str} ;`;
             item.comment ??= '';
         }
-        fields.test.read = { value: `"${DB_name}".test` };
         fields.reset.read = { value: `"${DB_name}".reset` };
         fields.output.write = { value: `"${DB_name}".output` };
         interlock.edges = [];
