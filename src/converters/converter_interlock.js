@@ -180,16 +180,25 @@ export function initialize_list(area) {
 
         const data_list = node.get('data')?.items ?? [];
         data_list.forEach(item => {
+            if (isString(item)) item = item.value;
+            if (typeof item === 'string') {
+                const data = {
+                    name: item,
+                    s7_m_c: true
+                };
+                fields.push(data);
+                return;
+            }
             if (!isMap(item)) throw new SyntaxError('interlock的data项输入错误!');
             const name = ensure_value(STRING, item.get('name'));
+            const comment = ensure_value(STRING, item.get('comment') ?? '').value;
             const data = {
                 name,
                 s7_m_c: true,
-                comment: new STRING(item.get('comment') ?? '')
+                comment
             };
             const read = item.get('read');
             const write = item.get('write');
-            const comment = data.comment.value;
             make_s7_prop(data, 'read', read, document, {
                 default: { comment },
                 force: { type: 'BOOL' }
