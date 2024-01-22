@@ -11,19 +11,19 @@
 
 # 转换程序会自动构造对应的DB块，大致内部结构为:
 #     DB.enable           允许联锁，默认为true，可省略，该项具有S7_m_c属性
-#     DB.<name1>_reset    重置输出用，会将DB.output复位，该项具有S7_m_c属性
-#     DB.<name1>_output   联锁输出，该项具有S7_m_c属性
-#     ......
 #
-#     DB.<data_1>         名称由data_list的对应项name属性决定，该项具有S7_m_c属性
-#     DB.<data_2>         名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+#     DB.<data_1>         名称为第1组联锁 data 的对应项 name，该项具有S7_m_c属性
+#     DB.<data_2>         名称为第1组联锁 data 的对应项 name，该项具有S7_m_c属性
 #     ......
-#     DB.<data_n>         名称由data_list的对应项name属性决定，该项具有S7_m_c属性
+#     DB.<data_n>         名称为第1组联锁 data 的对应项 name，该项具有S7_m_c属性
 #
 #     以下用于跟踪状态（用于类型为 rising falling change 的输入项）
-#     DB.input_1_fo       内部数据用于跟踪边沿
+#     DB.b_1_fo           内部数据用于第1组联锁跟踪边沿
 #     ......
-#     DB.input_n_fo       内部数据用于跟踪边沿，数量与边沿触发项对应
+#     DB.b_n_fo           内部数据用于第1组联锁跟踪边沿，数量与边沿触发项对应
+#
+#     如果多组联锁共用该DB块，会在这里存储第2组以后联锁的数据结构
+# 
 # 可1组联锁使用1个DB块，也可以多组联锁共用1个DB块
 # 共用情况下，enable项只有一个
 
@@ -55,32 +55,30 @@ list:
 
 # === 例1 一个简单的联锁
 - comment: 声光报警
-  name: SL
   DB: [IL_ESDBTN, DB121, ~, 声光报警联锁]
   data:
-  - {name: ESDBTN, read: DI02-17, comment: 人工急停按钮}  # 表示ESDBTN字段从 DI02-17 读值
-  - {name: GIA001, read: DI02-18, comment: 可燃气报警}
-  - {name: RSTBTN, read: DI02-19, comment: 人工复位按钮}
-  - {name: SL, write: DO04-01, comment: 声光报警DO}      # 表示SL字段输出到 DO04-01
-  input:
-  - ESDBTN # 在人工急停按钮信号的上升沿触发
-  - GIA001 # 在可燃气报警信号的上升沿触发
-  reset:
-  - RSTBTN # 取消报警，即联锁复位
-  output:
+  - {name: test, comment: 联锁测试}                      # 用于HMI测试，建议提供该项
+  - {name: reset, comment: 重置联锁}                     # 用于HMI重置，建议提供该项
+  - {name: output, comment: 输出状态}                    # 用于HMI读联锁输出，没有其它output项时建议提供该项
+  - {name: EBTN, read: DI02-17, comment: 人工报警按钮}   # 从 DI02-17 读值
+  - {name: GIA001, read: DI02-18, comment: 可燃气报警}   # 从 DI02-17 读值
+  - {name: SL, write: DO04-01, comment: 声光报警DO}      # 表示输出到 DO04-01
+  input:   # 在以下信号的上升沿触发联锁
+  - test
+  - EBTN                                               
+  - GIA001
+  reset:   # 以下信号重置联锁
+  - reset
+  output:  # 以下信号输出联锁
+  - output
   - SL
 
 # === 例2 详细用例
 - comment: 外输泵房间联锁  # 联锁说明，字符串，可省略
 
   ############################################################
-  # 联锁名称
-  # 类型: 字符串
-  name: stop
-  ############################################################
-
-  ############################################################
   # DB块定义
+  # 可以一组联锁使用1个DB块，也可以多组联锁共用1个DB块
   # 类型: S7符号定义 | S7符号引用
   DB: [IL_pump, DB122]
   ############################################################
@@ -222,16 +220,19 @@ list:
   - [DO04-04, Q6.3]                        # S7符号
   ############################################################
 
-# === 例3 type 和 extra_code
-- comment: 事件播报
-  DB: [IL_sound, DB123]
+# === 例3
+# 以下是2组联锁共用DB块示例
+# 广播的启动和停止是2个联锁，它们共用一个DB和enable项
+# 同时这里也展示 type 和 extra_code 指令的用法
+
+- DB: [IL_sound, DB123, ~, 事件播报]
 
   # boolean 字面量，值只能为true或false
   # 初始时是否允许报警连锁，可省略，默认为 true。
   # 非 false 值的其它输入会都视为 true
-  $enable: false
+  $enable: false  # 共用DB时， $enable enable 指令只能在其中一个联锁上设置，不允许重复设置
 
-  # 默认触发方式为 on
+  # 所有 input 项默认触发方式为 on，除非该项单独设置
   type:  on
 
   data:
@@ -240,9 +241,8 @@ list:
   - WCounter_signal
   - '"WCounter".fix'         # 人工修正增加计件
   output:
-  - comment: 广播设备DO点
+  - comment: 广播设备播放DO点
     write: [DO04-05, Q6.4]
-    inversion: TRUE        # 反相输出，代表断开时广播启动
 
   # 自定义代码，用于编写与该联锁相关的复杂自定义功能
   # 这里的代码会加入到当前联锁逻辑之后
@@ -251,6 +251,17 @@ list:
         "WCounter".count := "WCounter".count + 1;
     ENDIF;
     "WCounter".follower := IL_sound.output;
+
+- DB: IL_sound
+  type:  on
+  data:
+  - {name: RSTSWT, read: DI02-19, comment: 人工暂停播放旋钮}
+  input:
+  - RSTSWT
+  output:
+  - comment: 广播设备停止DO点
+    write: [DO04-06, Q6.5]
+    inversion: TRUE        # 反相输出，代表断开时广播停止
 
 # 用户自写SCL代码，放在循环的开始和结束处。
 loop_begin: |-

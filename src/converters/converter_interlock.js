@@ -43,12 +43,12 @@ BEGIN{{#if loop_begin}}
 {{loop_begin}}
 {{#endif}}{{#for DB in list}}
 // DB "{{DB.name}}" 读入{{#for assign in DB.read_list}}
-{{assign.assign_read}}{{#endfor assign}}{{#for interlock in DB.interlocks}}
+{{assign.assign_read}}{{#endfor assign}}
+{{#for interlock in DB.interlocks}}
 // {{interlock.comment}}
 reset := NOT "{{DB.name}}".enable{{#for reset in interlock.reset_list}}
          OR {{reset.read.value}}{{#endfor reset}};
 IF reset THEN
-    "{{DB.name}}".reset := FALSE;  // 复位reset
     // 复位联锁输出{{#for output in interlock.output_list}}
     {{output.write.value}} := {{output.resetvalue}};{{#endfor output}}
 ELSE
@@ -60,11 +60,11 @@ ELSE
     END_IF;
 END_IF;
 // 输入边沿维护{{#for no, input in interlock.input_list}}{{#if input.edge_field}}
-"{{DB.name}}".{{input.edge_field}} := {{input.read.value}};{{#endif}}{{#endfor}}
-// 附加输出{{#if interlock.extra_code}}
+"{{DB.name}}".{{input.edge_field}} := {{input.read.value}};{{#endif}}{{#endfor}}{{#if interlock.extra_code}}
+// 附加输出
 {{interlock.extra_code}}{{#endif extra_code}}
-// DB "{{DB.name}}" 写出{{#endfor interlock}}
-{{#for assign in DB.write_list}}
+{{#endfor interlock}}
+// DB "{{DB.name}}" 写出{{#for assign in DB.write_list}}
 {{assign.assign_write}}{{#endfor}}
 {{#endfor DB}}{{#if loop_end}}
 
@@ -74,11 +74,11 @@ END_FUNCTION
 
 function create_fields() {
     const s7_m_c = true;
+    let index = 0;
     const fields = {
         'enable': { name: 'enable', s7_m_c, comment: '允许报警或连锁' },
-        'reset': { name: 'reset', s7_m_c, comment: '复位输出' },
-        'output': { name: 'output', s7_m_c, comment: '联锁输出' },
         push(item) {
+            item.name ??= `b_${++index}`;
             const name = item.name;
             if (this[name]) throw new SyntaxError(`interlock 项属性 name:${name} 重复定义或已保留!请改名`);
             this[name] = item;
@@ -151,21 +151,31 @@ export function initialize_list(area) {
         const DB = DB_dict.get(_DB);
 
         const fields = DB.fields;
-        const comment = new STRING(node.get('comment') ?? '报警联锁').value;
-        const interlock = {
-            node,
-            extra_code: nullable_value(STRING, node.get('extra_code'))?.value,
-            comment
-        };
-
         const enable = node.get('enable');
         if (enable) {
+            if (DB.enable_readable) throw new SyntaxError('enable 重复定义!');
             make_s7_prop(fields.enable, 'read', enable, document, {
                 force: { type: 'BOOL' },
             });
+            DB.enable_readable = true;
+        }
+        const enable_init = node.get('$enable');
+        if (enable_init !== undefined) {
+            if (DB.enable_init === undefined) {
+                DB.enable_init = ensure_value(BOOL, enable_init).value ? 'TRUE' : 'FALSE';
+            } else {
+                throw new SyntaxError('$enable 重复定义!');
+            }
         }
 
-        fields.enable.init = ensure_value(BOOL, node.get('$enable') ?? true);
+        const comment = new STRING(node.get('comment') ?? '报警联锁').value;
+        const name = ensure_value(STRING, node.get('name') ?? `IL${DB.length}`);
+        const interlock = {
+            node,
+            name,
+            extra_code: nullable_value(STRING, node.get('extra_code'))?.value,
+            comment
+        };
         const default_type = nullable_value(STRING, node.get('type'))?.value.toLowerCase() ?? 'rising';
 
         const data_list = node.get('data')?.items ?? [];
@@ -195,7 +205,7 @@ export function initialize_list(area) {
         if (!input_list || !isSeq(input_list) || input_list.items.length < 1) {
             throw new SyntaxError("interlock的input_list必须有1项以上!"); // 不能为空项
         }
-        interlock.input_list = input_list.items.map((item, index) => {
+        interlock.input_list = input_list.items.map((item) => {
             // if input is symbol then convert to interlock_item
             if (isString(item)) item = item.value;
             if (typeof item === 'string') {
@@ -208,7 +218,6 @@ export function initialize_list(area) {
             }
             if (typeof item === 'string' || isSeq(item)) {
                 const input = {
-                    name: `input_${index}`,
                     type: default_type,
                     comment: ''
                 };
@@ -220,10 +229,9 @@ export function initialize_list(area) {
             }
             if (!isMap(item)) throw new SyntaxError(`interlock的input项${item}输入错误，必须是input对象、data项名称、S7符号或SCL表达式`);
 
-            const name = `input_${index}`;
             const type = nullable_value(STRING, item.get('type'))?.value.toLowerCase() ?? default_type;
             const comment = new STRING(item.get('comment') ?? '').value;
-            const input = { name, type, comment };
+            const input = { type, comment };
             let read = item.get('read');
             if (isString(read)) read = read.value;
             const exist_item = fields[read];
@@ -235,6 +243,7 @@ export function initialize_list(area) {
                     default: { comment },
                     force: { type: 'BOOL' }
                 });
+                fields.push(input);
             }
             return input;
         });
@@ -260,7 +269,6 @@ export function initialize_list(area) {
             });
             return reset;
         });
-        interlock.reset_list.unshift(fields.reset);
 
         const output_list = node.get('output');
         if (output_list && !isSeq(output_list)) throw new SyntaxError('interlock 的 output 列表必须是数组!');
@@ -303,7 +311,6 @@ export function initialize_list(area) {
             }
             return output;
         });
-        interlock.output_list.unshift(fields.output);
         DB.interlocks.push(interlock);
     });
 }
@@ -313,6 +320,7 @@ export function build_list({ list }) {
         const interlocks = DB.interlocks;
         DB.symbol.comment ||= interlocks[0].comment;
         DB.comment ??= DB.symbol.comment;
+        DB.enable_init ??= 'TRUE';
 
         const DB_name = DB.name;
         const S7_m_c = "{S7_m_c := 'true'}";
@@ -322,16 +330,11 @@ export function build_list({ list }) {
             if (item.read) item.assign_read = `"${DB_name}".${item.name} := ${item.read.value};`;
             if (item.write) item.assign_write = `${item.write.value} := "${DB_name}".${item.name};`;
             const enable_str = item.name == 'enable'
-                ? ` := ${item.init.value ? 'TRUE' : 'FALSE'}`
+                ? ` := ${DB.enable_init}`
                 : '';
             if (item.s7_m_c) item.declaration = `${item.name} ${S7_m_c} : BOOL${enable_str} ;`;
             item.comment ??= '';
         }
-
-        // the assignment of reset.read output.write must occur
-        // after loop of generating item.assign_read and item.assign_write
-        fields.reset.read = { value: `"${DB_name}".reset` };
-        fields.output.write = { value: `"${DB_name}".output` };
 
         const declarations = _fields.filter(field => field.s7_m_c);
         DB.declarations = declarations;
@@ -342,7 +345,7 @@ export function build_list({ list }) {
             field => field.write && field.assign_write
         );
         const edges = DB.edges;
-        interlocks.forEach(interlock => { // 处理配置，形成完整数据
+        interlocks.forEach((interlock) => { // 处理配置，形成完整数据
             for (const input of interlock.input_list) {
                 if (input.in_ref) {
                     input.read = { value: `"${DB_name}".${input.in_ref.name}` };
