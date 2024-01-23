@@ -90,7 +90,7 @@ list:
   ############################################################
 
   ############################################################
-  # 改变所有输入项的默认触发方式，可省略
+  # 所有输入项的默认触发方式，可省略
   # 省略时为 rising
   # 以下为可用值：
   #     rising     上升沿
@@ -98,7 +98,7 @@ list:
   #     change     变化边沿
   #     on         信号接通
   #     off        信号断开
-  type:  rising
+  trigger:  rising
   ############################################################
 
   ############################################################
@@ -111,8 +111,9 @@ list:
   ############################################################
   # 中转数据列表，每一项的值是一个布尔值。
   # 
-  # 1 中转数据项最大的意义在于它对HMI是可见的，可以向HMI传递数据。
-  #   而 input reset output 的各项在 DB 块中并不一定存在。
+  # 1 中转数据项最大的意义在于它对 PLC 和 HMI 是可见的，
+  #   该项中转数据一定会存储在 DB 块中，
+  #   而 input reset output 的数据在 DB 块中并不保证存在。
   #   系统会自动在每一中转数据项对应的 DB 字段加上 S7_m_c 属性。
   # 2 中转项还可以自定义数据来源和数据目标，实现数值的传递。
   # 3 中转项还可以对读取数据进行计算。
@@ -153,8 +154,8 @@ list:
   # 每一输入项可以包含以下属性:
   #   read    本项的值读取自过程值，必填项
   #           类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
-  #   type    指示本输入项的触发类型，通常省略
-  #           省略时由上一级 type 决定每一个输入项的默认触发类型
+  #   trigger 指示本输入项的触发类型，通常省略
+  #           省略时由上一级 trigger 决定每一个输入项的默认触发类型
   #   comment 该项的注释，可省略
 
   # 通常上完整形式过于复杂，日常使用时的情形通常比较简单，可以使用简化形式
@@ -170,17 +171,18 @@ list:
   - comment: 外输泵错误
     read: DI02-10                      # 触发过程值是一个S7符号
   - comment: 外输泵润滑系统
+    trigger: falling
     read: lubrication_work             # 触发过程值是一个 data 项名称
-    type: falling
   - comment: 外输泵冷却水工作正常
-    type: on                           # 触发类型为接通，保证电机运行时总是联锁
+    # 触发类型为接通，保证电机运行时总是联锁
+    trigger: on
     # 触发过程值是一个SCL表达式
     # 注意，在表达式中不可以直接写 data 中转项名称
     # 必须加DB前缀的形成完整SCL地址，比如下方的 WCS_work：
     read: '"IL_pump".WCS_work XOR MOT0101.run'
   - comment: 外输泵高压失电
     # 触发类型为断开，保证无高压时联锁报警
-    type: off
+    trigger: off
     read: 'PowerReady'                 # SCL表达式
   ############################################################
 
@@ -228,8 +230,9 @@ list:
 
 # === 例3
 # 以下展示2组联锁共用一个DB块的示例
-# 广播系统的启动和停止是2组联锁，它们共用一个 DB ，共享 enable 项控制
-# 注意： 由于共用，2组联锁的 input reset output 项名称都不能重复
+# 广播系统的启动和停止是2组联锁
+# 它们共用一个 DB ，共享 enable 项和 data 项
+# 注意： 由于共用，2组联锁的 data input reset output 项名称都不能重复
 # 同时这里也展示上方没展示的指令用法：
 # - extra_code 指令
 # - 输出项的 inversion 属性
@@ -240,32 +243,33 @@ list:
   # 非 false 值的其它输入会都视为 true
   $enable: false  # 共用DB时， $enable enable 指令只能在其中一个联锁上设置，不允许重复设置
   # 所有 input 项默认触发方式为 on，除非该项单独设置
-  type:  on
+  trigger:  on
   data:
-  - {name: WCounter_signal, read: DI02-20, comment: 计件器}
-  - output
+  - {name: play, write: [DO04-05, Q6.4], comment: 广播设备播放}
+  - {name: stop, write: [DO04-06, Q6.5],  comment: 广播设备停止}
+  - {name: WCounter_signal, read: DI02-16, comment: 计件器检测}
+  - {name: comfirm, read: DI02-20, comment: 人工确认}
+  - {name: RSTSWT, read: DI02-19, comment: 人工停播旋钮}
   input:
   - WCounter_signal
-  - '"WCounter".fix'         # 人工修正增加计件
   output:
-  - comment: 广播设备播放DO点
-    write: [DO04-05, Q6.4]
+  - play                      # 广播设备播放
+    
   # 自定义代码，用于编写与该联锁相关的复杂自定义功能
   # 这里的代码会加入到当前联锁逻辑之后
   extra_code: |-
+    // 记录播报次数
     IF IL_sound.output AND NOT "WCounter".follower THEN
         "WCounter".count := "WCounter".count + 1;
     ENDIF;
     "WCounter".follower := IL_sound.output;
+
 - DB: IL_sound
-  type:  on
-  data:
-  - {name: RSTSWT, read: DI02-19, comment: 人工暂停播放旋钮}
+  trigger:  on
   input:
   - RSTSWT
   output:
-  - comment: 广播设备停止DO点
-    write: [DO04-06, Q6.5]
+  - write: stop
     # 反相输出，代表断开时广播停止
     inversion: TRUE
 

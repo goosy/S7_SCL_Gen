@@ -135,6 +135,19 @@ function create_DB_dict(document) {
     return DB_dict;
 }
 
+function check_exist_field(item, fields, ref, options) {
+    if (isString(item)) item = item.value;
+    if (typeof item === 'string') {
+        const exist_item = fields[item];
+        if (exist_item) return {
+            name: exist_item.name,
+            [ref]: exist_item,
+            ...options,
+        }
+    }
+    return undefined;
+}
+
 /**
  * 第一遍扫描 提取符号
  * @date 2021-12-07
@@ -176,7 +189,7 @@ export function initialize_list(area) {
             extra_code: nullable_value(STRING, node.get('extra_code'))?.value,
             comment
         };
-        const default_type = nullable_value(STRING, node.get('type'))?.value.toLowerCase() ?? 'rising';
+        const default_trigger = nullable_value(STRING, node.get('trigger'))?.value.toLowerCase() ?? 'rising';
 
         const data_list = node.get('data')?.items ?? [];
         data_list.forEach(item => {
@@ -216,18 +229,12 @@ export function initialize_list(area) {
         }
         interlock.input_list = input_list.items.map((item) => {
             // if input is symbol then convert to interlock_item
-            if (isString(item)) item = item.value;
-            if (typeof item === 'string') {
-                const exist_item = fields[item];
-                if (exist_item) return {
-                    name: exist_item.name,
-                    type: default_type,
-                    in_ref: exist_item
-                };
-            }
-            if (typeof item === 'string' || isSeq(item)) {
+            let input = check_exist_field(item, fields, 'in_ref', { trigger_type: default_trigger });
+            if (input) return input;
+
+            if (typeof item === 'string' || isString(item) || isSeq(item)) {
                 const input = {
-                    type: default_type,
+                    trigger_type: default_trigger,
                     comment: ''
                 };
                 make_s7_prop(input, 'read', item, document, {
@@ -238,22 +245,18 @@ export function initialize_list(area) {
             }
             if (!isMap(item)) throw new SyntaxError(`interlock的input项${item}输入错误，必须是input对象、data项名称、S7符号或SCL表达式`);
 
-            const type = nullable_value(STRING, item.get('type'))?.value.toLowerCase() ?? default_type;
+            const trigger_type = nullable_value(STRING, item.get('trigger'))?.value.toLowerCase() ?? default_trigger;
             const comment = new STRING(item.get('comment') ?? '').value;
-            const input = { type, comment };
-            let read = item.get('read');
-            if (isString(read)) read = read.value;
-            const exist_item = fields[read];
-            if (exist_item) {
-                input.in_ref = exist_item;
-                input.name = input.in_ref.name;
-            } else {
-                make_s7_prop(input, 'read', read, document, {
-                    default: { comment },
-                    force: { type: 'BOOL' }
-                });
-                fields.push(input);
-            }
+            const read = item.get('read');
+            input = check_exist_field(read, fields, 'in_ref', { trigger_type, comment })
+            if (input) return input;
+
+            input = { trigger_type, comment };
+            make_s7_prop(input, 'read', read, document, {
+                default: { comment },
+                force: { type: 'BOOL' }
+            });
+            fields.push(input);
             return input;
         });
 
@@ -261,18 +264,12 @@ export function initialize_list(area) {
         if (reset_list && !isSeq(reset_list)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
         interlock.reset_list = (reset_list?.items ?? []).map((item, index) => {
             // if reset is symbol then convert to interlock_item
-            if (isString(item)) item = item.value;
-            if (typeof item === 'string') {
-                const exist_item = fields[item];
-                if (exist_item) return {
-                    name: exist_item.name,
-                    in_ref: exist_item
-                };
-            }
-            if (typeof item !== 'string' && !isSeq(item)) {
+            let reset = check_exist_field(item, fields, 'in_ref');
+            if (reset) return reset;
+            if (typeof item !== 'string' && !isString(item) && !isSeq(item)) {
                 throw new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!');
             }
-            const reset = { name: `reset_${index}` };
+            reset = { name: `reset_${index}` };
             make_s7_prop(reset, 'read', item, document, {
                 force: { type: 'BOOL' }
             });
@@ -282,18 +279,12 @@ export function initialize_list(area) {
         const output_list = node.get('output');
         if (output_list && !isSeq(output_list)) throw new SyntaxError('interlock 的 output 列表必须是数组!');
         interlock.output_list = (output_list?.items ?? []).map((item, index) => {
-            if (isString(item)) item = item.value;
-            if (typeof item === 'string') {
-                const exist_item = fields[item];
-                if (exist_item) {
-                    if (exist_item.read) throw new SyntaxError('interlock 的 output 项不能有 read 属性!');
-                    return {
-                        name: exist_item.name,
-                        out_ref: exist_item
-                    };
-                }
+            let output = check_exist_field(item, fields, 'out_ref');
+            if (output) {
+                if (output.out_ref.read) throw new SyntaxError('interlock 的 output 项不能有 read 属性!');
+                return output;
             }
-            if (typeof item === 'string' || isSeq(item)) {
+            if (typeof item === 'string' || isString(item) || isSeq(item)) {
                 const output = { name: `output_${index}` };
                 make_s7_prop(output, 'write', item, document, {
                     force: { type: 'BOOL' }
@@ -302,22 +293,18 @@ export function initialize_list(area) {
             }
             if (!isMap(item)) throw new SyntaxError('interlock 的 output 项必须是output对象、data项名称、S7符号或SCL表达式!');
 
-            const name = `output_${index}`;
             const inversion = nullable_value(STRING, item.get('inversion'))?.value ?? false;
             const comment = new STRING(item.get('comment') ?? '').value;
-            const output = { name, inversion, comment };
             let write = item.get('write');
-            if (isString(write)) write = write.value;
-            const exist_item = fields[write];
-            if (exist_item) {
-                output.out_ref = exist_item;
-                output.name = output.out_ref.name;
-            } else {
-                make_s7_prop(output, 'write', write, document, {
-                    default: { comment },
-                    force: { type: 'BOOL' }
-                });
-            }
+            output = check_exist_field(write, fields, 'out_ref', { inversion, comment })
+            if (output) return output;
+
+            const name = `output_${index}`;
+            output = { name, inversion, comment };
+            make_s7_prop(output, 'write', write, document, {
+                default: { comment },
+                force: { type: 'BOOL' }
+            });
             return output;
         });
         DB.interlocks.push(interlock);
@@ -361,17 +348,17 @@ export function build_list({ list }) {
                 }
                 const input_value = input.read.value;
                 const parenthesized_value = input.read.isExpress ? `(${input_value})` : input_value;
-                if (input.type === 'falling') {
+                if (input.trigger_type === 'falling') {
                     const edge_field = input.edge_field = `${input.name}_fo`;
                     input.trigger = `NOT ${parenthesized_value} AND "${DB_name}".${edge_field}`;
                     edges.push(input);
-                } else if (input.type === 'change') {
+                } else if (input.trigger_type === 'change') {
                     const edge_field = input.edge_field = `${input.name}_fo`;
                     input.trigger = `${parenthesized_value} XOR "${DB_name}".${edge_field}`;
                     edges.push(input);
-                } else if (input.type === 'on') {
+                } else if (input.trigger_type === 'on') {
                     input.trigger = `${input_value}`;
-                } else if (input.type === 'off') {
+                } else if (input.trigger_type === 'off') {
                     input.trigger = `NOT ${input_value}`;
                 } else { // default rising
                     const edge_field = input.edge_field = `${input.name}_fo`;
