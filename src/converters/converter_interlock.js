@@ -92,53 +92,53 @@ function create_fields() {
     return fields;
 }
 
-function create_DB_dict(document) {
-    const DB_dict = {
-        _list: [], // DB 列表
-        /**
-         * 按照名称建立一个新DB
-         * @param {string} name
-         * @returns {DB}
-         */
-        create(name) {
-            const fields = create_fields();
-            const interlocks = [];
-            const edges = [];
-            const DB = { name, fields, interlocks, edges };
-            DB_dict[name] = DB;
-            DB_dict._list.push(DB);
-            make_s7_prop(DB, 'symbol', name, document, {
-                disallow_s7express: true,
-                disallow_symbol_def: true,
-            });
-            return DB;
-        },
-        /**
-         * 按照名称返回一个DB，如果该名称DB不存在，就产生一个新DB
-         * @param {string|node} name
-         * @returns {DB}
-         */
-        get(name) {
-            let symbol;
-            if (Array.isArray(name) || isSeq(name)) {
-                // 如是符号定义，则新建一个符号
-                symbol = add_symbol(document, name);
-                name = symbol.name;
-            }
-            if (isString(name)) name = name.value;
-            if (typeof name !== 'string') throw Error(`Interlock DB"${name}" 输入错误！`);
-            // 从已有DB中找，如没有则建立一个初始DB资源数据
-            const DB = DB_dict[name] ?? DB_dict.create(name);
-            return DB;
-        },
-    };
-    return DB_dict;
+function create_DB_set(document) {
+    const DB_list = [];
+
+    /**
+     * 按照名称建立一个新DB
+     * @param {string} name
+     * @returns {DB}
+     */
+    function create_DB(name) {
+        const fields = create_fields();
+        const data_dict = {};
+        const interlocks = [];
+        const edges = [];
+        const DB = { name, fields, data_dict, interlocks, edges };
+        DB_list.push(DB);
+        make_s7_prop(DB, 'symbol', name, document, {
+            disallow_s7express: true,
+            disallow_symbol_def: true,
+        });
+        return DB;
+    }
+
+    /**
+     * 按照名称返回一个DB，如果该名称DB不存在，就产生一个新DB
+     * @param {string|node} name
+     * @returns {DB}
+     */
+    function get_or_create(name) {
+        let symbol;
+        if (Array.isArray(name) || isSeq(name)) {
+            // 如是符号定义，则新建一个符号
+            symbol = add_symbol(document, name);
+            name = symbol.name;
+        }
+        if (isString(name)) name = name.value;
+        if (typeof name !== 'string') throw Error(`Interlock DB"${name}" 输入错误！`);
+        // 从已有DB中找，如没有则建立一个初始DB资源数据
+        const DB = DB_list.find(DB => DB.name === name) ?? create_DB(name);
+        return DB;
+    }
+    return { DB_list, get_or_create };
 }
 
-function check_exist_field(item, fields, ref, options) {
+function check_exist_field(item, data_dict, ref, options) {
     if (isString(item)) item = item.value;
     if (typeof item === 'string') {
-        const exist_item = fields[item];
+        const exist_item = data_dict[item];
         if (exist_item) return {
             name: exist_item.name,
             [ref]: exist_item,
@@ -156,12 +156,12 @@ function check_exist_field(item, fields, ref, options) {
  */
 export function initialize_list(area) {
     const { document, list } = area;
-    const DB_dict = create_DB_dict(document);
-    area.list = DB_dict._list;
+    const { DB_list, get_or_create } = create_DB_set(document);
+    area.list = DB_list;
     list.forEach(node => {
         const _DB = node.get('DB');
         if (!_DB) throw new SyntaxError("interlock转换必须有DB块!");
-        const DB = DB_dict.get(_DB);
+        const DB = get_or_create(_DB);
 
         const fields = DB.fields;
         const enable = node.get('enable');
@@ -191,8 +191,10 @@ export function initialize_list(area) {
         };
         const default_trigger = nullable_value(STRING, node.get('trigger'))?.value.toLowerCase() ?? 'rising';
 
-        const data_list = node.get('data')?.items ?? [];
-        data_list.forEach(item => {
+        const data_node = node.get('data');
+        if (data_node && !isSeq(data_node)) throw new SyntaxError('interlock 的 data 列表必须是数组!');
+        const data_dict = DB.data_dict;
+        (data_node?.items ?? []).forEach(item => {
             if (isString(item)) item = item.value;
             if (typeof item === 'string') {
                 const data = {
@@ -200,6 +202,7 @@ export function initialize_list(area) {
                     s7_m_c: true
                 };
                 fields.push(data);
+                data_dict[item] = data;
                 return;
             }
             if (!isMap(item)) throw new SyntaxError('interlock的data项输入错误!');
@@ -221,15 +224,17 @@ export function initialize_list(area) {
                 force: { type: 'BOOL' }
             });
             fields.push(data);
+            data_dict[name] = data;
+            return;
         });
 
-        const input_list = node.get('input');
-        if (!input_list || !isSeq(input_list) || input_list.items.length < 1) {
+        const input_node = node.get('input');
+        if (!input_node || !isSeq(input_node) || input_node.items.length < 1) {
             throw new SyntaxError("interlock的input_list必须有1项以上!"); // 不能为空项
         }
-        interlock.input_list = input_list.items.map((item) => {
+        interlock.input_list = input_node.items.map((item) => {
             // if input is symbol then convert to interlock_item
-            let input = check_exist_field(item, fields, 'in_ref', { trigger_type: default_trigger });
+            let input = check_exist_field(item, data_dict, 'in_ref', { trigger_type: default_trigger });
             if (input) return input;
 
             if (typeof item === 'string' || isString(item) || isSeq(item)) {
@@ -248,7 +253,7 @@ export function initialize_list(area) {
             const trigger_type = nullable_value(STRING, item.get('trigger'))?.value.toLowerCase() ?? default_trigger;
             const comment = new STRING(item.get('comment') ?? '').value;
             const read = item.get('read');
-            input = check_exist_field(read, fields, 'in_ref', { trigger_type, comment })
+            input = check_exist_field(read, data_dict, 'in_ref', { trigger_type, comment })
             if (input) return input;
 
             input = { trigger_type, comment };
@@ -260,11 +265,11 @@ export function initialize_list(area) {
             return input;
         });
 
-        const reset_list = node.get('reset');
-        if (reset_list && !isSeq(reset_list)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
-        interlock.reset_list = (reset_list?.items ?? []).map((item, index) => {
+        const reset_node = node.get('reset');
+        if (reset_node && !isSeq(reset_node)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
+        interlock.reset_list = (reset_node?.items ?? []).map((item, index) => {
             // if reset is symbol then convert to interlock_item
-            let reset = check_exist_field(item, fields, 'in_ref');
+            let reset = check_exist_field(item, data_dict, 'in_ref');
             if (reset) return reset;
             if (typeof item !== 'string' && !isString(item) && !isSeq(item)) {
                 throw new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!');
@@ -276,10 +281,10 @@ export function initialize_list(area) {
             return reset;
         });
 
-        const output_list = node.get('output');
-        if (output_list && !isSeq(output_list)) throw new SyntaxError('interlock 的 output 列表必须是数组!');
-        interlock.output_list = (output_list?.items ?? []).map((item, index) => {
-            let output = check_exist_field(item, fields, 'out_ref');
+        const output_node = node.get('output');
+        if (output_node && !isSeq(output_node)) throw new SyntaxError('interlock 的 output 列表必须是数组!');
+        interlock.output_list = (output_node?.items ?? []).map((item, index) => {
+            let output = check_exist_field(item, data_dict, 'out_ref');
             if (output) {
                 if (output.out_ref.read) throw new SyntaxError('interlock 的 output 项不能有 read 属性!');
                 return output;
@@ -296,7 +301,7 @@ export function initialize_list(area) {
             const inversion = nullable_value(STRING, item.get('inversion'))?.value ?? false;
             const comment = new STRING(item.get('comment') ?? '').value;
             let write = item.get('write');
-            output = check_exist_field(write, fields, 'out_ref', { inversion, comment })
+            output = check_exist_field(write, data_dict, 'out_ref', { inversion, comment })
             if (output) return output;
 
             const name = `output_${index}`;
