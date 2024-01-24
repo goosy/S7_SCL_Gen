@@ -1,10 +1,11 @@
 import assert from 'assert/strict';
-import { IncHLError, compare_str } from "./util.js";
+import { IntIncHL, S7IncHL, IncHLError, compare_str } from "./util.js";
 import { pad_left, pad_right } from "./value.js";
-import { GCL, isString } from './gcl.js';
+import { GCL, isString, get_Seq } from './gcl.js';
 import { isSeq } from 'yaml';
 import { posix } from 'path';
 import { fileURLToPath } from 'url';
+import { EventEmitter } from 'events';
 
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
 await BUILDIN_SYMBOLS.load(posix.join(
@@ -104,7 +105,10 @@ class S7Symbol {
      * @type {Source}
      */
     source;
-    CPU;
+    /**
+     * @type {S7SymbolEmitter}
+     */
+    symbols;
     #symbol_error() {
         return new SyntaxError(`symbol define ${this.source.raw} is wrong!`);
     }
@@ -250,7 +254,7 @@ class S7Symbol {
             this.type_name = this.type;
             this.type_no = '';
         } else {
-            const type_block = this.CPU.symbols_dict[this.type];
+            const type_block = this.symbols.get(this.type);
             if (!type_block) {
                 console.error(`\n\nsymbol ERROR!!! 符号错误！！！`);
                 console.error(`type ${this.type} is required, but not defined`);
@@ -299,8 +303,122 @@ class S7Symbol {
     }
 }
 
+export class S7SymbolEmitter extends EventEmitter {
+    #dict = {};
+    #buildin = []; // 该CPU的内置符号名称列表
+    OB_list = new IntIncHL(100);     // 已用组织块列表
+    DB_list = new IntIncHL(100);     // 已用数据块列表
+    FB_list = new IntIncHL(256);     // 已用函数块列表
+    FC_list = new IntIncHL(256);     // 已用函数列表
+    SFB_list = new IntIncHL(256);    // 已用系统函数块列表
+    SFC_list = new IntIncHL(256);    // 已用系统函数列表
+    UDT_list = new IntIncHL(256);    // 已用自定义类型列表
+    MA_list = new S7IncHL([0, 0]);   // 已用M地址
+    IA_list = new S7IncHL([0, 0]);   // 已用I地址
+    QA_list = new S7IncHL([0, 0]);   // 已用Q地址
+    PIA_list = new S7IncHL([0, 0]);  // 已用PI地址
+    PQA_list = new S7IncHL([0, 0]);  // 已用PQ地址
+
+    is_buildin(name) {
+        return this.#buildin.includes(name);
+    }
+    push_buildin(...items) {
+        this.#buildin.push(...items);
+    }
+
+    /**
+     * Build symbols based on the given list of symbols, including handling various prefixes
+     * and checking for duplicate addresses.
+     */
+    build_symbols() {
+        const exist_bno = {};
+        const symbols = this;
+        // 检查重复并建立索引
+        symbols.list.forEach(symbol => {
+            const name = symbol.name;
+            try {
+                if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC SFB SFC UDT 自动分配块号
+                    symbol.block_no = symbols[symbol.block_name + '_list'].push(symbol.block_no);
+                    symbol.address = symbol.block_name + symbol.block_no;
+                } else if (S7MEM_PREFIX.includes(symbol.block_name)) { // Area 自动分配地址
+                    const s7addr = [symbol.block_no, symbol.block_bit];
+                    // list 为 PIA_list、PQA_list、MA_list、IA_list、QA_list 之一
+                    const prefix = ['PI', 'PQ', 'M', 'I', 'Q'].find(prefix => symbol.block_name.startsWith(prefix));
+                    const area_list = symbols[prefix + 'A_list'];
+                    const address = area_list.push(s7addr, area_size[symbol.block_name]);
+                    symbol.block_no = address[0];
+                    symbol.block_bit = address[1];
+                    symbol.address = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
+                } else if (exist_bno[symbol.address]) { // 其它情况下检查是否重复
+                    throw new RangeError(`重复地址 Duplicate address ${name} ${symbol.address}!`);
+                } else { // 不重复则标识该地址已存在
+                    exist_bno[symbol.address] = true;
+                }
+            } catch (e) {
+                if (e instanceof TypeError) {
+                    throw new TypeError(e.message, { cause: e });
+                } else if (e instanceof IncHLError || e instanceof RangeError) {
+                    throw_symbol_conflict(
+                        `符号地址错误 Symbol address error: ${e.message}`,
+                        symbol,
+                        symbols.list.find(sym => symbol !== sym && sym.address === symbol.address)
+                    );
+                }
+                console.log(e.message);
+            }
+            // 补全类型
+            symbol.complete_type();
+        });
+    }
+
+    constructor() {
+        super();
+        this.#buildin = BUILDIN_SYMBOLS.documents.map(doc =>
+            [
+                ...get_Seq(doc, 'symbols'),
+                ...get_Seq(doc, 'reference_symbols')
+            ].map(
+                symbol => symbol.items[0].value
+            )
+        ).flat();
+        this.setMaxListeners(128);
+        this.on('finished', this.build_symbols);
+    }
+
+    /**
+     * Adds a symbol to the dictionary with the given name.
+     *
+     * @param {string} name - the name of the symbol
+     * @param {S7Symbol} symbol - the symbol to be added
+     * @return {void} 
+     */
+    add(name, symbol) {
+        this.#dict[name] = symbol;
+        this.emit(`${name}_added`, symbol);
+    }
+
+    /**
+     * Get the value associated with the given name from the dictionary.
+     *
+     * @param {string} name - The name of the value to retrieve
+     * @return {S7Symbol} The value associated with the given name
+     */
+    get(name) {
+        return this.#dict[name];
+    }
+
+    /**
+     * Getter for the list property, returns an array of values from the internal dictionary.
+     *
+     * @return {S7Symbol[]} An array of values from the internal dictionary.
+     */
+    get list() {
+        return Object.values(this.#dict);
+    }
+}
+
 /**
- * 将 原始符号 转换后加入到 CPU.symbols_dict 中
+ * 将 原始符号 转换后加入到 CPU.symbols 中
  * @date 2022-11-09
  * @param {import('yaml').Document} document - 符号所在的文档
  * @param {import('yaml').Node|string[]} symbol_raw - 符号的输入值
@@ -310,8 +428,7 @@ export function add_symbol(document, symbol_raw) {
     const is_Seq = isSeq(symbol_raw);
     const symbol_definition = is_Seq ? JSON.parse(symbol_raw) : symbol_raw;
     if (!Array.isArray(symbol_definition)) throw_symbol_conflict(`符号必须是一个定义正确数组！ 原始值:"${symbol_definition}"`);
-    const CPU = document.CPU;
-    const symbols_dict = CPU.symbols_dict;
+    const symbols = document.CPU.symbols;
     /**
      * @type {Source}
      */
@@ -322,20 +439,19 @@ export function add_symbol(document, symbol_raw) {
     }
     // 生成符号
     const symbol = new S7Symbol(source);
-    symbol.CPU = CPU;
+    symbol.symbols = symbols;
 
     const name = symbol.name;
-    const is_buildin = CPU.buildin_symbols.includes(name);
-    const ref = symbols_dict[name];
-    if (is_buildin && ref) {
+    const ref = symbols.get(name);
+    if (symbols.is_buildin(name) && ref) {
         // 已存在该内置符号则应用新地址
         ref.address = symbol.address;
     } else if (ref) {
         // 不允许符号名称重复
-        throw_symbol_conflict(`符号"${name}"名称重复!`, symbol, symbols_dict[name]);
+        throw_symbol_conflict(`符号"${name}"名称重复!`, symbol, symbols.get(name));
     } else {
         // 新符号则保存
-        symbols_dict[name] = symbol;
+        symbols.add(name, symbol);
     }
 
     return ref ?? symbol;
@@ -430,9 +546,9 @@ export function make_s7_expression(value, infos = {}, callback) {
     if (disallow_null && value == undefined) return;// null undefined
 
     const { document, s7_expr_desc } = infos;
-    const CPU = document.CPU;
+    const symbols = document.CPU.symbols
     function get_linked_symbol(name) {
-        const symbol = CPU.symbols_dict[name];
+        const symbol = symbols.get(name);
         if (symbol) apply_default_force(symbol, infos); // { force, default}
         return symbol;
     }
@@ -445,6 +561,10 @@ export function make_s7_expression(value, infos = {}, callback) {
     }
 
     if (isString(value)) value = value.value;
+    const reject = () => {
+        if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
+        callback(get_s7_expression(value, s7_expr_desc));
+    }
     if (typeof value === 'string' && allow_symbol_link) {
         // 如是引用有效，则返回引用符号。
         const symbol = get_linked_symbol(value);
@@ -453,73 +573,18 @@ export function make_s7_expression(value, infos = {}, callback) {
             return;
         }
 
-        // 如果引用不有效，返回异步赋值,
-        // 因为全部符号尚未完全加载完。
-        // 下一轮符号完成时将赋值为最终符号或S7表达式对象
-        CPU.unfinished_symbols.push(() => {
-            const symbol = get_linked_symbol(value);
-            if (symbol) {
-                // 如是引用存在，则返回引用符号。
-                symbol.complete_type();
-                callback(symbol);
-            } else {
-                if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
-                 callback(get_s7_expression(value, s7_expr_desc));
-            }
+        // 如果引用无效，进行异步赋值，因为此时全部符号尚未完全加载完。
+        // 符号完成时将赋值为最终符号或S7表达式对象
+        symbols.on(`${value}_added`, (symbol) => {
+            // 如是引用存在，则返回引用符号。
+            symbol.complete_type();
+            callback(symbol);
+            symbols.removeListener('finished', reject);
         });
-        return;
+        symbols.on('finished', reject);
+    } else {
+        reject(); // 获得S7表达式
     }
-    if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
-    callback(get_s7_expression(value, s7_expr_desc));
-}
-
-// 第二遍扫描，检查并补全符号表
-// 主要是检查或生成最终符号块号、补全类型等
-export function build_symbols(CPU) {
-    const exist_bno = {};
-    const symbols_dict = CPU.symbols_dict;
-    const list = Object.values(symbols_dict);
-    // 检查重复并建立索引
-    list.forEach(
-        /**
-         * @param {Symbol} symbol
-         */
-        symbol => {
-            const name = symbol.name;
-            try {
-                if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC SFB SFC UDT 自动分配块号
-                    symbol.block_no = CPU[symbol.block_name + '_list'].push(symbol.block_no);
-                    symbol.address = symbol.block_name + symbol.block_no;
-                } else if (S7MEM_PREFIX.includes(symbol.block_name)) { // Area 自动分配地址
-                    const s7addr = [symbol.block_no, symbol.block_bit];
-                    // list 为 CPU.PIA_list、CPU.PQA_list、CPU.MA_list、CPU.IA_list、CPU.QA_list 之一
-                    const area_list = CPU[['PI', 'PQ', 'M', 'I', 'Q'].find(prefix => symbol.block_name.startsWith(prefix)) + 'A_list'];
-                    const address = area_list.push(s7addr, area_size[symbol.block_name]);
-                    symbol.block_no = address[0];
-                    symbol.block_bit = address[1];
-                    symbol.address = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
-                } else if (exist_bno[symbol.address]) { // 其它情况下检查是否重复
-                    throw new RangeError(`重复地址 ${name} ${symbol.address}!`)
-                } else { // 不重复则标识该地址已存在
-                    exist_bno[symbol.address] = true;
-                }
-            } catch (e) {
-                if (e instanceof TypeError) {
-                    throw new TypeError(e.message, { cause: e });
-                } else if (e instanceof IncHLError || e instanceof RangeError) {
-                    throw_symbol_conflict(
-                        `符号地址错误: ${e.message}`,
-                        symbol,
-                        list.find(sym => symbol !== sym && sym.address === symbol.address)
-                    );
-                }
-                console.log(e.message);
-            }
-            symbols_dict[name] = symbol;
-        }
-    );
-    // 补全类型
-    list.forEach(symbol => symbol.complete_type());
 }
 
 const SYMN_LEN = 23;
@@ -569,7 +634,7 @@ const template = `{{#for symbol in symbol_list}}{{symbol.line}}
 export function gen_symbols(CPU_list) {
     return {
         rules: CPU_list.map(CPU => {
-            const symbol_list = Object.values(CPU.symbols_dict)
+            const symbol_list = CPU.symbols.list
                 .map(CPU.platform === "portal" ? get_portal_symbol : get_step7_symbol)
                 .filter(symbol => symbol !== null) // 跳过被筛除的符号
                 .sort((a, b) => compare_str(a.name, b.name))

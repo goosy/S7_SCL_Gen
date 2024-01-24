@@ -58,14 +58,11 @@ END_FUNCTION{{#endif block_name}}
 export function initialize_list(area) {
     const document = area.document;
     const CPU = document.CPU;
-    const CM = CPU.symbols_dict.Clock_Byte;
+    const CM = CPU.symbols.get("Clock_Byte");
     if (CM) {
         assert(/^mb\d+$/i.test(CM.address), new SyntaxError(`${CPU.name}-CPU:符号 Clock_Byte 的地址 "${CM.address}" 无效！`));
-        CM.name = 'Clock_Byte';
-        CPU.symbols_dict.Clock_Byte ??= CM;
-
         const CM_address = CM.address.substring(2);
-        CM.comment = 'clock memory';
+        CM.comment ||= 'clock memory';
         const symbols = [
             ['Clock_10Hz', `M${CM_address}.0`],
             ['Clock_5Hz', `M${CM_address}.1`],

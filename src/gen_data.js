@@ -5,9 +5,9 @@ import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, converter } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
-import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NON_SYMBOLS, WRONGTYPESYMBOLS } from './symbols.js';
+import { add_symbols, gen_symbols, BUILDIN_SYMBOLS, NON_SYMBOLS, S7SymbolEmitter, WRONGTYPESYMBOLS } from './symbols.js';
 import { gen_alarms } from './alarms.js';
-import { IntIncHL, S7IncHL, context, write_file } from './util.js';
+import { IntIncHL, context, write_file } from './util.js';
 import { pad_right, nullable_value, STRING } from "./value.js";
 
 /**
@@ -29,20 +29,7 @@ import { pad_right, nullable_value, STRING } from "./value.js";
  * @property {string} platform - 由CPU文档设置，默认 'step7'
  * @property {string} device - 由CPU文档设置
  * @property {IntIncHL} conn_ID_list - 已用连接ID列表
- * @property {IntIncHL} OB_list - 已用组织块列表
- * @property {IntIncHL} DB_list - 已用数据块列表
- * @property {IntIncHL} FB_list - 已用函数块列表
- * @property {IntIncHL} FC_list - 已用函数列表
- * @property {IntIncHL} SFB_list - 已用系统函数块列表
- * @property {IntIncHL} SFC_list - 已用系统函数列表
- * @property {IntIncHL} UDT_list - 已用自定义类型列表
- * @property {S7IncHL} MA_list - 已用M地址
- * @property {S7IncHL} IA_list - 已用I地址
- * @property {S7IncHL} QA_list - 已用Q地址
- * @property {S7IncHL} PIA_list - 已用PI地址
- * @property {S7IncHL} PQA_list - 已用PQ地址
- * @property {object} symbols_dict - 符号字典
- * @property {string[]} buildin_symbols - 该CPU的内置符号名称列表
+ * @property {S7SymbolEmitter} symbols - 符号调度中心
  * @property {object} conn_host_list - 已用的连接地址列表
  * @property {string} output_dir - 输出文件夹
  * @function
@@ -70,33 +57,11 @@ const CPUs = {
             name,
             // platform, 由CPU文档设置，默认 'step7'
             // device, 由CPU文档设置
+            symbols: new S7SymbolEmitter(), // 符号调度中心
             conn_ID_list: new IntIncHL(16), // 已用连接ID列表
-            OB_list: new IntIncHL(100),     // 已用组织块列表
-            DB_list: new IntIncHL(100),     // 已用数据块列表
-            FB_list: new IntIncHL(256),     // 已用函数块列表
-            FC_list: new IntIncHL(256),     // 已用函数列表
-            SFB_list: new IntIncHL(256),    // 已用系统函数块列表
-            SFC_list: new IntIncHL(256),    // 已用系统函数列表
-            UDT_list: new IntIncHL(256),    // 已用自定义类型列表
-            MA_list: new S7IncHL([0, 0]),   // 已用M地址
-            IA_list: new S7IncHL([0, 0]),   // 已用I地址
-            QA_list: new S7IncHL([0, 0]),   // 已用Q地址
-            PIA_list: new S7IncHL([0, 0]),  // 已用PI地址
-            PQA_list: new S7IncHL([0, 0]),  // 已用PQ地址
-            symbols_dict: {},               // 符号字典
-            buildin_symbols:                // 该CPU的内置符号名称列表
-                BUILDIN_SYMBOLS.documents.map(doc =>
-                    [
-                        ...get_Seq(doc, 'symbols'),
-                        ...get_Seq(doc, 'reference_symbols')
-                    ].map(
-                        symbol => symbol.items[0].value
-                    )
-                ).flat(),
             conn_host_list: {},             // 已用的连接地址列表
             alarms_list: [],                // 该CPU的报警列表
             output_dir: name,               // 输出文件夹
-            unfinished_symbols: [],
             /**
              * Description
              * @param {string} feature
@@ -224,7 +189,7 @@ async function add_conf(document) {
         gcl.documents.forEach(doc => {
             doc.CPU = CPU;
             const symbols_of_includes = add_symbols(doc, get_Seq(doc, 'symbols'));
-            CPU.buildin_symbols.push(...symbols_of_includes.map(symbol => symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
+            CPU.symbols.push_buildin(...symbols_of_includes.map(symbol => symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
         })
     });
     // 内置符号文档
@@ -315,9 +280,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
 
     for (const CPU of cpus) {
         // complete the symbol
-        CPU.unfinished_symbols.forEach(fn => fn());
-        // the code below must run on all CPUs not just those with CPU document
-        build_symbols(CPU);
+        CPU.symbols.emit('finished');
     }
 
     for (const feature of supported_features) {
