@@ -5,7 +5,7 @@ import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, converter } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
-import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NONSYMBOLS, WRONGTYPESYMBOLS } from './symbols.js';
+import { add_symbols, build_symbols, gen_symbols, BUILDIN_SYMBOLS, NON_SYMBOLS, WRONGTYPESYMBOLS } from './symbols.js';
 import { gen_alarms } from './alarms.js';
 import { IntIncHL, S7IncHL, context, write_file } from './util.js';
 import { pad_right, nullable_value, STRING } from "./value.js";
@@ -387,14 +387,14 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     );
 
     // 非符号提示
-    if (NONSYMBOLS.length) console.log(`
+    if (NON_SYMBOLS.length) console.log(`
 warning: 警告：
 The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
 The converter treats them as S7 expressions without checking validity. 转换器将它们视为S7表达式不检验有效性
 Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
     );
-    NONSYMBOLS.forEach(item => {
-        console.log(`\t${pad_right(item.prop, 18)}: ${item.value}`);
+    NON_SYMBOLS.forEach(({ value, desc }) => {
+        console.log(`\t${pad_right(value, 24)}: ${desc}`);
     });
     // 用户符号类型定义错误提示
     if (WRONGTYPESYMBOLS.size) console.log(`

@@ -1,4 +1,4 @@
-import { make_s7_prop } from "../symbols.js";
+import { make_s7_expression } from "../symbols.js";
 import { BOOL, REAL, TIME, ensure_value, nullable_value } from '../value.js';
 
 const event_desc = {
@@ -33,12 +33,14 @@ export function make_alarm_props(item, node, document) {
             });
         }
         // as ex: item.enable_AH
-        make_s7_prop(
-            item,
-            enable_str,
+        make_s7_expression(
             node.get(enable_str),
-            document,
-            { force: { type: 'BOOL' } }
+            {
+                document,
+                force: { type: 'BOOL' },
+                s7_expr_desc: `${item.DB.name} ${enable_str}`,
+            },
+            symbol => item[enable_str] = symbol
         );
     });
     // limitation validity check

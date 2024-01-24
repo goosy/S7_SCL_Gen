@@ -1,4 +1,4 @@
-import { make_s7_prop, add_symbol } from '../symbols.js';
+import { make_s7_expression, add_symbol } from '../symbols.js';
 import { BOOL, STRING, ensure_value, nullable_value } from '../value.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
@@ -107,10 +107,15 @@ function create_DB_set(document) {
         const edges = [];
         const DB = { name, fields, data_dict, interlocks, edges };
         DB_list.push(DB);
-        make_s7_prop(DB, 'symbol', name, document, {
-            disallow_s7express: true,
-            disallow_symbol_def: true,
-        });
+        make_s7_expression(
+            name,
+            {
+                document,
+                disallow_s7express: true,
+                disallow_symbol_def: true,
+            },
+            symbol => DB.symbol = symbol
+        );
         return DB;
     }
 
@@ -167,9 +172,15 @@ export function initialize_list(area) {
         const enable = node.get('enable');
         if (enable) {
             if (DB.enable_readable) throw new SyntaxError('enable 重复定义!');
-            make_s7_prop(fields.enable, 'read', enable, document, {
-                force: { type: 'BOOL' },
-            });
+            make_s7_expression(
+                enable,
+                {
+                    document,
+                    force: { type: 'BOOL' },
+                    s7_expr_desc: `interlock DB:${DB.name} enable.read`,
+                },
+                symbol => fields.enable.read = symbol
+            );
             DB.enable_readable = true;
         }
         const enable_init = node.get('$enable');
@@ -195,37 +206,48 @@ export function initialize_list(area) {
         if (data_node && !isSeq(data_node)) throw new SyntaxError('interlock 的 data 列表必须是数组!');
         const data_dict = DB.data_dict;
         (data_node?.items ?? []).forEach(item => {
+            let data;
             if (isString(item)) item = item.value;
             if (typeof item === 'string') {
-                const data = {
+                data = {
                     name: item,
                     s7_m_c: true
                 };
-                fields.push(data);
-                data_dict[item] = data;
-                return;
+            } else if (isMap(item)) {
+                const name = ensure_value(STRING, item.get('name'));
+                const comment = ensure_value(STRING, item.get('comment') ?? '').value;
+                data = {
+                    name,
+                    s7_m_c: true,
+                    comment
+                };
+                const read = item.get('read');
+                make_s7_expression(
+                    read,
+                    {
+                        document,
+                        force: { type: 'BOOL' },
+                        default: { comment },
+                        s7_expr_desc: `interlock DB:${DB.name} ${name}.read`,
+                    },
+                    symbol => data.read = symbol
+                );
+                const write = item.get('write');
+                make_s7_expression(
+                    write,
+                    {
+                        document,
+                        force: { type: 'BOOL' },
+                        default: { comment },
+                        s7_expr_desc: `interlock DB:${DB.name} ${name}.write`,
+                    },
+                    symbol => data.write = symbol
+                );
+            } else {
+                throw new SyntaxError('interlock的data项输入错误!');
             }
-            if (!isMap(item)) throw new SyntaxError('interlock的data项输入错误!');
-            const name = ensure_value(STRING, item.get('name'));
-            const comment = ensure_value(STRING, item.get('comment') ?? '').value;
-            const data = {
-                name,
-                s7_m_c: true,
-                comment
-            };
-            const read = item.get('read');
-            const write = item.get('write');
-            make_s7_prop(data, 'read', read, document, {
-                default: { comment },
-                force: { type: 'BOOL' }
-            });
-            make_s7_prop(data, 'write', write, document, {
-                default: { comment },
-                force: { type: 'BOOL' }
-            });
             fields.push(data);
-            data_dict[name] = data;
-            return;
+            data_dict[data.name] = data;
         });
 
         const input_node = node.get('input');
@@ -242,9 +264,15 @@ export function initialize_list(area) {
                     trigger_type: default_trigger,
                     comment: ''
                 };
-                make_s7_prop(input, 'read', item, document, {
-                    force: { type: 'BOOL' }
-                });
+                make_s7_expression(
+                    item,
+                    {
+                        document,
+                        force: { type: 'BOOL' },
+                        s7_expr_desc: `interlock DB:${DB.name} input.read`,
+                    },
+                    symbol => input.read = symbol
+                );
                 fields.push(input);
                 return input;
             }
@@ -257,10 +285,16 @@ export function initialize_list(area) {
             if (input) return input;
 
             input = { trigger_type, comment };
-            make_s7_prop(input, 'read', read, document, {
-                default: { comment },
-                force: { type: 'BOOL' }
-            });
+            make_s7_expression(
+                read,
+                {
+                    document,
+                    force: { type: 'BOOL' },
+                    default: { comment },
+                    s7_expr_desc: `interlock DB:${DB.name} input.read`,
+                },
+                symbol => input.read = symbol
+            );
             fields.push(input);
             return input;
         });
@@ -275,9 +309,15 @@ export function initialize_list(area) {
                 throw new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!');
             }
             reset = { name: `reset_${index}` };
-            make_s7_prop(reset, 'read', item, document, {
-                force: { type: 'BOOL' }
-            });
+            make_s7_expression(
+                item,
+                {
+                    document,
+                    force: { type: 'BOOL' },
+                    s7_expr_desc: `interlock DB:${DB.name} reset.read`,
+                },
+                symbol => reset.read = symbol
+            );
             return reset;
         });
 
@@ -291,9 +331,15 @@ export function initialize_list(area) {
             }
             if (typeof item === 'string' || isString(item) || isSeq(item)) {
                 const output = { name: `output_${index}` };
-                make_s7_prop(output, 'write', item, document, {
-                    force: { type: 'BOOL' }
-                });
+                make_s7_expression(
+                    item,
+                    {
+                        document,
+                        force: { type: 'BOOL' },
+                        s7_expr_desc: `interlock DB:${DB.name} output.write`,
+                    },
+                    symbol => output.write = symbol
+                );
                 return output;
             }
             if (!isMap(item)) throw new SyntaxError('interlock 的 output 项必须是output对象、data项名称、S7符号或SCL表达式!');
@@ -306,10 +352,16 @@ export function initialize_list(area) {
 
             const name = `output_${index}`;
             output = { name, inversion, comment };
-            make_s7_prop(output, 'write', write, document, {
-                default: { comment },
-                force: { type: 'BOOL' }
-            });
+            make_s7_expression(
+                write,
+                {
+                    document,
+                    force: { type: 'BOOL' },
+                    default: { comment },
+                    s7_expr_desc: `interlock DB:${DB.name} output.write`,
+                },
+                symbol => output.write = symbol
+            );
             return output;
         });
         DB.interlocks.push(interlock);

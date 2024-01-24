@@ -6,7 +6,7 @@
 
 import { context } from '../util.js';
 import { BOOL, STRING, PINT, fixed_hex, ensure_value, nullable_value } from '../value.js';
-import { make_s7_prop } from '../symbols.js';
+import { make_s7_expression } from '../symbols.js';
 import { posix } from 'path';
 import { isSeq } from 'yaml';
 import assert from 'assert/strict';
@@ -140,23 +140,40 @@ export function initialize_list(area) {
         const module_addr = nullable_value(PINT, node.get('module_addr'));
         assert(module_symbol || module_addr, new SyntaxError(`${CPU.name}:SC:module(${comment}) 未提供 module 或 module_addr!`));
         module_symbol ??= [`CP${index + 1}_addr`, `IW${module_addr.value}`];
-        make_s7_prop(module, 'module', module_symbol, document, {
-            disallow_s7express: true,
-            force: { type: 'WORD' },
-            default: { comment: 'HW module address' }
-        });
+        make_s7_expression(
+            module_symbol,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type: 'WORD' },
+                default: { comment: 'HW module address' },
+            },
+            symbol => module.module = symbol
+        );
 
         const DB = node.get('DB');
         assert(DB, new SyntaxError(`${CPU.name}:SC 第${index + 1}个 module 没有正确定义背景块!`));
-        make_s7_prop(module, 'DB', DB, document, {
-            disallow_s7express: true,
-            force: { type }, default: { comment }
-        });
+        make_s7_expression(
+            DB,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type },
+                default: { comment },
+            },
+            symbol => module.DB = symbol
+        );
 
         const customREQ = node.get('customREQ');
-        if (customREQ) make_s7_prop(module, 'customREQ', customREQ, document, {
-            force: { type: 'BOOL' },
-        });
+        if (customREQ) make_s7_expression(
+            customREQ,
+            {
+                document,
+                force: { type: 'BOOL' },
+                s7_expr_desc: `SC ${comment} customREQ`,
+            },
+            symbol => module.customREQ = symbol
+        );
 
         const polls = node.get('polls');
         assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
@@ -170,13 +187,26 @@ export function initialize_list(area) {
             poll.is_modbus = !poll.send_data;
             const comment = poll.comment.value;
             const recv_DB = item.get('recv_DB');
-            make_s7_prop(poll, 'recv_DB', recv_DB, document, {
-                disallow_s7express: true,
-                default: { comment }
-            });
+            make_s7_expression(
+                recv_DB,
+                {
+                    document,
+                    disallow_s7express: true,
+                    default: { comment },
+                },
+                symbol => poll.recv_DB = symbol
+            );
             const send_DB = item.get('send_DB');
             poll.extra_send_DB = !!send_DB;
-            make_s7_prop(poll, 'send_DB', send_DB ?? POLLS_NAME, document, { disallow_s7express: true });
+            make_s7_expression(
+                send_DB ?? POLLS_NAME,
+                {
+                    document,
+                    disallow_s7express: true,
+                    default: { comment },
+                },
+                symbol => poll.send_DB = symbol
+            );
 
             if (poll.extra_send_DB) {
                 // 有外部发送块时，必须有 send_start 和 send_length

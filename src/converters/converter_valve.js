@@ -1,4 +1,4 @@
-import { make_s7_prop } from '../symbols.js';
+import { make_s7_expression } from '../symbols.js';
 import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -113,16 +113,28 @@ export function initialize_list(area) {
         const comment = valve.comment.value;
         const DB = node.get('DB');
         if (!DB) return valve; // 空valve不处理
-        make_s7_prop(valve, 'DB', DB, document, {
-            disallow_s7express: true,
-            force: { type: NAME },
-            default: { comment }
-        });
+        make_s7_expression(
+            DB,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type: NAME },
+                default: { comment },
+            },
+            symbol => valve.DB = symbol
+        );
         const AI = node.get('AI');
-        make_s7_prop(valve, 'AI', AI, document, {
-            force: { type: 'WORD' },
-            default: { comment: comment ? `${comment} AI` : '' }
-        });
+        const _comment = comment ? `${comment} AI` : '';
+        make_s7_expression(
+            AI,
+            {
+                document,
+                force: { type: 'WORD' },
+                default: { comment: _comment },
+                s7_expr_desc: `valve ${_comment}`,
+            },
+            symbol => valve.AI = symbol
+        );
 
         ['AH', 'WH', 'WL', 'AL'].forEach(limit => {
             const enable_str = 'enable_' + limit;
@@ -133,22 +145,30 @@ export function initialize_list(area) {
             // as ex: valve.$enable_AH
             valve[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? valve[$limit_str] != null);
             // as ex: valve.enable_AH
-            make_s7_prop(
-                valve,
-                enable_str,
+            make_s7_expression(
                 node.get(enable_str),
-                document,
-                { force: { type: 'BOOL' } }
+                {
+                    document,
+                    force: { type: 'BOOL' },
+                    s7_expr_desc: `valve ${comment} ${enable_str}`,
+                },
+                symbol => valve[enable_str] = symbol
             );
         });
 
         ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action', 'control_action'].forEach(prop => {
             const _comment = comment ? `${comment} ${prop}` : '';
             const value = node.get(prop);
-            if (value !== undefined) make_s7_prop(valve, prop, value, document, {
-                force: { type: 'BOOL' },
-                default: { comment: _comment }
-            });
+            if (value !== undefined) make_s7_expression(
+                value,
+                {
+                    document,
+                    force: { type: 'BOOL' },
+                    default: { comment: _comment },
+                    s7_expr_desc: `valve ${comment} ${prop}`,
+                },
+                symbol => valve[prop] = symbol
+            );
         });
 
         valve.$zero_raw = nullable_value(INT, node.get('$zero_raw'));

@@ -12,7 +12,7 @@ await BUILDIN_SYMBOLS.load(posix.join(
     '../symbols_buildin.yaml'
 ));
 
-export const NONSYMBOLS = [];
+export const NON_SYMBOLS = [];
 export const WRONGTYPESYMBOLS = new Set();
 
 /**
@@ -412,38 +412,35 @@ function apply_default_force(symbol, options) {
     }
 }
 
-function make_s7express(obj, prop, expr, comment) {
+function get_s7_expression(expr, desc) {
     if (expr === undefined) return;
     const ret = ref(expr);
     if (!ret) throw new Error('非有效的 S7 表达式');
     // 数字或布尔值返回引用对象
-    NONSYMBOLS.push({ prop, value: expr, comment });
-    obj[prop] = ret;
+    NON_SYMBOLS.push({ value: expr, desc });
+    return ret;
 }
 
-export function make_s7_prop(obj, prop, value, document, options = {}) {
+export function make_s7_expression(value, infos = {}, callback) {
+    // 默认允许 符号定义 符号连接 S7表达式 未定义
+    const disallow_null = infos.disallow_null === true;
+    const disallow_s7express = infos.disallow_s7express === true;
+    const allow_symbol_def = infos.disallow_symbol_def !== true;
+    const allow_symbol_link = infos.disallow_symbol_link !== true;
+    if (disallow_null && value == undefined) return;// null undefined
+
+    const { document, s7_expr_desc } = infos;
     const CPU = document.CPU;
-    const comment = options.comment;
     function get_linked_symbol(name) {
         const symbol = CPU.symbols_dict[name];
-        if (symbol) apply_default_force(symbol, options);
+        if (symbol) apply_default_force(symbol, infos); // { force, default}
         return symbol;
-    }
-
-    // 默认允许 符号定义 符号连接 S7表达式 未定义
-    const disallow_null = options.disallow_null === true;
-    const disallow_s7express = options.disallow_s7express === true;
-    const allow_symbol_def = options.disallow_symbol_def !== true;
-    const allow_symbol_link = options.disallow_symbol_link !== true;
-
-    if (disallow_null && value == undefined) { // null undefined
-        return;
     }
     if ((Array.isArray(value) || isSeq(value)) && allow_symbol_def) {
         // 如是符号定义，则返回转换后的符号对象
-        const symbol = add_symbol(document, value, options);
-        apply_default_force(symbol, options);
-        obj[prop] = symbol;
+        const symbol = add_symbol(document, value);
+        apply_default_force(symbol, infos);
+        callback(symbol);
         return;
     }
 
@@ -452,28 +449,28 @@ export function make_s7_prop(obj, prop, value, document, options = {}) {
         // 如是引用有效，则返回引用符号。
         const symbol = get_linked_symbol(value);
         if (symbol) {
-            obj[prop] = symbol;
+            callback(symbol);
             return;
         }
 
-        // 如果引用不有效，返回惰性赋值,
-        // 因为全部符号尚未完全加载完
-        // 下次调用时将赋值为最终符号或S7表达式对象
+        // 如果引用不有效，返回异步赋值,
+        // 因为全部符号尚未完全加载完。
+        // 下一轮符号完成时将赋值为最终符号或S7表达式对象
         CPU.unfinished_symbols.push(() => {
             const symbol = get_linked_symbol(value);
             if (symbol) {
                 // 如是引用存在，则返回引用符号。
                 symbol.complete_type();
-                obj[prop] = symbol;
+                callback(symbol);
             } else {
                 if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
-                make_s7express(obj, prop, value, comment);
+                 callback(get_s7_expression(value, s7_expr_desc));
             }
         });
         return;
     }
     if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
-    make_s7express(obj, prop, value, comment);
+    callback(get_s7_expression(value, s7_expr_desc));
 }
 
 // 第二遍扫描，检查并补全符号表

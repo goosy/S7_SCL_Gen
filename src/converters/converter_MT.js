@@ -1,4 +1,4 @@
-import { make_s7_prop } from '../symbols.js';
+import { make_s7_expression } from '../symbols.js';
 import { fixed_hex, BOOL, PINT, STRING, TIME, nullable_value, ensure_value } from '../value.js';
 import { IntIncHL, context } from '../util.js';
 import { posix } from 'path';
@@ -206,11 +206,16 @@ export function initialize_list(area) {
         assert(DB, new SyntaxError(
             `${CPU.name}:MT:conn(${name ?? conn.ID}) DB is not defined correctly! 没有正确定义DB!`
         ));
-        make_s7_prop(conn, 'DB', DB, document, {
-            disallow_s7express: true,
-            force: { type: NAME },
-            default: { comment }
-        });
+        make_s7_expression(
+            DB,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type: NAME },
+                default: { comment },
+            },
+            symbol => conn.DB = symbol
+        );
 
         // host IP
         let host = node.get('host');
@@ -232,10 +237,16 @@ export function initialize_list(area) {
         conn.X = X ? 'X' + X : '';
         conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
         const interval_time = node.get('interval_time');
-        make_s7_prop(conn, 'interval_time', interval_time, document, {
-            force: { type: 'DINT' },
-            default: { comment: `interval time of ${comment}` }
-        });
+        make_s7_expression(
+            interval_time,
+            {
+                document,
+                force: { type: 'DINT' },
+                default: { comment: `interval time of ${comment}` },
+                s7_expr_desc: `MT ${comment} conn.interval_time`,
+            },
+            symbol => conn.interval_time = symbol
+        );
 
         const polls = node.get('polls');
         assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
@@ -253,10 +264,15 @@ export function initialize_list(area) {
             };
             const comment = poll.comment.value;
             const recv_DB = item.get('recv_DB');
-            make_s7_prop(poll, 'recv_DB', recv_DB, document, {
-                disallow_s7express: true,
-                default: { comment }
-            });
+            make_s7_expression(
+                recv_DB,
+                {
+                    document,
+                    disallow_s7express: true,
+                    default: { comment },
+                },
+                symbol => poll.recv_DB = symbol
+            );
             return poll;
         })
         return conn;

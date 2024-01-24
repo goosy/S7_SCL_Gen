@@ -1,4 +1,4 @@
-import { make_s7_prop } from "../symbols.js";
+import { make_s7_expression } from "../symbols.js";
 import { context } from '../util.js';
 import { STRING, ensure_value } from '../value.js';
 import { posix } from 'path';
@@ -80,20 +80,37 @@ export function initialize_list(area) {
         const input = node.get('input');
         if (!DB && !input) return alarm; // 空alarm不处理
 
-        make_s7_prop(alarm, 'DB', DB, document, {
-            disallow_s7express: true,
-            force: { type: NAME },
-            default: { comment }
-        });
-        make_s7_prop(alarm, 'input', input, document, {
-            force: { type: 'REAL' },
-            default: { comment }
-        });
+        make_s7_expression(
+            DB,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type: NAME },
+                default: { comment },
+            },
+            symbol => alarm.DB = symbol
+        );
+        make_s7_expression(
+            input,
+            {
+                document,
+                force: { type: 'REAL' },
+                default: { comment },
+                s7_expr_desc: `AI ${comment} input`,
+            },
+            symbol => alarm.input = symbol
+        );
         const invalid = node.get('invalid');
-        make_s7_prop(alarm, 'invalid', invalid, document, {
-            force: { type: 'BOOL' },
-            default: { comment }
-        });
+        make_s7_expression(
+            invalid,
+            {
+                document,
+                force: { type: 'BOOL' },
+                default: { comment },
+                s7_expr_desc: `AI ${comment} invalid`,
+            },
+            symbol => alarm.invalid = symbol
+        );
 
         const alarms = make_alarm_props(alarm, node, document);
         alarms_list.push(...alarms);

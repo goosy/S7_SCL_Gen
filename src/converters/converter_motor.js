@@ -1,4 +1,4 @@
-import { make_s7_prop } from '../symbols.js';
+import { make_s7_expression } from '../symbols.js';
 import { BOOL, STRING, nullable_value, TIME, pad_right } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -75,19 +75,30 @@ export function initialize_list(area) {
         const comment = motor.comment.value;
         const DB = node.get('DB');
         if (!DB) return motor; // 空块不处理
-        make_s7_prop(motor, 'DB', DB, document, {
-            disallow_s7express: true,
-            force: { type: NAME },
-            default: { comment }
-        });
+        make_s7_expression(
+            DB,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type: NAME },
+                default: { comment },
+            },
+            symbol => motor.DB = symbol
+        );
 
         function make_bool_s7s(prop) {
             const _comment = comment ? `${comment} ${prop}` : '';
             const value = node.get(prop);
-            if (value !== undefined) make_s7_prop(motor, prop, value, document, {
-                force: { type: 'BOOL' },
-                default: { comment: _comment }
-            });
+            if (value !== undefined) make_s7_expression(
+                value,
+                {
+                    document,
+                    force: { type: 'BOOL' },
+                    default: { comment: _comment },
+                    s7_expr_desc: `motor ${comment} ${prop}`,
+                },
+                symbol => motor[prop] = symbol
+            );
         }
         ['enable', 'run', 'error', 'remote'].forEach(make_bool_s7s);
         ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(make_bool_s7s);

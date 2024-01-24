@@ -1,4 +1,4 @@
-import { make_s7_prop } from '../symbols.js';
+import { make_s7_expression } from '../symbols.js';
 import { STRING } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -61,16 +61,25 @@ export function initialize_list(area) {
         const DB = node.get('DB');
         if (!DB) throw new SyntaxError("timer转换必须有DB块!");
         const comment = timer.comment.value;
-        make_s7_prop(timer, 'DB', DB, document, {
-            disallow_s7express: true,
-            force: { type: NAME },
-            default: { comment }
-        });
-        
-        const options = { force: { type: 'BOOL' } };
-        make_s7_prop(timer, 'enable', node.get('enable'), document, options);
-        make_s7_prop(timer, 'reset', node.get('reset'), document, options);
-        make_s7_prop(timer, 'PPS', node.get('PPS') ?? "Clock_1Hz", document, options);
+        make_s7_expression(
+            DB,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type: NAME },
+                default: { comment },
+            },
+            symbol => timer.DB = symbol
+        );
+
+        const infos = {
+            document,
+            force: { type: 'BOOL' },
+            s7_expr_desc: `timer ${comment}`,
+        };
+        make_s7_expression(node.get('enable'), infos, symbol => timer.enable = symbol);
+        make_s7_expression(node.get('reset'), infos, symbol => timer.reset = symbol);
+        make_s7_expression(node.get('PPS') ?? "Clock_1Hz", infos, symbol => timer.PPS = symbol);
 
         return timer;
     });

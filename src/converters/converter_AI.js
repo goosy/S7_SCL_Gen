@@ -1,4 +1,4 @@
-import { make_s7_prop } from "../symbols.js";
+import { make_s7_expression } from "../symbols.js";
 import { INT, STRING, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
@@ -82,15 +82,26 @@ export function initialize_list(area) {
         const DB = node.get('DB');
         const input = node.get('input');
         if (!DB && !input) return AI; // 空AI不处理
-        make_s7_prop(AI, 'DB', DB, document, {
-            disallow_s7express: true,
-            force: { type: NAME },
-            default: { comment }
-        });
-        make_s7_prop(AI, 'input', input, document, {
-            force: { type: 'WORD' },
-            default: { comment }
-        });
+        make_s7_expression(
+            DB,
+            {
+                document,
+                disallow_s7express: true,
+                force: { type: NAME },
+                default: { comment },
+            },
+            symbol => AI.DB = symbol
+        );
+        make_s7_expression(
+            input,
+            {
+                document,
+                force: { type: 'WORD' },
+                default: { comment },
+                s7_expr_desc: `${comment} input`,
+            },
+            symbol => AI.input = symbol
+        );
 
         AI.$zero_raw = nullable_value(INT, node.get('$zero_raw'));
         AI.$span_raw = nullable_value(INT, node.get('$span_raw'));
