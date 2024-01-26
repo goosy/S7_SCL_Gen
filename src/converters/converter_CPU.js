@@ -98,7 +98,8 @@ export function initialize_list(area) {
                 disallow_s7express: true,
                 default: { comment },
             },
-            symbol => FN.block = symbol
+        ).then(
+            ret => FN.block = ret
         );
         FN.title = nullable_value(STRING, node.get('title'));
         FN.code = new STRING(node.get('code') ?? '');

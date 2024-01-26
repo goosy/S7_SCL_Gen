@@ -89,6 +89,7 @@ export function initialize_list(area) {
                 force: { type },
                 default: { comment },
             },
+        ).then(
             symbol => module.DB = symbol
         );
 
@@ -104,6 +105,7 @@ export function initialize_list(area) {
                 force: { type: 'WORD' },
                 default: { comment: 'HW module address' },
             },
+        ).then(
             symbol => module.module = symbol
         );
 
@@ -116,6 +118,7 @@ export function initialize_list(area) {
                 disallow_s7express: true,
                 force: { type: FM3502_CNT_NAME },
             },
+        ).then(
             symbol => module.count_DB = symbol
         );
 

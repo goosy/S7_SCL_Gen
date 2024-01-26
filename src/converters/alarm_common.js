@@ -1,5 +1,7 @@
 import { make_s7_expression } from "../symbols.js";
 import { BOOL, REAL, TIME, ensure_value, nullable_value } from '../value.js';
+import { isString } from '../gcl.js';
+import { isSeq } from 'yaml';
 
 const event_desc = {
     'AH': '高高报警',
@@ -7,6 +9,14 @@ const event_desc = {
     'WL': '低警告',
     'AL': '低低报警'
 };
+
+export function make_fake_DB(item) {
+    if (isSeq(item)) item = item.items[0];
+    if (Array.isArray(item)) item = item[0];
+    if (isString(item)) item = item.value;
+    if (typeof item === 'string') return { name: item };
+    return undefined;
+}
 
 export function make_alarm_props(item, node, document) {
     const { CPU, gcl } = document;
@@ -40,8 +50,7 @@ export function make_alarm_props(item, node, document) {
                 force: { type: 'BOOL' },
                 s7_expr_desc: `${item.DB.name} ${enable_str}`,
             },
-            symbol => item[enable_str] = symbol
-        );
+        ).then(ret => item[enable_str] = ret)
     });
     // limitation validity check
     const AH = item.$AH_limit ?? item.$WH_limit ?? item.$WL_limit ?? item.$AL_limit;

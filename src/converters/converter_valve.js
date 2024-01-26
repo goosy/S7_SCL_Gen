@@ -121,6 +121,7 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
+        ).then(
             symbol => valve.DB = symbol
         );
         const AI = node.get('AI');
@@ -133,6 +134,7 @@ export function initialize_list(area) {
                 default: { comment: _comment },
                 s7_expr_desc: `valve ${_comment}`,
             },
+        ).then(
             symbol => valve.AI = symbol
         );
 
@@ -152,6 +154,7 @@ export function initialize_list(area) {
                     force: { type: 'BOOL' },
                     s7_expr_desc: `valve ${comment} ${enable_str}`,
                 },
+            ).then(
                 symbol => valve[enable_str] = symbol
             );
         });
@@ -167,6 +170,7 @@ export function initialize_list(area) {
                     default: { comment: _comment },
                     s7_expr_desc: `valve ${comment} ${prop}`,
                 },
+            ).then(
                 symbol => valve[prop] = symbol
             );
         });

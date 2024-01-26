@@ -2,7 +2,7 @@ import { make_s7_expression } from "../symbols.js";
 import { INT, STRING, ensure_value, nullable_value } from '../value.js';
 import { context } from '../util.js';
 import { posix } from 'path';
-import { make_alarm_props } from './alarm_common.js';
+import { make_alarm_props, make_fake_DB } from './alarm_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'AI_Proc';
@@ -82,6 +82,8 @@ export function initialize_list(area) {
         const DB = node.get('DB');
         const input = node.get('input');
         if (!DB && !input) return AI; // 空AI不处理
+
+        AI.DB = make_fake_DB(DB);
         make_s7_expression(
             DB,
             {
@@ -90,8 +92,7 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
-            symbol => AI.DB = symbol
-        );
+        ).then(ret => AI.DB = ret);
         make_s7_expression(
             input,
             {
@@ -100,8 +101,7 @@ export function initialize_list(area) {
                 default: { comment },
                 s7_expr_desc: `${comment} input`,
             },
-            symbol => AI.input = symbol
-        );
+        ).then(ret => AI.input = ret);
 
         AI.$zero_raw = nullable_value(INT, node.get('$zero_raw'));
         AI.$span_raw = nullable_value(INT, node.get('$span_raw'));

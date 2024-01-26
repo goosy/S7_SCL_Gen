@@ -85,6 +85,7 @@ export function initialize_list(area) {
                 force: { type: RP.FB },
                 default: { comment },
             },
+        ).then(
             symbol => RP.DB = symbol
         );
         make_s7_expression(
@@ -95,6 +96,7 @@ export function initialize_list(area) {
                 default: { comment },
                 s7_expr_desc: `RP ${comment} input`,
             },
+        ).then(
             symbol => RP.IN = symbol
         );
         make_s7_expression(
@@ -105,6 +107,7 @@ export function initialize_list(area) {
                 default: { comment },
                 s7_expr_desc: `RP ${comment} output`,
             },
+        ).then(
             symbol => RP.Q = symbol
         );
         if (RP.type.value === 'onDPulse' || RP.type.value === 'changeDPulse') {

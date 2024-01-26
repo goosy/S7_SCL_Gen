@@ -114,6 +114,7 @@ function create_DB_set(document) {
                 disallow_s7express: true,
                 disallow_symbol_def: true,
             },
+        ).then(
             symbol => DB.symbol = symbol
         );
         return DB;
@@ -163,7 +164,7 @@ export function initialize_list(area) {
     const { document, list } = area;
     const { DB_list, get_or_create } = create_DB_set(document);
     area.list = DB_list;
-    list.forEach(node => {
+    for (const node of list) {
         const _DB = node.get('DB');
         if (!_DB) throw new SyntaxError("interlock转换必须有DB块!");
         const DB = get_or_create(_DB);
@@ -179,8 +180,7 @@ export function initialize_list(area) {
                     force: { type: 'BOOL' },
                     s7_expr_desc: `interlock DB:${DB.name} enable.read`,
                 },
-                symbol => fields.enable.read = symbol
-            );
+            ).then(ret => fields.enable.read = ret);
             DB.enable_readable = true;
         }
         const enable_init = node.get('$enable');
@@ -205,7 +205,7 @@ export function initialize_list(area) {
         const data_node = node.get('data');
         if (data_node && !isSeq(data_node)) throw new SyntaxError('interlock 的 data 列表必须是数组!');
         const data_dict = DB.data_dict;
-        (data_node?.items ?? []).forEach(item => {
+        for (let item of (data_node?.items ?? [])) {
             let data;
             if (isString(item)) item = item.value;
             if (typeof item === 'string') {
@@ -230,8 +230,7 @@ export function initialize_list(area) {
                         default: { comment },
                         s7_expr_desc: `interlock DB:${DB.name} ${name}.read`,
                     },
-                    symbol => data.read = symbol
-                );
+                ).then(ret => data.read = ret);
                 const write = item.get('write');
                 make_s7_expression(
                     write,
@@ -241,14 +240,13 @@ export function initialize_list(area) {
                         default: { comment },
                         s7_expr_desc: `interlock DB:${DB.name} ${name}.write`,
                     },
-                    symbol => data.write = symbol
-                );
+                ).then(ret => data.write = ret);
             } else {
                 throw new SyntaxError('interlock的data项输入错误!');
             }
             fields.push(data);
             data_dict[data.name] = data;
-        });
+        };
 
         const input_node = node.get('input');
         if (!input_node || !isSeq(input_node) || input_node.items.length < 1) {
@@ -271,6 +269,7 @@ export function initialize_list(area) {
                         force: { type: 'BOOL' },
                         s7_expr_desc: `interlock DB:${DB.name} input.read`,
                     },
+                ).then(
                     symbol => input.read = symbol
                 );
                 fields.push(input);
@@ -293,6 +292,7 @@ export function initialize_list(area) {
                     default: { comment },
                     s7_expr_desc: `interlock DB:${DB.name} input.read`,
                 },
+            ).then(
                 symbol => input.read = symbol
             );
             fields.push(input);
@@ -316,6 +316,7 @@ export function initialize_list(area) {
                     force: { type: 'BOOL' },
                     s7_expr_desc: `interlock DB:${DB.name} reset.read`,
                 },
+            ).then(
                 symbol => reset.read = symbol
             );
             return reset;
@@ -338,6 +339,7 @@ export function initialize_list(area) {
                         force: { type: 'BOOL' },
                         s7_expr_desc: `interlock DB:${DB.name} output.write`,
                     },
+                ).then(
                     symbol => output.write = symbol
                 );
                 return output;
@@ -360,12 +362,13 @@ export function initialize_list(area) {
                     default: { comment },
                     s7_expr_desc: `interlock DB:${DB.name} output.write`,
                 },
+            ).then(
                 symbol => output.write = symbol
             );
             return output;
         });
         DB.interlocks.push(interlock);
-    });
+    };
 }
 
 export function build_list({ list }) {

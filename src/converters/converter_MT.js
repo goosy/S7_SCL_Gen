@@ -214,6 +214,7 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
+        ).then(
             symbol => conn.DB = symbol
         );
 
@@ -245,6 +246,7 @@ export function initialize_list(area) {
                 default: { comment: `interval time of ${comment}` },
                 s7_expr_desc: `MT ${comment} conn.interval_time`,
             },
+        ).then(
             symbol => conn.interval_time = symbol
         );
 
@@ -271,6 +273,7 @@ export function initialize_list(area) {
                     disallow_s7express: true,
                     default: { comment },
                 },
+            ).then(
                 symbol => poll.recv_DB = symbol
             );
             return poll;

@@ -69,6 +69,7 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
+        ).then(
             symbol => timer.DB = symbol
         );
 
@@ -77,10 +78,9 @@ export function initialize_list(area) {
             force: { type: 'BOOL' },
             s7_expr_desc: `timer ${comment}`,
         };
-        make_s7_expression(node.get('enable'), infos, symbol => timer.enable = symbol);
-        make_s7_expression(node.get('reset'), infos, symbol => timer.reset = symbol);
-        make_s7_expression(node.get('PPS') ?? "Clock_1Hz", infos, symbol => timer.PPS = symbol);
-
+        make_s7_expression(node.get('enable'), infos).then(symbol => timer.enable = symbol);
+        make_s7_expression(node.get('reset'), infos).then(symbol => timer.reset = symbol);
+        make_s7_expression(node.get('PPS') ?? "Clock_1Hz", infos).then(symbol => timer.PPS = symbol);
         return timer;
     });
 }

@@ -5,7 +5,12 @@ import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, converter } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
-import { add_symbols, gen_symbols, BUILDIN_SYMBOLS, NON_SYMBOLS, S7SymbolEmitter, WRONGTYPESYMBOLS } from './symbols.js';
+import {
+    add_symbols, gen_symbols,
+    BUILDIN_SYMBOLS, NON_SYMBOLS, WRONGTYPESYMBOLS,
+    S7SymbolEmitter,
+    SYMBOL_PROMISES,
+} from './symbols.js';
 import { gen_alarms } from './alarms.js';
 import { IntIncHL, context, write_file } from './util.js';
 import { pad_right, nullable_value, STRING } from "./value.js";
@@ -272,16 +277,16 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         for (const doc of docs) {
             await add_conf(doc);
         }
+        for (const CPU of cpus) {
+            CPU.symbols.emit('finished');
+            // complete the symbol
+        }
     } catch (e) {
         console.log(e);
     }
+    await Promise.all(SYMBOL_PROMISES);
 
     // 第二遍扫描 补全数据
-
-    for (const CPU of cpus) {
-        // complete the symbol
-        CPU.symbols.emit('finished');
-    }
 
     for (const feature of supported_features) {
         const list = conf_list[feature];

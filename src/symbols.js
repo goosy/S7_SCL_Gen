@@ -15,6 +15,7 @@ await BUILDIN_SYMBOLS.load(posix.join(
 
 export const NON_SYMBOLS = [];
 export const WRONGTYPESYMBOLS = new Set();
+export const SYMBOL_PROMISES = [];
 
 /**
  * @typedef {object} Source
@@ -305,7 +306,7 @@ class S7Symbol {
 
 export class S7SymbolEmitter extends EventEmitter {
     #dict = {};
-    #buildin = []; // 该CPU的内置符号名称列表
+
     OB_list = new IntIncHL(100);     // 已用组织块列表
     DB_list = new IntIncHL(100);     // 已用数据块列表
     FB_list = new IntIncHL(256);     // 已用函数块列表
@@ -319,11 +320,43 @@ export class S7SymbolEmitter extends EventEmitter {
     PIA_list = new S7IncHL([0, 0]);  // 已用PI地址
     PQA_list = new S7IncHL([0, 0]);  // 已用PQ地址
 
+    #buildin = []; // 该CPU的内置符号名称列表
     is_buildin(name) {
         return this.#buildin.includes(name);
     }
     push_buildin(...items) {
         this.#buildin.push(...items);
+    }
+
+    /**
+     * Adds a symbol to the dictionary with the given name.
+     *
+     * @param {string} name - the name of the symbol
+     * @param {S7Symbol} symbol - the symbol to be added
+     * @return {void} 
+     */
+    add(name, symbol) {
+        this.#dict[name] = symbol;
+        this.emit(`${name}_added`, symbol);
+    }
+
+    /**
+     * Get the value associated with the given name from the dictionary.
+     *
+     * @param {string} name - The name of the value to retrieve
+     * @return {S7Symbol} The value associated with the given name
+     */
+    get(name) {
+        return this.#dict[name];
+    }
+
+    /**
+     * Getter for the list property, returns an array of values from the internal dictionary.
+     *
+     * @return {S7Symbol[]} An array of values from the internal dictionary.
+     */
+    get list() {
+        return Object.values(this.#dict);
     }
 
     /**
@@ -383,37 +416,6 @@ export class S7SymbolEmitter extends EventEmitter {
         ).flat();
         this.setMaxListeners(128);
         this.on('finished', this.build_symbols);
-    }
-
-    /**
-     * Adds a symbol to the dictionary with the given name.
-     *
-     * @param {string} name - the name of the symbol
-     * @param {S7Symbol} symbol - the symbol to be added
-     * @return {void} 
-     */
-    add(name, symbol) {
-        this.#dict[name] = symbol;
-        this.emit(`${name}_added`, symbol);
-    }
-
-    /**
-     * Get the value associated with the given name from the dictionary.
-     *
-     * @param {string} name - The name of the value to retrieve
-     * @return {S7Symbol} The value associated with the given name
-     */
-    get(name) {
-        return this.#dict[name];
-    }
-
-    /**
-     * Getter for the list property, returns an array of values from the internal dictionary.
-     *
-     * @return {S7Symbol[]} An array of values from the internal dictionary.
-     */
-    get list() {
-        return Object.values(this.#dict);
     }
 }
 
@@ -528,62 +530,59 @@ function apply_default_force(symbol, options) {
     }
 }
 
-function get_s7_expression(expr, desc) {
-    if (expr === undefined) return;
-    const ret = ref(expr);
-    if (!ret) throw new Error('非有效的 S7 表达式');
-    // 数字或布尔值返回引用对象
-    NON_SYMBOLS.push({ value: expr, desc });
-    return ret;
-}
-
-export function make_s7_expression(value, infos = {}, callback) {
+export async function make_s7_expression(value, infos = {}) {
     // 默认允许 符号定义 符号连接 S7表达式 未定义
     const disallow_null = infos.disallow_null === true;
     const disallow_s7express = infos.disallow_s7express === true;
     const allow_symbol_def = infos.disallow_symbol_def !== true;
     const allow_symbol_link = infos.disallow_symbol_link !== true;
-    if (disallow_null && value == undefined) return;// null undefined
-
     const { document, s7_expr_desc } = infos;
-    const symbols = document.CPU.symbols
-    function get_linked_symbol(name) {
-        const symbol = symbols.get(name);
-        if (symbol) apply_default_force(symbol, infos); // { force, default}
-        return symbol;
+    const symbols = document.CPU.symbols;
+    if (value == undefined) {
+        if (disallow_null) throw new Error('不允许空值');
+        return value;
     }
+
     if ((Array.isArray(value) || isSeq(value)) && allow_symbol_def) {
         // 如是符号定义，则返回转换后的符号对象
         const symbol = add_symbol(document, value);
         apply_default_force(symbol, infos);
-        callback(symbol);
-        return;
+        return symbol;
+    }
+
+    function do_s7expr() {
+        if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
+        const s7expr = ref(value);
+        if (!s7expr) throw new Error('非有效的 S7 表达式');
+        NON_SYMBOLS.push({ value, desc: s7_expr_desc });
+        return s7expr;
     }
 
     if (isString(value)) value = value.value;
-    const reject = () => {
-        if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
-        callback(get_s7_expression(value, s7_expr_desc));
-    }
+
     if (typeof value === 'string' && allow_symbol_link) {
         // 如是引用有效，则返回引用符号。
-        const symbol = get_linked_symbol(value);
+        const symbol = symbols.get(value);
         if (symbol) {
-            callback(symbol);
-            return;
+            apply_default_force(symbol, infos); // { force, default}
+            return symbol;
         }
 
         // 如果引用无效，进行异步赋值，因为此时全部符号尚未完全加载完。
         // 符号完成时将赋值为最终符号或S7表达式对象
-        symbols.on(`${value}_added`, (symbol) => {
-            // 如是引用存在，则返回引用符号。
-            symbol.complete_type();
-            callback(symbol);
-            symbols.removeListener('finished', reject);
+        const promise = new Promise((resolve, reject) => {
+            const fn = () => resolve(do_s7expr());
+            symbols.on(`${value}_added`, (symbol) => {
+                // 如是引用存在，则返回引用符号。
+                symbols.removeListener('finished', fn);
+                resolve(symbol);
+            });
+            symbols.on('finished', fn);
         });
-        symbols.on('finished', reject);
+        SYMBOL_PROMISES.push(promise);
+        return promise;
     } else {
-        reject(); // 获得S7表达式
+        return do_s7expr(); // 获得S7表达式
     }
 }
 

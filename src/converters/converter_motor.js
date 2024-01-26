@@ -83,6 +83,7 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
+        ).then(
             symbol => motor.DB = symbol
         );
 
@@ -97,6 +98,7 @@ export function initialize_list(area) {
                     default: { comment: _comment },
                     s7_expr_desc: `motor ${comment} ${prop}`,
                 },
+            ).then(
                 symbol => motor[prop] = symbol
             );
         }

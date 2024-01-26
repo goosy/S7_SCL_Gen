@@ -2,7 +2,7 @@ import { make_s7_expression } from "../symbols.js";
 import { context } from '../util.js';
 import { STRING, ensure_value } from '../value.js';
 import { posix } from 'path';
-import { make_alarm_props } from './alarm_common.js';
+import { make_alarm_props, make_fake_DB } from './alarm_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'Alarm_Proc';
@@ -80,6 +80,7 @@ export function initialize_list(area) {
         const input = node.get('input');
         if (!DB && !input) return alarm; // 空alarm不处理
 
+        alarm.DB = make_fake_DB(DB);
         make_s7_expression(
             DB,
             {
@@ -88,8 +89,7 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
-            symbol => alarm.DB = symbol
-        );
+        ).then(ret => alarm.DB = ret);
         make_s7_expression(
             input,
             {
@@ -98,8 +98,7 @@ export function initialize_list(area) {
                 default: { comment },
                 s7_expr_desc: `AI ${comment} input`,
             },
-            symbol => alarm.input = symbol
-        );
+        ).then(ret => alarm.input = ret);
         const invalid = node.get('invalid');
         make_s7_expression(
             invalid,
@@ -109,8 +108,7 @@ export function initialize_list(area) {
                 default: { comment },
                 s7_expr_desc: `AI ${comment} invalid`,
             },
-            symbol => alarm.invalid = symbol
-        );
+        ).then(ret => alarm.invalid = ret);
 
         const alarms = make_alarm_props(alarm, node, document);
         alarms_list.push(...alarms);
