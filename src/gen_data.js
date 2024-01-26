@@ -3,16 +3,15 @@ import { readdir } from 'fs/promises';
 import { globby } from 'globby';
 import { posix } from 'path';
 import { convert } from 'gooconverter';
-import { supported_features, converter } from './converter.js';
+import { supported_features, converter, CPU } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
 import {
     add_symbols, gen_symbols,
     BUILDIN_SYMBOLS, NON_SYMBOLS, WRONGTYPESYMBOLS,
-    S7SymbolEmitter,
     SYMBOL_PROMISES,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
-import { IntIncHL, context, write_file } from './util.js';
+import { context, write_file } from './util.js';
 import { pad_right, nullable_value, STRING } from "./value.js";
 
 /**
@@ -28,44 +27,15 @@ import { pad_right, nullable_value, STRING } from "./value.js";
  * @property {object} options - 选项
  */
 
-/**
- * @typedef  {object} CPU
- * @property {string} name - CPU name
- * @property {string} platform - 由CPU文档设置，默认 'step7'
- * @property {string} device - 由CPU文档设置
- * @property {IntIncHL} conn_ID_list - 已用连接ID列表
- * @property {S7SymbolEmitter} symbols - 符号调度中心
- * @property {object} conn_host_list - 已用的连接地址列表
- * @property {string} output_dir - 输出文件夹
- * @returns {void}
- */
-
 const CPUs = {
-    /**
-     * 按照名称建立一个新CPU
-     * @param {string} name
-     * @returns {CPU}
-     */
-    create(name) {
-        return {
-            name,
-            // platform, 由CPU文档设置，默认 'step7'
-            // device, 由CPU文档设置
-            symbols: new S7SymbolEmitter(), // 符号调度中心
-            conn_ID_list: new IntIncHL(16), // 已用连接ID列表
-            conn_host_list: {},             // 已用的连接地址列表
-            alarms_list: [],                // 该CPU的报警列表
-            output_dir: name,               // 输出文件夹
-        };
-    },
     /**
      * 按照名称返回一个CPU，如果该名称CPU不存在，就产生一个新CPU
      * @param {string} name
      * @returns {CPU}
      */
-    get(name) {
+    get_or_create(name) {
         // 从已有CPU中找，如没有则建立一个初始CPU资源数据
-        return CPUs[name] ??= CPUs.create(name);
+        return CPUs[name] ??= new CPU(name);
     },
 };
 
@@ -126,15 +96,15 @@ async function add_conf(document) {
     const _converter = converter[feature];
 
     // CPU
-    const CPU = document.CPU;
-    if (feature !== 'CPU' && CPU.CPU == null) {
+    const cpu = document.CPU;
+    if (feature !== 'CPU' && cpu.CPU == null) {
         // create a blank CPU document if CPU.CPU desn't exist
-        const doc = await create_CPU_doc(CPU);
+        const doc = await create_CPU_doc(cpu);
         add_conf(doc);
     }
-    if (CPU[feature]) {
-        console.error(`configuration ${CPU.name}-${feature} is duplicated. 配置 ${CPU.name}-${feature} 重复存在!
-        previous file 上一文件: ${CPU[feature].document.gcl.file}
+    if (cpu[feature]) {
+        console.error(`configuration ${cpu.name}-${feature} is duplicated. 配置 ${cpu.name}-${feature} 重复存在!
+        previous file 上一文件: ${cpu[feature].document.gcl.file}
         current file  当前文件: ${document.gcl.file}
         Please correct and convert again. 请更正后重新转换。`);
         process.exit(2);
@@ -143,16 +113,16 @@ async function add_conf(document) {
     // platform
     if (feature === 'CPU') {
         // valid only in CPU documentation
-        CPU.platform = document.get('platform')?.toLowerCase() ?? 'step7';
+        cpu.platform = document.get('platform')?.toLowerCase() ?? 'step7';
     } else if (document.get('platform') != null) {
         console.error(`warning: 警告：
         info 信息: Non-CPU documentation should not indicate platform. 非 CPU 文档不应指示platform
         file 文件:"${document.gcl.file}"
         doc 文档:${feature}`);
     }
-    if (!_converter.platforms.includes(CPU.platform)) {
+    if (!_converter.platforms.includes(cpu.platform)) {
         console.error(`warning: 警告：
-        info 信息: ${CPU.platform} platform don't support ${feature} feature. 不支持${CPU.platform}平台的${feature}转换功能
+        info 信息: ${cpu.platform} platform don't support ${feature} feature. 不支持${cpu.platform}平台的${feature}转换功能
         file 文件:"${document.gcl.file}"
         doc 文档:${feature}
         The conversion of this feature will be skipped 将跳过该转换功能`);
@@ -165,19 +135,19 @@ async function add_conf(document) {
     const {
         code: includes,
         gcl_list,
-    } = await parse_includes(document.get('includes'), { CPU: CPU.name, feature });
+    } = await parse_includes(document.get('includes'), { CPU: cpu.name, feature });
 
     // 包含文件符号 [YAMLSeq symbol]
     gcl_list.forEach(gcl => {
         gcl.documents.forEach(doc => {
-            doc.CPU = CPU;
+            doc.CPU = cpu;
             const symbols_of_includes = add_symbols(doc, get_Seq(doc, 'symbols'));
-            CPU.symbols.push_buildin(...symbols_of_includes.map(symbol => symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
+            cpu.symbols.push_buildin(...symbols_of_includes.map(symbol => symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
         })
     });
     // 内置符号文档
     const buildin_doc = BUILDIN_SYMBOLS.documents.find(doc => doc.feature === feature).clone();
-    buildin_doc.CPU = CPU;
+    buildin_doc.CPU = cpu;
     buildin_doc.gcl = BUILDIN_SYMBOLS;
     add_symbols(
         buildin_doc,
@@ -212,11 +182,11 @@ async function add_conf(document) {
     const list = document.get('list')?.items ?? [];
     const files = document.get('files')?.items ?? [];
     const options = document.get('options')?.toJSON() ?? {};
-    const name = CPU.name;
+    const name = cpu.name;
     if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
     const area = { document, list, includes, files, loop_begin, loop_end, options };
     // 按类型压入文档至CPU
-    CPU[feature] = area;
+    cpu[feature] = area;
     // 将 area.list 的每一项由 YAMLNode 转换为可供模板使用的数据对象
     _converter.initialize_list(area);
 }
@@ -237,7 +207,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
                 for (const doc of gcl.documents) {
                     let CPU = CPUs[doc.CPU];
                     if (!CPU) {
-                        CPU = CPUs.get(doc.CPU);
+                        CPU = CPUs.get_or_create(doc.CPU);
                         cpus.push(CPU);
                     }
                     Object.defineProperty(doc, 'CPU', {
@@ -256,8 +226,8 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         for (const doc of docs) {
             await add_conf(doc);
         }
-        for (const CPU of cpus) {
-            CPU.symbols.emit('finished');
+        for (const cpu of cpus) {
+            cpu.symbols.emit('finished');
             // complete the symbol
         }
     } catch (e) {
@@ -267,9 +237,9 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
 
     // 第二遍扫描 补全数据
 
-    for (const CPU of cpus) {
+    for (const cpu of cpus) {
         for (const feature of supported_features) {
-            const area = CPU[feature];
+            const area = cpu[feature];
             const build_list = converter[feature].build_list;
             if (area && typeof build_list === 'function') build_list(area);
         };
@@ -301,10 +271,10 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     // 第三遍扫描 生成最终待转换数据
     const copy_list = [];
     const convert_list = [];
-    for (const CPU of cpus) {
+    for (const cpu of cpus) {
         for (const feature of supported_features) {
-            const area = CPU[feature];
-            if(area === undefined) continue;
+            const area = cpu[feature];
+            if (area === undefined) continue;
             const output_dir = posix.join(work_path, area.document.CPU.output_dir);
             const gen_copy_list = converter[feature].gen_copy_list;
             assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
