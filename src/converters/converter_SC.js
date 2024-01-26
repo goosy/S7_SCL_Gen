@@ -283,28 +283,25 @@ export function build_list(SC) {
     }).join('\n');
 }
 
-export function gen(SC_list) {
-    const rules = [];
-    SC_list.forEach(({ document, includes, loop_begin, loop_end, invoke_code, list: modules, options }) => {
-        const { CPU, gcl } = document;
-        const { output_dir } = CPU;
-        const { output_file = LOOP_NAME } = options;
-        rules.push({
-            "name": `${output_dir}/${output_file}.scl`,
-            "tags": {
-                modules,
-                includes,
-                loop_begin,
-                loop_end,
-                invoke_code,
-                CP340_NAME,
-                CP341_NAME,
-                LOOP_NAME,
-                POLLS_NAME,
-                gcl,
-            }
-        })
-    });
+export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: modules, options }) {
+    const { CPU, gcl } = document;
+    const { output_dir } = CPU;
+    const { output_file = LOOP_NAME } = options;
+    const rules = [{
+        "name": `${output_dir}/${output_file}.scl`,
+        "tags": {
+            modules,
+            includes,
+            loop_begin,
+            loop_end,
+            invoke_code,
+            CP340_NAME,
+            CP341_NAME,
+            LOOP_NAME,
+            POLLS_NAME,
+            gcl,
+        }
+    }];
     return [{ rules, template }];
 }
 

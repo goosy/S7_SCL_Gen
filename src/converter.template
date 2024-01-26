@@ -5,7 +5,7 @@
 // 每个转换器必须实现
 // - function is_feature(name: string): boolean
 //       判断是否为当前转换文档
-// - function gen(list: Item[]): ConverItem[]
+// - function gen(area: Area): ConverItem[]
 //       生成转换列表，列表可为空
 //       列表的每一项是一个转换对象，事实上这个列表就是 area.list
 //       返回一个转换列表，每一项ConverItem为 { rules, template }

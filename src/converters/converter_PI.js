@@ -142,26 +142,23 @@ export function build_list({ document, list }) {
     });
 }
 
-export function gen(PI_list) {
-    const rules = [];
-    PI_list.forEach(({ document, includes, loop_begin, loop_end, list: modules, options }) => {
-        const { CPU, gcl } = document;
-        const { output_dir } = CPU;
-        const { output_file = LOOP_NAME } = options;
-        rules.push({
-            "name": `${output_dir}/${output_file}.scl`,
-            "tags": {
-                modules,
-                includes,
-                loop_begin,
-                loop_end,
-                NAME,
-                LOOP_NAME,
-                FM3502_CNT_NAME,
-                gcl,
-            }
-        })
-    });
+export function gen({ document, includes, loop_begin, loop_end, list: modules, options }) {
+    const { CPU, gcl } = document;
+    const { output_dir } = CPU;
+    const { output_file = LOOP_NAME } = options;
+    const rules = [{
+        "name": `${output_dir}/${output_file}.scl`,
+        "tags": {
+            modules,
+            includes,
+            loop_begin,
+            loop_end,
+            NAME,
+            LOOP_NAME,
+            FM3502_CNT_NAME,
+            gcl,
+        }
+    }];
     return [{ rules, template }];
 }
 

@@ -130,44 +130,41 @@ export function build_list({ list }) {
     });
 }
 
-export function gen(motor_list) {
-    const rules = [];
-    motor_list.forEach(({ document, includes, loop_begin, loop_end, list }) => {
-        const { CPU, gcl } = document;
-        const { output_dir, platform } = CPU;
-        list.forEach(motor => {
-            const len = platform == 'portal'
-                ? motor.input_paras.length + motor.output_paras.length
-                : motor.input_paras.length;
-            motor.input_paras = motor.input_paras.map(([name, value]) => {
-                if (name === 'enable') name = 'enable_run';
-                name = len > 1 ? pad_right(name, 12) : name;
-                return `${name} := ${value}`;
-            });
-            motor.output_paras = motor.output_paras.map(([name, value]) => {
-                name = name.replace(/_action$/, '_coil').replace('estop', 'E_stop');
-                name = platform == 'portal' && len > 1 ? pad_right(name, 12) : name;
-                if (platform == 'portal') {
-                    return `${name} => ${value}`;
-                } else {
-                    return `${value} := ${motor.DB.value}.${name}`;
-                }
-            });
-        })
-        rules.push({
-            "name": `${output_dir}/${LOOP_NAME}.scl`,
-            "tags": {
-                platform,
-                includes,
-                loop_begin,
-                loop_end,
-                NAME,
-                LOOP_NAME,
-                list,
-                gcl,
+export function gen({ document, includes, loop_begin, loop_end, list }) {
+    const { CPU, gcl } = document;
+    const { output_dir, platform } = CPU;
+    list.forEach(motor => {
+        const len = platform == 'portal'
+            ? motor.input_paras.length + motor.output_paras.length
+            : motor.input_paras.length;
+        motor.input_paras = motor.input_paras.map(([name, value]) => {
+            if (name === 'enable') name = 'enable_run';
+            name = len > 1 ? pad_right(name, 12) : name;
+            return `${name} := ${value}`;
+        });
+        motor.output_paras = motor.output_paras.map(([name, value]) => {
+            name = name.replace(/_action$/, '_coil').replace('estop', 'E_stop');
+            name = platform == 'portal' && len > 1 ? pad_right(name, 12) : name;
+            if (platform == 'portal') {
+                return `${name} => ${value}`;
+            } else {
+                return `${value} := ${motor.DB.value}.${name}`;
             }
-        })
-    });
+        });
+    })
+    const rules = [{
+        "name": `${output_dir}/${LOOP_NAME}.scl`,
+        "tags": {
+            platform,
+            includes,
+            loop_begin,
+            loop_end,
+            NAME,
+            LOOP_NAME,
+            list,
+            gcl,
+        }
+    }];
     return [{ rules, template }];
 }
 

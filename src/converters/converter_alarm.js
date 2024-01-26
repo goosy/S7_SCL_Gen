@@ -142,26 +142,23 @@ export function build_list({ list }) {
     });
 }
 
-export function gen(alarm_list) {
-    const rules = [];
-    alarm_list.forEach(({ document, includes, loop_begin, loop_end, list, options = {} }) => {
-        const { CPU, gcl } = document;
-        const { output_dir, platform } = CPU;
-        const { output_file = LOOP_NAME } = options;
-        rules.push({
-            "name": `${output_dir}/${output_file}.scl`,
-            "tags": {
-                NAME,
-                LOOP_NAME,
-                platform,
-                includes,
-                loop_begin,
-                loop_end,
-                list,
-                gcl,
-            }
-        })
-    });
+export function gen({ document, includes, loop_begin, loop_end, list, options = {} }) {
+    const { CPU, gcl } = document;
+    const { output_dir, platform } = CPU;
+    const { output_file = LOOP_NAME } = options;
+    const rules = [{
+        "name": `${output_dir}/${output_file}.scl`,
+        "tags": {
+            NAME,
+            LOOP_NAME,
+            platform,
+            includes,
+            loop_begin,
+            loop_end,
+            list,
+            gcl,
+        }
+    }];
     return [{ rules, template }];
 }
 

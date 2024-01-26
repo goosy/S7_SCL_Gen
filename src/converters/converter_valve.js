@@ -187,26 +187,22 @@ export function initialize_list(area) {
     });
 }
 
-export function gen(valve_list) {
-    const rules = [];
-
-    valve_list.forEach(({ document, includes, loop_begin, loop_end, list }) => {
-        const { CPU, gcl } = document;
-        const { output_dir, platform } = CPU;
-        rules.push({
-            "name": `${output_dir}/${LOOP_NAME}.scl`,
-            "tags": {
-                platform,
-                includes,
-                loop_begin,
-                loop_end,
-                NAME,
-                LOOP_NAME,
-                list,
-                gcl,
-            }
-        })
-    });
+export function gen({ document, includes, loop_begin, loop_end, list }) {
+    const { CPU, gcl } = document;
+    const { output_dir, platform } = CPU;
+    const rules = [{
+        "name": `${output_dir}/${LOOP_NAME}.scl`,
+        "tags": {
+            platform,
+            includes,
+            loop_begin,
+            loop_end,
+            NAME,
+            LOOP_NAME,
+            list,
+            gcl,
+        }
+    }];
     return [{ rules, template }];
 }
 

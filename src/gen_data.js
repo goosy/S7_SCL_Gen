@@ -37,19 +37,8 @@ import { pad_right, nullable_value, STRING } from "./value.js";
  * @property {S7SymbolEmitter} symbols - 符号调度中心
  * @property {object} conn_host_list - 已用的连接地址列表
  * @property {string} output_dir - 输出文件夹
- * @function
- * @name CPU#add_feature
- * @param {string} feature - 功能名称
- * @param {Document} document - 配置文档
  * @returns {void}
  */
-
-/** @type {object.<string, Area[]>}*/
-const conf_list = {};
-supported_features.forEach(feature => {
-    // 初始化conf_list
-    conf_list[feature] = [];
-});
 
 const CPUs = {
     /**
@@ -67,15 +56,6 @@ const CPUs = {
             conn_host_list: {},             // 已用的连接地址列表
             alarms_list: [],                // 该CPU的报警列表
             output_dir: name,               // 输出文件夹
-            /**
-             * Description
-             * @param {string} feature
-             * @param {Document} document
-             * @returns {void}
-             */
-            add_feature(feature, document) {// 按功能压入Document
-                this[feature] = document;
-            }
         };
     },
     /**
@@ -154,13 +134,11 @@ async function add_conf(document) {
     }
     if (CPU[feature]) {
         console.error(`configuration ${CPU.name}-${feature} is duplicated. 配置 ${CPU.name}-${feature} 重复存在!
-        previous file 上一文件: ${CPU[feature].gcl.file}
+        previous file 上一文件: ${CPU[feature].document.gcl.file}
         current file  当前文件: ${document.gcl.file}
         Please correct and convert again. 请更正后重新转换。`);
         process.exit(2);
     }
-    // 按类型压入文档至CPU
-    CPU.add_feature(feature, document);
 
     // platform
     if (feature === 'CPU') {
@@ -237,9 +215,10 @@ async function add_conf(document) {
     const name = CPU.name;
     if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
     const area = { document, list, includes, files, loop_begin, loop_end, options };
+    // 按类型压入文档至CPU
+    CPU[feature] = area;
     // 将 area.list 的每一项由 YAMLNode 转换为可供模板使用的数据对象
     _converter.initialize_list(area);
-    conf_list[feature].push(area);
 }
 
 export async function gen_data({ output_zyml, noconvert, silent } = {}) {
@@ -288,11 +267,13 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
 
     // 第二遍扫描 补全数据
 
-    for (const feature of supported_features) {
-        const list = conf_list[feature];
-        const build_list = converter[feature].build_list;
-        if (typeof build_list === 'function') list.forEach(build_list);
-    };
+    for (const CPU of cpus) {
+        for (const feature of supported_features) {
+            const area = CPU[feature];
+            const build_list = converter[feature].build_list;
+            if (area && typeof build_list === 'function') build_list(area);
+        };
+    }
 
     // 校验完毕，由 noconvert 变量决定是否输出
     if (noconvert) return [[], []];
@@ -308,7 +289,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
             const name = CPU.name;
             // 生成无注释的配置
             const yaml = supported_features.reduce(
-                (docs, feature) => CPU[feature] ? `${docs}\n\n${CPU[feature].toString(options)}` : docs,
+                (docs, feature) => CPU[feature] ? `${docs}\n\n${CPU[feature].document.toString(options)}` : docs,
                 `# CPU ${name} configuration`
             );
             const filename = `${posix.join(work_path, CPU.output_dir, name)}.zyml`;
@@ -320,13 +301,15 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
     // 第三遍扫描 生成最终待转换数据
     const copy_list = [];
     const convert_list = [];
-    for (const feature of supported_features) {
-        for (const item of conf_list[feature]) {
-            const output_dir = posix.join(work_path, item.document.CPU.output_dir);
+    for (const CPU of cpus) {
+        for (const feature of supported_features) {
+            const area = CPU[feature];
+            if(area === undefined) continue;
+            const output_dir = posix.join(work_path, area.document.CPU.output_dir);
             const gen_copy_list = converter[feature].gen_copy_list;
             assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
             const conf_files = [];
-            for (const file of item.files) {
+            for (const file of area.files) {
                 if (/\\/.test(file.value)) throw new SyntaxError('路径分隔符要使用"/"!');
                 let [base, rest] = file.value.split('//');
                 if (rest == undefined) {
@@ -339,15 +322,15 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
                     conf_files.push({ src, dst });
                 }
             };
-            const ret = gen_copy_list(item);
-            assert(Array.isArray(ret), `innal error: gen_${feature}_copy_list(${item}) is not a Array`);
+            const ret = gen_copy_list(area);
+            assert(Array.isArray(ret), `innal error: gen_${feature}_copy_list(${area}) is not a Array`);
             copy_list.push(...conf_files, ...ret);
-        }
 
-        // push each gen_{feature}(feature_item) to convert_list
-        const gen = converter[feature].gen;
-        assert.equal(typeof gen, 'function', 'innal error');
-        convert_list.push(...gen(conf_list[feature]));
+            // push each gen_{feature}(feature_item) to convert_list
+            const gen = converter[feature].gen;
+            assert.equal(typeof gen, 'function', 'innal error');
+            convert_list.push(...gen(area));
+        }
     };
     convert_list.push(
         gen_symbols(cpus), // symbols converter

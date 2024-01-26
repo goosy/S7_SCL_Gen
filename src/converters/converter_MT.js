@@ -336,27 +336,24 @@ export function build_list(MT) {
     }).join('\n');
 }
 
-export function gen(MT_list) {
-    const rules = [];
-    MT_list.forEach(({ document, includes, loop_begin, loop_end, invoke_code, list: connections, options }) => {
-        const { CPU, gcl } = document;
-        const { output_dir } = CPU;
-        const { output_file = LOOP_NAME } = options;
-        rules.push({
-            "name": `${output_dir}/${output_file}.scl`,
-            "tags": {
-                includes,
-                loop_begin,
-                loop_end,
-                invoke_code,
-                connections,
-                NAME,
-                LOOP_NAME,
-                POLLS_NAME,
-                gcl,
-            }
-        })
-    });
+export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: connections, options }) {
+    const { CPU, gcl } = document;
+    const { output_dir } = CPU;
+    const { output_file = LOOP_NAME } = options;
+    const rules = [{
+        "name": `${output_dir}/${output_file}.scl`,
+        "tags": {
+            includes,
+            loop_begin,
+            loop_end,
+            invoke_code,
+            connections,
+            NAME,
+            LOOP_NAME,
+            POLLS_NAME,
+            gcl,
+        }
+    }];
     return [{ rules, template }];
 }
 

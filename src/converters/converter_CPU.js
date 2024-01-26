@@ -116,23 +116,21 @@ export function build_list({ document, list, options }) {
     if (options.output_dir) CPU.output_dir = convert({ name, CPU: name }, options.output_dir);
 }
 
-export function gen(CPU_list) {
-    const CPU_rules = [];
-    CPU_list.forEach(({ document, includes, list, options }) => {
-        const { CPU, gcl } = document;
-        const { output_dir, platform } = CPU;
-        const { output_file } = options;
-        if (includes.length || list.length) CPU_rules.push({
-            "name": `${output_dir}/${output_file ?? NAME}.scl`,
-            "tags": {
-                platform,
-                includes,
-                list,
-                gcl,
-            }
-        });
+export function gen({ document, includes, list, options }) {
+    const { CPU, gcl } = document;
+    const { output_dir, platform } = CPU;
+    const { output_file } = options;
+    let rules = [];
+    if (includes.length || list.length) rules.push({
+        "name": `${output_dir}/${output_file ?? NAME}.scl`,
+        "tags": {
+            platform,
+            includes,
+            list,
+            gcl,
+        }
     });
-    return [{ rules: CPU_rules, template }];
+    return [{ rules, template }];
 }
 
 export function gen_copy_list() {
