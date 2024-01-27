@@ -33,6 +33,10 @@ const BYTE_PREFIX = ['MB', 'IB', 'PIB', 'QB', 'PQB'];
 const BIT_PREFIX = ['M', 'I', 'Q'];
 const S7MEM_PREFIX = [...DWORD_PREFIX, ...WORD_PREFIX, ...BYTE_PREFIX, ...BIT_PREFIX];
 const COMMON_TYPE = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
+export function is_common_type(type) {
+    if(typeof type !== 'string') return false;
+    return COMMON_TYPE.includes(type.toUpperCase());
+}
 
 // regexp = /^(OB|FB|FC||SFB|SFC|UDT|DB|MD|ID|PID|QD|PQD|MW|IW|PIW|QW|PQW|MB|IB|PIB|QB|PQB|M|I|Q)(\d+|\+)(\.(\d))?$/
 const S7ADDR_REG = new RegExp(`^(${[...INTEGER_PREFIX, ...S7MEM_PREFIX].join('|')})(\\d+|\\+)(\\.(\\d))?$`);
@@ -167,7 +171,7 @@ class S7Symbol {
 
         // this.type startswith 'DB' must be a symbol name
         if (this.block_name == 'DB') {
-            if (COMMON_TYPE.includes(type)) return false;
+            if (is_common_type(type)) return false;
             // the symbol of type must be one of DB FB SFB UDT
             // it will checking on this.complete_type()
             // if (type == this.name) return true;
@@ -206,7 +210,7 @@ class S7Symbol {
     set type(type) {
         if (typeof type === "string") {
             const UC_type = type.toUpperCase();
-            if (COMMON_TYPE.includes(UC_type)) {
+            if (is_common_type(UC_type)) {
                 type = UC_type;
             }
         } else {
@@ -251,7 +255,7 @@ class S7Symbol {
         if (INDEPENDENT_PREFIX.includes(this.block_name) || this.type == null) {
             this.type = this.name;
         }
-        if (COMMON_TYPE.includes(this.type)) {
+        if (is_common_type(this.type)) {
             this.type_name = this.type;
             this.type_no = '';
         } else {
@@ -293,7 +297,7 @@ class S7Symbol {
         this.address = raw[1];
         let type = raw[2];
         if (typeof type === "string") {
-            if (COMMON_TYPE.includes(type.toUpperCase())) {
+            if (is_common_type(type)) {
                 type = type.toUpperCase();
             }
             this.userDefinedType = type;

@@ -131,19 +131,21 @@ list:
   #           类型:  S7符号定义 | S7符号引用 | S7表达式
   #   write   本项写入至过程值目标，可省略
   #           类型:  S7符号定义 | S7符号引用 (不能是S7表达式)
+  #   type    本项的 S7 类型，可省略，默认为 BOOL
+  #   init    本项的初始值，可省略
   #   comment 该项的注释，可省略
   - name: test                 # 仅有 name 的中转项
   - reset                      # 只有 name 的简写方式，它等效于 `- {name: reset}`
-  - comment: 温度高             # 完整写法的中转项
-    name: temperature_AH       # 自定义在DB中的名称
-    read: '"TIT-1201".AH_Flag' # 读值为S7表达式 这里读温度高高超限
-    write: '"WCS".run_CMD'     # 写值为S7表达式 这里去启动水冷
-    # 这个data项本身就实现了一个非常简单的联锁。
-    # 但实践中不建议，它的控制不灵活，用例1这种完整配置指令实现另好的联锁控制。
+  - comment: 温度高             # 完整写法的中转数据项
+    name: temperature          # 自定义在DB中的名称
+    read: '"pump485".TIT-1201' # 读值为S7表达式 这里读485通讯块中的温度
+    write: '"WCS".temperature' # 写值为S7表达式 这里转存温度到水冷系统DB块中
+    type: INT                  # S7 类型为 INT
+    init: 10                   # 初始值为 10
     # 同时有 read 和 write 的项更多用于数值的运算后传递。
-  - comment: 外输泵水冷系统正常  # 读值为S7符号的项
-    name: WCS_work
-    read: [DI02-09, I5.0]
+  - comment: 外输泵润滑系统工作状态
+    name: lubrication_work
+    read: [DI02-09, I5.0]      # 读值为S7符号的项
   - {name: PowerReady, read: DI02-12, comment: 高压到位}
   - {name: HLAlarm, write: DO04-02, comment: 输出至上级报警}
   ############################################################
@@ -154,36 +156,37 @@ list:
   # 每一输入项可以包含以下属性:
   #   read    本项的值读取自过程值，必填项
   #           类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+  #           注意，在SCL表达式内部中，不能直接出现data项名称、S7符号定义、S7符号引用
   #   trigger 指示本输入项的触发类型，通常省略
   #           省略时由上一级 trigger 决定每一个输入项的默认触发类型
   #   comment 该项的注释，可省略
 
   # 通常上完整形式过于复杂，日常使用时的情形通常比较简单，可以使用简化形式
   # 即只使用输入项的 read 属性，整个输入项为简化为只书写 read 值
-  - temperature_AH        # data项名称作为输入项，与 `{read: temperature_AH}` 等效
-  - test                  # data项名称作为输入项，与 `{read: test}` 等效
-  - DI02-11               # 符号引用作为输入项，与 `{read: DI02-11}` 等效
-  - [DI02-14, I5.5]       # 符号定义作为输入项，与 `{read: [DI02-14, I5.5]}` 等效
-  - '"PIT-1201".AH_Flag'  # SCL表达式作为该输入项，与 `{read: '"PIT-1201".AH_Flag'}` 等效
+  - test                       # data项名称作为输入项，与 `{read: test}` 等效
+  - DI02-11                    # 符号引用作为输入项，与 `{read: DI02-11}` 等效
+  - [DI02-14, I5.5]            # 符号定义作为输入项，与 `{read: [DI02-14, I5.5]}` 等效
+  - '"PIT-1201".AH_Flag'       # SCL表达式作为该输入项，与 `{read: '"PIT-1201".AH_Flag'}` 等效
+  - IL_pump.temperature > 100  # SCL表达式作为输入项，与 `{read: IL_pump.temperature > 100}` 等效
   # 编译器会自动转换为完整的输入项对象，并应用默认的 rising 触发类型。
 
   # 下方是一些完整形式的输入项
   - comment: 外输泵错误
-    read: DI02-10                      # 触发过程值是一个S7符号
+    read: DI02-10                                # 触发过程值是一个S7符号
   - comment: 外输泵润滑系统
     trigger: falling
-    read: lubrication_work             # 触发过程值是一个 data 项名称
+    read: lubrication_work                       # 触发过程值是一个 data 项名称
   - comment: 外输泵冷却水工作正常
     # 触发类型为接通，保证电机运行时总是联锁
     trigger: on
     # 触发过程值是一个SCL表达式
     # 注意，在表达式中不可以直接写 data 中转项名称
     # 必须加DB前缀的形成完整SCL地址，比如下方的 WCS_work：
-    read: '"IL_pump".WCS_work XOR MOT0101.run'
+    read: '"IL_pump".WCS_work XOR MOT0101.run'   # 触发过程值是一个SCL表达式
   - comment: 外输泵高压失电
     # 触发类型为断开，保证无高压时联锁报警
     trigger: off
-    read: 'PowerReady'                 # SCL表达式
+    read: 'PowerReady'
   ############################################################
 
   ############################################################
@@ -192,6 +195,7 @@ list:
   reset:
   # 每一个复位关联项类型为:
   #   data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+  # 注意，在SCL表达式内部中，不能直接出现data项名称、S7符号定义、S7符号引用
   # 输出关联项的值都是布尔值
   - reset              # data项名称
   - [DI02-15, I5.6]    # S7符号定义
@@ -209,6 +213,7 @@ list:
   # 每一输出关联项可以包含以下属性:
   #   write      本项的值输出的过程值，必填项
   #              类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+  #              注意，在SCL表达式内部中，不能直接出现data项名称、S7符号定义、S7符号引用
   #   inversion  是否反相输出，boolean字面量，可省略，默认为false
   #   comment    该项的注释，可省略
   # 输出关联项的值都是布尔值，联锁程序会保证关联过程值与联锁输出值相同。

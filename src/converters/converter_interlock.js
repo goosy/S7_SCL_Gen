@@ -1,4 +1,4 @@
-import { make_s7_expression, add_symbol } from '../symbols.js';
+import { make_s7_expression, add_symbol, is_common_type } from '../symbols.js';
 import { BOOL, STRING, ensure_value, nullable_value } from '../value.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
@@ -76,7 +76,7 @@ function create_fields() {
     const s7_m_c = true;
     let index = 0;
     const fields = {
-        'enable': { name: 'enable', s7_m_c, comment: '允许报警或连锁' },
+        'enable': { name: 'enable', s7_m_c, init: 'TRUE', comment: '允许报警或连锁' },
         push(item) {
             item.name ??= `b_${++index}`;
             const name = item.name;
@@ -183,13 +183,11 @@ export function initialize_list(area) {
             ).then(ret => fields.enable.read = ret);
             DB.enable_readable = true;
         }
-        const enable_init = node.get('$enable');
-        if (enable_init !== undefined) {
-            if (DB.enable_init === undefined) {
-                DB.enable_init = ensure_value(BOOL, enable_init).value ? 'TRUE' : 'FALSE';
-            } else {
-                throw new SyntaxError('$enable 重复定义!');
-            }
+        const $enable = nullable_value(BOOL, node.get('$enable'))?.value;
+        if ($enable !== undefined) {
+            if (DB.enable_initialized) throw new SyntaxError('$enable 重复定义!');
+            DB.enable_initialized = true;
+            fields.enable.init = $enable ? 'TRUE' : 'FALSE';
         }
 
         const comment = new STRING(node.get('comment') ?? '报警联锁').value;
@@ -216,8 +214,11 @@ export function initialize_list(area) {
             } else if (isMap(item)) {
                 const name = ensure_value(STRING, item.get('name'));
                 const comment = ensure_value(STRING, item.get('comment') ?? '').value;
+                let type = nullable_value(STRING, item.get('type'))?.value;
+                type = is_common_type(type) ? type : 'BOOL';
                 data = {
                     name,
+                    type,
                     s7_m_c: true,
                     comment
                 };
@@ -226,7 +227,7 @@ export function initialize_list(area) {
                     read,
                     {
                         document,
-                        force: { type: 'BOOL' },
+                        force: { type },
                         default: { comment },
                         s7_expr_desc: `interlock DB:${DB.name} ${name}.read`,
                     },
@@ -236,7 +237,7 @@ export function initialize_list(area) {
                     write,
                     {
                         document,
-                        force: { type: 'BOOL' },
+                        force: { type },
                         default: { comment },
                         s7_expr_desc: `interlock DB:${DB.name} ${name}.write`,
                     },
@@ -376,7 +377,6 @@ export function build_list({ list }) {
         const interlocks = DB.interlocks;
         DB.symbol.comment ||= interlocks[0].comment;
         DB.comment ??= DB.symbol.comment;
-        DB.enable_init ??= 'TRUE';
 
         const DB_name = DB.name;
         const S7_m_c = "{S7_m_c := 'true'}";
@@ -385,10 +385,11 @@ export function build_list({ list }) {
         for (const item of _fields) {
             if (item.read) item.assign_read = `"${DB_name}".${item.name} := ${item.read.value};`;
             if (item.write) item.assign_write = `${item.write.value} := "${DB_name}".${item.name};`;
-            const enable_str = item.name == 'enable'
-                ? ` := ${DB.enable_init}`
+            const init_value = item.init
+                ? ` := ${item.init}`
                 : '';
-            if (item.s7_m_c) item.declaration = `${item.name} ${S7_m_c} : BOOL${enable_str} ;`;
+            const type = item.type ?? 'BOOL';
+            if (item.s7_m_c) item.declaration = `${item.name} ${S7_m_c} : ${type}${init_value} ;`;
             item.comment ??= '';
         }
 
