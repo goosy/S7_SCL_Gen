@@ -48,7 +48,8 @@ BEGIN{{#if loop_begin}}
 // {{interlock.comment}}
 reset := NOT "{{DB.name}}".enable{{#for reset in interlock.reset_list}}
          OR {{reset.value.value}}{{#endfor reset}};
-IF reset THEN
+IF reset THEN{{#for reset in interlock.reset_list}}{{#if reset.resettable}}
+    {{reset.value.value}} := FALSE;{{#endif}}{{#endfor reset}}
     // 复位联锁输出{{#for output in interlock.output_list}}
     {{output.value.value}} := {{output.resetvalue}};{{#endfor output}}
 ELSE
@@ -310,7 +311,7 @@ export function initialize_list(area) {
 
         const reset_node = node.get('reset');
         if (reset_node && !isSeq(reset_node)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
-        interlock.reset_list = (reset_node?.items ?? []).map((item, index) => {
+        interlock.reset_list = (reset_node?.items ?? []).map(item => {
             if (typeof item !== 'string' && !isString(item) && !isSeq(item)) {
                 throw new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!');
             }
@@ -325,7 +326,7 @@ export function initialize_list(area) {
 
         const output_node = node.get('output');
         if (output_node && !isSeq(output_node)) throw new SyntaxError('interlock 的 output 列表必须是数组!');
-        interlock.output_list = (output_node?.items ?? []).map((item, index) => {
+        interlock.output_list = (output_node?.items ?? []).map(item => {
             // if item is IL_expression then convert to output_item
             let output = parse_IL_expression(item, {
                 s7_expr_desc: `interlock DB:${DB_name} output.value`,
@@ -346,9 +347,6 @@ export function initialize_list(area) {
             }
             output.setvalue = inversion ? 'FALSE' : 'TRUE';
             output.resetvalue = inversion ? 'TRUE' : 'FALSE';
-            if (output.ref) {
-                if (output.ref.read) throw new SyntaxError('interlock 的 output 项不能有 read 属性!');
-            }
             return output;
         });
         DB.interlocks.push(interlock);
@@ -415,6 +413,14 @@ export function build_list({ list }) {
                     const edge_field = input.edge_field = `${input.name}_fo`;
                     input.trigger = `${value} AND NOT "${DB_name}".${edge_field}`;
                     edges.push(input);
+                }
+            }
+            for (const reset of interlock.reset_list) {
+                reset.resettable = (reset.ref ?? false) && !reset.ref.read;
+            }
+            for (const output of interlock.output_list) {
+                if (output.ref) {
+                    if (output.ref.read) throw new SyntaxError('interlock 的 output 项不能有 read 属性!');
                 }
             }
         });
