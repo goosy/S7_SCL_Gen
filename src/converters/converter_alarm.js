@@ -48,9 +48,12 @@ BEGIN{{#if loop_begin}}
 {{loop_begin}}
 
 {{#endif}}{{#for alarm in list}}
-{{#if alarm.DB && alarm.input_paras
-}}{{#if platform == 'step7' || platform == 'pcs7'}}"{{NAME}}".{{#endif platform
-}}{{alarm.DB.value}}({{alarm.input_paras}}); {{#endif alarm invoke
+{{#if alarm.DB}}{{
+  #if platform == 'step7' || platform == 'pcs7'
+    }}"{{NAME}}".{{
+  #endif platform
+  }}{{alarm.DB.value}}({{alarm.input_paras}}); {{
+#endif alarm.DB
 }}// {{alarm.comment}}{{#endfor alarm}}{{#if loop_end}}
 
 {{loop_end}}{{#endif}}

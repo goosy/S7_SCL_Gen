@@ -418,7 +418,7 @@ export class S7SymbolEmitter extends EventEmitter {
                 symbol => symbol.items[0].value
             )
         ).flat();
-        this.setMaxListeners(128);
+        this.setMaxListeners(1024);
         this.on('finished', this.build_symbols);
     }
 }

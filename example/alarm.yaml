@@ -87,15 +87,8 @@ list: # 过程量列表
   # 其余的 enable_WH enable_WH enable_WH 没有定义，代表这3项使能在运行中不改变
   # 一般情况下以上2个只保留一个
 
-- comment: 占位      
-  # 在有DB块的情况下，会生成alarm数据块
-  # 在有DB参数的情况下，有以下其它参数之一，则产生运行期间的alarm调用
-  # - input
-  # - invalid
-  # - enable_AH
-  # - enable_WH
-  # - enable_WL
-  # - enable_AL 
+- comment: 保留
+  # 在有DB块的情况下，会生成alarm数据块和运行期间的alarm调用
   # 没有 DB 则只输出注释，不会生成alarm数据块和运行期间的alarm调用
   DB: [reserve, DB+]
 
