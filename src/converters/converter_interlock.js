@@ -58,7 +58,14 @@ ELSE
     IF output THEN
         // 置位联锁输出{{#for output in interlock.output_list}}
         {{output.value.value}} := {{output.setvalue}};{{#endfor output}}
-    END_IF;
+    END_IF;{{
+    #for output in interlock.output_list}}{{
+    reset = output.reset}}{{
+    #if output.reset}}
+    IF {{output.reset.value.value}} THEN{{#if reset.resettable}}
+        {{reset.value.value}} := FALSE;{{#endif resettable}}
+        {{output.value.value}} := {{output.resetvalue}};
+    END_IF;{{#endif output.reset}}{{#endfor output}}
 END_IF;
 // 输入边沿维护{{#for no, input in interlock.input_list}}{{#if input.edge_field}}
 "{{DB.name}}".{{input.edge_field}} := {{input.value.value}};{{#endif}}{{#endfor}}{{#if interlock.extra_code}}
@@ -309,9 +316,7 @@ export function initialize_list(area) {
             return input;
         });
 
-        const reset_node = node.get('reset');
-        if (reset_node && !isSeq(reset_node)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
-        interlock.reset_list = (reset_node?.items ?? []).map(item => {
+        function conv_rest(item){
             if (typeof item !== 'string' && !isString(item) && !isSeq(item)) {
                 throw new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!');
             }
@@ -322,7 +327,10 @@ export function initialize_list(area) {
                 comment: ''
             });
             return reset;
-        });
+        }
+        const reset_node = node.get('reset');
+        if (reset_node && !isSeq(reset_node)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
+        interlock.reset_list = (reset_node?.items ?? []).map(conv_rest);
 
         const output_node = node.get('output');
         if (output_node && !isSeq(output_node)) throw new SyntaxError('interlock 的 output 列表必须是数组!');
@@ -344,6 +352,8 @@ export function initialize_list(area) {
                     s7_expr_desc: `interlock DB:${DB_name} output.value`,
                     comment,
                 });
+                const reset = item.get('reset');
+                if (reset) output.reset = conv_rest(reset);
             }
             output.setvalue = inversion ? 'FALSE' : 'TRUE';
             output.resetvalue = inversion ? 'TRUE' : 'FALSE';
@@ -421,6 +431,10 @@ export function build_list({ list }) {
             for (const output of interlock.output_list) {
                 if (output.ref) {
                     if (output.ref.read) throw new SyntaxError('interlock 的 output 项不能有 read 属性!');
+                }
+                const reset = output.reset;
+                if(reset){
+                    reset.resettable = (reset.ref ?? false) && !reset.ref.read;
                 }
             }
         });
