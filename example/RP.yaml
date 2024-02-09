@@ -1,13 +1,13 @@
 ---
-#CPU: [AS1, AS2] # 指示属于2个CPU，名称分别是 AS1 AS2
-#feature: AI     # 指示本配置为生成 AI 代码
+#CPU: AS1        # 指示 CPU 名称是 AS1
+#feature: RP     # 指示本配置为生成 RP 代码
 
 name: AS1-RP     # 相当于上面2条被注释的指令
 
 # 要求 step7 预先引入 SFB3`TP` SFB4`TON` SFB5`TOF`
 
 symbols: 
-  # AI文档已有2个内置符号，其内容由本程序自动生成：
+  # RP 文档已有 2 个内置符号，其内容由本程序自动生成：
   # - [DP, FB3]  防颤(debounce)边沿脉冲
   # - [CP, FB4]  边沿脉冲
   # - [RP_Loop, FC521]  主循环调用FC，将这个加入OB1中

@@ -1,6 +1,7 @@
 ---
 #CPU: AS1           # 指示属于哪一个CPU
-#feature: modbusTCP #  指示本配置为生成 modbusTCP 文档 也可以写为 "feature: MT"
+#feature: modbusTCP # 指示本配置为生成 modbusTCP 文档
+#feature: MT        # MT 等同于 modbusTCP
 
 name: AS1-modbusTCP # 相当于上面2条被注释的指令
 
@@ -11,7 +12,6 @@ description: |
   * FB65 TCON
   * FB66 TDISCON
 
-# 符号定义
 symbols:
 # 系统已有3个内置符号，其内容自动生成：
 # - [MT_Poll, FB344]      modbusTCP通信主处理函数
@@ -20,8 +20,7 @@ symbols:
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 - [MT_polls_DB, DB901] # 修改内置DB块 MT_polls_DB 的地址
 
-# 以下为自定义符号
-# JS_Flow 已在 CPU 文档中定义
+# 本配置用的 JS_Flow 已在 CPU 文档中定义
 
 list : # modbus TCP 连接列表
 
