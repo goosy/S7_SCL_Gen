@@ -17,5 +17,6 @@ build.js
 dist/
 public/
 example/*/
+example-lib/*/
 test/
 .pnp*

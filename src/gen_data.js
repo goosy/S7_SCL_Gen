@@ -62,7 +62,7 @@ async function parse_includes(includes, options) {
     return { code, gcl_list };
 }
 
-async function create_CPU_doc(CPU) {
+async function create_fake_CPU_doc(CPU) {
     // create a blank CPU document for CPU
     const gcl = new GCL();
     const yaml = `name: ${CPU.name}-CPU\nplatform: step7\nsymbols:[]\nlist: []`;
@@ -99,7 +99,7 @@ async function add_conf(document) {
     const cpu = document.CPU;
     if (feature !== 'CPU' && cpu.CPU == null) {
         // create a blank CPU document if CPU.CPU desn't exist
-        const doc = await create_CPU_doc(cpu);
+        const doc = await create_fake_CPU_doc(cpu);
         add_conf(doc);
     }
     if (cpu[feature]) {
@@ -280,15 +280,16 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
             assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
             const conf_files = [];
             for (const file of area.files) {
-                if (/\\/.test(file.value)) throw new SyntaxError('路径分隔符要使用"/"!');
-                let [base, rest] = file.value.split('//');
-                if (rest == undefined) {
-                    rest = base;
-                    base = '';
+                const filename = file.value;
+                if (/\\/.test(filename)) throw new SyntaxError('路径分隔符要使用"/"!');
+                let [dir, base] = filename.split('//');
+                if (base == undefined) {
+                    base = posix.basename(filename);
+                    dir = posix.dirname(filename);
                 }
-                base = posix.join(work_path, base);
-                for (const src of await globby(posix.join(base, rest))) {
-                    const dst = src.replace(base, output_dir);
+                dir = posix.join(work_path, dir);
+                for (const src of await globby(posix.join(dir, base))) {
+                    const dst = src.replace(dir, output_dir);
                     conf_files.push({ src, dst });
                 }
             };

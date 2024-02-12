@@ -112,8 +112,13 @@ export function build_list({ document, list, options }) {
     list.forEach(FN => {
         if (!['OB', 'FC'].includes(FN.block.block_name)) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项block必须是一个 OB 或 FC 符号!`);
     });
-    const name = CPU.name;
-    if (options.output_dir) CPU.output_dir = convert({ name, CPU: name }, options.output_dir);
+    if (options.output_dir) {
+        CPU.output_dir = convert({
+            CPU: CPU.name,
+            platform: CPU.platform,
+            device: CPU.device
+        }, options.output_dir);
+    }
 }
 
 export function gen({ document, includes, list, options }) {
