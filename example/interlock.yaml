@@ -154,39 +154,44 @@ list:
   # 输入列表，每一项代表一个信号，最终值为布尔值
   input:
   # 每一输入项可以包含以下属性:
-  #   read    本项的值读取自过程值，必填项
+  #   value    本项的值读取自过程值，必填项
   #           类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
   #           注意，在SCL表达式内部中，不能直接出现data项名称、S7符号定义、S7符号引用
   #   trigger 指示本输入项的触发类型，通常省略
   #           省略时由上一级 trigger 决定每一个输入项的默认触发类型
   #   comment 该项的注释，可省略
+  #   and     指示 value 是由多个项组成，并取与运算结果做为本项的 value 值
+  #           具体见例3的说明
 
   # 通常上完整形式过于复杂，日常使用时的情形通常比较简单，可以使用简化形式
-  # 即只使用输入项的 read 属性，整个输入项为简化为只书写 read 值
-  - test                       # data项名称作为输入项，与 `{read: test}` 等效
-  - DI02-11                    # 符号引用作为输入项，与 `{read: DI02-11}` 等效
-  - [DI02-14, I5.5]            # 符号定义作为输入项，与 `{read: [DI02-14, I5.5]}` 等效
-  - '"PIT-1201".AH_Flag'       # SCL表达式作为该输入项，与 `{read: '"PIT-1201".AH_Flag'}` 等效
-  - IL_pump.temperature > 100  # SCL表达式作为输入项，与 `{read: IL_pump.temperature > 100}` 等效
+  # 即只使用输入项的 value 属性，整个输入项为简化为只书写 value 值
+  - test                       # data项名称作为输入项，与 `{value: test}` 等效
+  - DI02-11                    # 符号引用作为输入项，与 `{value: DI02-11}` 等效
+  - [DI02-14, I5.5]            # 符号定义作为输入项，与 `{value: [DI02-14, I5.5]}` 等效
+  - '"PIT-1201".AH_Flag'       # SCL表达式作为该输入项，与 `{value: '"PIT-1201".AH_Flag'}` 等效
+  - IL_pump.temperature > 100  # SCL表达式作为输入项，与 `{value: IL_pump.temperature > 100}` 等效
   # 编译器会自动转换为完整的输入项对象，并应用默认的 rising 触发类型。
 
   # 下方是一些完整形式的输入项
-  - comment: 外输泵错误
-    read: DI02-10                                # 触发过程值是一个S7符号
   - comment: 外输泵润滑系统
     trigger: falling
-    read: lubrication_work                       # 触发过程值是一个 data 项名称
+    value: lubrication_work                       # 触发过程值是一个 data 项名称
+  - comment: 外输泵错误
+    value: DI02-10                                # 触发过程值是一个S7符号
   - comment: 外输泵冷却水工作正常
     # 触发类型为接通，保证电机运行时总是联锁
     trigger: on
     # 触发过程值是一个SCL表达式
     # 注意，在表达式中不可以直接写 data 中转项名称
     # 必须加DB前缀的形成完整SCL地址，比如下方的 WCS_work：
-    read: '"IL_pump".WCS_work XOR MOT0101.run'   # 触发过程值是一个SCL表达式
+    value: '"IL_pump".WCS_work XOR MOT0101.run'   # 触发过程值是一个SCL表达式
   - comment: 外输泵高压失电
     # 触发类型为断开，保证无高压时联锁报警
     trigger: off
-    read: 'PowerReady'
+    value: 'PowerReady'
+  - and:               # 来油罐液位低
+    - LIT0205A.AL_flag # 1#罐液位低
+    - LIT0205B.AL_flag # 2#罐液位低
   ############################################################
 
   ############################################################
@@ -211,7 +216,7 @@ list:
   output:
 
   # 每一输出关联项可以包含以下属性:
-  #   write      本项的值输出的过程值，必填项
+  #   value      本项的值输出的过程值，必填项
   #              类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
   #              注意，在SCL表达式内部中，不能直接出现data项名称、S7符号定义、S7符号引用
   #   inversion  是否反相输出，boolean字面量，可省略，默认为false
@@ -224,13 +229,13 @@ list:
   # 如果没有任何输出项，转换程序不生成任何关联输出。这时可以用 DB.output 来自行编程或HMI处理
 
   # 通常上面定义的完整形式过于复杂，日常使用时的情形通常比较简单，可以使用简化形式
-  # 即只使用输出项的 write 属性，整个输出项简化为只书写 write 的值
+  # 即只使用输出项的 value 属性，整个输出项简化为只书写 value 的值
   - HLAlarm                                # data 项，该 data 项不能有input属性
-  - [DO04-04, Q6.3]                        # S7符号
+  - [DO04-04, Q6.3]                        # S7符号 代表停泵动作
   # 编译器会自动转换为完整的输出项对象，默认不反相，不单独复位。
 
   # 完整输出项对象的写法
-  - {write: DO04-03, comment: 本地声光报警} # 输出到S7符号
+  - {value: DO04-03, comment: 本地声光报警} # 输出到S7符号
   ############################################################
 
 # === 例3
@@ -239,8 +244,9 @@ list:
 # 它们共用一个 DB ，共享 enable 项和 data 项
 # 注意： 由于共用，2组联锁的 data input reset output 项名称都不能重复
 # 同时这里也展示上方没展示的指令用法：
-# - extra_code 指令
+# - 输入项的 and 属性
 # - 输出项的 inversion 属性
+# - extra_code 指令
 
 - DB: [IL_sound, DB123, ~, 事件播报]
   # boolean 字面量，值只能为true或false
@@ -256,7 +262,13 @@ list:
   - {name: comfirm, read: DI02-20, comment: 人工确认}
   - {name: RSTSWT, read: DI02-19, comment: 人工停播旋钮}
   input:
-  - WCounter_signal
+  - WCounter_signal           # 计件器检测
+  # input项除了上方介绍的 value trigger comment 属性外
+  # 还有一个高级属性 and ，它指示 raad 属性是由多个项组成的数组
+  # 当 and 列表被设置时，value 值是由多个 and 项进行与运算形成
+  - and:                      # 每一项的类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+    - comfirm                 # 人工确认
+    - '"WCounter".fix'        # 检测异常
   output:
   - play                      # 广播设备播放
     
@@ -274,7 +286,7 @@ list:
   input:
   - RSTSWT
   output:
-  - write: stop
+  - value: stop
     # 反相输出，代表断开时广播停止
     inversion: TRUE
 
