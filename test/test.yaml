@@ -1,0 +1,9 @@
+---
+name: test-AI
+
+symbols:
+- [DI01-01, I10.1]
+
+list : # AI列表
+- comment: test
+...
