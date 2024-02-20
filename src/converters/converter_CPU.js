@@ -34,18 +34,27 @@ export function is_feature(feature) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
+{{#if includes}}
 {{includes}}
-{{#for FN in list}}{{#if FN.block.block_name === 'OB'}}
-ORGANIZATION_BLOCK "{{FN.block.name}}"{{#if FN.title}}
-TITLE = "{{FN.title}}"{{#endif title}}{{#if platform == 'portal'}}
-{ S7_Optimized_Access := 'TRUE' }{{#endif portal}}
+{{#endif}}_
+{{#for FN in list}}_
+{{#if FN.block.block_name === 'OB'}}
+ORGANIZATION_BLOCK "{{FN.block.name}}"
+{{#if FN.title}}_
+TITLE = "{{FN.title}}"
+{{#endif title}}_
+{{#if platform == 'portal'}}_
+{ S7_Optimized_Access := 'TRUE' }
+{{#endif portal}}_
 BEGIN
 {{FN.code}}
-END_ORGANIZATION_BLOCK{{#else}}
+END_ORGANIZATION_BLOCK
+{{#else}}
 FUNCTION "{{FN.block.name}}" : VOID
 BEGIN
 {{FN.code}}
-END_FUNCTION{{#endif block_name}}
+END_FUNCTION
+{{#endif block_name}}_
 {{#endfor FN}}
 `;
 

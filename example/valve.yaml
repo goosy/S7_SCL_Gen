@@ -2,7 +2,7 @@
 #CPU: AS1       # 指示属于哪一个CPU
 #feature: valve # 指示本配置为生成 valve 代码
 
-name: AS1-valve # 相当于上面2条被注释的指令
+name: AS1,AS2-valve # 相当于上面2条被注释的指令
 
 symbols:
 # 系统已有2个内置符号，其内容自动生成：

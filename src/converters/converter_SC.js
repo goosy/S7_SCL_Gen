@@ -25,12 +25,16 @@ export function is_feature(feature) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
+{{#if includes}}
 {{includes}}
+{{#endif}}_
 
 // 轮询DB块，含485调度指令和发送数据
 DATA_BLOCK "{{POLLS_NAME}}"
-STRUCT{{#for module in modules}}
-    {{module.name}} : STRUCT //{{module.comment}} 轮询命令数据{{#for poll in module.polls}}
+STRUCT
+{{#for module in modules}}_
+    {{module.name}} : STRUCT //{{module.comment}} 轮询命令数据
+{{  #for poll in module.polls}}_
         poll_{{poll.index}} : STRUCT
             next: BOOL; // false为结尾，否则有下一个
             enable: BOOL := TRUE; // 允许本poll通讯
@@ -42,23 +46,32 @@ STRUCT{{#for module in modules}}
             recvDB : INT; // 接收DB
             recvDBB : INT; // 接收DB起始地址
             waitCount : INT; // 发送等待次数
-        END_STRUCT;{{#endfor poll}}
-    END_STRUCT;{{#endfor module}}{{#for module in modules}}{{#for poll in module.polls}}{{#if !poll.extra_send_DB}}
-    poll_{{poll.index}}_data : STRUCT{{#if poll.send_data}}{{#
-        ----通用发送}}
-        send_data : ARRAY  [0 .. {{poll.send_data.length-1}}] OF BYTE;    //发送数据{{#else
-        ----modbus 发送}}
+        END_STRUCT;
+{{  #endfor poll}}_
+    END_STRUCT;
+{{#endfor module}}_
+{{#for module in modules}}_
+{{#for poll in module.polls}}_
+{{#if !poll.extra_send_DB}}_
+    poll_{{poll.index}}_data : STRUCT
+{{#if poll.send_data}}{{# ----通用发送}}_
+        send_data : ARRAY  [0 .. {{poll.send_data.length-1}}] OF BYTE;    //发送数据
+{{#else ----modbus 发送}}_
         device_ID : BYTE;    //子站地址
         MFunction : BYTE;    //modbus 功能号
         address : WORD;    //起始地址
         data : WORD;    //数据，对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
-        CRC : WORD;    //检验字{{#endif
-        ----poll_data 结束}}
-    END_STRUCT;{{#endif extra_send_DB}}{{#endfor poll}}{{#endfor module}}
+        CRC : WORD;    //检验字
+{{#endif 发送数据结束}}_
+    END_STRUCT;
+{{#endif extra_send_DB}}_
+{{#endfor poll}}_
+{{#endfor module}}_
 END_STRUCT;
-BEGIN{{#for module in modules}}
+BEGIN
+{{#for module in modules}}
     // --- {{module.comment}} 轮询数据
-    {{#for no,poll in module.polls}}
+{{#for no,poll in module.polls}}
     // poll {{poll.index}}  {{poll.comment}}
     {{module.name}}.poll_{{poll.index}}.next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
     {{module.name}}.poll_{{poll.index}}.modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
@@ -66,22 +79,30 @@ BEGIN{{#for module in modules}}
     {{module.name}}.poll_{{poll.index}}.sendDBB := {{poll.send_start}};
     {{module.name}}.poll_{{poll.index}}.sendLength := {{poll.send_length}};
     {{module.name}}.poll_{{poll.index}}.recvDB := {{poll.recv_DB.block_no}};
-    {{module.name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};{{#if !poll.extra_send_DB}}
-    {{#----poll_send_data 开始}}// send data{{#if poll.send_data}}{{#for index, databyte in poll.send_data}}
-    poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}{{#endfor}}{{#else}}
+    {{module.name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};
+{{#if !poll.extra_send_DB}}{{#非外部数据块}}_
+    // send data
+{{  #if poll.send_data}}_
+{{      #for index, databyte in poll.send_data}}_
+    poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}
+{{      #endfor}}_
+{{  #else}}_
     poll_{{poll.index}}_data.device_ID := {{poll.deivce_ID.byteHEX}};
     poll_{{poll.index}}_data.MFunction := {{poll.function.byteHEX}};
     poll_{{poll.index}}_data.address := {{poll.started_addr.wordHEX}};
-    poll_{{poll.index}}_data.data := {{poll.data.wordHEX}};{{#endif}}{{#endif
-    ----poll_send_data 结束}}
-    {{#endfor poll}}
-{{#endfor module}}END_DATA_BLOCK
+    poll_{{poll.index}}_data.data := {{poll.data.wordHEX}};
+{{  #endif send_data}}_
+{{#endif ----poll_send_data 结束}}_
+{{#endfor poll}}_
+{{#endfor module}}_
+END_DATA_BLOCK
 
 // 主调用
-FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
+FUNCTION "{{LOOP_NAME}}" : VOID
+{{#if loop_begin}}_
 {{loop_begin}}
-
-{{#endif}}{{#for no, module in modules}}
+{{#endif}}_
+{{#for no, module in modules}}
 // {{no+1}}. {{module.model}} {{module.comment}}
 "{{#if module.model == 'CP341'}}{{CP341_NAME}}{{#else}}{{CP340_NAME}}{{#endif}}".{{module.DB.value}}({{#if module.customREQ}}
     customTrigger := TRUE,
@@ -90,9 +111,10 @@ FUNCTION "{{LOOP_NAME}}" : VOID{{#if loop_begin}}
     DATA          := "{{POLLS_NAME}}".{{module.name}});
 {{#endfor module}}
 // 发送接收块
-{{invoke_code}}{{#if loop_end}}
-
-{{loop_end}}{{#endif}}
+{{invoke_code}}
+{{#if loop_end}}
+{{loop_end}}
+{{#endif}}_
 END_FUNCTION
 `;
 

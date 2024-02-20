@@ -15,11 +15,16 @@ export function is_feature(feature) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
+{{#if includes}}
 {{includes}}
-{{#for AI in list}}{{#if AI.DB}}
+{{#endif}}_
+{{#for AI in list}}_
+{{#if AI.DB}}
 // AI背景块: {{AI.comment}}
-DATA_BLOCK {{AI.DB.value}}{{#if platform == 'portal'}}
-{ S7_Optimized_Access := 'FALSE' }{{#endif portal}}
+DATA_BLOCK {{AI.DB.value}}
+{{#if platform == 'portal'}}_
+{ S7_Optimized_Access := 'FALSE' }
+{{#endif portal}}_
 AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
@@ -27,36 +32,68 @@ BEGIN
     enable_AH := {{AI.$enable_AH}};
     enable_WH := {{AI.$enable_WH}};
     enable_WL := {{AI.$enable_WL}};
-    enable_AL := {{AI.$enable_AL}};{{#if AI.$zero_raw !== undefined}}
-    zero_raw := {{AI.$zero_raw}};{{#endif}}{{#if AI.$span_raw !== undefined}}
-    span_raw := {{AI.$span_raw}};{{#endif}}{{#if AI.$overflow_SP !== undefined}}
-    overflow_SP := {{AI.$overflow_SP}};{{#endif}}{{#if AI.$underflow_SP !== undefined}}
-    underflow_SP := {{AI.$underflow_SP}};{{#endif}}{{#if AI.$zero !== undefined}}
-    zero := {{AI.$zero}};{{#endif}}{{#if AI.$span !== undefined}}
-    span := {{AI.$span}};{{#endif}}{{#if AI.$AH_limit !== undefined}}
-    AH_limit := {{AI.$AH_limit}};{{#endif}}{{#if AI.$WH_limit !== undefined}}
-    WH_limit := {{AI.$WH_limit}};{{#endif}}{{#if AI.$WL_limit !== undefined}}
-    WL_limit := {{AI.$WL_limit}};{{#endif}}{{#if AI.$AL_limit !== undefined}}
-    AL_limit := {{AI.$AL_limit}};{{#endif}}{{#if AI.$dead_zone !== undefined}}
-    dead_zone := {{AI.$dead_zone}};{{#endif}}{{#if AI.$FT_time !== undefined}}
-    FT_time := {{AI.$FT_time.DINT}};{{#endif}}
+    enable_AL := {{AI.$enable_AL}};
+{{#if AI.$zero_raw !== undefined}}_
+    zero_raw := {{AI.$zero_raw}};
+{{#endif}}_
+{{#if AI.$span_raw !== undefined}}_
+    span_raw := {{AI.$span_raw}};
+{{#endif}}_
+{{#if AI.$overflow_SP !== undefined}}_
+    overflow_SP := {{AI.$overflow_SP}};
+{{#endif}}_
+{{#if AI.$underflow_SP !== undefined}}_
+    underflow_SP := {{AI.$underflow_SP}};
+{{#endif}}_
+{{#if AI.$zero !== undefined}}_
+    zero := {{AI.$zero}};
+{{#endif}}_
+{{#if AI.$span !== undefined}}_
+    span := {{AI.$span}};
+{{#endif}}_
+{{#if AI.$AH_limit !== undefined}}_
+    AH_limit := {{AI.$AH_limit}};
+{{#endif}}_
+{{#if AI.$WH_limit !== undefined}}_
+    WH_limit := {{AI.$WH_limit}};
+{{#endif}}_
+{{#if AI.$WL_limit !== undefined}}_
+    WL_limit := {{AI.$WL_limit}};
+{{#endif}}_
+{{#if AI.$AL_limit !== undefined}}_
+    AL_limit := {{AI.$AL_limit}};
+{{#endif}}_
+{{#if AI.$dead_zone !== undefined}}_
+    dead_zone := {{AI.$dead_zone}};
+{{#endif}}_
+{{#if AI.$FT_time !== undefined}}_
+    FT_time := {{AI.$FT_time.DINT}};
+{{#endif}}_
 END_DATA_BLOCK
-{{#endif AI.DB}}{{#endfor AI}}
+{{#endif AI.DB}}_
+{{#endfor AI}}
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1{{#endif platform}}
-BEGIN{{#if loop_begin}}
+BEGIN
+{{#if loop_begin}}_
 {{loop_begin}}
 
-{{#endif}}{{#for AI in list}}
-{{#if AI.DB && AI.input_paras
-}}{{#if platform == 'step7' || platform == 'pcs7'}}"{{NAME}}".{{#endif platform
-}}{{AI.DB.value}}({{AI.input_paras}}); {{#endif AI invoke
-}}// {{AI.comment}}{{#endfor AI}}{{#if loop_end}}
-
-{{loop_end}}{{#endif}}
+{{#endif}}_
+{{#for AI in list}}_
+{{#if AI.DB && AI.input_paras}}_
+{{#if platform == 'step7' || platform == 'pcs7'}}_
+"{{NAME}}".{{}}_
+{{#endif platform}}_
+{{AI.DB.value}}({{AI.input_paras}}); {{}}_
+{{#endif AI invoke}}_
+// {{AI.comment}}
+{{#endfor AI}}_
+{{#if loop_end}}
+{{loop_end}}
+{{#endif}}_
 END_FUNCTION
 `;
 

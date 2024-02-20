@@ -3,7 +3,7 @@
 #CPU: AS1       # 指示属于哪一个CPU
 #feature: timer # 指示本配置为生成 timer 代码
 
-name: AS1-timer # 相当于上面2条被注释的指令
+name: AS1,AS2-timer # 相当于上面2条被注释的指令
 
 # 关于timer
 # 每一个计时器的DB有以下内容上传至HMI：

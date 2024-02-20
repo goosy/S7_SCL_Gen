@@ -3,7 +3,7 @@ import { context } from '../util.js';
 import { STRING, ensure_value, TIME } from '../value.js';
 import { posix } from 'path';
 
-export const platforms = ['step7']; // platforms supported by this feature
+export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const CP_NAME = 'CP';
 export const DP_NAME = 'DP';
 export const LOOP_NAME = 'RP_Loop';
@@ -16,34 +16,48 @@ export function is_feature(name) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
+{{#if includes}}
 {{includes}}
+{{#endif}}_
 {{#for RP in list}}
 // RP背景块: {{RP.comment}}
-DATA_BLOCK {{RP.DB.value}}{{#if platform == 'portal'}}
-{ S7_Optimized_Access := 'FALSE' }{{#else}}
-{ S7_m_c := 'true' }{{#endif portal}}
+DATA_BLOCK {{RP.DB.value}}
+{{#if platform == 'portal'}}_
+{ S7_Optimized_Access := 'FALSE' }
+{{#else}}_
+{ S7_m_c := 'true' }
+{{#endif portal}}_
 AUTHOR:Goosy
 FAMILY:GooLib
 "{{RP.FB}}"
-BEGIN{{#if RP.$PT != undefined}}
-    PT := {{RP.$PT}}; // 脉冲时长{{#endif RP.$PT}}{{#if RP.IncludeFallingEdge != undefined}}
-    IncludeFallingEdge := {{RP.IncludeFallingEdge}}; // 是否包含下降沿{{#endif RP.IncludeFallingEdge}}
+BEGIN
+{{#if RP.$PT != undefined}}_
+    PT := {{RP.$PT}}; // 脉冲时长
+{{#endif RP.$PT}}_
+{{#if RP.IncludeFallingEdge != undefined}}_
+    IncludeFallingEdge := {{RP.IncludeFallingEdge}}; // 是否包含下降沿
+{{#endif RP.IncludeFallingEdge}}_
 END_DATA_BLOCK
-{{#endfor RP}}
+{{#endfor RP}}_
 
-FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
-{ S7_Optimized_Access := 'TRUE' }{{#endif portal}}
+FUNCTION "{{LOOP_NAME}}" : VOID
+{{#if platform == 'portal'}}_
+{ S7_Optimized_Access := 'TRUE' }
+{{#endif portal}}_
 // 主循环
-BEGIN{{#if loop_begin}}
+BEGIN
+{{#if loop_begin}}_
 {{loop_begin}}
 
-{{#endif}}{{#for RP in list}}
-{{#if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{#endif platform
-}}{{RP.DB.value}}(IN := {{RP.IN.value}}{{
-    #if RP.PT != undefined}}, PT := {{RP.PT}}{{
-#endif}}); // {{RP.comment}}{{#endfor RP}}{{#if loop_end}}
-
-{{loop_end}}{{#endif}}
+{{#endif}}_
+{{#for RP in list}}_
+{{#if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{#endif platform}}_
+{{RP.DB.value}}(IN := {{RP.IN.value}}_
+{{#if RP.PT != undefined}}, PT := {{RP.PT}}{{#endif}}); // {{RP.comment}}
+{{#endfor RP}}_
+{{#if loop_end}}
+{{loop_end}}
+{{#endif}}_
 END_FUNCTION
 `
 

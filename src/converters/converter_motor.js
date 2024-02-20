@@ -14,48 +14,75 @@ export function is_feature(feature) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
+{{#if includes}}
 {{includes}}
-{{#for motor in list}}{{#if motor.DB}}
+{{#endif}}_
+{{#for motor in list}}_
+{{#if motor.DB}}
 // motor背景块: {{motor.comment}}
-DATA_BLOCK {{motor.DB.value}}{{#if platform == 'portal'}}
-{ S7_Optimized_Access := 'FALSE' }{{#endif portal}}
+DATA_BLOCK {{motor.DB.value}}
+{{#if platform == 'portal'}}_
+{ S7_Optimized_Access := 'FALSE' }
+{{#endif portal}}_
 AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
-BEGIN{{#if motor.$stateless != null}}
-    stateless := {{motor.$stateless}};{{#endif}}{{#if motor.$over_time != null}}
-    over_time := {{motor.$over_time.DINT}};{{#endif}}
+BEGIN
+{{#if motor.$stateless != null}}_
+    stateless := {{motor.$stateless}};
+{{#endif}}_
+{{#if motor.$over_time != null}}_
+    over_time := {{motor.$over_time.DINT}};
+{{#endif}}_
 END_DATA_BLOCK
-{{#endif}}{{#endfor motor}}
+{{#endif motor.DB}}_
+{{#endfor motor}}_
+
 
 // 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID{{#if platform == 'portal'}}
+FUNCTION "{{LOOP_NAME}}" : VOID
+{{#if platform == 'portal'}}_
 { S7_Optimized_Access := 'TRUE' }
-VERSION : 0.1{{#endif platform}}
-BEGIN{{#if loop_begin}}
+VERSION : 0.1
+{{#endif platform}}_
+BEGIN
+{{#if loop_begin}}_
 {{loop_begin}}
 
-{{#endif}}{{#for motor in list}}{{len = motor.input_paras.length + motor.output_paras.length}}
-// {{motor.comment}}{{#if motor.DB}}
-{{#if platform == 'step7'}}"{{NAME}}".{{#endif platform
-}}{{motor.DB.value}}({{
-
-#if platform == 'portal'}}{{
-#for no,para in motor.input_paras}}{{#if len > 1}}{{#if no > 0}},{{#endif no}}
-    {{#endif length}}{{para}}{{#endfor para}}{{
-#for no,para in motor.output_paras}}{{#if len > 1}}{{#if no + motor.input_paras.length > 0}},{{#endif}}
-    {{#endif len}}{{para}}{{#endfor para}});{{
-
-#else other platform}}{{
-#for no,para in motor.input_paras}}{{#if motor.input_paras.length > 1}}{{#if no > 0}},{{#endif no}}
-    {{#endif len}}{{para}}{{#endfor para}});{{
-#for para in motor.output_paras}}
-{{para}};{{#endfor para}}{{
-
-#endif platform}}
-{{#endif motor.DB}}{{#endfor motor}}{{#if loop_end}}
-
-{{loop_end}}{{#endif}}
+{{#endif}}_
+{{#for motor in list}}_
+{{len = motor.paras_len}}_
+// {{motor.comment}}
+{{#if motor.DB}}_
+{{#if platform == 'step7'}}_
+"{{NAME}}".{{
+#endif platform}}_
+{{motor.DB.value}}({{}}_
+_
+{{#if platform == 'portal'}}_
+{{#for no,para in motor.paras}}_
+{{#if len > 1}}
+    {{#endif len}}_
+{{para}}_
+{{#endfor para}});
+{{}}_
+_
+{{#else other platform}}_
+{{#for no,para in motor.input_paras}}_
+{{#if len > 1}}
+    {{#endif len}}_
+{{para}}_
+{{#endfor no,para}});
+{{#for para in motor.output_paras}}_
+{{para}}
+{{#endfor para}}_
+{{#endif platform}}_
+_
+{{#endif motor.DB}}
+{{#endfor motor}}_
+{{#if loop_end}}_
+{{loop_end}}
+{{#endif}}_
 END_FUNCTION
 `;
 
@@ -112,46 +139,66 @@ export function initialize_list(area) {
     });
 }
 
-export function build_list({ list }) {
+export function build_list({ document, list }) {
+    const platform = document.CPU.platform;
+    function make_paras(motor, para_pair_list) {
+        const ret = [];
+        para_pair_list.forEach(([name, para]) => {
+            const prop = motor[name];
+            if (prop) {
+                para ??= name;
+                ret.push([para, prop.value]);
+            }
+        });
+        return ret;
+    }
     list.forEach(motor => { // 处理配置，形成完整数据
-        function make_paras(para_list, prop) {
-            para_list.forEach(_para => {
-                const para = motor[_para];
-                if (para) {
-                    prop.push([_para, para.value]);
-                }
-            });
-        }
-
-        motor.input_paras = [];
-        make_paras(['remote', 'enable', 'run', 'error'], motor.input_paras);
-        motor.output_paras = [];
-        make_paras(['run_action', 'start_action', 'stop_action', 'estop_action'], motor.output_paras);
+        const input_paras = make_paras(motor, [
+            ['remote'],
+            ['enable', 'enable_run'],
+            ['run'],
+            ['error']
+        ]);
+        const output_paras = make_paras(motor, [
+            ['run_action', 'run_coil'],
+            ['start_action', 'start_coil'],
+            ['stop_action', 'stop_coil'],
+            ['estop_action', 'E_stop_coil']
+        ]);
+        const inputs_len = input_paras.length;
+        const outputs_len = output_paras.length;
+        const len = platform == 'portal'
+            ? inputs_len + outputs_len
+            : inputs_len;
+        motor.paras_len = len;
+        motor.input_paras = input_paras.map(([name, value], index) => {
+            let postfix = '';
+            if (platform == 'portal') {
+                if (len > 1) name = pad_right(name, 12);
+                if (index + 1 < len) postfix = ',';
+            } else {
+                if (inputs_len > 1) name = pad_right(name, 12);
+                if (index + 1 < inputs_len) postfix = ',';
+            }
+            return `${name} := ${value}${postfix}`;
+        });
+        motor.output_paras = output_paras.map(([name, value], index) => {
+            let postfix = '';
+            if (platform == 'portal') {
+                if (len > 1) name = pad_right(name, 12);
+                if (index + 1 < outputs_len) postfix = ',';
+                return `${name} => ${value}${postfix}`;
+            } else {
+                return `${value} := ${motor.DB.value}.${name};`;
+            }
+        });
+        motor.paras = [...motor.input_paras, ...motor.output_paras]; // for portal
     });
 }
 
 export function gen({ document, includes, loop_begin, loop_end, list }) {
     const { CPU, gcl } = document;
     const { output_dir, platform } = CPU;
-    list.forEach(motor => {
-        const len = platform == 'portal'
-            ? motor.input_paras.length + motor.output_paras.length
-            : motor.input_paras.length;
-        motor.input_paras = motor.input_paras.map(([name, value]) => {
-            if (name === 'enable') name = 'enable_run';
-            name = len > 1 ? pad_right(name, 12) : name;
-            return `${name} := ${value}`;
-        });
-        motor.output_paras = motor.output_paras.map(([name, value]) => {
-            name = name.replace(/_action$/, '_coil').replace('estop', 'E_stop');
-            name = platform == 'portal' && len > 1 ? pad_right(name, 12) : name;
-            if (platform == 'portal') {
-                return `${name} => ${value}`;
-            } else {
-                return `${value} := ${motor.DB.value}.${name}`;
-            }
-        });
-    })
     const rules = [{
         "name": `${output_dir}/${LOOP_NAME}.scl`,
         "tags": {

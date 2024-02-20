@@ -2,7 +2,7 @@
 #CPU: AS1       # 指示属于哪一个CPU
 #feature: alarm # 指示生成 Alarm 文档
 
-name: AS1-alarm # 相当于上面2条被注释的指令
+name: AS1,AS2-alarm # 相当于上面2条被注释的指令
 
 # 额外代码
 # 字符串形式指示直接SCL代码，内容将合并输出在 Alarm_Loop.SCL 文件中
