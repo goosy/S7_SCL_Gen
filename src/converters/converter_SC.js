@@ -4,8 +4,8 @@
  * @file SC
  */
 
-import { context } from '../util.js';
-import { BOOL, STRING, PINT, fixed_hex, ensure_value, nullable_value } from '../value.js';
+import { context, fixed_hex } from '../util.js';
+import { BOOL, STRING, PINT, ensure_value, nullable_value } from '../s7data.js';
 import { make_s7_expression } from '../symbols.js';
 import { posix } from 'path';
 import { isSeq } from 'yaml';

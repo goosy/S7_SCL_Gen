@@ -5,7 +5,7 @@
  */
 
 import { context } from '../util.js';
-import { STRING, PINT, PDINT, ensure_value, nullable_value } from '../value.js';
+import { STRING, PINT, PDINT, ensure_value, nullable_value } from '../s7data.js';
 import { make_s7_expression } from '../symbols.js';
 import { posix } from 'path';
 import assert from 'assert/strict';

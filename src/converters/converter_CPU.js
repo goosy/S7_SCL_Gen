@@ -1,7 +1,7 @@
 import assert from 'assert/strict';
 import { convert } from 'gooconverter';
 import { add_symbols, make_s7_expression } from '../symbols.js';
-import { STRING, nullable_value } from '../value.js';
+import { STRING, nullable_value } from '../s7data.js';
 
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature

@@ -3,6 +3,7 @@ import { basename, dirname, posix } from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline';
 import iconv from 'iconv-lite';
+import { Integer } from './s7data.js';
 
 const module_path = posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), "../../");
 const pkg = JSON.parse(
@@ -28,135 +29,6 @@ export const context = {
         }
     }
 };
-
-export class IncHLError extends Error {
-    num;
-    size;
-    constructor(message, options) {
-        super(message, options);
-        this.num = options?.num;
-        this.size = options?.size;
-    }
-}
-
-class IncreaseHL { // abstract class
-    curr_item;
-    #curr_size = 1;
-    #curr_index;
-    constructor(next = 0, size = 1) {
-        this.#curr_index = next;
-        this.#curr_size = size;
-    }
-    next() {
-        this.#curr_index += this.#curr_size;
-    }
-    check(num) {
-        if (num == null) {
-            num = this.get_new();
-        } else {
-            // 不能非正数字
-            if (typeof num !== 'number' || isNaN(num) || num < 0) throw new TypeError(`${num} 不是正整数!`);
-        }
-        return num;
-    }
-    get_new() {
-        const num = this.#curr_index;
-        this.next();
-        return num;
-    }
-    push(num, size = 1) {
-        this.#curr_index = parseInt(num) + size;
-        this.#curr_size = size;
-    }
-}
-export class IntIncHL extends IncreaseHL {
-    #list = [];
-    check(num) {
-        num = num?.value ? num.value : num; // unbox ref object
-        if (num == null || num === 0) {
-            do {
-                num = super.check(null);
-            } while (this.#list.includes(num));
-        } else {
-            num = super.check(num);
-            // 不能重复
-            if (this.#list.includes(num)) throw new IncHLError(`存在重复的地址 ${num}!`);
-        }
-        return num;
-    }
-    push(num) {
-        try {
-            num = this.check(num);
-            super.push(num, 1);
-            this.#list.push(num);
-        } catch (e) {
-            if (e instanceof TypeError) {
-                throw new TypeError(e.message, { cause: num });
-            } else if (e instanceof IncHLError) {
-                throw new IncHLError(e.message, { num });
-            }
-        }
-        return num;
-    }
-}
-
-function dec2foct(num) {
-    const bit = num % 8;
-    const byte = (num - bit) / 8
-    return [byte, bit]
-}
-
-function foct2dec(byte, bit) {
-    if (typeof byte !== 'number' || isNaN(byte) || byte < 0) throw new TypeError(`${byte} 不是正整数!`);
-    return (byte == null || bit == null) ? null : byte * 8 + bit;
-}
-
-export class S7IncHL extends IncreaseHL {
-    #list = {};
-    constructor(next = [0, 0]) {
-        super(foct2dec(...next));
-    }
-
-    convert_size(size) {
-        const byte = Math.floor(size);
-        const bit = (size - byte) * 10;
-        if (byte > 0 && bit > 0) throw new IncHLError(`size ${size} is wrong!`);
-        return foct2dec(byte, bit);
-    }
-
-    check(num, size) {
-        if (num == null) {
-            do {
-                num = super.check(null);
-            } while (this.#list[num + ':' + size]);
-        } else {
-            num = super.check(num);
-            // 不能重复
-            if (this.#list[num + ':' + size]) throw new IncHLError(`存在重复的 ${dec2foct(num).join('.')} (size:${size})!`);
-        }
-        return num;
-    }
-
-    push(s7addr, size = 1.0) {
-        let num;
-        try {
-            if (s7addr[0] != null) num = foct2dec(...(s7addr ?? []));
-            num = this.check(num, size);
-            this.#list[num + ':' + size] = true;
-            let remainder = num % 8;
-            if (size == 1.0 && remainder > 0) num += 8 - remainder;
-            remainder = num % 16;
-            if (size >= 2.0 && remainder > 0) num += 16 - remainder;
-            super.push(num, this.convert_size(size));
-        } catch (e) {
-            if (e instanceof IncHLError) {
-                throw new IncHLError(e.message, { num, size });
-            }
-            throw new TypeError(e.message, { cause: num });
-        }
-        return dec2foct(num);
-    }
-}
 
 export function compare_str(a, b) {
     if (a > b) return 1;
@@ -256,4 +128,35 @@ export async function write_file(filename, content, { encoding = "utf8", lineEnd
 
 export function getClassName(obj) {
     return obj.constructor.name;
+}
+
+/**
+ * 将item左侧用占位符填充至指定长度
+ * 如果item本身超过该长度，则截取item右侧该长度子串
+ * @date 2021-11-17
+ * @param {number|string} item
+ * @param {number} length
+ * @param {string} placeholder=''
+ * @returns {string}
+ */
+export function pad_left(item, length, placeholder = ' ') {
+    return String(item).padStart(length, placeholder).slice(-length);
+}
+
+/**
+ * 将item右侧用占位符填充至指定长度
+ * 如果item本身超过该长度，则截取item左侧该长度子串
+ * @date 2021-11-17
+ * @param {number|string} item
+ * @param {number} length
+ * @param {string} placeholder=''
+ * @returns {string}
+ */
+export function pad_right(item, length, placeholder = ' ') {
+    return String(item).padEnd(length, placeholder).slice(0, length);
+}
+
+export function fixed_hex(num, length) {
+    const HEX = num instanceof Integer ? num.HEX : num?.toString(16);
+    return pad_left(HEX, length, '0').toUpperCase();
 }

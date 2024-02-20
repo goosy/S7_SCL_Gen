@@ -7,7 +7,7 @@ import {
     LineCounter,
     visit,
 } from 'yaml';
-import { STRING, ensure_value, nullable_value } from './value.js';
+import { STRING, ensure_value, nullable_value } from './s7data.js';
 
 function merge(document) {
     visit(document, {

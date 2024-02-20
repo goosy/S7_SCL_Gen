@@ -1,6 +1,6 @@
 import { make_s7_expression } from "../symbols.js";
 import { context } from '../util.js';
-import { STRING, ensure_value } from '../value.js';
+import { STRING, ensure_value } from '../s7data.js';
 import { posix } from 'path';
 import { make_alarm_props, make_fake_DB } from './alarm_common.js';
 

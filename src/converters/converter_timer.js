@@ -1,5 +1,5 @@
 import { make_s7_expression } from '../symbols.js';
-import { STRING } from '../value.js';
+import { STRING } from '../s7data.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 

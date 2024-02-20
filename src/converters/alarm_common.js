@@ -1,5 +1,5 @@
 import { make_s7_expression } from "../symbols.js";
-import { BOOL, REAL, TIME, ensure_value, nullable_value } from '../value.js';
+import { BOOL, REAL, TIME, ensure_value, nullable_value } from '../s7data.js';
 import { isString } from '../gcl.js';
 import { isSeq } from 'yaml';
 

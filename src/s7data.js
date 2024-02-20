@@ -1,35 +1,5 @@
 import assert from 'assert/strict';
 
-/**
- * 将item左侧用占位符填充至指定长度
- * 如果item本身超过该长度，则截取item右侧该长度子串
- * @date 2021-11-17
- * @param {number|string} item
- * @param {number} length
- * @param {string} placeholder=''
- * @returns {string}
- */
-export function pad_left(item, length, placeholder = ' ') {
-    return String(item).padStart(length, placeholder).slice(-length);
-}
-/**
- * 将item右侧用占位符填充至指定长度
- * 如果item本身超过该长度，则截取item左侧该长度子串
- * @date 2021-11-17
- * @param {number|string} item
- * @param {number} length
- * @param {string} placeholder=''
- * @returns {string}
- */
-export function pad_right(item, length, placeholder = ' ') {
-    return String(item).padEnd(length, placeholder).slice(0, length);
-}
-
-export function fixed_hex(num, length) {
-    const HEX = num instanceof Integer ? num.HEX : num?.toString(16);
-    return pad_left(HEX, length, '0').toUpperCase();
-}
-
 //#region parse
 /**
  * Enum for ms per time unit.
@@ -200,7 +170,7 @@ class S7Number extends S7Value {
     }
 }
 
-class Integer extends S7Number {
+export class Integer extends S7Number {
     constructor(value) {
         value = parseInt(value);
         super(value);
@@ -228,7 +198,7 @@ class Integer extends S7Number {
     get dwordHEX() {
         return 'DW#16#' + this.TC(32).toString(16).toUpperCase();
     }
-    get DINT(){
+    get DINT() {
         return 'L#' + this._value.toString();
     }
 }
@@ -362,3 +332,174 @@ export function nullable_value(type, value) {
 export function ensure_value(type, value) {
     return new type(value);
 }
+
+function isInt(num) {
+    return typeof num === 'number'
+        && !isNaN(num)
+        && Number.isInteger(num)
+        && Number.isFinite(num);
+}
+
+function isPInt(num) {
+    return isInt(num) && num >= 0;
+}
+
+export function dec2foct(num) {
+    if (!isPInt(num)) throw new TypeError(`${byte} 不是非负整数!`);
+    const bit = num % 8;
+    const byte = (num - bit) / 8;
+    return [byte, bit];
+}
+
+export function foct2dec(byte, bit) {
+    if (byte != null && !isPInt(byte)) throw new TypeError(`byte ${byte} 不是非负整数!`);
+    bit ??= 0;
+    if (!isPInt(bit)) throw new TypeError(`bit ${bit} 不是非负整数!`);
+    return (byte == null || bit == null) ? null : byte * 8 + bit;
+}
+
+function size2dec(size) {
+    const size_error = new HLError(`size ${size} is wrong!`);
+    if (!isPInt(size * 10)) throw size_error;
+    const byte = Math.floor(size);
+    const bit = (size - byte) * 10;
+    if (byte > 0 && bit === 1) throw size_error;
+    if (bit !== 0 && bit !== 1) throw size_error;
+    if (byte > 1 && byte % 2 !== 0) throw size_error;
+    return foct2dec(byte, bit);
+}
+
+export function get_boundary(num, num_size) {
+    if (!isPInt(num)) {
+        throw new TypeError(`${num} 不是非负整数!`);
+    }
+    if (num_size == 1) return num;
+    let remainder = num % 8;
+    if (remainder > 0) num += 8 - remainder;
+    if (num_size == 8) return num;
+    remainder = num % 16;
+    if (remainder > 0) num += 16 - remainder;
+    return num;
+}
+
+export class HLError extends Error {
+    num;
+    size;
+    constructor(message, options) {
+        super(message, options);
+        this.num = options?.num;
+        this.size = options?.size;
+    }
+}
+
+export class HashList {
+    curr_item;
+    #last_size = 1;
+    #curr_index;
+
+    constructor(next = 0) {
+        this.#curr_index = next;
+    }
+    next() {
+        this.#curr_index += this.#last_size;
+    }
+    check(num) {
+        if (num == null) {
+            num = this.get_new();
+        } else if (!isPInt(num)) {
+            throw new TypeError(`${num} 不是非负整数!`);
+        }
+        return num;
+    }
+    get_new() {
+        const num = this.#curr_index;
+        this.next();
+        return num;
+    }
+    push(num, size) {
+        // Implement checking num by subclass
+        // only positioning here
+        if (size != null && !isPInt(size)) throw new TypeError(`${size} 不是非负整数!`);
+        this.#curr_index = num + size;
+        this.#last_size = size;
+    }
+}
+
+export class IntHashList extends HashList {
+    #list = [];
+
+    check(num) {
+        num = num?.value ? num.value : num; // unbox ref object
+        if (num == null || num === 0) {
+            do {
+                num = super.check(null);
+            } while (this.#list.includes(num));
+        } else {
+            num = super.check(num);
+            if (this.#list.includes(num)) {
+                throw new HLError(`存在重复的地址 ${num}!`);
+            }
+        }
+        return num;
+    }
+
+    push(num) {
+        try {
+            num = this.check(num);
+            super.push(num, 1);
+            this.#list.push(num);
+        } catch (e) {
+            if (e instanceof TypeError) {
+                throw new TypeError(e.message, { cause: num });
+            } else if (e instanceof HLError) {
+                throw new HLError(e.message, { num });
+            }
+        }
+        return num;
+    }
+}
+
+export class S7HashList extends HashList {
+    #list = {};
+    constructor(next = [0, 0]) {
+        super(foct2dec(...next));
+    }
+
+    check(num, nsize) {
+        if (num == null) {
+            do {
+                num = super.check(null);
+                num = get_boundary(num, nsize);
+            } while (this.#list[num + ':' + nsize]);
+        } else {
+            if (!isPInt(num) || num !== get_boundary(num, nsize)) {
+                throw new HLError(`${dec2foct(num).join('.')}不是正确的地址!`);
+            }
+            num = super.check(num);
+            // 不能重复
+            if (this.#list[num + ':' + nsize]) {
+                throw new HLError(`存在重复的 ${dec2foct(num).join('.')} (size:${nsize})!`);
+            }
+        }
+        return num;
+    }
+
+    push(s7addr, size = 1) {
+        let num;
+        try {
+            const nsize = size2dec(size);
+            if (s7addr[0] != null) num = foct2dec(...(s7addr ?? []));
+            if (isPInt(num)) num = get_boundary(num, nsize);
+            num = this.check(num, nsize);
+            this.#list[num + ':' + nsize] = true;
+            super.push(num, nsize);
+        } catch (e) {
+            if (e instanceof HLError) {
+                throw new HLError(e.message, { num, size });
+            }
+            throw new TypeError(e.message, { cause: num });
+        }
+        return dec2foct(num);
+    }
+}
+

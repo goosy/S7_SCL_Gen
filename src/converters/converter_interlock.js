@@ -1,5 +1,5 @@
 import { make_s7_expression, add_symbol, is_common_type } from '../symbols.js';
-import { BOOL, STRING, ensure_value, nullable_value } from '../value.js';
+import { BOOL, STRING, ensure_value, nullable_value } from '../s7data.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
 

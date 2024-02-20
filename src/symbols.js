@@ -1,6 +1,6 @@
 import assert from 'assert/strict';
-import { IntIncHL, S7IncHL, IncHLError, compare_str } from "./util.js";
-import { pad_left, pad_right } from "./value.js";
+import { compare_str, pad_right, pad_left } from './util.js';
+import { S7HashList, IntHashList, HLError } from "./s7data.js";
 import { GCL, isString, get_Seq } from './gcl.js';
 import { isSeq } from 'yaml';
 import { posix } from 'path';
@@ -34,7 +34,7 @@ const BIT_PREFIX = ['M', 'I', 'Q'];
 const S7MEM_PREFIX = [...DWORD_PREFIX, ...WORD_PREFIX, ...BYTE_PREFIX, ...BIT_PREFIX];
 const COMMON_TYPE = ['BOOL', 'BYTE', 'INT', 'WORD', 'DWORD', 'DINT', 'REAL'];
 export function is_common_type(type) {
-    if(typeof type !== 'string') return false;
+    if (typeof type !== 'string') return false;
     return COMMON_TYPE.includes(type.toUpperCase());
 }
 
@@ -311,18 +311,18 @@ class S7Symbol {
 export class S7SymbolEmitter extends EventEmitter {
     #dict = {};
 
-    OB_list = new IntIncHL(100);     // 已用组织块列表
-    DB_list = new IntIncHL(100);     // 已用数据块列表
-    FB_list = new IntIncHL(256);     // 已用函数块列表
-    FC_list = new IntIncHL(256);     // 已用函数列表
-    SFB_list = new IntIncHL(256);    // 已用系统函数块列表
-    SFC_list = new IntIncHL(256);    // 已用系统函数列表
-    UDT_list = new IntIncHL(256);    // 已用自定义类型列表
-    MA_list = new S7IncHL([0, 0]);   // 已用M地址
-    IA_list = new S7IncHL([0, 0]);   // 已用I地址
-    QA_list = new S7IncHL([0, 0]);   // 已用Q地址
-    PIA_list = new S7IncHL([0, 0]);  // 已用PI地址
-    PQA_list = new S7IncHL([0, 0]);  // 已用PQ地址
+    OB_list = new IntHashList(100);     // 已用组织块列表
+    DB_list = new IntHashList(100);     // 已用数据块列表
+    FB_list = new IntHashList(256);     // 已用函数块列表
+    FC_list = new IntHashList(256);     // 已用函数列表
+    SFB_list = new IntHashList(256);    // 已用系统函数块列表
+    SFC_list = new IntHashList(256);    // 已用系统函数列表
+    UDT_list = new IntHashList(256);    // 已用自定义类型列表
+    MA_list = new S7HashList([0, 0]);   // 已用M地址
+    IA_list = new S7HashList([0, 0]);   // 已用I地址
+    QA_list = new S7HashList([0, 0]);   // 已用Q地址
+    PIA_list = new S7HashList([0, 0]);  // 已用PI地址
+    PQA_list = new S7HashList([0, 0]);  // 已用PQ地址
 
     #buildin = []; // 该CPU的内置符号名称列表
     is_buildin(name) {
@@ -394,7 +394,7 @@ export class S7SymbolEmitter extends EventEmitter {
             } catch (e) {
                 if (e instanceof TypeError) {
                     throw new TypeError(e.message, { cause: e });
-                } else if (e instanceof IncHLError || e instanceof RangeError) {
+                } else if (e instanceof HLError || e instanceof RangeError) {
                     throw_symbol_conflict(
                         `符号地址错误 Symbol address error: ${e.message}`,
                         symbol,

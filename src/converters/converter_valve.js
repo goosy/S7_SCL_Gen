@@ -1,5 +1,5 @@
 import { make_s7_expression } from '../symbols.js';
-import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../value.js';
+import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../s7data.js';
 import { context } from '../util.js';
 import { posix } from 'path';
 

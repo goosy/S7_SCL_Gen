@@ -11,8 +11,8 @@ import {
     SYMBOL_PROMISES,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
-import { context, write_file } from './util.js';
-import { pad_right, nullable_value, STRING } from "./value.js";
+import { context, write_file, pad_right } from './util.js';
+import { nullable_value, STRING } from "./s7data.js";
 
 /**
  * @typedef {import('yaml').Document} Document - YAML Document

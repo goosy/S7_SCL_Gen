@@ -1,6 +1,6 @@
 import { make_s7_expression } from '../symbols.js';
-import { BOOL, STRING, nullable_value, TIME, pad_right } from '../value.js';
-import { context } from '../util.js';
+import { BOOL, STRING, nullable_value, TIME } from '../s7data.js';
+import { context, pad_right } from '../util.js';
 import { posix } from 'path';
 
 export const platforms = ['step7', 'portal']; // platforms supported by this feature

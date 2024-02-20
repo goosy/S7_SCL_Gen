@@ -1,6 +1,10 @@
 import { make_s7_expression } from '../symbols.js';
-import { fixed_hex, BOOL, PINT, STRING, TIME, nullable_value, ensure_value } from '../value.js';
-import { IntIncHL, context } from '../util.js';
+import {
+    BOOL, PINT, STRING, TIME,
+    nullable_value, ensure_value,
+    IntHashList
+} from '../s7data.js';
+import { context, fixed_hex } from '../util.js';
 import { posix } from 'path';
 import { isSeq } from 'yaml';
 import assert from 'assert/strict';
@@ -321,7 +325,7 @@ export function build_list(MT) {
         conn.local_device_id = local_device_id ?? DEFAULT_DEVICE_ID;
 
         // port_list
-        conn_host_list[host] ??= new IntIncHL(502); // 默认一个host从502端口开始
+        conn_host_list[host] ??= new IntHashList(502); // 默认一个host从502端口开始
         const port_list = conn_host_list[host];
         port_list.push(port);
 

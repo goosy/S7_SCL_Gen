@@ -25,7 +25,7 @@
 // 引入所有的转换器{{#for feature,converter in converters}}
 import * as {{feature}} from './converters/converter_{{feature}}.js';{{#endfor converter}}
 
-import { IntIncHL } from './util.js';
+import { IntHashList } from './s7data.js';
 import { S7SymbolEmitter } from './symbols.js';
 
 /**
@@ -48,8 +48,8 @@ class ICPU{
     {{cat.feature}};                              // 由 {{cat.feature}} 文档设置{{#endfor}}
     /** @type {S7SymbolEmitter} */
     symbols = new S7SymbolEmitter(); // 符号调度中心
-    /** @type {IntIncHL} */
-    conn_ID_list = new IntIncHL(16); // 已用连接ID列表
+    /** @type {IntHashList} */
+    conn_ID_list = new IntHashList(16); // 已用连接ID列表
     /** @type {Object.<string, number>} */
     conn_host_list = {};             // 已用的连接地址列表
     /**
