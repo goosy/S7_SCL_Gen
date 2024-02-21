@@ -111,6 +111,9 @@ class S7Value {
     get value() {
         return this._value;
     }
+    get type() {
+        return this.name;
+    }
     constructor(value) {
         this._value = value?.value ? value.value : value; // unbox ref object
     }
@@ -124,14 +127,12 @@ export class BOOL extends S7Value {
         assert(typeof value === 'boolean', `the value "${value}" must be a boolean. 值必须是一个布尔值`);
     }
     constructor(value) {
-        super(value);
-        value = this._value;
-        if (value === 1 || value === 0) value = Boolean(value);
-        if (typeof value === 'string' &&
-            (value.toLowerCase() === 'true' || value.toLowerCase() === 'false')
-        ) value = Boolean(value);
+        if (value === 0) value = false;
+        if (value === 1) value = true;
+        if (value?.toLowerCase?.() === 'false') value = false;
+        if (value?.toLowerCase?.() === 'true') value = true;
         BOOL.check(value);
-        this._value = value;
+        super(value);
     }
     [Symbol.toPrimitive](hint) {
         if (hint === 'boolean') {
@@ -358,14 +359,29 @@ export function foct2dec(byte, bit) {
     return (byte == null || bit == null) ? null : byte * 8 + bit;
 }
 
+export function foct2S7addr(byte, bit) {
+    const error = new TypeError(`num is wrong!`);
+    if (!isPInt(byte)) throw error;
+    if (!isPInt(bit) || bit > 7) throw error;
+    return byte + bit / 10;
+}
+
+export function s7addr2foct(s7addr) {
+    const error = new TypeError(`s7 address ${s7addr} is wrong!`);
+    s7addr = s7addr * 10;
+    if (!isPInt(s7addr)) throw error;
+    const bit = s7addr % 10;
+    const byte = (s7addr - bit) / 10;
+    if (bit > 7) throw error;
+    return [byte, bit];
+}
+
 function size2dec(size) {
-    const size_error = new HLError(`size ${size} is wrong!`);
-    if (!isPInt(size * 10)) throw size_error;
-    const byte = Math.floor(size);
-    const bit = (size - byte) * 10;
-    if (byte > 0 && bit === 1) throw size_error;
-    if (bit !== 0 && bit !== 1) throw size_error;
-    if (byte > 1 && byte % 2 !== 0) throw size_error;
+    const error = new TypeError(`size ${size} is wrong!`);
+    const [byte, bit] = s7addr2foct(size);
+    if (byte > 0 && bit === 1) throw error;
+    if (bit !== 0 && bit !== 1) throw error;
+    if (byte > 1 && byte % 2 !== 0) throw error;
     return foct2dec(byte, bit);
 }
 
@@ -461,8 +477,8 @@ export class IntHashList extends HashList {
 
 export class S7HashList extends HashList {
     #list = {};
-    constructor(next = [0, 0]) {
-        super(foct2dec(...next));
+    constructor(next = 0) {
+        super(foct2dec(...s7addr2foct(next)));
     }
 
     check(num, nsize) {
@@ -475,9 +491,8 @@ export class S7HashList extends HashList {
             if (!isPInt(num) || num !== get_boundary(num, nsize)) {
                 throw new HLError(`${dec2foct(num).join('.')}不是正确的地址!`);
             }
-            num = super.check(num);
-            // 不能重复
-            if (this.#list[num + ':' + nsize]) {
+            num = super.check(num);// check if it's a PInt
+            if (this.#list[num + ':' + nsize]) { // cannot be repeated 不能重复
                 throw new HLError(`存在重复的 ${dec2foct(num).join('.')} (size:${nsize})!`);
             }
         }
@@ -488,18 +503,17 @@ export class S7HashList extends HashList {
         let num;
         try {
             const nsize = size2dec(size);
-            if (s7addr[0] != null) num = foct2dec(...(s7addr ?? []));
+            if (s7addr != null) num = foct2dec(...s7addr2foct(s7addr));
             if (isPInt(num)) num = get_boundary(num, nsize);
             num = this.check(num, nsize);
             this.#list[num + ':' + nsize] = true;
             super.push(num, nsize);
         } catch (e) {
             if (e instanceof HLError) {
-                throw new HLError(e.message, { num, size });
+                throw new HLError(e.message, { num: s7addr, size });
             }
-            throw new TypeError(e.message, { cause: num });
+            throw new TypeError(e.message, { cause: s7addr });
         }
-        return dec2foct(num);
+        return s7addr ?? foct2S7addr(...dec2foct(num));
     }
 }
-

@@ -1,6 +1,9 @@
 import assert from 'assert/strict';
 import { compare_str, pad_right, pad_left } from './util.js';
-import { S7HashList, IntHashList, HLError } from "./s7data.js";
+import {
+    S7HashList, IntHashList, HLError,
+    s7addr2foct, foct2S7addr
+} from "./s7data.js";
 import { GCL, isString, get_Seq } from './gcl.js';
 import { isSeq } from 'yaml';
 import { posix } from 'path';
@@ -42,12 +45,11 @@ export function is_common_type(type) {
 const S7ADDR_REG = new RegExp(`^(${[...INTEGER_PREFIX, ...S7MEM_PREFIX].join('|')})(\\d+|\\+)(\\.(\\d))?$`);
 
 // equal area_size = { M: 0.1, I: 0.1, Q: 0.1, MB: 1, ... PQD: 4};
-const area_size = Object.fromEntries([
-    ...BIT_PREFIX.map(prefix => [prefix, 0.1]),
-    ...BYTE_PREFIX.map(prefix => [prefix, 1.0]),
-    ...WORD_PREFIX.map(prefix => [prefix, 2.0]),
-    ...DWORD_PREFIX.map(prefix => [prefix, 4.0]),
-]);
+const area_size = {};
+BIT_PREFIX.forEach(prefix => area_size[prefix] = 0.1);
+BYTE_PREFIX.forEach(prefix => area_size[prefix] = 1.0);
+WORD_PREFIX.forEach(prefix => area_size[prefix] = 2.0);
+DWORD_PREFIX.forEach(prefix => area_size[prefix] = 4.0);
 
 /**
  * 取得符号信息
@@ -318,11 +320,11 @@ export class S7SymbolEmitter extends EventEmitter {
     SFB_list = new IntHashList(256);    // 已用系统函数块列表
     SFC_list = new IntHashList(256);    // 已用系统函数列表
     UDT_list = new IntHashList(256);    // 已用自定义类型列表
-    MA_list = new S7HashList([0, 0]);   // 已用M地址
-    IA_list = new S7HashList([0, 0]);   // 已用I地址
-    QA_list = new S7HashList([0, 0]);   // 已用Q地址
-    PIA_list = new S7HashList([0, 0]);  // 已用PI地址
-    PQA_list = new S7HashList([0, 0]);  // 已用PQ地址
+    MA_list = new S7HashList(0.0);   // 已用M地址
+    IA_list = new S7HashList(0.0);   // 已用I地址
+    QA_list = new S7HashList(0.0);   // 已用Q地址
+    PIA_list = new S7HashList(0.0);  // 已用PI地址
+    PQA_list = new S7HashList(0.0);  // 已用PQ地址
 
     #buildin = []; // 该CPU的内置符号名称列表
     is_buildin(name) {
@@ -377,15 +379,22 @@ export class S7SymbolEmitter extends EventEmitter {
                 if (INTEGER_PREFIX.includes(symbol.block_name)) { // OB DB FB FC SFB SFC UDT 自动分配块号
                     symbol.block_no = symbols[symbol.block_name + '_list'].push(symbol.block_no);
                     symbol.address = symbol.block_name + symbol.block_no;
-                } else if (S7MEM_PREFIX.includes(symbol.block_name)) { // Area 自动分配地址
-                    const s7addr = [symbol.block_no, symbol.block_bit];
+                } else if (S7MEM_PREFIX.includes(symbol.block_name)) {
                     // list 为 PIA_list、PQA_list、MA_list、IA_list、QA_list 之一
                     const prefix = ['PI', 'PQ', 'M', 'I', 'Q'].find(prefix => symbol.block_name.startsWith(prefix));
                     const area_list = symbols[prefix + 'A_list'];
-                    const address = area_list.push(s7addr, area_size[symbol.block_name]);
-                    symbol.block_no = address[0];
-                    symbol.block_bit = address[1];
-                    symbol.address = symbol.block_name + symbol.block_no + (symbol.type === 'BOOL' ? '.' + symbol.block_bit : '');
+                    const s7addr = symbol.block_no == null
+                        ? null // Area 自动分配地址
+                        : foct2S7addr(symbol.block_no, symbol.block_bit);
+                    const size = area_size[symbol.block_name];
+                    const final_s7addr = area_list.push(s7addr, size);
+                    const decimal_places = symbol.type === 'BOOL' ? 1 : 0;
+                    symbol.address = symbol.block_name + final_s7addr.toFixed(decimal_places);
+                    if (s7addr == null) {
+                        const [block_no, block_bit] = s7addr2foct(final_s7addr);
+                        symbol.block_no = block_no;
+                        symbol.block_bit = block_bit;
+                    }
                 } else if (exist_bno[symbol.address]) { // 其它情况下检查是否重复
                     throw new RangeError(`重复地址 Duplicate address ${name} ${symbol.address}!`);
                 } else { // 不重复则标识该地址已存在
@@ -555,9 +564,9 @@ export async function make_s7_expression(value, infos = {}) {
     }
 
     function do_s7expr() {
-        if (disallow_s7express) throw new Error('不允许非符号 S7 表达式');
+        if (disallow_s7express) throw new SyntaxError('不允许非符号 S7 表达式');
         const s7expr = ref(value);
-        if (!s7expr) throw new Error('非有效的 S7 表达式');
+        if (!s7expr) throw new SyntaxError('非有效的 S7 表达式');
         NON_SYMBOLS.push({ value, desc: s7_expr_desc });
         return s7expr;
     }
