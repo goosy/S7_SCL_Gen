@@ -86,10 +86,10 @@ export function is_feature(feature) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
-{{#if includes}}
-{{includes}}
-{{#endif}}_
-{{#for conn in connections}}
+{{if includes}}
+{{  includes}}
+{{endif}}_
+{{for conn in connections}}
 DATA_BLOCK {{conn.DB.value}} "{{NAME}}" // {{conn.comment}}
 BEGIN
     TCON_Parameters.block_length := W#16#40;     //固定为64
@@ -110,14 +110,14 @@ BEGIN
     TCON_Parameters.rem_tsap_id[2] := B#16#{{conn.port2}};   //PortL
     TCON_Parameters.spare := W#16#0;
 END_DATA_BLOCK
-{{#endfor}}_
+{{endfor}}_
 
 // 轮询定义数据块 "{{POLLS_NAME}}"
 DATA_BLOCK "{{POLLS_NAME}}"
 TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT
-{{#for conn in connections}}_
+{{for conn in connections}}_
     {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
         MBAP_seq : WORD ;               //事务号 PLC自动填写
         MBAP_protocol : WORD ;          //必须为0
@@ -129,7 +129,7 @@ STRUCT
         recvDB : INT ;                  //接收数据块号
         recvDBB : INT ;                 //接收数据块起始地址
     END_STRUCT ;
-{{#endfor conn}}_
+{{endfor // conn}}_
     buff : STRUCT // 接收缓冲区
         MBAP_seq : WORD ;               //事务号 PLC自动填写
         MBAP_protocol : WORD ;          //必须为0
@@ -140,47 +140,49 @@ STRUCT
     END_STRUCT ;
 END_STRUCT ;
 BEGIN
-{{#for conn in connections}}_
+{{for conn in connections}}_
     // --- {{conn.comment}}
-{{  #for no, poll in conn.polls}}_
+{{  for no, poll in conn.polls}}_
     {{conn.name}}[{{no}}].device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
     {{conn.name}}[{{no}}].MFunction := B#16#{{poll.function}};
     {{conn.name}}[{{no}}].address := W#16#{{poll.address}};
     {{conn.name}}[{{no}}].data := W#16#{{poll.data}};
     {{conn.name}}[{{no}}].recvDB := {{poll.recv_DB.block_no}};
     {{conn.name}}[{{no}}].recvDBB := {{poll.recv_start}};
-{{  #endfor poll}}_
-{{#endfor conn}}_
+{{  endfor // poll}}_
+{{endfor // conn}}_
 END_DATA_BLOCK
 
-{{#for conn in connections}}_
-{{#if conn.$interval_time != undefined}}_
+{{for conn in connections}}_
+{{if conn.$interval_time != undefined}}_
 DATA_BLOCK {{conn.DB.value}} "{{NAME}}"
 BEGIN
         intervalTime := {{conn.$interval_time.DINT}};
 END_DATA_BLOCK
 
-{{#endif conn.$interval_time}}_
-{{#endfor conn}}_
+{{endif // conn.$interval_time}}_
+{{endfor // conn}}_
 // 调用
 FUNCTION "{{LOOP_NAME}}" : VOID
-{{#if loop_begin}}_
-{{loop_begin}}
+{{if loop_begin}}_
+{{  loop_begin}}
 
-{{#endif}}_
-{{#for conn in connections}}_
+{{endif}}_
+{{for conn in connections}}_
 // {{conn.comment}}
-"{{NAME}}".{{conn.DB.value}} ( {{#if conn.interval_time != undefined}}
-    intervalTime := {{conn.interval_time.value}},{{#endif}}
+"{{NAME}}".{{conn.DB.value}} (
+{{if conn.interval_time != undefined}}_
+    intervalTime := {{conn.interval_time.value}},
+{{endif}}_
     DATA  := "{{POLLS_NAME}}".{{conn.name}},
     buff  := "{{POLLS_NAME}}".buff);
 
-{{#endfor conn}}_
+{{endfor // conn}}_
 // 接收块
 {{invoke_code}}
-{{#if loop_end}}
-{{loop_end}}
-{{#endif}}_
+{{if loop_end}}
+{{  loop_end}}
+{{endif}}_
 END_FUNCTION
 `;
 

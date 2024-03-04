@@ -14,12 +14,12 @@ export function is_feature(feature) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
-{{#if includes}}
-{{includes}}
-{{#endif}}_
-{{#if platform == 'portal'}}_
-{{#for timer in list}}_
-{{#if timer.DB}}
+{{if includes}}
+{{  includes}}
+{{endif}}_
+{{if platform == 'portal'}}_
+{{for timer in list}}_
+{{if timer.DB}}
 // timer背景块: {{timer.comment}}
 DATA_BLOCK {{timer.DB.value}}
 { S7_Optimized_Access := 'FALSE' }
@@ -28,34 +28,35 @@ FAMILY : GooLib
 "{{NAME}}"
 BEGIN
 END_DATA_BLOCK
-{{#endif timer.}}_
-{{#endfor timer}}_
-{{#endif portal}}_
+{{endif // timer.DB}}_
+{{endfor // timer}}_
+{{endif // portal}}_
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID
-{{#if platform == 'portal'}}_
+{{if platform == 'portal'}}_
 { S7_Optimized_Access := 'TRUE' }
-{{#endif portal}}_
+{{endif // portal}}_
 // 计时主循环
 BEGIN
-{{#if loop_begin}}_
-{{loop_begin}}
-{{#endif}}_
-{{#for timer in list}}
+{{if loop_begin}}_
+{{  loop_begin}}
+{{endif}}_
+{{for timer in list}}
 // {{timer.comment}}
-{{#if platform != 'portal'}}"{{NAME}}".{{#endif platform}}_
-{{timer.DB.value}}({{}}_
-{{#if timer.enable}}
-    enable := {{timer.enable.value}},{{#endif}}_
-{{#if timer.reset}}
-    reset := {{timer.reset.value}},{{#endif}}_
-{{#if timer.enable || timer.reset}}
-    {{#endif}}PPS := {{timer.PPS.value}});
-{{#endfor timer}}_
-{{#if loop_end}}
-{{loop_end}}
-{{#endif}}_
+{{if platform != 'portal'}}"{{NAME}}".{{endif // platform}}_
+{{timer.DB.value}}(
+{{if timer.enable}}_
+    enable := {{timer.enable.value}},
+{{endif}}_
+{{if timer.reset}}_
+    reset := {{timer.reset.value}},
+{{endif}}_
+    PPS := {{timer.PPS.value}});
+{{endfor // timer}}_
+{{if loop_end}}
+{{  loop_end}}
+{{endif}}_
 END_FUNCTION
 `;
 

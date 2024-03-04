@@ -640,8 +640,9 @@ function get_portal_symbol({ name, type, address, block_name, comment, exportabl
     return { name, address, line };
 }
 
-const template = `{{#for symbol in symbol_list}}{{symbol.line}}
-{{#endfor symbol}}`;
+const template = `{{for symbol in symbol_list}}_
+{{symbol.line}}
+{{endfor // symbol}}`;
 
 export function gen_symbols(CPU_list) {
     return {

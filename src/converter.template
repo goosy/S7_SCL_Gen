@@ -22,8 +22,10 @@
 //       该yaml文件描述该转换类型的内置符号列表，文件放在.js同一文件夹下
 //       如果转换器引用了其它库里的符号，请保证在 `./src/convertersCPU.yaml` 中定义了该符号
 
-// 引入所有的转换器{{#for feature,converter in converters}}
-import * as {{feature}} from './converters/converter_{{feature}}.js';{{#endfor converter}}
+// 引入所有的转换器
+{{for feature,converter in converters}}_
+import * as {{feature}} from './converters/converter_{{feature}}.js';
+{{endfor // converter}}_
 
 import { IntHashList } from './s7data.js';
 import { S7SymbolEmitter } from './symbols.js';
@@ -43,9 +45,11 @@ class ICPU{
     /** @type {string} */
     platform;                        // 由CPU文档设置，默认 'step7'
     /** @type {string} */
-    device;                          // 由CPU文档设置{{#for cat in supported_category}}
+    device;                          // 由CPU文档设置
+{{for cat in supported_category}}_
     /** @type {Area|null} */
-    {{cat.feature}};                              // 由 {{cat.feature}} 文档设置{{#endfor}}
+    {{cat.feature}};                              // 由 {{cat.feature}} 文档设置
+{{endfor}}_
     /** @type {S7SymbolEmitter} */
     symbols = new S7SymbolEmitter(); // 符号调度中心
     /** @type {IntHashList} */
@@ -69,11 +73,15 @@ class ICPU{
     }
 }
 
-const supported_features = [{{#for cat in supported_category}}
-    '{{cat.feature}}',{{#endfor}}
+const supported_features = [
+{{for cat in supported_category}}_
+    '{{cat.feature}}',
+{{endfor}}_
 ];
 const converter = {
-{{#for feature,converter in converters}}    {{feature}}, 
-{{#endfor converter}}}
+{{for feature,converter in converters}}_
+    {{feature}}, 
+{{endfor // converter}}_
+}
 
 export { ICPU as CPU, supported_features, converter };

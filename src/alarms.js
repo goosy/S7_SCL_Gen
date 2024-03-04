@@ -1,6 +1,6 @@
 const template = `no,eventtag,location,event,PV1
-{{#for no, alarm in alarms_list}}{{no+1}},{{alarm.tagname}},{{alarm.location}},{{alarm.event}},{{alarm.PV1}}
-{{#endfor}}`;
+{{for no, alarm in alarms_list}}{{no+1}},{{alarm.tagname}},{{alarm.location}},{{alarm.event}},{{alarm.PV1}}
+{{endfor}}`;
 
 export function gen_alarms(CPU_list) {
     return {

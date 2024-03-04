@@ -14,75 +14,80 @@ export function is_feature(feature) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
-{{#if includes}}
+{{if includes}}
 {{includes}}
-{{#endif}}_
-{{#for motor in list}}_
-{{#if motor.DB}}
+{{endif}}_
+{{for motor in list}}_
+{{if motor.DB}}
 // motor背景块: {{motor.comment}}
 DATA_BLOCK {{motor.DB.value}}
-{{#if platform == 'portal'}}_
+{{if platform == 'portal'}}_
 { S7_Optimized_Access := 'FALSE' }
-{{#endif portal}}_
+{{endif // portal}}_
 AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-{{#if motor.$stateless != null}}_
+{{  if motor.$stateless != null}}_
     stateless := {{motor.$stateless}};
-{{#endif}}_
-{{#if motor.$over_time != null}}_
+{{  endif //$stateless}}_
+{{  if motor.$over_time != null}}_
     over_time := {{motor.$over_time.DINT}};
-{{#endif}}_
+{{  endif //over_time}}_
 END_DATA_BLOCK
-{{#endif motor.DB}}_
-{{#endfor motor}}_
+{{endif // motor.DB}}_
+{{endfor // motor}}_
 
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID
-{{#if platform == 'portal'}}_
+{{if platform == 'portal'}}_
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
-{{#endif platform}}_
+{{endif // platform}}_
 BEGIN
-{{#if loop_begin}}_
-{{loop_begin}}
+{{if loop_begin}}_
+{{  loop_begin}}
 
-{{#endif}}_
-{{#for motor in list}}_
+{{endif}}_
+{{for motor in list}}_
 {{len = motor.paras_len}}_
 // {{motor.comment}}
-{{#if motor.DB}}_
-{{#if platform == 'step7'}}_
-"{{NAME}}".{{
-#endif platform}}_
-{{motor.DB.value}}({{}}_
-_
-{{#if platform == 'portal'}}_
-{{#for no,para in motor.paras}}_
-{{#if len > 1}}
-    {{#endif len}}_
-{{para}}_
-{{#endfor para}});
-{{}}_
-_
-{{#else other platform}}_
-{{#for no,para in motor.input_paras}}_
-{{#if len > 1}}
-    {{#endif len}}_
-{{para}}_
-{{#endfor no,para}});
-{{#for para in motor.output_paras}}_
-{{para}}
-{{#endfor para}}_
-{{#endif platform}}_
-_
-{{#endif motor.DB}}
-{{#endfor motor}}_
-{{#if loop_end}}_
-{{loop_end}}
-{{#endif}}_
+{{if motor.DB}}_
+{{if platform == 'step7'}}_
+"{{NAME}}".{{}}_
+{{endif // platform}}_
+{{motor.DB.value}}({{
+
+if platform == 'portal' // 博途平台
+
+}}{{for no,para in motor.paras}}_
+{{    if len > 1}}
+    {{// 增加换行}}_
+{{    endif // len}}_
+{{    para}}_
+{{  endfor // para}});
+{{
+
+else // other platform // 非博途平台
+
+}}{{for no,para in motor.input_paras}}_
+{{    if len > 1}}
+    {{// 增加换行}}_
+{{    endif // len}}_
+{{  para}}_
+{{  endfor // no,para}});
+{{  for para in motor.output_paras}}_
+{{    para}}
+{{  endfor // para}}{{
+
+endif // 平台判断结束
+
+}}{{endif // motor.DB}}
+{{endfor // motor}}_
+{{if loop_end}}_
+{{  loop_end}}
+{{endif}}_
 END_FUNCTION
 `;
 

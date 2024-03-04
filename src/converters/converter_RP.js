@@ -16,48 +16,48 @@ export function is_feature(name) {
 const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
-{{#if includes}}
-{{includes}}
-{{#endif}}_
-{{#for RP in list}}
+{{if includes}}
+{{  includes}}
+{{endif}}_
+{{for RP in list}}
 // RP背景块: {{RP.comment}}
 DATA_BLOCK {{RP.DB.value}}
-{{#if platform == 'portal'}}_
+{{if platform == 'portal'}}_
 { S7_Optimized_Access := 'FALSE' }
-{{#else}}_
+{{else}}_
 { S7_m_c := 'true' }
-{{#endif portal}}_
+{{endif // portal}}_
 AUTHOR:Goosy
 FAMILY:GooLib
 "{{RP.FB}}"
 BEGIN
-{{#if RP.$PT != undefined}}_
+{{if RP.$PT != undefined}}_
     PT := {{RP.$PT}}; // 脉冲时长
-{{#endif RP.$PT}}_
-{{#if RP.IncludeFallingEdge != undefined}}_
+{{endif // RP.$PT}}_
+{{if RP.IncludeFallingEdge != undefined}}_
     IncludeFallingEdge := {{RP.IncludeFallingEdge}}; // 是否包含下降沿
-{{#endif RP.IncludeFallingEdge}}_
+{{endif // RP.IncludeFallingEdge}}_
 END_DATA_BLOCK
-{{#endfor RP}}_
+{{endfor // RP}}_
 
 FUNCTION "{{LOOP_NAME}}" : VOID
-{{#if platform == 'portal'}}_
+{{if platform == 'portal'}}_
 { S7_Optimized_Access := 'TRUE' }
-{{#endif portal}}_
+{{endif // portal}}_
 // 主循环
 BEGIN
-{{#if loop_begin}}_
-{{loop_begin}}
+{{if loop_begin}}_
+{{  loop_begin}}
 
-{{#endif}}_
-{{#for RP in list}}_
-{{#if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{#endif platform}}_
+{{endif}}_
+{{for RP in list}}_
+{{if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{endif // platform}}_
 {{RP.DB.value}}(IN := {{RP.IN.value}}_
-{{#if RP.PT != undefined}}, PT := {{RP.PT}}{{#endif}}); // {{RP.comment}}
-{{#endfor RP}}_
-{{#if loop_end}}
-{{loop_end}}
-{{#endif}}_
+{{if RP.PT != undefined}}, PT := {{RP.PT}}{{endif}}); // {{RP.comment}}
+{{endfor // RP}}_
+{{if loop_end}}
+{{  loop_end}}
+{{endif}}_
 END_FUNCTION
 `
 
