@@ -4,7 +4,7 @@ import { posix } from 'node:path';
 import { globby } from 'globby';
 import { convert } from 'gooconverter';
 import { supported_features, converter, CPU } from './converter.js';
-import { GCL, get_Seq } from './gcl.js';
+import { GCL, get_Seq, isString } from './gcl.js';
 import {
     add_symbols, gen_symbols,
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
@@ -45,11 +45,13 @@ async function parse_includes(includes, options) {
     if (!Array.isArray(filenames)) return { code, gcl_list };
     const work_path = context.work_path;
     try {
-        for (const filename of filenames) {
+        for (const file of filenames) {
+            const filename = typeof file === 'string' ? file : file.filename;
+            const encoding = file.encoding ?? 'utf8';
             const gcl = new GCL();
             await gcl.load(
                 posix.join(work_path, filename),
-                { ...options, encoding: 'utf8', inSCL: true }
+                { ...options, encoding, inSCL: true }
             );
             gcl_list.push(gcl);
         };
@@ -179,7 +181,9 @@ async function add_conf(document) {
 
     // 传递节点以便定位源码位置
     const list = document.get('list')?.items ?? [];
-    const files = document.get('files')?.items ?? [];
+    const files = (document.get('files')?.items ?? []).map(
+        item => isString(item) ? item.value : item.toJSON()
+    );
     const options = document.get('options')?.toJSON() ?? {};
     const name = cpu.name;
     if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
@@ -243,26 +247,28 @@ async function gen_data_list(CPU_list) {
             const area = cpu[feature];
             if (area === undefined) continue;
             const output_dir = posix.join(work_path, area.document.CPU.output_dir);
-            const gen_copy_list = converter[feature].gen_copy_list;
-            assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
-            const conf_files = [];
             for (const file of area.files) {
-                const filename = file.value;
-                if (/\\/.test(filename)) throw new SyntaxError('路径分隔符要使用"/"!');
-                let [dir, base] = filename.split('//');
+                const is_filename = typeof file === 'string';
+                const name = is_filename ? file : file.filename;
+                const encoding = file.encoding ?? 'utf8';
+                if (/\\/.test(name)) throw new SyntaxError('路径分隔符要使用"/"!');
+                let [dir, base] = name.split('//');
                 if (base == undefined) {
-                    base = posix.basename(filename);
-                    dir = posix.dirname(filename);
+                    base = posix.basename(name);
+                    dir = posix.dirname(name);
                 }
                 dir = posix.join(work_path, dir);
-                for (const src of await globby(posix.join(dir, base))) {
-                    const dst = src.replace(dir, output_dir);
-                    conf_files.push({ src, dst });
+                for (const filename of await globby(posix.join(dir, base))) {
+                    const src = is_filename ? filename : { filename, encoding };
+                    const dst = filename.replace(dir, output_dir);
+                    copy_list.push({ src, dst });
                 }
             };
+            const gen_copy_list = converter[feature].gen_copy_list;
+            assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
             const ret = gen_copy_list(area);
             assert(Array.isArray(ret), `innal error: gen_${feature}_copy_list(${area}) is not a Array`);
-            copy_list.push(...conf_files, ...ret);
+            copy_list.push(...ret);
 
             // push each gen_{feature}(feature_item) to convert_list
             const gen = converter[feature].gen;

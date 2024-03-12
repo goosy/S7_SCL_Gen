@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
 import { convertRules } from 'gooconverter';
-import { copy_file, write_file, context } from './util.js'
+import { copy_file, read_file, write_file, context } from './util.js'
 import { gen_data } from './gen_data.js';
 
 export { convert, context };
@@ -24,7 +24,16 @@ async function convert() {
     if (copy_list?.length) {
         silent || console.log("\ncopy file to: 复制文件至：");
         for (const { src, dst } of copy_list) {
-            await copy_file(src, dst);
+            if (typeof src === 'string') {
+                await copy_file(src, dst);
+            } else {
+                const encoding = src.encoding;
+                let content = await read_file(src.filename, { encoding });
+                if (content.charCodeAt(0) === 0xFEFF) { // 去掉 BOM
+                    content = content.substring(1);
+                }
+                await write_file(dst, content);
+            }
             silent || console.log(`\t${dst}`)
         }
     }

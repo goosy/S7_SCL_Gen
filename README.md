@@ -175,14 +175,16 @@ includes: |
     Tank1 := W#16#02D0;
   END_DATA_BLOCK
 ```
-II. **数组**   表示文件列表，列表项为同目录下的相对路径名称，转换程序会提取每一个文件内容作为合并来源
+II. **数组**   表示文件列表，列表项为同目录下的相对路径名称，或是包含名称和编码格式的对象，转换程序会提取每一个文件内容作为合并来源
 
 例：
 
 ```yaml
 includes:
-- A101.scl
-- FXGasFlow.scl
+- A101.scl                                   # 只有文件名称的写法，默认该文件编码格式为 UTF-8
+- filename: FXGasFlow.scl                    # 文件对象的写法
+  encoding: utf8                             # 指明文件编码
+- {filename: JS_Flow.scl, encoding: gbk}     # 写在一行里的文件对象，指明文件编码
 ```
 
 includes只能采用上述2种之一，由于在YAML中书写SCL代码有很多局限，推荐用外部文件的方式。
@@ -223,28 +225,49 @@ list:
 
 files数组的每一项是相对于当前配置文件目录的相对路径。必须使用 `/` 符为路径分隔符。
 
-注意：与includes不同，files 只能采用外部文件的方式，并且可以是任何类型的文件（建议SCL或AWL代码文件），所以不会进行编码转换。
+注意：
 
-默认不会将路径复制到目标目录中，在输出文件夹（这里假设是 `output_dir` ）中只有路径最后的文件或文件夹。
+- 与includes不同，files 只能采用外部文件的方式，并且可以是任何类型的文件（建议SCL或AWL代码文件）
+- 只有文件名的方式，会只复制，不进行编码转换
+- 指明编码格式的文件，会转换成 GBK 保存的目标文件夹中。（GBK格式是为了方便西门子软件导入文件）
+- 默认不会将路径复制到目标目录中，在输出文件夹（这里假设是 `output_dir` ）中只有路径最后的文件或文件夹。
+
+大多数情况下，都不用指明编码，只要书写文件名就可以了。
+
+假设目标文件夹是 output_dir ，则：
 
 ```yaml
 files:
-- a/b/c.scl # 复制后的文件为 `output_dir/c.scl`
-- ../myfunc.scl # 复制后的文件为 `output_dir/myfunc.scl`
-- a/some_folder # 复制后的文件夹为 `output_dir/some_folder`，并包含该文件夹下的文件
+- a/b/c.scl                          # 复制后的文件为 `output_dir/c.scl` 仅仅复制文件
+- ../readme.docx                     # 复制后的文件为 `output_dir/readme.docx` 非文本文件一定只写名称
+- foo/a_folder                       # 文件夹复制，产生目标文件夹 `output_dir/a_folder`，并包含该文件夹下的文件
 ```
 
 【高级应用1】 如果需要复制相对路径，可用"//"放置在需保留的路径范围之前。
 
-假设目标文件夹是 output_dir ，则：
+```yaml
+files:
+- `- os//ab/c.scl`                   # 会将 `os/ab/c.scl` 复制为 `output_dir/ab/c.scl`
+- `- ../..//lib/c.scl`               # 会将 `../lib/c.scl` 复制为 `output_dir/lib/c.scl`
+```
 
-- `- os/ab/c.scl`   # 会将 `os/ab/c.scl` 复制为 `output_dir/c.scl`
-- `- ..//lib/c.scl` # 会将 `../lib/c.scl` 复制为 `output_dir/ab/c.scl`
+【高级应用2】 可以指明源文件的编码格式，这样可以转换成西门子认识的 GBK 编码格式
 
-【高级应用2】 可以使用 glob 匹配符。
+```yaml
+files:
+- filename: myfunc.scl               # 复制后的文件为 `output_dir/myfunc.scl`
+  encoding: utf8                     # 指明文件编码是 UTF-8 ，复制后的文件编码强制为GBK
+- {filename: folder, encoding: gbk}  # 在一行里附加编码格式，这里复制 `folder` 文件夹，里面的源文件编码都是GBK
+```
 
-- `- lib//*`        # 复制 lib 目录下的所有文件
-- `- lib//**`       # 复制 lib 目录下的所有文件，包括子目录，事实上，它与 `- lib` 等效
+【高级应用3】 可以使用 glob 匹配符。
+
+```yaml
+files:
+- `- lib/*`                 # 复制 lib 目录下的所有文件，不包括子目录
+- filename: - lib//**.scl   # 复制 lib 目录及其子目录下的所有 word 文件
+  encoding: utf8            # 所有匹配的文件，其编码都是 UTF-8
+```
 
 注意：生成器不检查文件内容的错误，也不解析文件。
 

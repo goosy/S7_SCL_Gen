@@ -193,7 +193,10 @@ export function gen({ document, includes, loop_begin, loop_end, list, options = 
 }
 
 export function gen_copy_list(item) {
-    const src = posix.join(context.module_path, NAME, `${NAME}(${item.document.CPU.platform}).scl`);
+    const src = {
+        filename: posix.join(context.module_path, NAME, `${NAME}(${item.document.CPU.platform}).scl`),
+        encoding: 'utf8',
+    };
     const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
     return [{ src, dst }];
 }

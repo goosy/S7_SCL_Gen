@@ -331,13 +331,17 @@ export function gen({ document, includes, loop_begin, loop_end, invoke_code, lis
 
 export function gen_copy_list(item) {
     const copy_list = [];
-    function push_copy_pair(filename) {
-        const src = posix.join(context.module_path, 'CP_Poll', filename);
+    function push_copy_pair(filename, encoding) {
+        encoding ??= 'utf8'
+        const src = {
+            filename: posix.join(context.module_path, 'CP_Poll', filename),
+            encoding,
+        };
         const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
         copy_list.push({ src, dst });
     }
     if (item.options.has_CP340) push_copy_pair(`${CP340_NAME}.scl`);
     if (item.options.has_CP341) push_copy_pair(`${CP341_NAME}.scl`);
-    push_copy_pair(`${CRC}.awl`);
+    push_copy_pair(`${CRC}.awl`, 'gbk');
     return copy_list;
 }

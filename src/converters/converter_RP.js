@@ -155,7 +155,10 @@ export function gen({ document, includes, loop_begin, loop_end, list }) {
 
 export function gen_copy_list(item) {
     function gen_copy_pair(filename) {
-        const src = posix.join(context.module_path, 'RP_Trigger', filename);
+        const src = {
+            filename: posix.join(context.module_path, 'RP_Trigger', filename),
+            encoding: 'utf8',
+        };
         const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
         return { src, dst };
     }

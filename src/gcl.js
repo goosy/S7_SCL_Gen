@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import {
     Document, parseAllDocuments,
     isMap, isSeq, isAlias, isScalar,
     LineCounter,
     visit,
 } from 'yaml';
+import { read_file } from './util.js';
 import { STRING, ensure_value, nullable_value } from './s7data.js';
 
 function merge(document) {
@@ -108,7 +108,7 @@ export class GCL {
         let inSCL = options.inSCL ?? false;
         if (isFile) {
             this.#file = yaml;
-            this.#source = (await readFile(this.#file, { encoding }));
+            this.#source = (await read_file(this.#file, { encoding }));
             yaml = inSCL ? '' : this.#source;
         } else {
             inSCL = false; //只有在文件中才能是SCL

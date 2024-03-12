@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
 import { posix } from 'node:path';
 import { convert } from 'gooconverter';
@@ -7,7 +7,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import pkg from './package.json' assert { type: 'json' };
-import { context, write_file } from './src/util.js';
+import { context, read_file, write_file } from './src/util.js';
 
 const mainInputOptions = {
     input: './src/index.js',
@@ -79,7 +79,7 @@ async function build() {
     const yamls = [];
     for (const [feature, converter] of Object.entries(converters)) {
         if (files.includes(`${feature}.yaml`)) {
-            const yaml_raw = await readFile(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
+            const yaml_raw = await read_file(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
             const yaml = convert(
                 converter,
                 yaml_raw.replace('BUILDIN', `BUILDIN-${feature}`).trim()
@@ -109,7 +109,7 @@ async function build() {
         filename,
         convert( // convert the content of src/converter.template
             { converters, supported_category },
-            await readFile('src/converter.template', { encoding: 'utf8' })
+            await read_file(get_module_path('src', 'converter.template'), { encoding: 'utf8' }),
         ),
         { encoding: 'utf8', lineEndings: 'unix' }
     );

@@ -88,15 +88,16 @@ export async function copy_file(src, dst) {
 }
 
 export async function read_file(filename, options = {}) {
-    options.encoding ??= "utf8";
+    const encoding = options.encoding ?? "utf8";
     let exist = true;
     await access(filename).catch(() => {
         exist = false;
     });
     if (exist) {
-        return await readFile(filename, options);
+        const buff = await readFile(filename);
+        return iconv.decode(buff, encoding);
     }
-    if (!options.silent) console.log(`warnning: ${filename} file not found`);
+    if (!context.silent) console.log(`warnning: ${filename} file not found`);
     return '';
 }
 
