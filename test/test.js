@@ -1,14 +1,15 @@
 /* eslint-disable no-undef */
 import { ok } from "node:assert/strict";
-import { chdir, cwd } from 'node:process';
 import { posix } from 'node:path';
+import { chdir, cwd } from 'node:process';
 import { convertRules } from 'gooconverter';
-import { context } from '../src/index.js';
+import { context } from '../src/util.js';
 import { gen_data } from '../src/gen_data.js';
 
 chdir('./test');
 context.work_path = cwd().replace(/\\/g, '/');
-const [copy_list, convert_list] = await gen_data({ silent: true });
+context.silent = true;
+const {copy_list, convert_list} = await gen_data();
 const gen_files = [];
 if (convert_list?.length) {
     let output_dir = context.work_path;

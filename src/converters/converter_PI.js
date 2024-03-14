@@ -4,11 +4,11 @@
  * @file PI
  */
 
+import assert from 'node:assert/strict';
+import { posix } from 'node:path';
 import { context } from '../util.js';
 import { STRING, PINT, PDINT, ensure_value, nullable_value } from '../s7data.js';
 import { make_s7_expression } from '../symbols.js';
-import { posix } from 'path';
-import assert from 'assert/strict';
 
 export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'PI_Proc';

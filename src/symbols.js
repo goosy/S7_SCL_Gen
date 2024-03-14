@@ -1,14 +1,14 @@
-import assert from 'assert/strict';
+import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import { posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { isSeq } from 'yaml';
 import { compare_str, pad_right, pad_left } from './util.js';
 import {
     S7HashList, IntHashList, HLError,
     s7addr2foct, foct2S7addr
 } from "./s7data.js";
 import { GCL, isString, get_Seq } from './gcl.js';
-import { isSeq } from 'yaml';
-import { posix } from 'path';
-import { fileURLToPath } from 'url';
-import { EventEmitter } from 'events';
 
 export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
 await BUILDIN_SYMBOLS.load(posix.join(
@@ -16,9 +16,7 @@ await BUILDIN_SYMBOLS.load(posix.join(
     '../symbols_buildin.yaml'
 ));
 
-export const NON_SYMBOLS = [];
 export const WRONGTYPESYMBOLS = new Set();
-export const SYMBOL_PROMISES = [];
 
 /**
  * @typedef {object} Source
@@ -550,7 +548,7 @@ export async function make_s7_expression(value, infos = {}) {
     const allow_symbol_def = infos.disallow_symbol_def !== true;
     const allow_symbol_link = infos.disallow_symbol_link !== true;
     const { document, s7_expr_desc } = infos;
-    const symbols = document.CPU.symbols;
+    const { symbols, asnyc_symbols, non_symbols } = document.CPU;
     if (value == undefined) {
         if (disallow_null) throw new Error('不允许空值');
         return value;
@@ -567,7 +565,7 @@ export async function make_s7_expression(value, infos = {}) {
         if (disallow_s7express) throw new SyntaxError('不允许非符号 S7 表达式');
         const s7expr = ref(value);
         if (!s7expr) throw new SyntaxError('非有效的 S7 表达式');
-        NON_SYMBOLS.push({ value, desc: s7_expr_desc });
+        non_symbols.push({ value, desc: s7_expr_desc });
         return s7expr;
     }
 
@@ -592,7 +590,7 @@ export async function make_s7_expression(value, infos = {}) {
             });
             symbols.on('finished', fn);
         });
-        SYMBOL_PROMISES.push(promise);
+        asnyc_symbols.push(promise);
         return promise;
     } else {
         return do_s7expr(); // 获得S7表达式

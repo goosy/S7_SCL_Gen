@@ -1,14 +1,13 @@
-import assert from 'assert/strict';
-import { readdir } from 'fs/promises';
+import assert from 'node:assert/strict';
+import { readdir } from 'node:fs/promises';
+import { posix } from 'node:path';
 import { globby } from 'globby';
-import { posix } from 'path';
 import { convert } from 'gooconverter';
 import { supported_features, converter, CPU } from './converter.js';
 import { GCL, get_Seq } from './gcl.js';
 import {
     add_symbols, gen_symbols,
-    BUILDIN_SYMBOLS, NON_SYMBOLS, WRONGTYPESYMBOLS,
-    SYMBOL_PROMISES,
+    BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
 import { context, write_file, pad_right } from './util.js';
@@ -44,8 +43,8 @@ async function parse_includes(includes, options) {
     if (typeof includes == 'string') return { code: includes, gcl_list };
     const filenames = includes ? includes.toJSON() : [];
     if (!Array.isArray(filenames)) return { code, gcl_list };
+    const work_path = context.work_path;
     try {
-        const work_path = context.work_path;
         for (const filename of filenames) {
             const gcl = new GCL();
             await gcl.load(
@@ -191,12 +190,11 @@ async function add_conf(document) {
     _converter.initialize_list(area);
 }
 
-export async function gen_data({ output_zyml, noconvert, silent } = {}) {
-    const work_path = context.work_path;
+async function parse_conf() {
     const docs = [];
-    const cpus = [];
-
-    // 第一遍扫描 加载配置\提取符号\建立诊断信息
+    const CPU_list = [];
+    const work_path = context.work_path;
+    const silent = context.silent;
     try {
         silent || console.log('\nreadding GCL files: 读取配置文件：');
         for (const file of await readdir(work_path)) {
@@ -208,7 +206,7 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
                     let CPU = CPUs[doc.CPU];
                     if (!CPU) {
                         CPU = CPUs.get_or_create(doc.CPU);
-                        cpus.push(CPU);
+                        CPU_list.push(CPU);
                     }
                     Object.defineProperty(doc, 'CPU', {
                         value: CPU,
@@ -226,52 +224,21 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         for (const doc of docs) {
             await add_conf(doc);
         }
-        for (const cpu of cpus) {
-            cpu.symbols.emit('finished');
-            // complete the symbol
-        }
+
+        // wait for all symbols to complete
+        CPU_list.forEach(CPU => CPU.symbols.emit('finished'));
+        await Promise.all(CPU_list.map(CPU => CPU.async_symbols).flat());
     } catch (e) {
         console.log(e);
     }
-    await Promise.all(SYMBOL_PROMISES);
+    return CPU_list;
+}
 
-    // 第二遍扫描 补全数据
-
-    for (const cpu of cpus) {
-        for (const feature of supported_features) {
-            const area = cpu[feature];
-            const build_list = converter[feature].build_list;
-            if (area && typeof build_list === 'function') build_list(area);
-        };
-    }
-
-    // 校验完毕，由 noconvert 变量决定是否输出
-    if (noconvert) return [[], []];
-
-    // 输出无注释配置
-    if (output_zyml) {
-        console.log('output the uncommented configuration file:');
-        const options = {
-            commentString() { return ''; }, //注释选项
-            indentSeq: false                //列表是否缩进
-        }
-        for (const CPU of cpus) {
-            const name = CPU.name;
-            // 生成无注释的配置
-            const yaml = supported_features.reduce(
-                (docs, feature) => CPU[feature] ? `${docs}\n\n${CPU[feature].document.toString(options)}` : docs,
-                `# CPU ${name} configuration`
-            );
-            const filename = `${posix.join(work_path, CPU.output_dir, name)}.zyml`;
-            await write_file(filename, yaml);
-            console.log(`\t${filename}`);
-        }
-    }
-
-    // 第三遍扫描 生成最终待转换数据
+async function gen_data_list(CPU_list) {
+    const work_path = context.work_path;
     const copy_list = [];
     const convert_list = [];
-    for (const cpu of cpus) {
+    for (const cpu of CPU_list) {
         for (const feature of supported_features) {
             const area = cpu[feature];
             if (area === undefined) continue;
@@ -304,21 +271,37 @@ export async function gen_data({ output_zyml, noconvert, silent } = {}) {
         }
     };
     convert_list.push(
-        gen_symbols(cpus), // symbols converter
-        gen_alarms(cpus) // alarms converter
+        gen_symbols(CPU_list), // symbols converter
+        gen_alarms(CPU_list) // alarms converter
     );
+    return { copy_list, convert_list };
+}
 
-    // 非符号提示
-    if (NON_SYMBOLS.length) console.log(`
+export async function gen_data() {
+    // 第一遍扫描 加载配置\提取符号\建立CPU及诊断信息
+    const CPU_list = await parse_conf();
+
+    // 第二遍扫描 补全数据
+    for (const cpu of CPU_list) {
+        for (const feature of supported_features) {
+            const area = cpu[feature];
+            const build_list = converter[feature].build_list;
+            if (area && typeof build_list === 'function') build_list(area);
+        };
+        // 非符号提示
+        const non_symbols =cpu.non_symbols;
+        if (non_symbols.length) console.log(`
 warning: 警告：
 The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
 The converter treats them as S7 expressions without checking validity. 转换器将它们视为S7表达式不检验有效性
 Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
-    );
-    NON_SYMBOLS.forEach(({ value, desc }) => {
-        console.log(`\t${pad_right(value, 24)}: ${desc}`);
-    });
-    // 用户符号类型定义错误提示
+        );
+        non_symbols.forEach(({ value, desc }) => {
+            console.log(`\t${pad_right(value, 24)}: ${desc}`);
+        });
+    }
+
+    // 用户符号类型定义错误提示，错误类型的符号不归于CPU
     if (WRONGTYPESYMBOLS.size) console.log(`
 warning: 警告：
 The user defined type of following symbols is wrong. 配置文件中以下符号用户定义的类型有误
@@ -328,5 +311,29 @@ The converter convert them to the correct type . 转换器将它们转换为合�
         console.log(`\t${symbol.name}:  'user defined type: ${symbol.userDefinedType}'  'actual type: ${symbol.type}'`);
     });
 
-    return [copy_list, convert_list];
+    // 校验完毕，由 noconvert 变量决定是否输出
+    if (context.noconvert) return [[], []];
+
+    // 输出无注释配置
+    if (context.output_zyml) {
+        console.log('output the uncommented configuration file:');
+        const options = {
+            commentString() { return ''; }, //注释选项
+            indentSeq: false                //列表是否缩进
+        }
+        for (const CPU of CPU_list) {
+            const name = CPU.name;
+            // 生成无注释的配置
+            const yaml = supported_features.reduce(
+                (yaml, feature) => CPU[feature] ? `${yaml}\n\n${CPU[feature].document.toString(options)}` : yaml,
+                `# CPU ${name} configuration`
+            );
+            const filename = `${posix.join(context.work_path, CPU.output_dir, name)}.zyml`;
+            await write_file(filename, yaml, { encoding: 'utf8', lineEndings: 'unix' });
+            console.log(`\t${filename}`);
+        }
+    }
+
+    // 生成最终待转换数据
+    return await gen_data_list(CPU_list);
 }

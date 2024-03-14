@@ -1,7 +1,7 @@
+import { posix } from 'node:path';
 import { make_s7_expression } from '../symbols.js';
 import { BOOL, INT, REAL, STRING, TIME, ensure_value, nullable_value } from '../s7data.js';
 import { context } from '../util.js';
-import { posix } from 'path';
 
 export const platforms = ['step7', 'pcs7', 'portal']; // platforms supported by this feature
 export const NAME = `Valve_Proc`;

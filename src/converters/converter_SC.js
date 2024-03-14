@@ -4,12 +4,12 @@
  * @file SC
  */
 
+import assert from 'node:assert/strict';
+import { posix } from 'node:path';
+import { isSeq } from 'yaml';
 import { context, fixed_hex } from '../util.js';
 import { BOOL, STRING, PINT, ensure_value, nullable_value } from '../s7data.js';
 import { make_s7_expression } from '../symbols.js';
-import { posix } from 'path';
-import { isSeq } from 'yaml';
-import assert from 'assert/strict';
 
 export const platforms = ['step7']; // platforms supported by this feature
 export const CP340_NAME = 'CP340_Poll';

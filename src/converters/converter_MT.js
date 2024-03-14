@@ -1,3 +1,6 @@
+import assert from 'node:assert/strict';
+import { posix } from 'node:path';
+import { isSeq } from 'yaml';
 import { make_s7_expression } from '../symbols.js';
 import {
     BOOL, PINT, STRING, TIME,
@@ -5,9 +8,6 @@ import {
     IntHashList
 } from '../s7data.js';
 import { context, fixed_hex } from '../util.js';
-import { posix } from 'path';
-import { isSeq } from 'yaml';
-import assert from 'assert/strict';
 
 export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'MT_Poll';

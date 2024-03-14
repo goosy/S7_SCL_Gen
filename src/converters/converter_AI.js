@@ -1,7 +1,7 @@
+import { posix } from 'node:path';
 import { make_s7_expression } from "../symbols.js";
 import { INT, STRING, ensure_value, nullable_value } from '../s7data.js';
 import { context } from '../util.js';
-import { posix } from 'path';
 import { make_alarm_props, make_fake_DB } from './alarm_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature

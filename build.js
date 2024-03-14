@@ -1,22 +1,22 @@
-import { posix } from 'path';
-import { readdir, readFile } from 'fs/promises';
-import { context, write_file } from './src/util.js';
+import { readdir, readFile } from 'node:fs/promises';
+import { builtinModules } from 'node:module';
+import { posix } from 'node:path';
 import { convert } from 'gooconverter';
 import { rollup } from 'rollup';
-import pkg from './package.json' assert { type: 'json' };
-import { builtinModules } from 'module';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
+import pkg from './package.json' assert { type: 'json' };
+import { context, write_file } from './src/util.js';
 
 const mainInputOptions = {
     input: './src/index.js',
     plugins: [
-        resolve({
-            preferBuiltins: true,
-        }), // tells Rollup how to find XX in node_modules
+        resolve({ preferBuiltins: true }),
         commonjs(), // converts XX to ES modules
+        json(),
     ],
-    external: [...builtinModules, 'iconv-lite', '**/package.json'],
+    external: [...builtinModules, 'iconv-lite'],
 };
 
 const mainOutputOptionsList = [{
@@ -27,12 +27,11 @@ const mainOutputOptionsList = [{
 const CLIInputOptions = {
     input: './src/cli.js',
     plugins: [
-        resolve({
-            preferBuiltins: true,
-        }), // tells Rollup how to find XX in node_modules
+        resolve({ preferBuiltins: true }),
         commonjs(), // converts XX to ES modules
+        json(),
     ],
-    external: [...builtinModules, 'nodemon', './index.js'],
+    external: [...builtinModules, 'iconv-lite', 'nodemon', './index.js'],
 };
 
 const CLIOutputOptionsList = [{
@@ -47,7 +46,7 @@ function get_module_path(...filename) {
 
 async function build() {
     // create fake src/symbols_buildin.yaml
-    await write_file(get_module_path('src', 'symbols_buildin.yaml'), '');
+    await write_file(get_module_path('src', 'symbols_buildin.yaml'), '', { encoding: 'utf8', lineEndings: 'unix' });
 
     const files = await readdir(get_module_path('src', 'converters'));
     const features = [];
@@ -82,7 +81,7 @@ async function build() {
         if (files.includes(`${feature}.yaml`)) {
             const yaml_raw = await readFile(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
             const yaml = convert(
-                converters[feature],
+                converter,
                 yaml_raw.replace('BUILDIN', `BUILDIN-${feature}`).trim()
             );
             yamls.push(yaml);
@@ -99,7 +98,7 @@ async function build() {
         await write_file(
             filename,
             buildin_yaml,
-            { encoding: 'utf8' }
+            { encoding: 'utf8', lineEndings: 'unix' }
         );
         console.log(`file ${filename} generated!`);
     }
@@ -112,7 +111,7 @@ async function build() {
             { converters, supported_category },
             await readFile('src/converter.template', { encoding: 'utf8' })
         ),
-        { encoding: 'utf8' }
+        { encoding: 'utf8', lineEndings: 'unix' }
     );
     console.log(`file ${filename} generated!`);
 

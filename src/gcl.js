@@ -1,6 +1,6 @@
-import assert from 'assert/strict';
-import { readFile } from 'fs/promises';
-import { createHash } from 'crypto';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import {
     Document, parseAllDocuments,
     isMap, isSeq, isAlias, isScalar,

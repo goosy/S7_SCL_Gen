@@ -1,7 +1,7 @@
+import { posix } from 'node:path';
 import { make_s7_expression } from '../symbols.js';
 import { context } from '../util.js';
 import { STRING, ensure_value, TIME } from '../s7data.js';
-import { posix } from 'path';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const CP_NAME = 'CP';

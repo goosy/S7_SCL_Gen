@@ -1,28 +1,26 @@
-import { posix } from 'path';
+import { posix } from 'node:path';
 import { convertRules } from 'gooconverter';
 import { copy_file, write_file, context } from './util.js'
 import { gen_data } from './gen_data.js';
 
-export { convert, copy_file, context };
+export { convert, context };
 
 async function convert2file(
     { rules, template },
     output_dir,
-    options = { encoding: "utf8", lineEndings: "linux" }
 ) {
-    const silent = options.silent;
     // Asynchronous sequential execution 异步顺序执行
     for (let { name, content } of convertRules(rules, template)) {
         const output_file = posix.join(output_dir, `./${name}`);
-        await write_file(output_file, content, options)
-        silent || console.log(`\t${output_file}`)
+        await write_file(output_file, content);
+        context.silent || console.log(`\t${output_file}`)
     };
 }
 
-async function convert(options) {
-    const silent = options.silent;
+async function convert() {
+    const silent = context.silent;
     silent || console.log(`current conversion folder 当前转换文件夹: ${context.work_path}`);
-    const [copy_list, convert_list] = await gen_data(options);
+    const { copy_list, convert_list } = await gen_data();
     if (copy_list?.length) {
         silent || console.log("\ncopy file to: 复制文件至：");
         for (const { src, dst } of copy_list) {
@@ -31,11 +29,10 @@ async function convert(options) {
         }
     }
     if (convert_list?.length) {
-        const OPT = { encoding: 'gbk', lineEndings: "windows" };
         let output_dir = context.work_path;
         silent || console.log("\ngenerate file: 生成文件：");
         for (const item of convert_list) {
-            await convert2file(item, output_dir, { ...OPT, ...options });
+            await convert2file(item, output_dir);
         }
     }
 }

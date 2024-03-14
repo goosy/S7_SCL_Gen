@@ -1,33 +1,21 @@
-import { access, mkdir, cp, readFile, rename, writeFile } from 'fs/promises';
-import { basename, dirname, posix } from 'path';
-import { fileURLToPath } from 'url';
-import { createInterface } from 'readline';
+import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, dirname, posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import iconv from 'iconv-lite';
 import { Integer } from './s7data.js';
+import pkg from '../package.json' assert { type: 'json' };
 
 const module_path = posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), "../../");
-const pkg = JSON.parse(
-    await readFile(posix.join(module_path, 'package.json'), { silent: true })
-);
+const work_path = process.cwd().replace(/\\/g, '/');
 export const context = {
     module_path,
-    work_path: process.cwd().replace(/\\/g, '/'),
+    work_path,
     version: pkg.version,
-    async tips() {
-        const file = posix.join(module_path, 'tips.txt');
-        const msg = await read_file(file, { silent: true });
-        if (msg) {
-            console.log(`\n\n===========\n重要版本提示！！！\n\n${msg}`);
-            const rl = createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-            rl.question(`不再提示本消息?(Y)es, (N)o :`, async answer => {
-                if (answer.toUpperCase() === 'Y') await rename(file, file + '.lck');
-                rl.close();
-            })
-        }
-    }
+    output_zyml: false,
+    noconvert: false,
+    silent: false,
+    encoding: 'gbk',
+    lineEndings: 'windows',
 };
 
 export function compare_str(a, b) {
@@ -120,7 +108,9 @@ function dos2unix(str) {
     return str.split('\r\n').join('\n');
 }
 
-export async function write_file(filename, content, { encoding = "utf8", lineEndings = "linux" } = {}) {
+export async function write_file(filename, content, { encoding, lineEndings } = {}) {
+    encoding ??= context.encoding;
+    lineEndings ??= context.lineEndings;
     await prepare_dir(dirname(filename));
     let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(content), encoding);
     await writeFile(filename, buff);

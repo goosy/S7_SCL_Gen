@@ -1,13 +1,13 @@
 import {
-    IntHashList, S7HashList,
-    HLError, get_boundary, foct2dec, foct2S7addr, s7addr2foct, dec2foct,
-    BOOL, TIME
-} from '../src/s7data.js';
-import {
     AssertionError,
     ok, equal, deepEqual, strictEqual,
     throws
 } from "node:assert/strict";
+import {
+    IntHashList, S7HashList,
+    HLError, get_boundary, foct2dec, foct2S7addr, s7addr2foct, dec2foct,
+    BOOL, TIME
+} from '../src/s7data.js';
 
 describe('S7Data 测试', () => {
     it('辅助功能正常', () => {

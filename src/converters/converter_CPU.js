@@ -1,4 +1,4 @@
-import assert from 'assert/strict';
+import assert from 'node:assert/strict';
 import { convert } from 'gooconverter';
 import { add_symbols, make_s7_expression } from '../symbols.js';
 import { STRING, nullable_value } from '../s7data.js';
