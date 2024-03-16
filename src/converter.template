@@ -54,7 +54,7 @@ class ICPU{
     device;                           // 由CPU文档设置
 {{for cat in supported_category}}_
     /** @type {Area|null} */
-    {{cat.feature}};                              // 由 {{cat.feature}} 文档设置
+    {{pad_right(cat.feature + ';', 34)}}// 由 {{cat.feature}} 文档设置
 {{endfor}}_
 
     /** @type {string} */

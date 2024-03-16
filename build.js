@@ -7,7 +7,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import pkg from './package.json' assert { type: 'json' };
-import { context, read_file, write_file } from './src/util.js';
+import { context, read_file, write_file, pad_right } from './src/util.js';
 
 const mainInputOptions = {
     input: './src/index.js',
@@ -108,7 +108,7 @@ async function build() {
     await write_file(
         filename,
         convert( // convert the content of src/converter.template
-            { converters, supported_category },
+            { converters, supported_category, pad_right },
             await read_file(get_module_path('src', 'converter.template'), { encoding: 'utf8' }),
         ),
         { encoding: 'utf8', lineEndings: 'unix' }

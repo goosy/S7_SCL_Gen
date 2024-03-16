@@ -24,30 +24,6 @@ export function compare_str(a, b) {
     return 0;
 }
 
-export function lazyassign(obj, prop, lazyvalue, options) {
-    // must enumerable default
-    const { writable = false, enumerable = true, configurable = false } = options ?? {};
-    if (typeof lazyvalue === 'function') {
-        Object.defineProperty(obj, prop, {
-            get() {
-                const value = lazyvalue();
-                if (value == null) throw new Error(`lazyvalue not ready`);
-                lazyassign(obj, prop, value, options);
-                return value;
-            },
-            enumerable,
-            configurable: true
-        });
-    } else {
-        Object.defineProperty(obj, prop, {
-            value: lazyvalue,
-            writable,
-            enumerable,
-            configurable,
-        });
-    }
-}
-
 export async function prepare_dir(dir) {
     let parents = dirname(dir);
     await access(parents).catch(async () => {
@@ -150,4 +126,28 @@ export function pad_right(item, length, placeholder = ' ') {
 export function fixed_hex(num, length) {
     const HEX = num instanceof Integer ? num.HEX : num?.toString(16);
     return pad_left(HEX, length, '0').toUpperCase();
+}
+
+export function lazyassign(obj, prop, lazyvalue, options) {
+    // must enumerable default
+    const { writable = false, enumerable = true, configurable = false } = options ?? {};
+    if (typeof lazyvalue === 'function') {
+        Object.defineProperty(obj, prop, {
+            get() {
+                const value = lazyvalue();
+                if (value == null) throw new Error(`lazyvalue not ready`);
+                lazyassign(obj, prop, value, options);
+                return value;
+            },
+            enumerable,
+            configurable: true
+        });
+    } else {
+        Object.defineProperty(obj, prop, {
+            value: lazyvalue,
+            writable,
+            enumerable,
+            configurable,
+        });
+    }
 }
