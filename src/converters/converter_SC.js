@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { posix } from 'node:path';
 import { isSeq } from 'yaml';
-import { context, fixed_hex } from '../util.js';
+import { context, fixed_hex, elog } from '../util.js';
 import { BOOL, STRING, PINT, ensure_value, nullable_value } from '../s7data.js';
 import { make_s7_expression } from '../symbols.js';
 
@@ -157,7 +157,7 @@ export function initialize_list(area) {
                 options.has_CP340 = true;
                 return CP340_NAME;
             }
-            throw new SyntaxError(`${CPU.name}:SC:module${comment} 的类型 "${module.model}" 不支持`);
+            elog(new SyntaxError(`${CPU.name}:SC:module${comment} 的类型 "${module.model}" 不支持`));
         })(module.model.value);
 
         let module_symbol = node.get('module');
@@ -288,7 +288,7 @@ export function build_list(SC) {
             } else if (poll.deivce_ID && poll.is_modbus) {
                 poll.send_length = 8;
             } else if (!poll.extra_send_DB) { // poll configuration wrong!
-                throw new SyntaxError(`发送数据在轮询DB中时，poll.deivce_ID 和 poll.send_data 必须有其中一个!\ndeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`);
+                elog(new SyntaxError(`发送数据在轮询DB中时，poll.deivce_ID 和 poll.send_data 必须有其中一个!\ndeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`));
             }
             if (!poll.extra_send_DB) {
                 poll.send_start = sendDBB;

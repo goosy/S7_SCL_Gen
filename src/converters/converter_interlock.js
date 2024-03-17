@@ -2,6 +2,7 @@ import { make_s7_expression, add_symbol, is_common_type } from '../symbols.js';
 import { BOOL, STRING, ensure_value, nullable_value } from '../s7data.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
+import { elog } from '../util.js';
 
 export const platforms = ['step7', 'portal']; // platforms supported by this feature
 export const LOOP_NAME = 'Interlock_Loop';
@@ -130,7 +131,7 @@ function create_fields() {
         push(item) {
             item.name ??= `b_${++index}`;
             const name = item.name;
-            if (this[name]) throw new SyntaxError(`interlock 项属性 name:${name} 重复定义或已保留!请改名`);
+            if (this[name]) elog(new SyntaxError(`interlock 项属性 name:${name} 重复定义或已保留!请改名`));
             this[name] = item;
         }
     };
@@ -183,7 +184,7 @@ function create_DB_set(document) {
             name = symbol.name;
         }
         if (isString(name)) name = name.value;
-        if (typeof name !== 'string') throw Error(`Interlock DB"${name}" 输入错误！`);
+        if (typeof name !== 'string') elog(Error(`Interlock DB"${name}" 输入错误！`));
         // 从已有DB中找，如没有则建立一个初始DB资源数据
         const DB = DB_list.find(DB => DB.name === name) ?? create_DB(name);
         return DB;
@@ -203,7 +204,7 @@ export function initialize_list(area) {
     area.list = DB_list;
     for (const node of list) {
         const _DB = node.get('DB');
-        if (!_DB) throw new SyntaxError("interlock转换必须有DB块!");
+        if (!_DB) elog(new SyntaxError("interlock转换必须有DB块!"));
         const DB = get_or_create(_DB);
         const fields = DB.fields;
         const DB_name = DB.name;
@@ -246,7 +247,7 @@ export function initialize_list(area) {
 
         const enable = node.get('enable');
         if (enable) {
-            if (DB.enable_readable) throw new SyntaxError('enable 重复定义!');
+            if (DB.enable_readable) elog(new SyntaxError('enable 重复定义!'));
             make_s7_expression(
                 enable,
                 {
@@ -259,7 +260,7 @@ export function initialize_list(area) {
         }
         const $enable = nullable_value(BOOL, node.get('$enable'))?.value;
         if ($enable !== undefined) {
-            if (DB.enable_initialized) throw new SyntaxError('$enable 重复定义!');
+            if (DB.enable_initialized) elog(new SyntaxError('$enable 重复定义!'));
             DB.enable_initialized = true;
             fields.enable.init = $enable ? 'TRUE' : 'FALSE';
         }
@@ -275,7 +276,7 @@ export function initialize_list(area) {
         const default_trigger = nullable_value(STRING, node.get('trigger'))?.value.toLowerCase() ?? 'rising';
 
         const data_node = node.get('data');
-        if (data_node && !isSeq(data_node)) throw new SyntaxError('interlock 的 data 列表必须是数组!');
+        if (data_node && !isSeq(data_node)) elog(new SyntaxError('interlock 的 data 列表必须是数组!'));
         for (let item of (data_node?.items ?? [])) {
             let data;
             if (isString(item)) item = item.value;
@@ -316,7 +317,7 @@ export function initialize_list(area) {
                     },
                 ).then(ret => data.write = ret);
             } else {
-                throw new SyntaxError('interlock的data项输入错误!');
+                elog(new SyntaxError('interlock的data项输入错误!'));
             }
             fields.push(data);
             data_dict[data.name] = data;
@@ -324,7 +325,7 @@ export function initialize_list(area) {
 
         const input_node = node.get('input');
         if (!input_node || !isSeq(input_node) || input_node.items.length < 1) {
-            throw new SyntaxError("interlock的input_list必须有1项以上!"); // 不能为空项
+            elog(new SyntaxError("interlock的input_list必须有1项以上!")); // 不能为空项
         }
         interlock.input_list = input_node.items.map((item) => {
             // if item is IL_expression then convert to input_item
@@ -334,13 +335,13 @@ export function initialize_list(area) {
                 comment: ''
             });
             if (!input) {
-                if (!isMap(item)) throw new SyntaxError(`interlock的input项${item}输入错误，必须是input对象、data项名称、S7符号或SCL表达式`);
+                if (!isMap(item)) elog(new SyntaxError(`interlock的input项${item}输入错误，必须是input对象、data项名称、S7符号或SCL表达式`));
                 const trigger_type = nullable_value(STRING, item.get('trigger'))?.value.toLowerCase() ?? default_trigger;
                 const comment = new STRING(item.get('comment') ?? '').value;
                 const and = item.get('and');
                 const value = item.get('value');
                 if (and) {
-                    if (!isSeq(and)) throw new SyntaxError('interlock 有 is_and 属性的 input 项必须是数组!');
+                    if (!isSeq(and)) elog(new SyntaxError('interlock 有 is_and 属性的 input 项必须是数组!'));
                     const items = and.items.map(item => {
                         return parse_IL_expression(item, {
                             s7_expr_desc: `interlock DB:${DB_name} input.value[index]`,
@@ -360,7 +361,7 @@ export function initialize_list(area) {
 
         function conv_rest(item){
             if (typeof item !== 'string' && !isString(item) && !isSeq(item)) {
-                throw new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!');
+                elog(new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!'));
             }
 
             // if reset is symbol then convert to interlock_item
@@ -371,11 +372,11 @@ export function initialize_list(area) {
             return reset;
         }
         const reset_node = node.get('reset');
-        if (reset_node && !isSeq(reset_node)) throw new SyntaxError('interlock 的 reset 列表必须是数组!');
+        if (reset_node && !isSeq(reset_node)) elog(new SyntaxError('interlock 的 reset 列表必须是数组!'));
         interlock.reset_list = (reset_node?.items ?? []).map(conv_rest);
 
         const output_node = node.get('output');
-        if (output_node && !isSeq(output_node)) throw new SyntaxError('interlock 的 output 列表必须是数组!');
+        if (output_node && !isSeq(output_node)) elog(new SyntaxError('interlock 的 output 列表必须是数组!'));
         interlock.output_list = (output_node?.items ?? []).map(item => {
             // if item is IL_expression then convert to output_item
             let output = parse_IL_expression(item, {
@@ -385,7 +386,7 @@ export function initialize_list(area) {
             let inversion = false;
             if (!output) {
                 if (!isMap(item)) {
-                    throw new SyntaxError('interlock 的 output 项必须是output对象、data项名称、S7符号或SCL表达式!');
+                    elog(new SyntaxError('interlock 的 output 项必须是output对象、data项名称、S7符号或SCL表达式!'));
                 }
                 const comment = new STRING(item.get('comment') ?? '').value;
                 const value = item.get('value');
@@ -472,7 +473,7 @@ export function build_list({ list }) {
             }
             for (const output of interlock.output_list) {
                 if (output.ref) {
-                    if (output.ref.read) throw new SyntaxError('interlock 的 output 项不能有 read 属性!');
+                    if (output.ref.read) elog(new SyntaxError('interlock 的 output 项不能有 read 属性!'));
                 }
                 const reset = output.reset;
                 if(reset){

@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isSeq } from 'yaml';
-import { compare_str, pad_right, pad_left } from './util.js';
+import { compare_str, pad_right, pad_left, elog } from './util.js';
 import {
     S7HashList, IntHashList, HLError,
     s7addr2foct, foct2S7addr
@@ -120,7 +120,7 @@ class S7Symbol {
 
     parse_s7addr(address) {
         const [, block_name, block_no, , block_bit = 0] = S7ADDR_REG.exec(address.toUpperCase()) ?? [];
-        if (!block_name || !block_no) throw this.#symbol_error();
+        if (!block_name || !block_no) elog(this.#symbol_error());
         return [block_name, block_no, block_bit];
     }
 
@@ -337,7 +337,7 @@ export class S7SymbolEmitter extends EventEmitter {
      *
      * @param {string} name - the name of the symbol
      * @param {S7Symbol} symbol - the symbol to be added
-     * @return {void} 
+     * @return {void}
      */
     add(name, symbol) {
         this.#dict[name] = symbol;
@@ -394,13 +394,13 @@ export class S7SymbolEmitter extends EventEmitter {
                         symbol.block_bit = block_bit;
                     }
                 } else if (exist_bno[symbol.address]) { // 其它情况下检查是否重复
-                    throw new RangeError(`重复地址 Duplicate address ${name} ${symbol.address}!`);
+                    elog(new RangeError(`重复地址 Duplicate address ${name} ${symbol.address}!`));
                 } else { // 不重复则标识该地址已存在
                     exist_bno[symbol.address] = true;
                 }
             } catch (e) {
                 if (e instanceof TypeError) {
-                    throw new TypeError(e.message, { cause: e });
+                    elog(new TypeError(e.message, { cause: e }));
                 } else if (e instanceof HLError || e instanceof RangeError) {
                     throw_symbol_conflict(
                         `符号地址错误 Symbol address error: ${e.message}`,
@@ -550,7 +550,7 @@ export async function make_s7_expression(value, infos = {}) {
     const { document, s7_expr_desc } = infos;
     const { symbols, asnyc_symbols, non_symbols } = document.CPU;
     if (value == undefined) {
-        if (disallow_null) throw new Error('不允许空值');
+        if (disallow_null) elog(new Error('不允许空值'));
         return value;
     }
 
@@ -562,9 +562,9 @@ export async function make_s7_expression(value, infos = {}) {
     }
 
     function do_s7expr() {
-        if (disallow_s7express) throw new SyntaxError('不允许非符号 S7 表达式');
+        if (disallow_s7express) elog(new SyntaxError('不允许非符号 S7 表达式'));
         const s7expr = ref(value);
-        if (!s7expr) throw new SyntaxError('非有效的 S7 表达式');
+        if (!s7expr) elog(new SyntaxError('非有效的 S7 表达式'));
         non_symbols.push({ value, desc: s7_expr_desc });
         return s7expr;
     }
@@ -603,9 +603,9 @@ const NO_LEN = 5;
 const BLANK_COMMENT_LEN = 80;
 /**
  * 生成 step7 符号源码行，固定长度，其中每个字段的表示为{字段说明 字符数}
- * 
+ *
  * * `126,{symname23} {block_name_str4}{block_no_str5}{block_bit_str2} {type_str4}{type_no_str5} {comment80}`
- * 
+ *
  * @date 2022-11-09
  * @param {S7Symbol} symbol
  * @returns {string}
@@ -624,9 +624,9 @@ function get_step7_symbol({ name: symname, type, block_name, block_no, block_bit
 
 /**
  * 生成 portal 符号源码行，其中每个字段用引号包裹，引号中替换为实际值
- * 
+ *
  * * `"name","address","type","accessiable","visiable","retain","comment","supervision","writable"`
- * 
+ *
  * @date 2022-11-09
  * @param {S7Symbol} symbol
  * @returns {string}

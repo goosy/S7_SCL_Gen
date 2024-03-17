@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { convert } from 'gooconverter';
 import { add_symbols, make_s7_expression } from '../symbols.js';
 import { STRING, nullable_value } from '../s7data.js';
+import { elog } from '../util.js';
 
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
@@ -98,7 +99,7 @@ export function initialize_list(area) {
         const FN = { node, comment: new STRING(node.get('comment') ?? '') };
         const comment = FN.comment.value;
         const block = node.get('block');
-        if (!block) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`);
+        if (!block) elog(new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`));
         //S7函数类型
         make_s7_expression(
             block,
@@ -119,7 +120,7 @@ export function initialize_list(area) {
 export function build_list({ document, list, options }) {
     const CPU = document.CPU;
     list.forEach(FN => {
-        if (!['OB', 'FC'].includes(FN.block.block_name)) throw new SyntaxError(`${CPU.name}-CPU: 转换配置项block必须是一个 OB 或 FC 符号!`);
+        if (!['OB', 'FC'].includes(FN.block.block_name)) elog(new SyntaxError(`${CPU.name}-CPU: 转换配置项block必须是一个 OB 或 FC 符号!`));
     });
     if (options.output_dir) {
         CPU.output_dir = convert({

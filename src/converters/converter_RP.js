@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
 import { make_s7_expression } from '../symbols.js';
-import { context } from '../util.js';
+import { context, elog } from '../util.js';
 import { STRING, ensure_value, TIME } from '../s7data.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
@@ -85,11 +85,11 @@ export function initialize_list(area) {
         };
         RP.type = ensure_value(STRING, node.get('type'));
         if (!Object.keys(FB_dict).includes(RP.type?.value)) {
-            throw new SyntaxError(`${document.CPU.name}:RP (${comment}) 的类型 "${RP.type}" 不支持`);
+            elog(new SyntaxError(`${document.CPU.name}:RP (${comment}) 的类型 "${RP.type}" 不支持`));
         };
         RP.FB = FB_dict[RP.type.value];
         const DB = node.get('DB');
-        if (!DB) throw new SyntaxError("RP转换必须有DB块!");
+        if (!DB) elog(new SyntaxError("RP转换必须有DB块!"));
         const comment = RP.comment.value;
         make_s7_expression(
             DB,

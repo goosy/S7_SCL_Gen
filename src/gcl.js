@@ -215,7 +215,7 @@ export class GCL {
 
         if (isFile ? inSCL : false) {  //只有在文件中才能是SCL
             const { scl, yaml, error } = parse_YAML_commented_SCL(this.#source);
-            if (error) throw error;
+            if (error) elog(error);
             this.#yaml = yaml;
             this.#scl = scl;
         } else {

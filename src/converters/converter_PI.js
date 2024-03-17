@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { posix } from 'node:path';
-import { context } from '../util.js';
+import { context, elog } from '../util.js';
 import { STRING, PINT, PDINT, ensure_value, nullable_value } from '../s7data.js';
 import { make_s7_expression } from '../symbols.js';
 
@@ -82,7 +82,7 @@ export function initialize_list(area) {
                 options.has_FM3502 = true;
                 return NAME;
             }
-            throw new SyntaxError(`${CPU.name}: PI: module${comment} 的类型 "${module.model}" 不支持`);
+            elog(new SyntaxError(`${CPU.name}: PI: module${comment} 的类型 "${module.model}" 不支持`));
         })(module.model.value);
 
         const DB = node.get('DB');

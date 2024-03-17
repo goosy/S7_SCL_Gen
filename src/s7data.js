@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { elog } from './util.js';
 
 //#region parse
 /**
@@ -89,13 +90,13 @@ function parse2ms(str) {
  * @param {string|number} value
  */
 function get_ms_form(value) {
-    const INPUT_ERROR = new Error("input error, parameter must be a TIME or a Number.");
+    const INPUT_ERROR = new SyntaxError("input error, parameter must be a TIME or a Number.");
     if (typeof value === 'number') {
         return value;
     }
-    if (typeof value !== "string") throw INPUT_ERROR;
+    if (typeof value !== "string") elog(INPUT_ERROR);
     let valStr = value.trim().toLowerCase();
-    if (!/^(t|time)#(\d+d_?)?(\d+h_?)?(\d+m_?)?(\d+s_?)?(\d+ms)?$/.test(valStr)) throw INPUT_ERROR;
+    if (!/^(t|time)#(\d+d_?)?(\d+h_?)?(\d+m_?)?(\d+s_?)?(\d+ms)?$/.test(valStr)) elog(INPUT_ERROR);
     valStr = valStr.replace(/(time|t)#/, "").replace(/([dhms])(\d)/ig, '$1_$2');
     let sign = 1;
     if (valStr[0] == '-') {
@@ -346,48 +347,48 @@ function isPInt(num) {
 }
 
 export function dec2foct(num) {
-    if (!isPInt(num)) throw new TypeError(`${byte} 不是非负整数!`);
+    if (!isPInt(num)) elog(new TypeError(`${byte} 不是非负整数!`));
     const bit = num % 8;
     const byte = (num - bit) / 8;
     return [byte, bit];
 }
 
 export function foct2dec(byte, bit) {
-    if (byte != null && !isPInt(byte)) throw new TypeError(`byte ${byte} 不是非负整数!`);
+    if (byte != null && !isPInt(byte)) elog(new TypeError(`byte ${byte} 不是非负整数!`));
     bit ??= 0;
-    if (!isPInt(bit)) throw new TypeError(`bit ${bit} 不是非负整数!`);
+    if (!isPInt(bit)) elog(new TypeError(`bit ${bit} 不是非负整数!`));
     return (byte == null || bit == null) ? null : byte * 8 + bit;
 }
 
 export function foct2S7addr(byte, bit) {
     const error = new TypeError(`num is wrong!`);
-    if (!isPInt(byte)) throw error;
-    if (!isPInt(bit) || bit > 7) throw error;
+    if (!isPInt(byte)) elog(error);
+    if (!isPInt(bit) || bit > 7) elog(error);
     return byte + bit / 10;
 }
 
 export function s7addr2foct(s7addr) {
     const error = new TypeError(`s7 address ${s7addr} is wrong!`);
     s7addr = s7addr * 10;
-    if (!isPInt(s7addr)) throw error;
+    if (!isPInt(s7addr)) elog(error);
     const bit = s7addr % 10;
     const byte = (s7addr - bit) / 10;
-    if (bit > 7) throw error;
+    if (bit > 7) elog(error);
     return [byte, bit];
 }
 
 function size2dec(size) {
     const error = new TypeError(`size ${size} is wrong!`);
     const [byte, bit] = s7addr2foct(size);
-    if (byte > 0 && bit === 1) throw error;
-    if (bit !== 0 && bit !== 1) throw error;
-    if (byte > 1 && byte % 2 !== 0) throw error;
+    if (byte > 0 && bit === 1) elog(error);
+    if (bit !== 0 && bit !== 1) elog(error);
+    if (byte > 1 && byte % 2 !== 0) elog(error);
     return foct2dec(byte, bit);
 }
 
 export function get_boundary(num, num_size) {
     if (!isPInt(num)) {
-        throw new TypeError(`${num} 不是非负整数!`);
+        elog(new TypeError(`${num} 不是非负整数!`));
     }
     if (num_size == 1) return num;
     let remainder = num % 8;
@@ -423,7 +424,7 @@ export class HashList {
         if (num == null) {
             num = this.get_new();
         } else if (!isPInt(num)) {
-            throw new TypeError(`${num} 不是非负整数!`);
+            elog(new TypeError(`${num} 不是非负整数!`));
         }
         return num;
     }
@@ -435,7 +436,7 @@ export class HashList {
     push(num, size) {
         // Implement checking num by subclass
         // only positioning here
-        if (size != null && !isPInt(size)) throw new TypeError(`${size} 不是非负整数!`);
+        if (size != null && !isPInt(size)) elog(new TypeError(`${size} 不是非负整数!`));
         this.#curr_index = num + size;
         this.#last_size = size;
     }
@@ -453,7 +454,7 @@ export class IntHashList extends HashList {
         } else {
             num = super.check(num);
             if (this.#list.includes(num)) {
-                throw new HLError(`存在重复的地址 ${num}!`);
+                elog(new HLError(`存在重复的地址 ${num}!`));
             }
         }
         return num;
@@ -466,9 +467,9 @@ export class IntHashList extends HashList {
             this.#list.push(num);
         } catch (e) {
             if (e instanceof TypeError) {
-                throw new TypeError(e.message, { cause: num });
+                elog(new TypeError(e.message, { cause: num }));
             } else if (e instanceof HLError) {
-                throw new HLError(e.message, { num });
+                elog(new HLError(e.message, { num }));
             }
         }
         return num;
@@ -489,11 +490,11 @@ export class S7HashList extends HashList {
             } while (this.#list[num + ':' + nsize]);
         } else {
             if (!isPInt(num) || num !== get_boundary(num, nsize)) {
-                throw new HLError(`${dec2foct(num).join('.')}不是正确的地址!`);
+                elog(new HLError(`${dec2foct(num).join('.')}不是正确的地址!`));
             }
             num = super.check(num);// check if it's a PInt
             if (this.#list[num + ':' + nsize]) { // cannot be repeated 不能重复
-                throw new HLError(`存在重复的 ${dec2foct(num).join('.')} (size:${nsize})!`);
+                elog(new HLError(`存在重复的 ${dec2foct(num).join('.')} (size:${nsize})!`));
             }
         }
         return num;
@@ -510,9 +511,9 @@ export class S7HashList extends HashList {
             super.push(num, nsize);
         } catch (e) {
             if (e instanceof HLError) {
-                throw new HLError(e.message, { num: s7addr, size });
+                elog(new HLError(e.message, { num: s7addr, size }));
             }
-            throw new TypeError(e.message, { cause: s7addr });
+            elog(new TypeError(e.message, { cause: s7addr }));
         }
         return s7addr ?? foct2S7addr(...dec2foct(num));
     }

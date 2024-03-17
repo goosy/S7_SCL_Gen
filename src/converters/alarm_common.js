@@ -2,6 +2,7 @@ import { make_s7_expression } from "../symbols.js";
 import { BOOL, REAL, TIME, ensure_value, nullable_value } from '../s7data.js';
 import { isString } from '../gcl.js';
 import { isSeq } from 'yaml';
+import { elog } from '../util.js';
 
 const event_desc = {
     'AH': '高高报警',
@@ -58,7 +59,7 @@ export function make_alarm_props(item, node, document) {
     const WL = item.$WL_limit ?? WH;
     const AL = item.$AL_limit ?? WL;
     if (WH > AH || WL > WH || AL > WL)
-        throw new Error(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
+        elog(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
     item.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
     item.$FT_time = nullable_value(TIME, node.get('$FT_time'));
 

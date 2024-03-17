@@ -5,9 +5,16 @@ import iconv from 'iconv-lite';
 import { Integer } from './s7data.js';
 import pkg from '../package.json' assert { type: 'json' };
 
+export {
+    context, CURRENT_DOC, CURRENT_NODE,
+    prepare_dir, copy_file, read_file, write_file,
+    compare_str, pad_left, pad_right, fixed_hex,
+    elog, lazyassign,
+};
+
 const module_path = posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), "../../");
 const work_path = process.cwd().replace(/\\/g, '/');
-export const context = {
+const context = {
     module_path,
     work_path,
     version: pkg.version,
@@ -18,13 +25,15 @@ export const context = {
     lineEndings: 'windows',
 };
 
-export function compare_str(a, b) {
-    if (a > b) return 1;
-    if (a < b) return -1;
-    return 0;
+let CURRENT_DOC;
+let CURRENT_NODE;
+
+function elog(msg) {
+    if(msg instanceof Error) throw msg;
+    throw new Error(msg);
 }
 
-export async function prepare_dir(dir) {
+async function prepare_dir(dir) {
     let parents = dirname(dir);
     await access(parents).catch(async () => {
         await prepare_dir(parents);
@@ -45,7 +54,7 @@ export async function prepare_dir(dir) {
  * @param {string} src
  * @param {string|string[]} dst
  */
-export async function copy_file(src, dst) {
+async function copy_file(src, dst) {
     async function _copy(src, dst) {
         if (typeof src != 'string') return;
         if (typeof dst != 'string') return;
@@ -63,7 +72,7 @@ export async function copy_file(src, dst) {
     }
 }
 
-export async function read_file(filename, options = {}) {
+async function read_file(filename, options = {}) {
     const encoding = options.encoding ?? "utf8";
     let exist = true;
     await access(filename).catch(() => {
@@ -85,7 +94,7 @@ function dos2unix(str) {
     return str.split('\r\n').join('\n');
 }
 
-export async function write_file(filename, content, { encoding, lineEndings } = {}) {
+async function write_file(filename, content, { encoding, lineEndings } = {}) {
     encoding ??= context.encoding;
     lineEndings ??= context.lineEndings;
     await prepare_dir(dirname(filename));
@@ -93,8 +102,10 @@ export async function write_file(filename, content, { encoding, lineEndings } = 
     await writeFile(filename, buff);
 }
 
-export function getClassName(obj) {
-    return obj.constructor.name;
+function compare_str(a, b) {
+    if (a > b) return 1;
+    if (a < b) return -1;
+    return 0;
 }
 
 /**
@@ -106,7 +117,7 @@ export function getClassName(obj) {
  * @param {string} placeholder=''
  * @returns {string}
  */
-export function pad_left(item, length, placeholder = ' ') {
+function pad_left(item, length, placeholder = ' ') {
     return String(item).padStart(length, placeholder).slice(-length);
 }
 
@@ -119,16 +130,16 @@ export function pad_left(item, length, placeholder = ' ') {
  * @param {string} placeholder=''
  * @returns {string}
  */
-export function pad_right(item, length, placeholder = ' ') {
+function pad_right(item, length, placeholder = ' ') {
     return String(item).padEnd(length, placeholder).slice(0, length);
 }
 
-export function fixed_hex(num, length) {
+function fixed_hex(num, length) {
     const HEX = num instanceof Integer ? num.HEX : num?.toString(16);
     return pad_left(HEX, length, '0').toUpperCase();
 }
 
-export function lazyassign(obj, prop, lazyvalue, options) {
+function lazyassign(obj, prop, lazyvalue, options) {
     // must enumerable default
     const { writable = false, enumerable = true, configurable = false } = options ?? {};
     if (typeof lazyvalue === 'function') {

@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 import { make_s7_expression } from '../symbols.js';
 import { STRING } from '../s7data.js';
-import { context } from '../util.js';
+import { context, elog } from '../util.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = `Timer_Proc`;
@@ -74,7 +74,7 @@ export function initialize_list(area) {
             comment: new STRING(node.get('comment') ?? '')
         };
         const DB = node.get('DB');
-        if (!DB) throw new SyntaxError("timer转换必须有DB块!");
+        if (!DB) elog(new SyntaxError("timer转换必须有DB块!"));
         const comment = timer.comment.value;
         make_s7_expression(
             DB,

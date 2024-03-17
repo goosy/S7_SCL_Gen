@@ -7,7 +7,7 @@ import {
     nullable_value, ensure_value,
     IntHashList
 } from '../s7data.js';
-import { context, fixed_hex } from '../util.js';
+import { context, fixed_hex, elog } from '../util.js';
 
 export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'MT_Poll';
@@ -322,7 +322,7 @@ export function build_list(MT) {
         const port = conn.port.value;
 
         // 指定的device没有对应的通信设备号
-        if (local_device_id === null && conn.device) throw new SyntaxError(`指定的通信设备号"${conn.device} rack${conn.rack} xslot${conn.XSlot}"不存在！`);
+        if (local_device_id === null && conn.device) elog(new SyntaxError(`指定的通信设备号"${conn.device} rack${conn.rack} xslot${conn.XSlot}"不存在！`));
         // 如没指定device，则采用默认设备号
         conn.local_device_id = local_device_id ?? DEFAULT_DEVICE_ID;
 

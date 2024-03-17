@@ -10,7 +10,7 @@ import {
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
-import { context, write_file, pad_right } from './util.js';
+import { context, write_file, pad_right, elog } from './util.js';
 import { nullable_value, STRING } from "./s7data.js";
 
 /**
@@ -251,7 +251,7 @@ async function gen_data_list(CPU_list) {
                 const is_filename = typeof file === 'string';
                 const name = is_filename ? file : file.filename;
                 const encoding = file.encoding ?? 'utf8';
-                if (/\\/.test(name)) throw new SyntaxError('路径分隔符要使用"/"!');
+                if (/\\/.test(name)) elog(new SyntaxError('路径分隔符要使用"/"!'));
                 let [dir, base] = name.split('//');
                 if (base == undefined) {
                     base = posix.basename(name);
@@ -295,7 +295,7 @@ export async function gen_data() {
             if (area && typeof build_list === 'function') build_list(area);
         };
         // 非符号提示
-        const non_symbols =cpu.non_symbols;
+        const non_symbols = cpu.non_symbols;
         if (non_symbols.length) console.log(`
 warning: 警告：
 The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
