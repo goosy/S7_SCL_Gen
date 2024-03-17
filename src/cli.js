@@ -36,7 +36,7 @@ s7scl gcl MyGCL              在当前目录下建立一个名为MyGCL配置目�
 }
 
 const argv = mri(process.argv.slice(2), {
-    boolean: ['help', 'version'],
+    boolean: ['help', 'version', 'silent', 'zyml-only', 'output-zyml'],
     alias: {
         H: 'help',
         V: ['v', 'version'],

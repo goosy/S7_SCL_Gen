@@ -288,34 +288,39 @@ export async function gen_data() {
     const CPU_list = await parse_conf();
 
     // 第二遍扫描 补全数据
+
+    // 非符号提示
+    if (!context.silent && CPU_list.find(cpu => cpu.non_symbols.length)) {
+        console.log(`
+warning: 警告：
+The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
+The converter treats them as S7 expressions without checking validity. 转换器将它们视为S7表达式不检验有效性
+Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
+        );
+    }
     for (const cpu of CPU_list) {
         for (const feature of supported_features) {
             const area = cpu[feature];
             const build_list = converter[feature].build_list;
             if (area && typeof build_list === 'function') build_list(area);
         };
-        // 非符号提示
         const non_symbols = cpu.non_symbols;
-        if (non_symbols.length) console.log(`
-warning: 警告：
-The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
-The converter treats them as S7 expressions without checking validity. 转换器将它们视为S7表达式不检验有效性
-Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
-        );
         non_symbols.forEach(({ value, desc }) => {
-            console.log(`\t${pad_right(value, 24)}: ${desc}`);
+            context.silent || console.log(`\t${pad_right(value, 24)}: ${desc}`); // 非符号提示
         });
     }
 
     // 用户符号类型定义错误提示，错误类型的符号不归于CPU
-    if (WRONGTYPESYMBOLS.size) console.log(`
+    if (!context.silent && WRONGTYPESYMBOLS.size) {
+        console.log(`
 warning: 警告：
 The user defined type of following symbols is wrong. 配置文件中以下符号用户定义的类型有误
 The converter convert them to the correct type . 转换器将它们转换为合法有效的类型`
-    );
-    WRONGTYPESYMBOLS.forEach(symbol => {
-        console.log(`\t${symbol.name}:  'user defined type: ${symbol.userDefinedType}'  'actual type: ${symbol.type}'`);
-    });
+        );
+        WRONGTYPESYMBOLS.forEach(symbol => {
+            console.log(`\t${symbol.name}:  'user defined type: ${symbol.userDefinedType}'  'actual type: ${symbol.type}'`);
+        });
+    }
 
     // 校验完毕，由 noconvert 变量决定是否输出
     if (context.noconvert) return [[], []];
