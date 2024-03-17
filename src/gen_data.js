@@ -55,7 +55,7 @@ async function parse_includes(includes, options) {
             );
             gcl_list.push(gcl);
         };
-        code = gcl_list.map(gcl => gcl.SCL).join('\n\n');
+        code = gcl_list.map(gcl => gcl.scl).join('\n\n');
     } catch (err) {
         code = '';
         console.error(err.message);

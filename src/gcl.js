@@ -56,6 +56,71 @@ export function get_Seq(doc, nodename) {
     return symbols_node?.items ?? [];
 }
 
+/**
+ * Parses YAML commented SCL strings and converts them into separate suitable forms
+ *
+ * @param {string} str - the SCL string with YAML comment
+ * @return {{scl: string, yaml: string, error: SyntaxError | null}} an object containing the parsed SCL and YAML
+ */
+function parse_YAML_commented_SCL(str) {
+    let scl = '';
+    let yaml = '';
+    let inYAML = false;
+    let start = 0;
+    const line_ends = [
+        ...str.matchAll(/\r\n|\n|\r/g),
+        { index: str.length },
+    ].map(match => match.index);
+    const error = new SyntaxError(`SCL文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。`);
+    const error_result = { scl, yaml, error };
+
+    // SCL中只能用注释进行符号定义
+    for (const end of line_ends) {
+        const line = str.substring(start, end);
+        const head = line.replace(/\n|\r/g, '').substring(0, 3);
+        const on_start = head === '(**';
+        const on_end = head === '**)';
+
+        if (on_start) {
+            if (inYAML || line.trim() !== '(**') return error_result;
+            inYAML = true;
+            yaml += line.replace('(**', '---');
+        } else if (on_end) {
+            if (!inYAML || line.trim() !== '**)') return error_result;
+            inYAML = false;
+            yaml += line.replace('**)', '...');
+        } else if (inYAML) {
+            yaml += line;
+        } else {
+            scl += line;
+            yaml += line.trim() === '' ? line : '#' + line.substring(1);
+        }
+        start = end;
+    }
+    scl = scl.trim();
+
+    return { scl, yaml, error: null };
+}
+
+function get_cpu_and_feature(document) {
+    const name = nullable_value(STRING, document.get('name'))?.value;
+    if (name) {
+        assert(
+            /^[a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*-[a-zA-Z]+$/.test(name),
+            new Error(`name:${name} is not incorrect 名字不正确！`)
+        );
+        const [cpu, feature] = name.split('-');
+        const cpus = cpu.split(',');
+        return { cpus, feature };
+    }
+    const cpu = document.get('CPU');
+    const cpus = isSeq(cpu)
+        ? cpu.items.map(item => ensure_value(STRING, item).value)
+        : [cpu];
+    const feature = document.get('feature');
+    return { cpus, feature };
+}
+
 export class GCL {
     #file;
     get file() {
@@ -70,10 +135,11 @@ export class GCL {
     get source() {
         return this.#source;
     }
-    #SCL = '';
-    get SCL() {
-        return this.#SCL;
+    #scl = '';
+    get scl() {
+        return this.#scl;
     }
+    #yaml;
     #line_counter;
     get_pos_data(start, end) {
         const pos = this.#line_counter.linePos(start);
@@ -100,59 +166,9 @@ export class GCL {
         this.#line_counter = new LineCounter();
     }
 
-    async load(yaml, options = {}) {
-        const {
-            encoding = 'utf8',
-            isFile = true,
-        } = options;
-        let inSCL = options.inSCL ?? false;
-        if (isFile) {
-            this.#file = yaml;
-            this.#source = (await read_file(this.#file, { encoding }));
-            yaml = inSCL ? '' : this.#source;
-        } else {
-            inSCL = false; //只有在文件中才能是SCL
-            this.#file = '';
-            this.#source = yaml;
-        }
-        this.#MD5 = createHash('md5').update(this.#source).digest('hex');
-
-        const line_ends = [...this.#source.matchAll(/\r\n|\n|\r/g)].map(match => match.index);
-        line_ends.push(this.#source.length);
-
-        if (inSCL) { // SCL中只能用注释进行符号定义
-            let SCL = '';
-            let inYAML = false;
-            let start = 0;
-            for (const end of line_ends) {
-                const line = this.#source.substring(start, end);
-                const head = line.replace(/\n|\r/g, '').substring(0, 3);
-                const isStart = head === '(**';
-                const isEnd = head === '**)';
-                const flag_error = new SyntaxError(`SCL文件${this.#file}文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。`);
-
-                if (isStart && inYAML) throw flag_error;
-                if (isEnd && !inYAML) throw flag_error;
-                if (isStart) {
-                    inYAML = true;
-                    assert.equal(line.trim(), '(**', flag_error);
-                    yaml += line.replace('(**', '---');
-                } else if (isEnd) {
-                    inYAML = false;
-                    assert.equal(line.trim(), '**)', flag_error);
-                    yaml += line.replace('**)', '...');
-                } else if (inYAML) {
-                    yaml += line;
-                } else {
-                    SCL += line;
-                    yaml += line.trim() === '' ? line : '#' + line.substr(1);
-                }
-                start = end;
-            }
-            this.#SCL = SCL.trim();
-        }
+    parse_documents(options) {
         const documents = this.#documents = [];
-        for (const document of parseAllDocuments(yaml, { version: '1.2', lineCounter: this.#line_counter })) {
+        for (const document of parseAllDocuments(this.#yaml, { version: '1.2', lineCounter: this.#line_counter })) {
             documents.push(document);
             try {
                 // yaml library only support merge key in YAML 1.1
@@ -162,38 +178,20 @@ export class GCL {
                 console.error(`${error.message}:${this.get_pos_info(...error.range)}`);
                 process.exit(1);
             }
-
-            function get_from_name() {
-                const name = nullable_value(STRING, document.get('name'))?.value;
-                if (name == null) return null;
-                assert(
-                    /^[a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*-[a-zA-Z]+$/.test(name),
-                    new Error(`name:${name} is not incorrect 名字不正确！`)
-                );
-                const [CPUs, feature] = name.split('-');
-                return [CPUs.split(','), feature];
-            };
-            function get_from_other() {
-                const CPU = document.get('CPU') ?? options.CPU;
-                const CPUs = isSeq(CPU)
-                    ? CPU.items.map(item => ensure_value(STRING, item).value)
-                    : [CPU];
-                const feature = document.get('feature') ?? options.feature;
-                return [CPUs, feature];
-            }
-            const [CPUs, feature] = get_from_name() ?? get_from_other();
-
             const error = new SyntaxError(`"${this.file}"文件中有一文档的 name 或者 CPU,feature 没有正确提供!`);
+
+            const { cpus, feature = options.feature } = get_cpu_and_feature(document);
             assert(typeof feature === 'string', error);
-            assert(CPUs.length > 0, error);
-            CPUs.forEach((CPU, index) => {
-                assert(typeof CPU === 'string' && CPU !== '', error);
+            assert(cpus.length > 0, error);
+            cpus.forEach((cpu, index) => {
+                cpu ??= options.CPU;
+                assert(typeof cpu === 'string' && cpu !== '', error);
                 // if multi CPU then clone document
                 const doc = index === 0 ? document : document.clone();
                 if (index > 0) documents.push(doc);
                 doc.gcl = this;
                 doc.offset ??= 0;
-                doc.CPU = CPU;
+                doc.CPU = cpu;
                 Object.defineProperty(doc, 'feature', {
                     get() {
                         return feature;
@@ -203,5 +201,27 @@ export class GCL {
                 });
             });
         }
+    }
+
+    async load(yaml_or_filename, options = {}) {
+        const {
+            encoding = 'utf8',
+            isFile = true,
+            inSCL = false,
+        } = options;
+        this.#file = isFile ? yaml_or_filename : '';
+        this.#source = isFile ? await read_file(this.#file, { encoding }) : yaml_or_filename;
+        this.#MD5 = createHash('md5').update(this.#source).digest('hex');
+
+        if (isFile ? inSCL : false) {  //只有在文件中才能是SCL
+            const { scl, yaml, error } = parse_YAML_commented_SCL(this.#source);
+            if (error) throw error;
+            this.#yaml = yaml;
+            this.#scl = scl;
+        } else {
+            this.#yaml = this.#source;
+            this.#scl = '';
+        }
+        this.parse_documents(options);
     }
 }
