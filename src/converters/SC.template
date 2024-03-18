@@ -8,7 +8,7 @@
 // 轮询DB块，含485调度指令和发送数据
 DATA_BLOCK "{{POLLS_NAME}}"
 STRUCT
-{{for module in modules}}_
+{{for module in list}}_
     {{module.name}} : STRUCT //{{module.comment}} 轮询命令数据
 {{  for poll in module.polls}}_
         poll_{{poll.index}} : STRUCT
@@ -26,7 +26,7 @@ STRUCT
 {{  endfor // poll}}_
     END_STRUCT;
 {{endfor // module}}_
-{{for module in modules}}_
+{{for module in list}}_
 {{for poll in module.polls}}_
 {{if !poll.extra_send_DB}}_
     poll_{{poll.index}}_data : STRUCT
@@ -45,7 +45,7 @@ STRUCT
 {{endfor // module}}_
 END_STRUCT;
 BEGIN
-{{for module in modules}}
+{{for module in list}}
     // --- {{module.comment}} 轮询数据
 {{for no,poll in module.polls}}
     // poll {{poll.index}}  {{poll.comment}}
@@ -78,7 +78,7 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 {{if loop_begin}}_
 {{  loop_begin}}
 {{endif}}_
-{{for no, module in modules}}
+{{for no, module in list}}
 // {{no+1}}. {{module.model}} {{module.comment}}
 "{{if module.model == 'CP341'}}{{CP341_NAME}}{{else}}{{CP340_NAME}}{{endif}}".{{module.DB.value}}(
 {{if module.customREQ}}_

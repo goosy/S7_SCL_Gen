@@ -4,7 +4,7 @@
 {{if includes}}
 {{  includes}}
 {{endif}}_
-{{for conn in connections}}
+{{for conn in list}}
 DATA_BLOCK {{conn.DB.value}} "{{NAME}}" // {{conn.comment}}
 BEGIN
     TCON_Parameters.block_length := W#16#40;     //固定为64
@@ -32,7 +32,7 @@ DATA_BLOCK "{{POLLS_NAME}}"
 TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT
-{{for conn in connections}}_
+{{for conn in list}}_
     {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
         MBAP_seq : WORD ;               //事务号 PLC自动填写
         MBAP_protocol : WORD ;          //必须为0
@@ -55,7 +55,7 @@ STRUCT
     END_STRUCT ;
 END_STRUCT ;
 BEGIN
-{{for conn in connections}}_
+{{for conn in list}}_
     // --- {{conn.comment}}
 {{  for no, poll in conn.polls}}_
     {{conn.name}}[{{no}}].device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
@@ -68,7 +68,7 @@ BEGIN
 {{endfor // conn}}_
 END_DATA_BLOCK
 
-{{for conn in connections}}_
+{{for conn in list}}_
 {{if conn.$interval_time != undefined}}_
 DATA_BLOCK {{conn.DB.value}} "{{NAME}}"
 BEGIN
@@ -83,7 +83,7 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 {{  loop_begin}}
 
 {{endif}}_
-{{for conn in connections}}_
+{{for conn in list}}_
 // {{conn.comment}}
 "{{NAME}}".{{conn.DB.value}} (
 {{if conn.interval_time != undefined}}_

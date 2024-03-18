@@ -9,6 +9,9 @@
 //       生成转换列表，列表可为空
 //       列表的每一项是一个转换对象，事实上这个列表就是 area.list
 //       返回一个转换列表，每一项ConverItem为 { rules, template_file }
+//       rules 为转换规则列表，也可以认为是变量列表，用于提供给模板内的表达式替换
+//       rules 可以不用包含默认提供的一些变量
+//       template_file 为转换模板文件的文件名
 // - function gen_copy_list(area: Area)
 //       生成复制列表，列表可为空
 // - function initialize_list(area: Area)

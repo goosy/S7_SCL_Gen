@@ -255,23 +255,17 @@ export function build_list(MT) {
     }).join('\n');
 }
 
-export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: connections, options = {} }) {
-    const { CPU, gcl } = document;
+export function gen({ document, invoke_code, options }) {
+    const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
         "name": `${output_dir}/${output_file}`,
         "tags": {
-            feature,
-            includes,
-            loop_begin,
-            loop_end,
             invoke_code,
-            connections,
             NAME,
             LOOP_NAME,
             POLLS_NAME,
-            gcl,
         }
     }];
     return [{ rules }];

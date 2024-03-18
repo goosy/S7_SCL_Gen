@@ -10,7 +10,7 @@ import {
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
-import { context, get_template, write_file, pad_right, elog } from './util.js';
+import { context, get_template, write_file, pad_left, pad_right, fixed_hex, elog } from './util.js';
 import { nullable_value, STRING } from "./s7data.js";
 
 /**
@@ -99,7 +99,7 @@ async function add_conf(document) {
     // CPU
     const cpu = document.CPU;
     if (feature !== 'CPU' && cpu.CPU == null) {
-        // create a blank CPU document if CPU.CPU desn't exist
+        // create a blank CPU document if cpu.CPU desn't exist
         const doc = await create_fake_CPU_doc(cpu);
         add_conf(doc);
     }
@@ -196,7 +196,7 @@ async function add_conf(document) {
 
 async function parse_conf() {
     const docs = [];
-    const CPU_list = [];
+    const cpu_list = [];
     const work_path = context.work_path;
     const silent = context.silent;
     try {
@@ -207,13 +207,13 @@ async function parse_conf() {
                 const gcl = new GCL();
                 await gcl.load(filename);
                 for (const doc of gcl.documents) {
-                    let CPU = CPUs[doc.CPU];
-                    if (!CPU) {
-                        CPU = CPUs.get_or_create(doc.CPU);
-                        CPU_list.push(CPU);
+                    let cpu = CPUs[doc.CPU];
+                    if (!cpu) {
+                        cpu = CPUs.get_or_create(doc.CPU);
+                        cpu_list.push(cpu);
                     }
                     Object.defineProperty(doc, 'CPU', {
-                        value: CPU,
+                        value: cpu,
                         writable: false,
                         enumerable: true,
                         configurable: false,
@@ -230,19 +230,20 @@ async function parse_conf() {
         }
 
         // wait for all symbols to complete
-        CPU_list.forEach(CPU => CPU.symbols.emit('finished'));
-        await Promise.all(CPU_list.map(CPU => CPU.async_symbols).flat());
+        cpu_list.forEach(cpu => cpu.symbols.emit('finished'));
+        await Promise.all(cpu_list.map(cpu => cpu.async_symbols).flat());
     } catch (e) {
         console.log(e);
     }
-    return CPU_list;
+    return cpu_list;
 }
 
-async function gen_data_list(CPU_list) {
+async function gen_data_list(cpu_list) {
     const work_path = context.work_path;
     const copy_list = [];
     const convert_list = [];
-    for (const cpu of CPU_list) {
+    for (const cpu of cpu_list) {
+        const { name: cpu_name, platform } = cpu;
         for (const feature of supported_features) {
             const area = cpu[feature];
             if (area === undefined) continue;
@@ -264,6 +265,8 @@ async function gen_data_list(CPU_list) {
                     copy_list.push({ src, dst });
                 }
             };
+
+            const gcl = area.document.gcl;
             const gen_copy_list = converter[feature].gen_copy_list;
             assert.equal(typeof gen_copy_list, 'function', `innal error: gen_copy_list of ${feature} is not a function`);
             const ct_copy_list = gen_copy_list(area);
@@ -277,26 +280,35 @@ async function gen_data_list(CPU_list) {
             assert(Array.isArray(ct_convert_list), `innal error: return value of gen(area) of ${feature} is not a Array`);
             for (const item of ct_convert_list) {
                 const rules = item.rules;
+                rules.forEach(rule => {
+                    rule.tags = { // 提供一些默认变量
+                        context, gcl,
+                        pad_left, pad_right, fixed_hex,
+                        cpu_name, feature, platform,
+                        ...area,
+                        ...rule.tags,
+                    }
+                });
                 const template = await get_template(feature, item.template);
                 convert_list.push({ rules, template });
             };
         }
     };
     convert_list.push(
-        gen_symbols(CPU_list), // symbols converter
-        gen_alarms(CPU_list) // alarms converter
+        gen_symbols(cpu_list), // symbols converter
+        gen_alarms(cpu_list) // alarms converter
     );
     return { copy_list, convert_list };
 }
 
 export async function gen_data() {
     // 第一遍扫描 加载配置\提取符号\建立CPU及诊断信息
-    const CPU_list = await parse_conf();
+    const cpu_list = await parse_conf();
 
     // 第二遍扫描 补全数据
 
     // 非符号提示
-    if (!context.silent && CPU_list.find(cpu => cpu.non_symbols.length)) {
+    if (!context.silent && cpu_list.find(cpu => cpu.non_symbols.length)) {
         console.log(`
 warning: 警告：
 The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
@@ -304,7 +316,7 @@ The converter treats them as S7 expressions without checking validity. 转换器
 Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
         );
     }
-    for (const cpu of CPU_list) {
+    for (const cpu of cpu_list) {
         for (const feature of supported_features) {
             const area = cpu[feature];
             const build_list = converter[feature].build_list;
@@ -335,19 +347,19 @@ The converter convert them to the correct type . 转换器将它们转换为合�
             commentString() { return ''; }, //注释选项
             indentSeq: false                //列表是否缩进
         }
-        for (const CPU of CPU_list) {
-            const name = CPU.name;
+        for (const cpu of cpu_list) {
+            const name = cpu.name;
             // 生成无注释的配置
             const yaml = supported_features.reduce(
-                (yaml, feature) => CPU[feature] ? `${yaml}\n\n${CPU[feature].document.toString(options)}` : yaml,
+                (yaml, feature) => cpu[feature] ? `${yaml}\n\n${cpu[feature].document.toString(options)}` : yaml,
                 `# CPU ${name} configuration`
             );
-            const filename = `${posix.join(context.work_path, CPU.output_dir, name)}.zyml`;
+            const filename = `${posix.join(context.work_path, cpu.output_dir, name)}.zyml`;
             await write_file(filename, yaml, { encoding: 'utf8', lineEndings: 'unix' });
             console.log(`\t${filename}`);
         }
     }
 
     // 生成最终待转换数据
-    return await gen_data_list(CPU_list);
+    return await gen_data_list(cpu_list);
 }

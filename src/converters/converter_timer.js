@@ -52,22 +52,15 @@ export function initialize_list(area) {
     });
 }
 
-export function gen({ document, includes, loop_begin, loop_end, list, options = {} }) {
-    const { CPU, gcl } = document;
-    const { output_dir, platform } = CPU;
+export function gen({ document, options = {} }) {
+    const { CPU } = document;
+    const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
         "name": `${output_dir}/${output_file}`,
         "tags": {
-            feature,
-            platform,
-            includes,
-            loop_begin,
-            loop_end,
             NAME,
             LOOP_NAME,
-            list,
-            gcl,
         }
     }];
     return [{ rules }];

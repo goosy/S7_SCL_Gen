@@ -91,25 +91,19 @@ export function build_list({ list }) {
     });
 }
 
-export function gen({ document, includes, loop_begin, loop_end, list, options = {} }) {
-    const { CPU, gcl } = document;
-    const { output_dir, platform } = CPU;
-    const { output_file = LOOP_NAME+'.scl' } = options;
+export function gen({ document, options = {} }) {
+    const { CPU } = document;
+    const { output_dir } = CPU;
+    const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
         "name": `${output_dir}/${output_file}`,
         "tags": {
-            feature,
             NAME,
-            platform,
             LOOP_NAME,
-            includes,
-            loop_begin,
-            loop_end,
-            list,
-            gcl,
         }
     }];
-    return [{ rules }];
+    const template = 'AI.template';
+    return [{ rules, template }];
 }
 
 export function gen_copy_list(item) {

@@ -211,24 +211,18 @@ export function build_list(SC) {
     }).join('\n');
 }
 
-export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: modules, options = {} }) {
-    const { CPU, gcl } = document;
+export function gen({ document, invoke_code, options = {} }) {
+    const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
         "name": `${output_dir}/${output_file}`,
         "tags": {
-            feature,
-            modules,
-            includes,
-            loop_begin,
-            loop_end,
             invoke_code,
             CP340_NAME,
             CP341_NAME,
             LOOP_NAME,
             POLLS_NAME,
-            gcl,
         }
     }];
     return [{ rules }];

@@ -118,22 +118,16 @@ export function build_list({ document, list }) {
     });
 }
 
-export function gen({ document, includes, loop_begin, loop_end, list: modules, options = {} }) {
-    const { CPU, gcl } = document;
+export function gen({ document, options = {} }) {
+    const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
         "name": `${output_dir}/${output_file}`,
         "tags": {
-            feature,
-            modules,
-            includes,
-            loop_begin,
-            loop_end,
             NAME,
             LOOP_NAME,
             FM3502_CNT_NAME,
-            gcl,
         }
     }];
     return [{ rules }];

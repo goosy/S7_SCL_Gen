@@ -4,7 +4,7 @@
 {{if includes}}
 {{  includes}}
 {{endif}}_
-{{for module in modules}}
+{{for module in list}}
 // FM350-2专用数据块{{module.count_DB.value}}
 DATA_BLOCK {{module.count_DB.value}} "{{FM3502_CNT_NAME}}"
 BEGIN
@@ -19,7 +19,7 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 {{  loop_begin}}
 
 {{endif}}_
-{{for no, module in modules}}_
+{{for no, module in list}}_
 // {{no+1}}. {{module.model}} {{module.comment}}
 "{{NAME}}".{{module.DB.value}}(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向{{module.count_DB.value}}
 {{endfor // module}}_

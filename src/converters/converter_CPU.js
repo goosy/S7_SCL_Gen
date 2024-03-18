@@ -106,19 +106,13 @@ export function build_list({ document, list, options }) {
 }
 
 export function gen({ document, includes, list, options = {} }) {
-    const { CPU, gcl } = document;
-    const { output_dir, platform } = CPU;
+    const { CPU } = document;
+    const { output_dir } = CPU;
     const { output_file = NAME + '.scl' } = options;
     let rules = [];
     if (includes.length || list.length) rules.push({
         "name": `${output_dir}/${output_file}`,
-        "tags": {
-            feature,
-            platform,
-            includes,
-            list,
-            gcl,
-        }
+        "tags": {}
     });
     return [{ rules }];
 }
