@@ -10,7 +10,7 @@ import {
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
-import { context, write_file, pad_right, elog } from './util.js';
+import { context, get_template, write_file, pad_right, elog } from './util.js';
 import { nullable_value, STRING } from "./s7data.js";
 
 /**
@@ -246,7 +246,7 @@ async function gen_data_list(CPU_list) {
         for (const feature of supported_features) {
             const area = cpu[feature];
             if (area === undefined) continue;
-            const output_dir = posix.join(work_path, area.document.CPU.output_dir);
+            const output_dir = posix.join(work_path, cpu.output_dir);
             for (const file of area.files) {
                 const is_filename = typeof file === 'string';
                 const name = is_filename ? file : file.filename;
@@ -265,15 +265,21 @@ async function gen_data_list(CPU_list) {
                 }
             };
             const gen_copy_list = converter[feature].gen_copy_list;
-            assert.equal(typeof gen_copy_list, 'function', `innal error: gen_${feature}_copy_list`);
-            const ret = gen_copy_list(area);
-            assert(Array.isArray(ret), `innal error: gen_${feature}_copy_list(${area}) is not a Array`);
-            copy_list.push(...ret);
+            assert.equal(typeof gen_copy_list, 'function', `innal error: gen_copy_list of ${feature} is not a function`);
+            const ct_copy_list = gen_copy_list(area);
+            assert(Array.isArray(ct_copy_list), `innal error: return value of gen_copy_list(area) of ${feature} is not a Array`);
+            copy_list.push(...ct_copy_list);
 
-            // push each gen_{feature}(feature_item) to convert_list
+            // push each gen(area) to convert_list
             const gen = converter[feature].gen;
-            assert.equal(typeof gen, 'function', 'innal error');
-            convert_list.push(...gen(area));
+            assert.equal(typeof gen, 'function', `innal error: gen of ${feature} is not a function`);
+            const ct_convert_list = gen(area)
+            assert(Array.isArray(ct_convert_list), `innal error: return value of gen(area) of ${feature} is not a Array`);
+            for (const item of ct_convert_list) {
+                const rules = item.rules;
+                const template = await get_template(feature, item.template);
+                convert_list.push({ rules, template });
+            };
         }
     };
     convert_list.push(
@@ -321,9 +327,6 @@ The converter convert them to the correct type . 转换器将它们转换为合�
             console.log(`\t${symbol.name}:  'user defined type: ${symbol.userDefinedType}'  'actual type: ${symbol.type}'`);
         });
     }
-
-    // 校验完毕，由 noconvert 变量决定是否输出
-    if (context.noconvert) return [[], []];
 
     // 输出无注释配置
     if (context.output_zyml) {

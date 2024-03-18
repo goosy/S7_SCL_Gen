@@ -13,6 +13,7 @@ export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'MT_Poll';
 export const LOOP_NAME = 'MT_Loop';
 export const POLLS_NAME = 'MT_polls_DB';
+const feature = 'modbusTCP';
 
 const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
 const device_id = { // 只需要填写设备型号
@@ -79,112 +80,10 @@ const device_R_X_id = { // 可能需要填写槽号和机架号的
     "CPU410-5H_R1_X8": "B#16#18",
 }
 
-export function is_feature(feature) {
-    return feature.toUpperCase() === 'MT' || feature.toLowerCase() === 'modbustcp';
+export function is_feature(name) {
+    name = name.toLowerCase();
+    return name === 'mt' || name === 'modbustcp';
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{  includes}}
-{{endif}}_
-{{for conn in connections}}
-DATA_BLOCK {{conn.DB.value}} "{{NAME}}" // {{conn.comment}}
-BEGIN
-    TCON_Parameters.block_length := W#16#40;     //固定为64
-    TCON_Parameters.id := W#16#{{conn.ID}};             //连接ID 每个连接必须不一样！
-    TCON_Parameters.connection_type := B#16#11;  //连接类型 11H=TCP/IP native, 12H=ISO on TCP, 13H=UDP, 01=TCP/IP comp
-    TCON_Parameters.active_est := TRUE;          //是否主动（本功能调用必须为TRUE）
-    TCON_Parameters.local_device_id := {{conn.local_device_id}};  //{{conn.device}} {{conn.R}} {{conn.X}}
-    TCON_Parameters.local_tsap_id_len := B#16#0;
-    TCON_Parameters.rem_subnet_id_len := B#16#0;
-    TCON_Parameters.rem_staddr_len := B#16#4;
-    TCON_Parameters.rem_tsap_id_len := B#16#2;
-    TCON_Parameters.next_staddr_len := B#16#0;
-    TCON_Parameters.rem_staddr[1] := B#16#{{conn.IP1}};    //IP1 {{conn.IP[0]}}
-    TCON_Parameters.rem_staddr[2] := B#16#{{conn.IP2}};    //IP2 {{conn.IP[1]}}
-    TCON_Parameters.rem_staddr[3] := B#16#{{conn.IP3}};    //IP3 {{conn.IP[2]}}
-    TCON_Parameters.rem_staddr[4] := B#16#{{conn.IP4}};    //IP4 {{conn.IP[3]}}
-    TCON_Parameters.rem_tsap_id[1] := B#16#{{conn.port1}};   //PortH {{conn.port}}
-    TCON_Parameters.rem_tsap_id[2] := B#16#{{conn.port2}};   //PortL
-    TCON_Parameters.spare := W#16#0;
-END_DATA_BLOCK
-{{endfor}}_
-
-// 轮询定义数据块 "{{POLLS_NAME}}"
-DATA_BLOCK "{{POLLS_NAME}}"
-TITLE = "轮询定义"
-VERSION : 0.0
-STRUCT
-{{for conn in connections}}_
-    {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
-        MBAP_seq : WORD ;               //事务号 PLC自动填写
-        MBAP_protocol : WORD ;          //必须为0
-        MBAP_length : WORD  := W#16#6;  //长度，对读命令，通常为6
-        device_ID : BYTE ;              //设备号，不关心的情况下可以填0
-        MFunction : BYTE ;              //modbus功能号
-        address : WORD ;                //起始地址
-        data : WORD ;                   //长度
-        recvDB : INT ;                  //接收数据块号
-        recvDBB : INT ;                 //接收数据块起始地址
-    END_STRUCT ;
-{{endfor // conn}}_
-    buff : STRUCT // 接收缓冲区
-        MBAP_seq : WORD ;               //事务号 PLC自动填写
-        MBAP_protocol : WORD ;          //必须为0
-        MBAP_length : WORD ;            //长度，对读命令，通常为6
-        device_ID : BYTE ;              //设备号，不关心的情况下可以填0
-        MFunction : BYTE ;              //modbus功能号
-        data : ARRAY[0..251] OF BYTE ;  //数据
-    END_STRUCT ;
-END_STRUCT ;
-BEGIN
-{{for conn in connections}}_
-    // --- {{conn.comment}}
-{{  for no, poll in conn.polls}}_
-    {{conn.name}}[{{no}}].device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
-    {{conn.name}}[{{no}}].MFunction := B#16#{{poll.function}};
-    {{conn.name}}[{{no}}].address := W#16#{{poll.address}};
-    {{conn.name}}[{{no}}].data := W#16#{{poll.data}};
-    {{conn.name}}[{{no}}].recvDB := {{poll.recv_DB.block_no}};
-    {{conn.name}}[{{no}}].recvDBB := {{poll.recv_start}};
-{{  endfor // poll}}_
-{{endfor // conn}}_
-END_DATA_BLOCK
-
-{{for conn in connections}}_
-{{if conn.$interval_time != undefined}}_
-DATA_BLOCK {{conn.DB.value}} "{{NAME}}"
-BEGIN
-        intervalTime := {{conn.$interval_time.DINT}};
-END_DATA_BLOCK
-
-{{endif // conn.$interval_time}}_
-{{endfor // conn}}_
-// 调用
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{if loop_begin}}_
-{{  loop_begin}}
-
-{{endif}}_
-{{for conn in connections}}_
-// {{conn.comment}}
-"{{NAME}}".{{conn.DB.value}} (
-{{if conn.interval_time != undefined}}_
-    intervalTime := {{conn.interval_time.value}},
-{{endif}}_
-    DATA  := "{{POLLS_NAME}}".{{conn.name}},
-    buff  := "{{POLLS_NAME}}".buff);
-
-{{endfor // conn}}_
-// 接收块
-{{invoke_code}}
-{{if loop_end}}
-{{  loop_end}}
-{{endif}}_
-END_FUNCTION
-`;
 
 function get_device_id(device, R, X) {
     let id = device_id[device];
@@ -356,13 +255,14 @@ export function build_list(MT) {
     }).join('\n');
 }
 
-export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: connections, options }) {
+export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: connections, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir } = CPU;
-    const { output_file = LOOP_NAME } = options;
+    const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
-        "name": `${output_dir}/${output_file}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             includes,
             loop_begin,
             loop_end,
@@ -374,7 +274,7 @@ export function gen({ document, includes, loop_begin, loop_end, invoke_code, lis
             gcl,
         }
     }];
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list(item) {

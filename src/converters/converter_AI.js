@@ -7,97 +7,11 @@ import { make_alarm_props, make_fake_DB } from './alarm_common.js';
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'AI_Proc';
 export const LOOP_NAME = 'AI_Loop';
+const feature = 'AI';
 
-export function is_feature(feature) {
-    return feature.toUpperCase() === 'AI';
+export function is_feature(name) {
+    return name.toUpperCase() === feature;
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{  includes}}
-{{endif}}_
-{{for AI in list}}_
-{{if AI.DB}}
-// AI背景块: {{AI.comment}}
-DATA_BLOCK {{AI.DB.value}}
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'FALSE' }
-{{endif // portal}}_
-AUTHOR : Goosy
-FAMILY : GooLib
-"{{NAME}}"
-BEGIN
-    enable_AH := {{AI.$enable_AH}};
-    enable_WH := {{AI.$enable_WH}};
-    enable_WL := {{AI.$enable_WL}};
-    enable_AL := {{AI.$enable_AL}};
-{{if AI.$zero_raw !== undefined}}_
-    zero_raw := {{AI.$zero_raw}};
-{{endif}}_
-{{if AI.$span_raw !== undefined}}_
-    span_raw := {{AI.$span_raw}};
-{{endif}}_
-{{if AI.$overflow_SP !== undefined}}_
-    overflow_SP := {{AI.$overflow_SP}};
-{{endif}}_
-{{if AI.$underflow_SP !== undefined}}_
-    underflow_SP := {{AI.$underflow_SP}};
-{{endif}}_
-{{if AI.$zero !== undefined}}_
-    zero := {{AI.$zero}};
-{{endif}}_
-{{if AI.$span !== undefined}}_
-    span := {{AI.$span}};
-{{endif}}_
-{{if AI.$AH_limit !== undefined}}_
-    AH_limit := {{AI.$AH_limit}};
-{{endif}}_
-{{if AI.$WH_limit !== undefined}}_
-    WH_limit := {{AI.$WH_limit}};
-{{endif}}_
-{{if AI.$WL_limit !== undefined}}_
-    WL_limit := {{AI.$WL_limit}};
-{{endif}}_
-{{if AI.$AL_limit !== undefined}}_
-    AL_limit := {{AI.$AL_limit}};
-{{endif}}_
-{{if AI.$dead_zone !== undefined}}_
-    dead_zone := {{AI.$dead_zone}};
-{{endif}}_
-{{if AI.$FT_time !== undefined}}_
-    FT_time := {{AI.$FT_time.DINT}};
-{{endif}}_
-END_DATA_BLOCK
-{{endif // AI.DB}}_
-{{endfor // AI}}
-
-// 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'TRUE' }
-VERSION : 0.1
-{{endif // platform}}_
-BEGIN
-{{if loop_begin}}_
-{{  loop_begin}}
-
-{{endif}}_
-{{for AI in list}}_
-{{if AI.DB && AI.input_paras}}_
-{{if platform == 'step7' || platform == 'pcs7'}}_
-"{{NAME}}".{{//非博途必须有FB块名}}_
-{{endif // platform}}_
-{{AI.DB.value}}({{AI.input_paras}}); {{}}_
-{{endif // AI invoke}}_
-// {{AI.comment}}
-{{endfor // AI}}_
-{{if loop_end}}
-{{  loop_end}}
-{{endif}}_
-END_FUNCTION
-`;
 
 /**
  * 第一遍扫描 提取符号
@@ -180,10 +94,11 @@ export function build_list({ list }) {
 export function gen({ document, includes, loop_begin, loop_end, list, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir, platform } = CPU;
-    const { output_file = LOOP_NAME } = options;
+    const { output_file = LOOP_NAME+'.scl' } = options;
     const rules = [{
-        "name": `${output_dir}/${output_file}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             NAME,
             platform,
             LOOP_NAME,
@@ -194,7 +109,7 @@ export function gen({ document, includes, loop_begin, loop_end, list, options = 
             gcl,
         }
     }];
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list(item) {

@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 import mri from 'mri';
 import nodemon from 'nodemon';
-import { convert, context } from './index.js';
+import { convert, context, supported_features } from './index.js';
 import { copy_file } from './util.js';
 
 function show_help() {
@@ -25,13 +25,15 @@ options:
 --zyml-only   | -z | -Z      只输出无注释的配置文件，不进行SCL转换
 --silent      | -s | -S      不输出过程信息
 --line-endings               输出文件的换行符: windows unix
---encoding                   输出文件的编码: gbk utf8 等
+--OE                         输出文件的编码: gbk utf8 等
+--<feature>-template         指定某个功能的模板文件，文件名要相对路径
 
 例子:
 s7scl                        转换当前目录下的配置文件
 s7scl conv programs/GCL      转换programs/GCL子目录下的配置文件
 s7scl gcl                    在当前目录下建立一个名为GCL配置目录，内含样板配置文件
 s7scl gcl MyGCL              在当前目录下建立一个名为MyGCL配置目录，内含样板配置文件
+s7scl --AI-template test.template        指定 AI 转换器的模板文件
 `);
 }
 
@@ -51,10 +53,20 @@ const noconvert = argv['zyml-only'];
 if (noconvert) context.noconvert = noconvert;
 const silent = argv.silent;
 if (silent) context.silent = silent;
-const encoding = argv.encoding;
-if (encoding) context.encoding = encoding;
+const encoding = argv.OE;
+if (encoding) context.OE = encoding;
 const lineEndings = argv['line-endings'];
 if (lineEndings) context.lineEndings = lineEndings;
+
+supported_features.forEach(feature => {
+    const template = argv[`${feature}-template`];
+    if (template) {
+        const templates = Array.isArray(template) ? template : [template];
+        for (const template of templates) {
+            context.custom_converters[feature] = { template };
+        }
+    }
+})
 
 if (argv.version) {
     console.log(`v${context.version}`);

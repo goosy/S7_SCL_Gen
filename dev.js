@@ -2,7 +2,7 @@ import { convert, context } from './src/index.js';
 import mri from 'mri';
 
 const argv = mri(process.argv.slice(2), {
-    boolean: ['help', 'version'],
+    boolean: ['help', 'version', 'zyml-only', 'output-zyml'],
     alias: {
         H: 'help',
         V: 'version',
@@ -15,8 +15,8 @@ const noconvert = argv['zyml-only'];
 if (noconvert) context.noconvert = noconvert;
 const silent = argv.silent;
 if (silent) context.silent = silent;
-const encoding = argv.encoding;
-if (encoding) context.encoding = encoding;
+const encoding = argv.OE;
+if (encoding) context.OE = encoding;
 const lineEndings = argv['line-endings'];
 if (lineEndings) context.lineEndings = lineEndings;
 process.chdir('./example');

@@ -133,12 +133,11 @@ options: # 选项，非必需，无需要时可以全部删除或注释掉。
   # - {{CPU}}      会自动替换为当前配置的 CPU 名称
   # - {{platform}} 会自动替换为当前配置的 platform
   # - {{device}}   会自动替换为当前配置的 device
-  output_dir : SCL_{{CPU}}_{{platform}}_{{device}}
+  output_dir: SCL_{{CPU}}_{{platform}}_{{device}}
 
   # 输出CPU配置文件名，可省略，默认值是 CPU 名称
   # 类型: 字符串
-  # 转换程序会自动在输出文件名后加 .scl 后缀
-  output_file : 'main'
+  output_file: 'main.scl'
 
 ---
 

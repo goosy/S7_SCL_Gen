@@ -76,3 +76,4 @@ dist/
 lib/
 .vscode/
 .editorconfig
+test/**/

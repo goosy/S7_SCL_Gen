@@ -6,6 +6,7 @@ import { elog } from '../util.js';
 
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
+const feature = 'CPU';
 
 export const devices = [
     "IM151-8PN/DP",
@@ -28,36 +29,9 @@ export const devices = [
 ];
 const DEFAULT_DEVICE = "CPU31x-2PN/DP"; //默认的CPU设备
 
-export function is_feature(feature) {
-    return feature.toUpperCase() === 'CPU';
+export function is_feature(name) {
+    return name.toUpperCase() === feature;
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{  includes}}
-{{endif}}_
-{{for FN in list}}_
-{{if FN.block.block_name === 'OB'}}
-ORGANIZATION_BLOCK "{{FN.block.name}}"
-{{if FN.title}}_
-TITLE = "{{FN.title}}"
-{{endif // +title}}_
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'TRUE' }
-{{endif // portal}}_
-BEGIN
-{{FN.code}}
-END_ORGANIZATION_BLOCK
-{{else}}
-FUNCTION "{{FN.block.name}}" : VOID
-BEGIN
-{{FN.code}}
-END_FUNCTION
-{{endif // block_name}}_
-{{endfor // FN}}
-`;
 
 /**
  * 第一遍扫描 提取符号
@@ -131,21 +105,22 @@ export function build_list({ document, list, options }) {
     }
 }
 
-export function gen({ document, includes, list, options }) {
+export function gen({ document, includes, list, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir, platform } = CPU;
-    const { output_file } = options;
+    const { output_file = NAME + '.scl' } = options;
     let rules = [];
     if (includes.length || list.length) rules.push({
-        "name": `${output_dir}/${output_file ?? NAME}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             platform,
             includes,
             list,
             gcl,
         }
     });
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list() {

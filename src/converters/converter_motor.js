@@ -6,90 +6,11 @@ import { posix } from 'node:path';
 export const platforms = ['step7', 'portal']; // platforms supported by this feature
 export const NAME = `Motor_Proc`;
 export const LOOP_NAME = 'Motor_Loop';
+const feature = 'motor';
 
-export function is_feature(feature) {
-    return feature.toLowerCase() === 'motor';
+export function is_feature(name) {
+    return name.toLowerCase() === feature;
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{includes}}
-{{endif}}_
-{{for motor in list}}_
-{{if motor.DB}}
-// motor背景块: {{motor.comment}}
-DATA_BLOCK {{motor.DB.value}}
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'FALSE' }
-{{endif // portal}}_
-AUTHOR : Goosy
-FAMILY : GooLib
-"{{NAME}}"
-BEGIN
-{{  if motor.$stateless != null}}_
-    stateless := {{motor.$stateless}};
-{{  endif //$stateless}}_
-{{  if motor.$over_time != null}}_
-    over_time := {{motor.$over_time.DINT}};
-{{  endif //over_time}}_
-END_DATA_BLOCK
-{{endif // motor.DB}}_
-{{endfor // motor}}_
-
-
-// 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'TRUE' }
-VERSION : 0.1
-{{endif // platform}}_
-BEGIN
-{{if loop_begin}}_
-{{  loop_begin}}
-
-{{endif}}_
-{{for motor in list}}_
-{{len = motor.paras_len}}_
-// {{motor.comment}}
-{{if motor.DB}}_
-{{if platform == 'step7'}}_
-"{{NAME}}".{{}}_
-{{endif // platform}}_
-{{motor.DB.value}}({{
-
-if platform == 'portal' // 博途平台
-
-}}{{for no,para in motor.paras}}_
-{{    if len > 1}}
-    {{// 增加换行}}_
-{{    endif // len}}_
-{{    para}}_
-{{  endfor // para}});
-{{
-
-else // other platform // 非博途平台
-
-}}{{for no,para in motor.input_paras}}_
-{{    if len > 1}}
-    {{// 增加换行}}_
-{{    endif // len}}_
-{{  para}}_
-{{  endfor // no,para}});
-{{  for para in motor.output_paras}}_
-{{    para}}
-{{  endfor // para}}{{
-
-endif // 平台判断结束
-
-}}{{endif // motor.DB}}
-{{endfor // motor}}_
-{{if loop_end}}_
-{{  loop_end}}
-{{endif}}_
-END_FUNCTION
-`;
 
 /**
  * 第一遍扫描 提取符号
@@ -201,12 +122,14 @@ export function build_list({ document, list }) {
     });
 }
 
-export function gen({ document, includes, loop_begin, loop_end, list }) {
+export function gen({ document, includes, loop_begin, loop_end, list, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir, platform } = CPU;
+    const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
-        "name": `${output_dir}/${LOOP_NAME}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             platform,
             includes,
             loop_begin,
@@ -217,7 +140,7 @@ export function gen({ document, includes, loop_begin, loop_end, list }) {
             gcl,
         }
     }];
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list(item) {

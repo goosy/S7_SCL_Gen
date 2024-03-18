@@ -7,59 +7,12 @@ export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by 
 export const CP_NAME = 'CP';
 export const DP_NAME = 'DP';
 export const LOOP_NAME = 'RP_Loop';
+const feature = 'RP';
 
 export function is_feature(name) {
-    name = name.toLowerCase();
-    return name === 'rp' || name === 'relay' || name === 'pulse';
+    name = name.toUpperCase();
+    return name === feature || name === 'RELAY' || name === 'PULSE';
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{  includes}}
-{{endif}}_
-{{for RP in list}}
-// RP背景块: {{RP.comment}}
-DATA_BLOCK {{RP.DB.value}}
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'FALSE' }
-{{else}}_
-{ S7_m_c := 'true' }
-{{endif // portal}}_
-AUTHOR:Goosy
-FAMILY:GooLib
-"{{RP.FB}}"
-BEGIN
-{{if RP.$PT != undefined}}_
-    PT := {{RP.$PT}}; // 脉冲时长
-{{endif // RP.$PT}}_
-{{if RP.IncludeFallingEdge != undefined}}_
-    IncludeFallingEdge := {{RP.IncludeFallingEdge}}; // 是否包含下降沿
-{{endif // RP.IncludeFallingEdge}}_
-END_DATA_BLOCK
-{{endfor // RP}}_
-
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'TRUE' }
-{{endif // portal}}_
-// 主循环
-BEGIN
-{{if loop_begin}}_
-{{  loop_begin}}
-
-{{endif}}_
-{{for RP in list}}_
-{{if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{endif // platform}}_
-{{RP.DB.value}}(IN := {{RP.IN.value}}_
-{{if RP.PT != undefined}}, PT := {{RP.PT}}{{endif}}); // {{RP.comment}}
-{{endfor // RP}}_
-{{if loop_end}}
-{{  loop_end}}
-{{endif}}_
-END_FUNCTION
-`
 
 const FB_dict = {
     onDelay: 'TON',
@@ -135,12 +88,14 @@ export function initialize_list(area) {
     });
 }
 
-export function gen({ document, includes, loop_begin, loop_end, list }) {
+export function gen({ document, includes, loop_begin, loop_end, list, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir, platform } = CPU;
+    const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
-        "name": `${output_dir}/${LOOP_NAME}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             platform,
             includes,
             loop_begin,
@@ -150,7 +105,7 @@ export function gen({ document, includes, loop_begin, loop_end, list }) {
             gcl,
         }
     }];
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list(item) {

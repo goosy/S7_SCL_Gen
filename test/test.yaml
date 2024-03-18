@@ -1,6 +1,9 @@
 ---
 name: test-AI
 
+files:
+- filename: test.yaml
+
 symbols:
 - [DI01-01, I10.1]
 

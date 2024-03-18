@@ -7,6 +7,7 @@ import pkg from '../package.json' assert { type: 'json' };
 
 export {
     context, CURRENT_DOC, CURRENT_NODE,
+    get_template,
     prepare_dir, copy_file, read_file, write_file,
     compare_str, pad_left, pad_right, fixed_hex,
     elog, lazyassign,
@@ -14,6 +15,7 @@ export {
 
 const module_path = posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), "../../");
 const work_path = process.cwd().replace(/\\/g, '/');
+const custom_converters = {};
 const context = {
     module_path,
     work_path,
@@ -21,15 +23,37 @@ const context = {
     output_zyml: false,
     noconvert: false,
     silent: false,
-    encoding: 'gbk',
+    IE: 'utf8',
+    OE: 'gbk',
     lineEndings: 'windows',
+    custom_converters,
 };
+
+const templates_cache = new Map();
+/**
+ * Retrieves a template for a given feature.
+ *
+ * @param {string} feature - the feature for which the template is needed
+ * @param {string} template_file - the file containing the template
+ * @return {Promise<string>} the template content as a string
+ */
+async function get_template(feature, template_file) {
+    const custom_template_file = context.custom_converters[feature]?.template;
+    template_file ??= `${feature}.template`;
+    const filename = custom_template_file
+        ? posix.join(work_path, custom_template_file)
+        : posix.join(module_path, 'src', 'converters', template_file);
+    if (templates_cache.has(filename)) return templates_cache.get(filename);
+    let template = await read_file(filename);
+    templates_cache.set(filename, template);
+    return template;
+}
 
 let CURRENT_DOC;
 let CURRENT_NODE;
 
 function elog(msg) {
-    if(msg instanceof Error) throw msg;
+    if (msg instanceof Error) throw msg;
     throw new Error(msg);
 }
 
@@ -73,7 +97,7 @@ async function copy_file(src, dst) {
 }
 
 async function read_file(filename, options = {}) {
-    const encoding = options.encoding ?? "utf8";
+    const encoding = options.encoding ?? context.IE;
     let exist = true;
     await access(filename).catch(() => {
         exist = false;
@@ -95,7 +119,7 @@ function dos2unix(str) {
 }
 
 async function write_file(filename, content, { encoding, lineEndings } = {}) {
-    encoding ??= context.encoding;
+    encoding ??= context.OE;
     lineEndings ??= context.lineEndings;
     await prepare_dir(dirname(filename));
     let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(content), encoding);

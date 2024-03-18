@@ -17,108 +17,12 @@ export const CP341_NAME = 'CP341_Poll';
 export const LOOP_NAME = 'SC_Loop';
 export const CRC = 'CRC16';
 export const POLLS_NAME = 'SC_polls_DB';
+const feature = 'SC';
 
-export function is_feature(feature) {
-    return feature.toUpperCase() === 'MB' || feature.toUpperCase() === 'SC';
+export function is_feature(name) {
+    name = name.toUpperCase();
+    return name === feature || name === 'MB';
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{  includes}}
-{{endif}}_
-
-// 轮询DB块，含485调度指令和发送数据
-DATA_BLOCK "{{POLLS_NAME}}"
-STRUCT
-{{for module in modules}}_
-    {{module.name}} : STRUCT //{{module.comment}} 轮询命令数据
-{{  for poll in module.polls}}_
-        poll_{{poll.index}} : STRUCT
-            next: BOOL; // false为结尾，否则有下一个
-            enable: BOOL := TRUE; // 允许本poll通讯
-            modbusFlag : BOOL; // 是否为modbus协议
-            status: WORD;    // 预留
-            sendDB : INT; // 发送DB，为0时为本块
-            sendDBB : INT; // 发送DB起始地址
-            sendLength : INT; // 发送长度
-            recvDB : INT; // 接收DB
-            recvDBB : INT; // 接收DB起始地址
-            waitCount : INT; // 发送等待次数
-        END_STRUCT;
-{{  endfor // poll}}_
-    END_STRUCT;
-{{endfor // module}}_
-{{for module in modules}}_
-{{for poll in module.polls}}_
-{{if !poll.extra_send_DB}}_
-    poll_{{poll.index}}_data : STRUCT
-{{if poll.send_data // ----通用发送}}_
-        send_data : ARRAY  [0 .. {{poll.send_data.length-1}}] OF BYTE;    //发送数据
-{{else // ----modbus 发送}}_
-        device_ID : BYTE;    //子站地址
-        MFunction : BYTE;    //modbus 功能号
-        address : WORD;    //起始地址
-        data : WORD;    //数据，对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
-        CRC : WORD;    //检验字
-{{endif // 发送数据结束}}_
-    END_STRUCT;
-{{endif // extra_send_DB}}_
-{{endfor // poll}}_
-{{endfor // module}}_
-END_STRUCT;
-BEGIN
-{{for module in modules}}
-    // --- {{module.comment}} 轮询数据
-{{for no,poll in module.polls}}
-    // poll {{poll.index}}  {{poll.comment}}
-    {{module.name}}.poll_{{poll.index}}.next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
-    {{module.name}}.poll_{{poll.index}}.modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
-    {{module.name}}.poll_{{poll.index}}.sendDB := {{poll.send_DB.block_no}};
-    {{module.name}}.poll_{{poll.index}}.sendDBB := {{poll.send_start}};
-    {{module.name}}.poll_{{poll.index}}.sendLength := {{poll.send_length}};
-    {{module.name}}.poll_{{poll.index}}.recvDB := {{poll.recv_DB.block_no}};
-    {{module.name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};
-{{if !poll.extra_send_DB //非外部数据块}}_
-    // send data
-{{  if poll.send_data}}_
-{{      for index, databyte in poll.send_data}}_
-    poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}
-{{      endfor}}_
-{{  else}}_
-    poll_{{poll.index}}_data.device_ID := {{poll.deivce_ID.byteHEX}};
-    poll_{{poll.index}}_data.MFunction := {{poll.function.byteHEX}};
-    poll_{{poll.index}}_data.address := {{poll.started_addr.wordHEX}};
-    poll_{{poll.index}}_data.data := {{poll.data.wordHEX}};
-{{  endif // send_data}}_
-{{endif // ----poll_send_data 结束}}_
-{{endfor // poll}}_
-{{endfor // module}}_
-END_DATA_BLOCK
-
-// 主调用
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{if loop_begin}}_
-{{  loop_begin}}
-{{endif}}_
-{{for no, module in modules}}
-// {{no+1}}. {{module.model}} {{module.comment}}
-"{{if module.model == 'CP341'}}{{CP341_NAME}}{{else}}{{CP340_NAME}}{{endif}}".{{module.DB.value}}(
-{{if module.customREQ}}_
-    customTrigger := TRUE,
-    REQ           := {{module.customREQ.value}},
-{{endif}}_
-    Laddr         := {{module.module.block_no}},  // CP模块地址
-    DATA          := "{{POLLS_NAME}}".{{module.name}});
-{{endfor // module}}
-// 发送接收块
-{{invoke_code}}
-{{if loop_end}}
-{{  loop_end}}
-{{endif}}_
-END_FUNCTION
-`;
 
 /**
  * @typedef {object} S7Item
@@ -307,13 +211,14 @@ export function build_list(SC) {
     }).join('\n');
 }
 
-export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: modules, options }) {
+export function gen({ document, includes, loop_begin, loop_end, invoke_code, list: modules, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir } = CPU;
-    const { output_file = LOOP_NAME } = options;
+    const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
-        "name": `${output_dir}/${output_file}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             modules,
             includes,
             loop_begin,
@@ -326,7 +231,7 @@ export function gen({ document, includes, loop_begin, loop_end, invoke_code, lis
             gcl,
         }
     }];
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list(item) {

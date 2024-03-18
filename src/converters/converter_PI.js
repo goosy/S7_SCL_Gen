@@ -14,41 +14,11 @@ export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'PI_Proc';
 export const LOOP_NAME = 'PI_Loop';
 export const FM3502_CNT_NAME = 'FM350-2';
+const feature = 'PI';
 
-export function is_feature(feature) {
-    return feature.toUpperCase() === 'PI';
+export function is_feature(name) {
+    return name.toUpperCase() === feature;
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{  includes}}
-{{endif}}_
-{{for module in modules}}
-// FM350-2专用数据块{{module.count_DB.value}}
-DATA_BLOCK {{module.count_DB.value}} "{{FM3502_CNT_NAME}}"
-BEGIN
-    MOD_ADR := {{module.module_no.wordHEX}}; // FM350-2模块地址
-    CH_ADR := {{module.channel_no.dwordHEX}}; // 通道地址，即模块地址乘8
-END_DATA_BLOCK
-{{endfor // module}}_
-
-// 主调用
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{if loop_begin}}_
-{{  loop_begin}}
-
-{{endif}}_
-{{for no, module in modules}}_
-// {{no+1}}. {{module.model}} {{module.comment}}
-"{{NAME}}".{{module.DB.value}}(DB_NO := {{module.count_DB.block_no}}); // DB_NO指向{{module.count_DB.value}}
-{{endfor // module}}_
-{{if loop_end}}
-{{  loop_end}}
-{{endif}}_
-END_FUNCTION
-`;
 
 /**
  * @typedef {object} S7Item
@@ -148,13 +118,14 @@ export function build_list({ document, list }) {
     });
 }
 
-export function gen({ document, includes, loop_begin, loop_end, list: modules, options }) {
+export function gen({ document, includes, loop_begin, loop_end, list: modules, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir } = CPU;
-    const { output_file = LOOP_NAME } = options;
+    const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
-        "name": `${output_dir}/${output_file}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             modules,
             includes,
             loop_begin,
@@ -165,7 +136,7 @@ export function gen({ document, includes, loop_begin, loop_end, list: modules, o
             gcl,
         }
     }];
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list(item) {

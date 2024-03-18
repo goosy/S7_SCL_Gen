@@ -6,59 +6,11 @@ import { context, elog } from '../util.js';
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = `Timer_Proc`;
 export const LOOP_NAME = 'Timer_Loop';
+const feature = 'timer';
 
-export function is_feature(feature) {
-    return feature.toLowerCase() === 'timer';
+export function is_feature(name) {
+    return name.toLowerCase() === feature;
 }
-
-const template = `// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
-// 配置文件: {{gcl.file}}
-// 摘要: {{gcl.MD5}}
-{{if includes}}
-{{  includes}}
-{{endif}}_
-{{if platform == 'portal'}}_
-{{for timer in list}}_
-{{if timer.DB}}
-// timer背景块: {{timer.comment}}
-DATA_BLOCK {{timer.DB.value}}
-{ S7_Optimized_Access := 'FALSE' }
-AUTHOR : Goosy
-FAMILY : GooLib
-"{{NAME}}"
-BEGIN
-END_DATA_BLOCK
-{{endif // timer.DB}}_
-{{endfor // timer}}_
-{{endif // portal}}_
-
-// 主循环调用
-FUNCTION "{{LOOP_NAME}}" : VOID
-{{if platform == 'portal'}}_
-{ S7_Optimized_Access := 'TRUE' }
-{{endif // portal}}_
-// 计时主循环
-BEGIN
-{{if loop_begin}}_
-{{  loop_begin}}
-{{endif}}_
-{{for timer in list}}
-// {{timer.comment}}
-{{if platform != 'portal'}}"{{NAME}}".{{endif // platform}}_
-{{timer.DB.value}}(
-{{if timer.enable}}_
-    enable := {{timer.enable.value}},
-{{endif}}_
-{{if timer.reset}}_
-    reset := {{timer.reset.value}},
-{{endif}}_
-    PPS := {{timer.PPS.value}});
-{{endfor // timer}}_
-{{if loop_end}}
-{{  loop_end}}
-{{endif}}_
-END_FUNCTION
-`;
 
 /**
  * 第一遍扫描 提取符号
@@ -100,12 +52,14 @@ export function initialize_list(area) {
     });
 }
 
-export function gen({ document, includes, loop_begin, loop_end, list }) {
+export function gen({ document, includes, loop_begin, loop_end, list, options = {} }) {
     const { CPU, gcl } = document;
     const { output_dir, platform } = CPU;
+    const { output_file = LOOP_NAME + '.scl' } = options;
     const rules = [{
-        "name": `${output_dir}/${LOOP_NAME}.scl`,
+        "name": `${output_dir}/${output_file}`,
         "tags": {
+            feature,
             platform,
             includes,
             loop_begin,
@@ -116,7 +70,7 @@ export function gen({ document, includes, loop_begin, loop_end, list }) {
             gcl,
         }
     }];
-    return [{ rules, template }];
+    return [{ rules }];
 }
 
 export function gen_copy_list(item) {
