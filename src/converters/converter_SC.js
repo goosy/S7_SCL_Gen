@@ -215,17 +215,10 @@ export function gen({ document, invoke_code, options = {} }) {
     const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const rules = [{
-        "name": `${output_dir}/${output_file}`,
-        "tags": {
-            invoke_code,
-            CP340_NAME,
-            CP341_NAME,
-            LOOP_NAME,
-            POLLS_NAME,
-        }
-    }];
-    return [{ rules }];
+    const path = `${output_dir}/${output_file}`;
+    const tags = { LOOP_NAME, invoke_code, CP340_NAME, CP341_NAME, POLLS_NAME };
+    const template = 'SC.template';
+    return [{ path, tags, template }];
 }
 
 export function gen_copy_list(item) {

@@ -92,13 +92,10 @@ export function gen({ document, options = {} }) {
     const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const rules = [{
-        "name": `${output_dir}/${output_file}`,
-        "tags": {
-            LOOP_NAME,
-        }
-    }];
-    return [{ rules }];
+    const path = `${output_dir}/${output_file}`;
+    const tags = { LOOP_NAME };
+    const template = 'RP.template';
+    return [{ path, tags, template }];
 }
 
 export function gen_copy_list(item) {

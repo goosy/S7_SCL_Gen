@@ -109,12 +109,13 @@ export function gen({ document, includes, list, options = {} }) {
     const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = NAME + '.scl' } = options;
-    let rules = [];
-    if (includes.length || list.length) rules.push({
-        "name": `${output_dir}/${output_file}`,
-        "tags": {}
-    });
-    return [{ rules }];
+    if (includes.length || list.length) {
+        const path = `${output_dir}/${output_file}`;
+        const tags = {}
+        const template = 'CPU.template';
+        return [{ path, tags, template }];
+    };
+    return [];
 }
 
 export function gen_copy_list() {

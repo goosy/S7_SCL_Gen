@@ -642,19 +642,17 @@ const template = `{{for symbol in symbol_list}}_
 {{symbol.line}}
 {{endfor // symbol}}`;
 
-export function gen_symbols(CPU_list) {
-    return {
-        rules: CPU_list.map(CPU => {
-            const symbol_list = CPU.symbols.list
-                .map(CPU.platform === "portal" ? get_portal_symbol : get_step7_symbol)
-                .filter(symbol => symbol !== null) // 跳过被筛除的符号
-                .sort((a, b) => compare_str(a.name, b.name))
-                .sort((a, b) => compare_str(a.address, b.address));
-            return {
-                "name": `${CPU.output_dir}/symbols.${CPU.platform === "portal" ? 'sdf' : 'asc'}`,
-                "tags": { symbol_list }
-            };
-        }),
-        template,
-    };
+export function gen_symbols(cpu_list) {
+    return cpu_list.map(cpu => {
+        const symbol_list = cpu.symbols.list
+            .map(cpu.platform === "portal" ? get_portal_symbol : get_step7_symbol)
+            .filter(symbol => symbol !== null) // 跳过被筛除的符号
+            .sort((a, b) => compare_str(a.name, b.name))
+            .sort((a, b) => compare_str(a.address, b.address));
+        return {
+            path: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
+            tags: { symbol_list },
+            template,
+        };
+    });
 }

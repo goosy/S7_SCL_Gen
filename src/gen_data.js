@@ -279,24 +279,22 @@ async function gen_data_list(cpu_list) {
             const ct_convert_list = gen(area)
             assert(Array.isArray(ct_convert_list), `innal error: return value of gen(area) of ${feature} is not a Array`);
             for (const item of ct_convert_list) {
-                const rules = item.rules;
-                rules.forEach(rule => {
-                    rule.tags = { // 提供一些默认变量
-                        context, gcl,
-                        pad_left, pad_right, fixed_hex,
-                        cpu_name, feature, platform,
-                        ...area,
-                        ...rule.tags,
-                    }
-                });
+                const path = item.path;
+                const tags = { // 提供一些默认变量
+                    context, gcl,
+                    pad_left, pad_right, fixed_hex,
+                    cpu_name, feature, platform,
+                    ...area,
+                    ...item.tags,
+                }
                 const template = await get_template(feature, item.template);
-                convert_list.push({ rules, template });
+                convert_list.push({ path, tags, template });
             };
         }
     };
     convert_list.push(
-        gen_symbols(cpu_list), // symbols converter
-        gen_alarms(cpu_list) // alarms converter
+        ...gen_symbols(cpu_list), // symbols converter
+        ...gen_alarms(cpu_list), // alarms converter
     );
     return { copy_list, convert_list };
 }

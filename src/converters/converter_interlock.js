@@ -249,7 +249,7 @@ export function initialize_list(area) {
             return input;
         });
 
-        function conv_rest(item){
+        function conv_rest(item) {
             if (typeof item !== 'string' && !isString(item) && !isSeq(item)) {
                 elog(new SyntaxError('interlock 的 reset 项必须是data项名称、S7符号或SCL表达式!'));
             }
@@ -366,7 +366,7 @@ export function build_list({ list }) {
                     if (output.ref.read) elog(new SyntaxError('interlock 的 output 项不能有 read 属性!'));
                 }
                 const reset = output.reset;
-                if(reset){
+                if (reset) {
                     reset.resettable = (reset.ref ?? false) && !reset.ref.read;
                 }
             }
@@ -378,13 +378,10 @@ export function gen({ document, options = {} }) {
     const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const rules = [{
-        "name": `${output_dir}/${output_file}`,
-        "tags": {
-            LOOP_NAME,
-        }
-    }];
-    return [{ rules }];
+    const path = `${output_dir}/${output_file}`;
+    const tags = { LOOP_NAME };
+    const template = 'interlock.template';
+    return [{ path, tags, template }];
 }
 
 export function gen_copy_list() {
