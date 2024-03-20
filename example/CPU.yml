@@ -46,11 +46,15 @@ host: sample.my.host
 # 类型: 字符串
 IP: 192.168.10.10
 
+attributes: # 用于包含文件PE.scl的转换
+  tag_postfix_number: '0101'
+
 # includes, files 的文件为用户自行指定，生成程序不会检查其中的错误。
 includes:       # includes 用来包含到该类型转换后的输出文件中，会解析文件中的符号定义
                 # 可参照本示例写出其它自定义接收块函数。
 - JSFLow.scl    # 指示将配置目录下的 JSFlow.scl 文件包含进来
                 # (该文件包含 JS_flow 符号的定义和接收DB块的数据结构，用于一诺的智能流量表)
+- PE.scl    # 另一个要包含的文件
 
 files:          # files 仅仅是复制该文件到输出文件夹中
 - ..//README.md # 复制说明文件，也可以复件其它的手工代码的SCL、AWL文件
@@ -94,6 +98,7 @@ symbols:
 - [auto_data3, M+]
 - [auto_data4, M+]
 - [auto_data5, MD+, DInt]
+- [PE0101, DB961]
 
 list:
 # CPU配置的列表为一般性 FC OB 代码(自定义SCL)
@@ -143,7 +148,17 @@ options: # 选项，非必需，无需要时可以全部删除或注释掉。
 
 name: AS2-CPU
 platform: portal
+
 files:
 - filename: ..//Motor_Proc/**.scl
+
+attributes: # 用于包含文件PE.scl的转换
+    tag_postfix_number: '0201'
+
+includes: 
+- PE.scl
+
+symbols:
+- [PE0201, DB961]
 
 ... # YAML语法，指示一个文档结束

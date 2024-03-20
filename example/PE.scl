@@ -1,0 +1,19 @@
+DATA_BLOCK "PE{{tag_postfix_number}}"
+{{if platform == "step7"}}_
+{ S7_m_c := 'true'}
+{{endif}}_
+{{if platform == "portal"}}_
+{ S7_Optimized_Access := 'FALSE' }
+{{endif}}_
+AUTHOR:Goosy
+FAMILY:GooLib
+STRUCT
+  U_VFD {S7_m_c := 'true'}: INT ;       // 506 变频器电压
+  I_VFD {S7_m_c := 'true'}: INT ;       // 507 变频器电流
+  Ua {S7_m_c := 'true'}: INT ;          // 511 AA_电压
+  Ub {S7_m_c := 'true'}: INT ;          // 512 BB_电压
+  Uc {S7_m_c := 'true'}: INT ;          // 513 CC_电压
+  error {S7_m_c := 'true'}: INT ;       // 515 故障代码
+END_STRUCT;
+BEGIN
+END_DATA_BLOCK

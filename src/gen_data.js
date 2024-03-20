@@ -3,6 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { globby } from 'globby';
 import { convert } from 'gooconverter';
+import { isMap } from 'yaml';
 import { supported_features, converter, CPU } from './converter.js';
 import { GCL, get_Seq, isString } from './gcl.js';
 import {
@@ -48,10 +49,9 @@ async function parse_includes(includes, options) {
         for (const file of filenames) {
             const filename = typeof file === 'string' ? file : file.filename;
             const encoding = file.encoding ?? 'utf8';
-            const gcl = new GCL();
-            await gcl.load(
+            const gcl = await GCL.load_from_SCL(
                 posix.join(work_path, filename),
-                { ...options, encoding, inSCL: true }
+                { ...options, encoding }
             );
             gcl_list.push(gcl);
         };
@@ -65,9 +65,8 @@ async function parse_includes(includes, options) {
 
 async function create_fake_CPU_doc(CPU) {
     // create a blank CPU document for CPU
-    const gcl = new GCL();
     const yaml = `name: ${CPU.name}-CPU\nplatform: step7\nsymbols:[]\nlist: []`;
-    await gcl.load(yaml, { isFile: false });
+    const gcl = new GCL(yaml);
     const doc = gcl.documents[0];
     Object.defineProperty(doc, 'CPU', {
         value: CPU,
@@ -130,13 +129,22 @@ async function add_conf(document) {
         return;
     }
 
-    // external code
+    // external code8
+    const attributes_node = document.get('attributes');
+    if (attributes_node && !isMap(attributes_node)) {
+        throw new Error('attributes must be a Map! 属性必须为对象');
+    }
+    const attributes = attributes_node?.toJSON() ?? {};
     const loop_begin = nullable_value(STRING, document.get('loop_begin'))?.value;
     const loop_end = nullable_value(STRING, document.get('loop_end'))?.value;
     const {
         code: includes,
         gcl_list,
-    } = await parse_includes(document.get('includes'), { CPU: cpu.name, feature });
+    } = await parse_includes(document.get('includes'), {
+        ...attributes,
+        CPU: cpu.name, feature,
+        platform: cpu.platform,
+    });
 
     // 包含文件符号 [YAMLSeq symbol]
     gcl_list.forEach(gcl => {
@@ -187,7 +195,7 @@ async function add_conf(document) {
     const options = document.get('options')?.toJSON() ?? {};
     const name = cpu.name;
     if (options.output_file) options.output_file = convert({ name, CPU: name }, options.output_file);
-    const area = { document, list, includes, files, loop_begin, loop_end, options };
+    const area = { document, attributes, includes, files, list, loop_begin, loop_end, options };
     // 按类型压入文档至CPU
     cpu[feature] = area;
     // 将 area.list 的每一项由 YAMLNode 转换为可供模板使用的数据对象
@@ -204,8 +212,7 @@ async function parse_conf() {
         for (const file of await readdir(work_path)) {
             if (/^.*\.ya?ml$/i.test(file)) {
                 const filename = posix.join(work_path, file);
-                const gcl = new GCL();
-                await gcl.load(filename);
+                const gcl = await GCL.load(filename);
                 for (const doc of gcl.documents) {
                     let cpu = CPUs[doc.CPU];
                     if (!cpu) {

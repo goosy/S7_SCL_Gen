@@ -10,8 +10,7 @@ import {
 } from "./s7data.js";
 import { GCL, isString, get_Seq } from './gcl.js';
 
-export const BUILDIN_SYMBOLS = new GCL(); // Initialized by converter.js
-await BUILDIN_SYMBOLS.load(posix.join(
+export const BUILDIN_SYMBOLS = await GCL.load(posix.join( // Initialized by converter.js
     fileURLToPath(import.meta.url).replace(/\\/g, '/'),
     '../symbols_buildin.yaml'
 ));

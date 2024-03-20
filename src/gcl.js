@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { convert } from 'gooconverter';
 import {
     Document, parseAllDocuments,
     isMap, isSeq, isAlias, isScalar,
     LineCounter,
     visit,
 } from 'yaml';
-import { read_file } from './util.js';
-import { STRING, ensure_value, nullable_value } from './s7data.js';
+import { read_file, elog } from './util.js';
+import { STRING, nullable_value } from './s7data.js';
 
 function merge(document) {
     visit(document, {
@@ -98,7 +99,6 @@ function parse_YAML_commented_SCL(str) {
         start = end;
     }
     scl = scl.trim();
-
     return { scl, yaml, error: null };
 }
 
@@ -165,10 +165,6 @@ export class GCL {
         return this.#MD5;
     }
 
-    constructor() {
-        this.#line_counter = new LineCounter();
-    }
-
     parse_documents(options) {
         this.#documents = parseAllDocuments(this.#yaml, { version: '1.2', lineCounter: this.#line_counter });
         for (const document of this.#documents) {
@@ -184,7 +180,7 @@ export class GCL {
             const {
                 cpu = options.CPU,
                 feature = options.feature,
-                error: error
+                error
             } = get_cpu_and_feature(document);
             if (error) {
                 throw new Error(`"${this.file}"文件中某文档的 name:${error} 不正确！`);
@@ -199,35 +195,50 @@ export class GCL {
             document.gcl = this;
             document.offset ??= 0;
             document.CPU = cpu;
-            Object.defineProperty(document, 'feature', {
-                get() {
-                    return feature;
-                },
-                enumerable: true,
-                configurable: false,
-            });
+            document.feature = feature;
         }
     }
 
-    async load(yaml_or_filename, options = {}) {
+    constructor(yaml, options = {}) {
+        this.#line_counter = new LineCounter();
+        this.#yaml = yaml;
         const {
-            encoding = 'utf8',
-            isFile = true,
-            inSCL = false,
+            CPU,
+            feature,
+            filename = '',
+            source = yaml,
+            scl = '',
         } = options;
-        this.#file = isFile ? yaml_or_filename : '';
-        this.#source = isFile ? await read_file(this.#file, { encoding }) : yaml_or_filename;
+        this.#file = filename;
+        this.#source =  source;
+        this.#scl = scl;
         this.#MD5 = createHash('md5').update(this.#source).digest('hex');
+        this.parse_documents({ CPU, feature });
+    }
 
-        if (isFile ? inSCL : false) {  //只有在文件中才能是SCL
-            const { scl, yaml, error } = parse_YAML_commented_SCL(this.#source);
-            if (error) elog(error);
-            this.#yaml = yaml;
-            this.#scl = scl;
-        } else {
-            this.#yaml = this.#source;
-            this.#scl = '';
-        }
-        this.parse_documents(options);
+    static async load(filename, options = {}) {
+        const encoding = options.encoding ?? 'utf8';
+        const yaml = await read_file(filename, { encoding });
+        const gcl = new GCL(yaml, {
+            ...options,
+            filename,
+            source: yaml,
+        });
+        return gcl;
+    }
+
+    static async load_from_SCL(filename, options = {}) {
+        const encoding = options.encoding ?? 'utf8';
+        const content = await read_file(filename, { encoding });
+        const tags = options ?? {};
+        const { scl, yaml, error } = parse_YAML_commented_SCL(content);
+        if (error) elog(error);
+        const gcl = new GCL(yaml, {
+            ...options,
+            filename,
+            source: content,
+            scl: convert(tags, scl), // subsitute tags in SCL
+        });
+        return gcl;
     }
 }
