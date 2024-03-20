@@ -2,7 +2,7 @@
 #CPU: AS1       # 指示属于哪一个CPU
 #feature: alarm # 指示生成 Alarm 文档
 
-name: AS1,AS2-alarm # 相当于上面2条被注释的指令
+name: AS1-alarm # 相当于上面2条被注释的指令
 
 # 额外代码
 # 字符串形式指示直接SCL代码，内容将合并输出在 Alarm_Loop.SCL 文件中
@@ -100,4 +100,106 @@ loop_end: |-
 
 options: # 选项，非必需，无需要时可以全部删除或注释掉。
   # output_file : 'example.scl'
+
+---
+# 内容与 AS1-alarm 相同，仅仅是CPU中的平台不一样。
+name: AS2-alarm
+
+# 额外代码
+# 字符串形式指示直接SCL代码，内容将合并输出在 Alarm_Loop.SCL 文件中
+# includes的内容需要用户自己写，生成程序不检查其中的错误。
+includes: ~
+
+symbols: 
+# alarm文档已有2个内置符号，其内容由本程序自动生成：
+# - [Alarm_Proc, FB519]  过程值报警主处理函数
+# - [Alarm_Loop, FC519]  主循环调用FC，将这个加入OB1中
+# 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+list: # 过程量列表
+- comment: 1#储罐液位 # 类型:字符串 省略，省略时为 location + type
+  location: 1#储罐    # 类型:字符串 仪表的位置，用于产生报警记录
+  type: 液位          # 类型:字符串 仪表的类型，用于产生报警记录
+
+  # alarm数据块
+  # 类型: S7符号定义 | S7符号引用
+  # 没有该项则忽略转换，只输出 comment
+  DB: [LIT001,  DB200]
+
+  # 输入值
+  # 类型:S7符号定义 | S7符号引用 | SCL表达式
+  # 值: REAL
+  input: '"tank485".TIT0102'
+
+  # 零点初始值，可省略
+  # 类型: null | 浮点数字面量
+  $zero: 0
+
+  # 量程初始值，可省略
+  # 类型: null | 浮点数字面量
+  $span: 14.0
+
+  # 指示过程值是否有效
+  # 在485通讯等情况下，可以避免无效报警
+  # 类型: null | S7符号定义 | S7符号引用 | SCL表达式
+  # 值: BOOL
+  invalid: '"tank485".invalid'
+
+  # 允许报警初始值
+  # $enable_AH $enable_WH $enable_WH $enable_WH 
+  # 类型: null | Bool字面量
+  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
+  $enable_AH: true   # 代表初始时允许AH报警，这时必须定义 $AH_limit
+  $enable_WH: true   # 代表初始时允许WH报警，这时必须定义 $WH_limit
+  $enable_WL: false  # 代表初始时不允许WL报警，可以省略定义 $WL_limit
+  $enable_AL: ~      # 相当于省略，这时由 $AL_limit 决定初始时是否允许AL报警
+
+  # 超限值初始值
+  # 类型: null | 浮点数字面量
+  # 省略或赋值为fasle时，代表该超限报警不启用。
+  # 以下默认了相关超限报警都允许
+  $AH_limit: 12.5    # AH超限初始值为12.5
+  $WH_limit: 12      # WH超限初始值为12
+  $WL_limit: ~       # 没有超限值，等同于省略该项
+  $AL_limit: 3.0     # AL超限初始值为3.0，因上方的设置，这里同时也代表初始允许AL报警
+
+  # 死区初始值
+  # 类型: null | 浮点数字面量
+  $dead_zone: 0.2
+
+  # 容错延时，可省略，默认0，即不延时
+  # 类型: null | 整数字面量 | TIME字面量
+  # 该设置用于过滤过程值的突变，当为整数值时，代表毫秒数
+  $FT_time: TIME#10S # 也可以用 100000 这样的整数
+
+- location: 泵进口
+  type: 温度
+  DB: [TIT0102, DB+] 
+  input: [TIT0102_R, PID256]
+
+  # 以下定义了初始时不允许AH报警，但设定了AH初始超限值
+  $AL_limit: 0.2
+  $enable_AL: false
+
+  # (没有$打头的) enable_AH enable_WH enable_WH enable_WH 用于运行期间的允许报警赋值
+  # 类型:  null | S7符号定义 | S7符号引用 | S7表达式
+  # 值: BOOL
+  enable_AH: '"pump485".run_state' # 代表在运行期间，由泵的运行状态决定是否允许AH报警
+  # 其余的 enable_WH enable_WH enable_WH 没有定义，代表这3项使能在运行中不改变
+  # 一般情况下以上2个只保留一个
+
+- comment: 保留
+  # 在有DB块的情况下，会生成alarm数据块和运行期间的alarm调用
+  # 没有 DB 则只输出注释，不会生成alarm数据块和运行期间的alarm调用
+  DB: [reserve, DB+]
+
+# 用户自写SCL代码，放在循环的开始和结束处。
+loop_begin: |-
+  // 这里的代码将在 Alarm_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 Alarm_Loop 循环结束时执行
+
+options: # 选项，非必需，无需要时可以全部删除或注释掉。
+  # output_file : 'example.scl'
+
 ...

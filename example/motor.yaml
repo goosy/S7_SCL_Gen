@@ -1,8 +1,92 @@
 ---
 #CPU: AS1       # 指示属于哪一个CPU
 #feature: motor # 指示本配置为生成 motor 代码
+name: AS1-motor # 相当于上面2条被注释的指令
 
-name: AS1,AS2-motor # 相当于上面2条被注释的指令
+symbols:  
+# 系统已有2个内置符号，其内容由本程序自动生成：
+# - [Motor_Proc, FB513]   电机主处理函数
+# - [Motor_Loop, FC513]   主调用函数
+# 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+# 以下为自定义符号
+- [DI05-01, M4.0]
+- [DI05-02, M+]
+- [DI05-03, M+]
+- [DI05-04, M+]
+- [DI05-05, M+]
+- [DI05-06, M+]
+- [DI05-07, M+]
+- [DI05-08, M+]
+- [DO05-01, M8.0]
+- [DO05-02, M+]
+- [DO05-03, M+]
+- [DO05-04, M+]
+- [DO05-05, M+]
+- [DO05-06, M+]
+- [DO05-07, M+]
+- [DO05-08, M+]
+
+list :
+  # 没有允许信号时，enable可不赋值，其值默认为TRUE，如果要避免其它过程改变它，可以显式赋值为 true
+  # 没有远程信号时，remote可不赋值，其值默认为TRUE，如果要避免其它过程改变它，可以显式赋值为 true
+  # 没有故障信号时，error可不赋值，其值默认为FALSE，如果要避免其它过程改变它，可以显式赋值为 false
+
+  # 最全输入输出
+- comment: A电机                 # 类型: 字符串
+  # 类型: S7符号定义 | S7符号引用
+  DB: [PUMP-001A, DB91]          # DB块
+  # 以下4项类型: S7符号定义 | S7符号引用 | SCL表达式
+  enable: DI05-01                # 允许运行，（比如已蓄能、高压到位等）
+  run: DI05-02                   # 运行状态
+  error: DI05-03                 # 电机故障输入
+  remote: DI05-04                # 电机远程就地操作模式
+  # 以下为BOOL字面量
+  $stateless: false              # 指示为无状态电机，正常省略，默认为false
+  # 操作返回延时，可省略，默认2000
+  # 类型: null | 整数字面量 | TIME字面量
+  # 该设置用于等待电机改变状态的时间，超时后撤回信号并指示启停失败。
+  # 当为整数值时代表单位毫秒
+  $over_time: 1000
+  # 以下7项类型: S7符号定义 | S7符号引用 | SCL表达式
+  # 需要保证可赋值性
+  run_action: DO05-01            # 接非自保持线路，控制启停
+  start_action: DO05-02          # 启电机线路，设备侧自保持
+  stop_action: DO05-03           # 停电机线路
+  estop_action: DO05-04          # 紧急停机线路
+  run_command: HMI.run_cmd
+  stop_command: HMI.stop_cmd
+  estop_command: HMI.estop_cmd
+
+  # 常用输入输出
+- comment: B电机
+  DB: [PUMP-001B, DB+]
+  enable: DI05-05
+  run: DI05-06
+  error: DI05-07
+  remote: DI05-08
+  start_action: DO05-05
+  stop_action: DO05-06
+
+  # 最少输入输出
+- comment: C电机
+  DB: [PUMP-001C, DB+]
+  # 省略 error(默认FALSE) remote(默认TRUE) 参数时，必须保证PLC运行时不被改变
+  $stateless: true       # 指示没有运行状态
+  run_action: DO05-08    # run_action参数启停电机
+
+# 用户自写SCL代码，放在循环的开始和结束处。
+loop_begin: |-
+  // 这里的代码将在 Motor_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 Motor_Loop 循环结束时执行
+
+options : # 选项，非必需，无需要时可以全部删除或注释掉。
+  # output_file : 'example.scl'
+
+---
+# 内容与 AS1-motor 相同，仅仅是CPU中的平台不一样。
+name: AS2-motor
 
 symbols:  
 # 系统已有2个内置符号，其内容由本程序自动生成：

@@ -102,23 +102,26 @@ function parse_YAML_commented_SCL(str) {
     return { scl, yaml, error: null };
 }
 
+/**
+ * Retrieves the CPU and feature from the given document.
+ *
+ * @param {Document} document - the document to extract CPU and feature information from
+ * @return {{CPU: string, feature: string, error: string | null}} an object containing the CPU, feature, and error information
+ */
 function get_cpu_and_feature(document) {
     const name = nullable_value(STRING, document.get('name'))?.value;
     if (name) {
-        assert(
-            /^[a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*-[a-zA-Z]+$/.test(name),
-            new Error(`name:${name} is not incorrect 名字不正确！`)
-        );
+        if (!/^[a-zA-Z][a-zA-Z0-9_]*-[a-zA-Z]+$/.test(name)) return {
+            cpu: '',
+            feature: '',
+            error: name,
+        };
         const [cpu, feature] = name.split('-');
-        const cpus = cpu.split(',');
-        return { cpus, feature };
+        return { cpu, feature, error: null };
     }
     const cpu = document.get('CPU');
-    const cpus = isSeq(cpu)
-        ? cpu.items.map(item => ensure_value(STRING, item).value)
-        : [cpu];
     const feature = document.get('feature');
-    return { cpus, feature };
+    return { cpu, feature, error: null };
 }
 
 export class GCL {
@@ -167,9 +170,8 @@ export class GCL {
     }
 
     parse_documents(options) {
-        const documents = this.#documents = [];
-        for (const document of parseAllDocuments(this.#yaml, { version: '1.2', lineCounter: this.#line_counter })) {
-            documents.push(document);
+        this.#documents = parseAllDocuments(this.#yaml, { version: '1.2', lineCounter: this.#line_counter });
+        for (const document of this.#documents) {
             try {
                 // yaml library only support merge key in YAML 1.1
                 // so use our own merge function
@@ -178,27 +180,31 @@ export class GCL {
                 console.error(`${error.message}:${this.get_pos_info(...error.range)}`);
                 process.exit(1);
             }
-            const error = new SyntaxError(`"${this.file}"文件中有一文档的 name 或者 CPU,feature 没有正确提供!`);
 
-            const { cpus, feature = options.feature } = get_cpu_and_feature(document);
-            assert(typeof feature === 'string', error);
-            assert(cpus.length > 0, error);
-            cpus.forEach((cpu, index) => {
-                cpu ??= options.CPU;
-                assert(typeof cpu === 'string' && cpu !== '', error);
-                // if multi CPU then clone document
-                const doc = index === 0 ? document : document.clone();
-                if (index > 0) documents.push(doc);
-                doc.gcl = this;
-                doc.offset ??= 0;
-                doc.CPU = cpu;
-                Object.defineProperty(doc, 'feature', {
-                    get() {
-                        return feature;
-                    },
-                    enumerable: true,
-                    configurable: false,
-                });
+            const {
+                cpu = options.CPU,
+                feature = options.feature,
+                error: error
+            } = get_cpu_and_feature(document);
+            if (error) {
+                throw new Error(`"${this.file}"文件中某文档的 name:${error} 不正确！`);
+            }
+            if (typeof cpu !== 'string') {
+                throw new SyntaxError(`"${this.file}"文件中某文档的 CPU 没有正确提供!`);
+            }
+            if (typeof feature !== 'string') {
+                throw new SyntaxError(`"${this.file}"文件中某文档的 feature 没有正确提供!`);
+            }
+
+            document.gcl = this;
+            document.offset ??= 0;
+            document.CPU = cpu;
+            Object.defineProperty(document, 'feature', {
+                get() {
+                    return feature;
+                },
+                enumerable: true,
+                configurable: false,
             });
         }
     }

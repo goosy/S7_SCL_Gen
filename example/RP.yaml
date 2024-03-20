@@ -2,7 +2,64 @@
 #CPU: AS1        # 指示 CPU 名称是 AS1
 #feature: RP     # 指示本配置为生成 RP 代码
 
-name: AS1,AS2-RP     # 相当于上面2条被注释的指令
+name: AS1-RP     # 相当于上面2条被注释的指令
+
+# 要求 step7 预先引入 SFB3`TP` SFB4`TON` SFB5`TOF`
+
+symbols: 
+  # RP 文档已有 2 个内置符号，其内容由本程序自动生成：
+  # - [DP, FB3]  防颤(debounce)边沿脉冲
+  # - [CP, FB4]  边沿脉冲
+  # - [RP_Loop, FC521]  主循环调用FC，将这个加入OB1中
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+list:
+# 以下举例6种类型的延时或脉冲
+- comment: 溢出延时报警
+  DB: [overflow, DB50]
+  type: onDelay
+  input: [overflowsignal, I22.0] # 溢出信号
+  $time: TIME#3M                 # 延时时长
+  output: [OFAlarm, Q22.0]       # 溢出报警
+- comment: 风扇延时关闭
+  DB: [resetFan, DB+]
+  type: offDelay
+  input: OFAlarm.Q               # 溢出信号
+  $time: TIME#1h                 # 延时1小时关闭风扇
+  output: [FanRun, Q22.1]        # 风扇控制
+- comment: 烘干延时
+  DB: [drywork, DB+]
+  type: onPulse
+  input: [onfetch, I22.2]        # 有进件
+  $time: TIME#10M                # 烘干10分钟
+  output: [dryon, Q22.2]         # 启动烘干
+- comment: 涨潮退潮通知
+  DB: [tidenotice, DB+]
+  type: changePulse
+  input: [tidesignal, I22.3]     # 潮水状态
+  $time: TIME#1h                 # 通知1小时
+  output: [turnonsound, Q22.3]   # 启动音响
+- comment: 声控灯光
+  DB: [on_sound_light, DB+]
+  type: onDPulse
+  input: [onsound, I22.4]        # 有人声
+  $time: 120000                  # 光亮时长，可以直接用毫秒数
+  output: [lighton, Q22.4]       # 亮灯
+- comment: 泵状态屏蔽联锁
+  DB: [pumpCD, DB+]
+  type: changeDPulse
+  input: [pump_run, I22.5]       # 泵运行
+  $time: 300000                  # 屏蔽联锁时间
+
+# 用户自写SCL代码，放在循环的开始和结束处。
+loop_begin: |-
+  // 这里的代码将在 RP_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 RP_Loop 循环结束时执行
+
+---
+# 内容与 AS1-RP 相同，仅仅是CPU中的平台不一样。
+name: AS2-RP
 
 # 要求 step7 预先引入 SFB3`TP` SFB4`TON` SFB5`TOF`
 
