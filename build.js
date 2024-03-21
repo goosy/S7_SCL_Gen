@@ -46,7 +46,7 @@ function get_module_path(...filename) {
 
 async function build() {
     // create fake src/symbols_buildin.yaml
-    await write_file(get_module_path('src', 'symbols_buildin.yaml'), '', { encoding: 'utf8', lineEndings: 'unix' });
+    await write_file(get_module_path('src', 'symbols_buildin.yaml'), '', { encoding: 'utf8', line_ending: 'LF' });
 
     const files = await readdir(get_module_path('src', 'converters'));
     const features = [];
@@ -98,7 +98,7 @@ async function build() {
         await write_file(
             filename,
             buildin_yaml,
-            { encoding: 'utf8', lineEndings: 'unix' }
+            { encoding: 'utf8', line_ending: 'LF' }
         );
         console.log(`file ${filename} generated!`);
     }
@@ -111,7 +111,7 @@ async function build() {
             { converters, supported_category, pad_right },
             await read_file(get_module_path('src', 'converter.template'), { encoding: 'utf8' }),
         ),
-        { encoding: 'utf8', lineEndings: 'unix' }
+        { encoding: 'utf8', line_ending: 'LF' }
     );
     console.log(`file ${filename} generated!`);
 

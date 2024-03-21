@@ -397,7 +397,7 @@ The converter convert them to the correct type . 转换器将它们转换为合�
                 `# CPU ${name} configuration`
             );
             const filename = `${posix.join(context.work_path, cpu.output_dir, name)}.zyml`;
-            await write_file(filename, yaml, { encoding: 'utf8', lineEndings: 'unix' });
+            await write_file(filename, yaml, { encoding: 'utf8', line_ending: 'unix' });
             console.log(`\t${filename}`);
         }
     }

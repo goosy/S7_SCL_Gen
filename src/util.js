@@ -25,7 +25,7 @@ const context = {
     silent: false,
     IE: 'utf8',
     OE: 'gbk',
-    lineEndings: 'windows',
+    line_ending: 'CRLF',
     custom_converters,
 };
 
@@ -110,19 +110,19 @@ async function read_file(filename, options = {}) {
     return '';
 }
 
-function unix2dos(str) {
+function LF2CRLF(str) {
     return str.replaceAll('\r', '').replaceAll('\n', '\r\n');
 }
 
-function dos2unix(str) {
+function CRLF2LF(str) {
     return str.split('\r\n').join('\n');
 }
 
-async function write_file(filename, content, { encoding, lineEndings } = {}) {
+async function write_file(filename, content, { encoding, line_ending } = {}) {
     encoding ??= context.OE;
-    lineEndings ??= context.lineEndings;
+    line_ending ??= context.line_ending;
     await prepare_dir(dirname(filename));
-    let buff = iconv.encode(lineEndings == "windows" ? unix2dos(content) : dos2unix(content), encoding);
+    let buff = iconv.encode(line_ending == "CRLF" ? LF2CRLF(content) : CRLF2LF(content), encoding);
     await writeFile(filename, buff);
 }
 

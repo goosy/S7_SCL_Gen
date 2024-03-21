@@ -24,7 +24,7 @@ options:
 --output-zyml                转换时同时输出无注释的配置文件(后缀为.zyml)
 --zyml-only   | -z | -Z      只输出无注释的配置文件，不进行SCL转换
 --silent      | -s | -S      不输出过程信息
---line-endings               输出文件的换行符: windows unix
+--line-ending               输出文件的换行符: CRLF LF
 --OE                         输出文件的编码: gbk utf8 等
 --<feature>-template         指定某个功能的模板文件，文件名要相对路径
 
@@ -55,8 +55,8 @@ const silent = argv.silent;
 if (silent) context.silent = silent;
 const encoding = argv.OE;
 if (encoding) context.OE = encoding;
-const lineEndings = argv['line-endings'];
-if (lineEndings) context.lineEndings = lineEndings;
+const line_ending = argv['line-ending'];
+if (line_ending) context.line_ending = line_ending;
 
 supported_features.forEach(feature => {
     const template = argv[`${feature}-template`];
