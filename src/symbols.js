@@ -649,6 +649,9 @@ export function gen_symbols(cpu_list) {
             .sort((a, b) => compare_str(a.name, b.name))
             .sort((a, b) => compare_str(a.address, b.address));
         return {
+            CPU: cpu.name,
+            feature: '',
+            platform: cpu.platform,
             path: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
             tags: { symbol_list },
             template,

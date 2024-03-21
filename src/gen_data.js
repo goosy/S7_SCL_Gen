@@ -282,21 +282,78 @@ async function parse_conf() {
     return cpu_list;
 }
 
-async function gen_data_list(cpu_list) {
+/**
+ * @typedef {Object} CopyItem
+ * @property {string} src the source file
+ * @property {string} dst the distance file
+ * @property {string|null} IE the encoding of the source file
+ * @property {boolean} enable the enable of converting action or copying action
+ * @property {string} CPU the name of the CPU
+ * @property {string} feature
+ * @property {string} platform
+ * @property {string|null} content the file content
+ * @property {string} OE the encoding of the distance file
+ * @property {string} line_ending the line_ending of the distance file
+ */
+
+/**
+ * @typedef {CopyItem[]} CopyList
+ */
+
+/**
+ * @typedef {Object} ConvertItem
+ * @property {object} tags the variables for substitution on the template
+ * @property {string} template the template string
+ * @property {string} dst the distance file
+ * @property {boolean} enable the enable of converting action or copying action
+ * @property {string} CPU the name of the CPU
+ * @property {string} feature
+ * @property {string} platform
+ * @property {string|null} content the file content
+ * @property {string} OE the encoding of the distance file
+ * @property {string} line_ending the line_ending of the distance file
+ */
+
+/**
+ * @typedef {ConvertItem[]} ConvertList
+ */
+
+/**
+ * Generate copy and conversion lists based on the provided configuration.
+ *
+ * @param {Array.<CPU>} cpu_list - Array of CPU to process
+ * @return {{copy_list: CopyList, convert_list: ConvertList}} Object containing the lists of files to copy and convert
+ */
+async function gen_list(cpu_list) {
     const work_path = context.work_path;
+    /** @type CopyItem[] */
     const copy_list = [];
+    /** @type ConvertItem[] */
     const convert_list = [];
     for (const cpu of cpu_list) {
         const { name: cpu_name, platform } = cpu;
         for (const feature of supported_features) {
             const area = cpu[feature];
             if (area === undefined) continue;
+
             const output_dir = posix.join(work_path, cpu.output_dir);
+            const common_options = {
+                CPU: cpu_name,
+                feature,
+                platform,
+                OE: context.OE,
+                line_ending: context.line_ending,
+                enable: true,
+            }
+
             for (const file of area.files) {
+                /** @type string | undinfied */
+                const IE = file.IE;
+                const line_ending = file.line_ending ?? context.line_ending;
+                const OE = file.OE ?? context.OE;
                 const is_filename = typeof file === 'string';
                 const name = is_filename ? file : file.filename;
-                const encoding = file.encoding ?? 'utf8';
-                if (/\\/.test(name)) elog(new SyntaxError('路径分隔符要使用"/"!'));
+                if (/\\/.test(name)) elog(new SyntaxError('Use "/" as the path separator!'));
                 let [dir, base] = name.split('//');
                 if (base == undefined) {
                     base = posix.basename(name);
@@ -304,26 +361,26 @@ async function gen_data_list(cpu_list) {
                 }
                 dir = posix.join(work_path, dir);
                 for (const filename of await globby(posix.join(dir, base))) {
-                    const src = is_filename ? filename : { filename, encoding };
-                    const dst = filename.replace(dir, output_dir);
-                    copy_list.push({ src, dst });
+                    copy_list.push({
+                        ...common_options,
+                        IE, src: filename,
+                        OE, dst: filename.replace(dir, output_dir),
+                        line_ending,
+                    });
                 }
             };
 
             const gcl = area.document.gcl;
             const gen_copy_list = converter[feature].gen_copy_list;
             assert.equal(typeof gen_copy_list, 'function', `innal error: gen_copy_list of ${feature} is not a function`);
-            const ct_copy_list = gen_copy_list(area);
-            assert(Array.isArray(ct_copy_list), `innal error: return value of gen_copy_list(area) of ${feature} is not a Array`);
-            copy_list.push(...ct_copy_list);
+            const f_copy_list = gen_copy_list(area).map(item => ({ ...common_options, ...item }));
+            copy_list.push(...f_copy_list);
 
             // push each gen(area) to convert_list
             const gen = converter[feature].gen;
             assert.equal(typeof gen, 'function', `innal error: gen of ${feature} is not a function`);
-            const ct_convert_list = gen(area)
-            assert(Array.isArray(ct_convert_list), `innal error: return value of gen(area) of ${feature} is not a Array`);
-            for (const item of ct_convert_list) {
-                const path = item.path;
+            for (const item of gen(area)) {
+                const dst = posix.join(work_path, item.path);
                 const tags = { // 提供一些默认变量
                     context, gcl,
                     pad_left, pad_right, fixed_hex,
@@ -332,18 +389,20 @@ async function gen_data_list(cpu_list) {
                     ...item.tags,
                 }
                 const template = await get_template(feature, item.template);
-                convert_list.push({ path, tags, template });
+                convert_list.push({ ...common_options, tags, template, dst });
             };
         }
     };
-    convert_list.push(
-        ...gen_symbols(cpu_list), // symbols converter
-        ...gen_alarms(cpu_list), // alarms converter
-    );
+    const symbols_list = gen_symbols(cpu_list);
+    symbols_list.forEach(item => item.dst = posix.join(work_path, item.path));
+    const alarms_list = gen_alarms(cpu_list);
+    alarms_list.forEach(item => item.dst = posix.join(work_path, item.path));
+    convert_list.push(...symbols_list, ...alarms_list);
     return { copy_list, convert_list };
 }
 
 export async function gen_data() {
+    WRONGTYPESYMBOLS.clear();
     // 第一遍扫描 加载配置\提取符号\建立CPU及诊断信息
     const cpu_list = await parse_conf();
 
@@ -397,11 +456,11 @@ The converter convert them to the correct type . 转换器将它们转换为合�
                 `# CPU ${name} configuration`
             );
             const filename = `${posix.join(context.work_path, cpu.output_dir, name)}.zyml`;
-            await write_file(filename, yaml, { encoding: 'utf8', line_ending: 'unix' });
+            await write_file(filename, yaml, { encoding: 'utf8', line_ending: 'LF' });
             console.log(`\t${filename}`);
         }
     }
 
     // 生成最终待转换数据
-    return await gen_data_list(cpu_list);
+    return gen_list(cpu_list);
 }
