@@ -11,7 +11,11 @@ import {
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
-import { context, get_template, write_file, pad_left, pad_right, fixed_hex, elog } from './util.js';
+import {
+    context, get_template,
+    read_file, write_file,
+    pad_left, pad_right, fixed_hex, elog
+} from './util.js';
 import { nullable_value, STRING } from "./s7data.js";
 
 /**
@@ -39,28 +43,64 @@ const CPUs = {
     },
 };
 
-async function parse_includes(includes, options) {
-    let gcl_list = [], code = '';
-    if (typeof includes == 'string') return { code: includes, gcl_list };
-    const filenames = includes ? includes.toJSON() : [];
-    if (!Array.isArray(filenames)) return { code, gcl_list };
-    const work_path = context.work_path;
-    try {
-        for (const file of filenames) {
-            const filename = typeof file === 'string' ? file : file.filename;
-            const encoding = file.encoding ?? 'utf8';
-            const gcl = await GCL.load_from_SCL(
-                posix.join(work_path, filename),
-                { ...options, encoding }
-            );
-            gcl_list.push(gcl);
-        };
-        code = gcl_list.map(gcl => gcl.scl).join('\n\n');
-    } catch (err) {
-        code = '';
-        console.error(err.message);
+
+/**
+ * Parses YAML commented SCL strings and remove `(** **)` comment
+ *
+ * @param {string} str - the SCL string with `(** **)` comment
+ * @return {{scl: string, error: SyntaxError | null}} an object containing the parsed SCL
+ */
+function parse_SCL(str) {
+    let scl = '';
+    let in_comment = false;
+    let start = 0;
+    const line_ends = [
+        ...str.matchAll(/\r\n|\n|\r/g),
+        { index: str.length },
+    ].map(match => match.index);
+    const error = new SyntaxError(`SCL文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。`);
+    const error_result = { scl, error };
+
+    // SCL中只能用注释进行符号定义
+    for (const end of line_ends) {
+        const line = str.substring(start, end);
+        const head = line.replace(/\n|\r/g, '').substring(0, 3);
+        const on_start = head === '(**';
+        const on_end = head === '**)';
+
+        if (on_start) {
+            if (in_comment || line.trim() !== '(**') return error_result;
+            in_comment = true;
+        } else if (on_end) {
+            if (!in_comment || line.trim() !== '**)') return error_result;
+            in_comment = false;
+        } else if (!in_comment) {
+            scl += line;
+        }
+        start = end;
     }
-    return { code, gcl_list };
+    scl = scl.trim();
+    return { scl, error: null };
+}
+
+async function parse_includes(includes, options) {
+    if (typeof includes == 'string') return includes;
+    const filenames = includes ? includes.toJSON() : [];
+    let code = [];
+    if (!Array.isArray(filenames)) return '';
+    for (const file of filenames) {
+        const filename = typeof file === 'string' ? file : file.filename;
+        const encoding = file.encoding ?? 'utf8';
+        const content = await read_file(posix.join(context.work_path, filename), { encoding });
+        const tags = { ...options, encoding };
+        const { scl, error } = parse_SCL(content);
+        if (error) {
+            console.error(err.message);
+            return '';
+        };
+        code.push(convert(tags, scl)); // subsitute tags in SCL
+    };
+    return code.join('\n\n');
 }
 
 async function create_fake_CPU_doc(CPU) {
@@ -92,6 +132,14 @@ async function add_conf(document) {
         file 文件:"${document.gcl.file}"
         The conversion of this feature will be skipped 将跳过该转换功能s`);
         return;
+    } else if (feature !== document.feature) {
+        Object.defineProperty(document, 'feature', {
+            get() {
+                return feature;
+            },
+            enumerable: true,
+            configurable: false,
+        });
     }
     const _converter = converter[feature];
 
@@ -137,23 +185,12 @@ async function add_conf(document) {
     const attributes = attributes_node?.toJSON() ?? {};
     const loop_begin = nullable_value(STRING, document.get('loop_begin'))?.value;
     const loop_end = nullable_value(STRING, document.get('loop_end'))?.value;
-    const {
-        code: includes,
-        gcl_list,
-    } = await parse_includes(document.get('includes'), {
+    const includes = await parse_includes(document.get('includes'), {
         ...attributes,
         CPU: cpu.name, feature,
         platform: cpu.platform,
     });
 
-    // 包含文件符号 [YAMLSeq symbol]
-    gcl_list.forEach(gcl => {
-        gcl.documents.forEach(doc => {
-            doc.CPU = cpu;
-            const symbols_of_includes = add_symbols(doc, get_Seq(doc, 'symbols'));
-            cpu.symbols.push_buildin(...symbols_of_includes.map(symbol => symbol.name)); // 将包含文件的符号扩展到内置符号名称列表
-        })
-    });
     // 内置符号文档
     const buildin_doc = BUILDIN_SYMBOLS.documents.find(doc => doc.feature === feature).clone();
     buildin_doc.CPU = cpu;
@@ -163,7 +200,7 @@ async function add_conf(document) {
         get_Seq(buildin_doc, 'symbols')
     );
 
-    // 符号引用
+    // 符号引用 (在符号表中不导出)
     if (feature === 'CPU') {
         [
             // 内置引用
@@ -176,7 +213,7 @@ async function add_conf(document) {
                 document,
                 get_Seq(document, 'reference_symbols')
             ),
-        ].forEach(symbol => { // 所有引用符号不导出
+        ].forEach(symbol => {
             symbol.exportable = false
         });
     }
@@ -214,9 +251,9 @@ async function parse_conf() {
                 const filename = posix.join(work_path, file);
                 const gcl = await GCL.load(filename);
                 for (const doc of gcl.documents) {
-                    let cpu = CPUs[doc.CPU];
+                    let cpu = CPUs[doc.cpu_name];
                     if (!cpu) {
-                        cpu = CPUs.get_or_create(doc.CPU);
+                        cpu = CPUs.get_or_create(doc.cpu_name);
                         cpu_list.push(cpu);
                     }
                     Object.defineProperty(doc, 'CPU', {

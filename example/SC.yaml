@@ -18,7 +18,7 @@ description: |
 includes:
 # 可通过指定includes，系统自动添加对应代码进 CP_Loop.scl 中。
 # 如果发送接收块的FB背景块，建议将该FB的定义文件放入includes中
-- A101.SCL      # 该文件包含 A101L 符号的定义 [A101L, FB802] 和 FB 实现
+- A101.SCL      # 该文件包含 A101L FB 的实现
 - FXGasFlow.scl
 
 symbols:
@@ -35,6 +35,9 @@ symbols:
 # 如果发送数据需要动态更改，则建议发送和接收都用同一个FB背景块方便处理。
 # 转换程序能对发送块接收块是FB背景块的情况自动生成FB调用代码，注意接收FB不要有参数！
 # 这类FB不通用，需要另外单独写SCL代码。
+- [A101L, FB802]
+- [FXGasFlow, FB803, ~, 福鑫天然气流量接收块]
+- [FXGasWrite, FB811, ~, 写气表参数处理块]
 - [Flow30, DB830, JS_flow]
 - [GAS, DB841, FXGasFlow]
 - [cmd_ret, DB+, FXGasWrite]

@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { convert } from 'gooconverter';
 import {
     Document, parseAllDocuments,
     isMap, isSeq, isAlias, isScalar,
     LineCounter,
     visit,
 } from 'yaml';
-import { read_file, elog } from './util.js';
+import { read_file } from './util.js';
 import { STRING, nullable_value } from './s7data.js';
 
 function merge(document) {
@@ -58,70 +57,34 @@ export function get_Seq(doc, nodename) {
 }
 
 /**
- * Parses YAML commented SCL strings and converts them into separate suitable forms
- *
- * @param {string} str - the SCL string with YAML comment
- * @return {{scl: string, yaml: string, error: SyntaxError | null}} an object containing the parsed SCL and YAML
- */
-function parse_YAML_commented_SCL(str) {
-    let scl = '';
-    let yaml = '';
-    let inYAML = false;
-    let start = 0;
-    const line_ends = [
-        ...str.matchAll(/\r\n|\n|\r/g),
-        { index: str.length },
-    ].map(match => match.index);
-    const error = new SyntaxError(`SCL文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。`);
-    const error_result = { scl, yaml, error };
-
-    // SCL中只能用注释进行符号定义
-    for (const end of line_ends) {
-        const line = str.substring(start, end);
-        const head = line.replace(/\n|\r/g, '').substring(0, 3);
-        const on_start = head === '(**';
-        const on_end = head === '**)';
-
-        if (on_start) {
-            if (inYAML || line.trim() !== '(**') return error_result;
-            inYAML = true;
-            yaml += line.replace('(**', '---');
-        } else if (on_end) {
-            if (!inYAML || line.trim() !== '**)') return error_result;
-            inYAML = false;
-            yaml += line.replace('**)', '...');
-        } else if (inYAML) {
-            yaml += line;
-        } else {
-            scl += line;
-            yaml += line.trim() === '' ? line : '#' + line.substring(1);
-        }
-        start = end;
-    }
-    scl = scl.trim();
-    return { scl, yaml, error: null };
-}
-
-/**
  * Retrieves the CPU and feature from the given document.
  *
  * @param {Document} document - the document to extract CPU and feature information from
  * @return {{CPU: string, feature: string, error: string | null}} an object containing the CPU, feature, and error information
  */
 function get_cpu_and_feature(document) {
+    let error = null;
     const name = nullable_value(STRING, document.get('name'))?.value;
     if (name) {
         if (!/^[a-zA-Z][a-zA-Z0-9_]*-[a-zA-Z]+$/.test(name)) return {
-            cpu: '',
+            cpu_name: '',
             feature: '',
-            error: name,
+            error: `name:${name} 不正确！`,
         };
-        const [cpu, feature] = name.split('-');
-        return { cpu, feature, error: null };
+        const [cpu_name, feature] = name.split('-');
+        return { cpu_name, feature, error: null };
     }
-    const cpu = document.get('CPU');
-    const feature = document.get('feature');
-    return { cpu, feature, error: null };
+    let cpu_name = document.get('CPU');
+    if (typeof cpu_name !== 'string') {
+        cpu_name = '';
+        error = `CPU 没有正确提供!`;
+    }
+    let feature = document.get('feature');
+    if (typeof feature !== 'string') {
+        feature = '';
+        error = `feature 没有正确提供!`;
+    }
+    return { cpu_name, feature, error };
 }
 
 export class GCL {
@@ -165,7 +128,7 @@ export class GCL {
         return this.#MD5;
     }
 
-    parse_documents(options) {
+    parse_documents() {
         this.#documents = parseAllDocuments(this.#yaml, { version: '1.2', lineCounter: this.#line_counter });
         for (const document of this.#documents) {
             try {
@@ -177,25 +140,27 @@ export class GCL {
                 process.exit(1);
             }
 
-            const {
-                cpu = options.CPU,
-                feature = options.feature,
-                error
-            } = get_cpu_and_feature(document);
+            const { cpu_name, feature, error } = get_cpu_and_feature(document);
             if (error) {
-                throw new Error(`"${this.file}"文件中某文档的 name:${error} 不正确！`);
-            }
-            if (typeof cpu !== 'string') {
-                throw new SyntaxError(`"${this.file}"文件中某文档的 CPU 没有正确提供!`);
-            }
-            if (typeof feature !== 'string') {
-                throw new SyntaxError(`"${this.file}"文件中某文档的 feature 没有正确提供!`);
+                throw new Error(`"${this.file}"文件中某文档 ${error}`);
             }
 
             document.gcl = this;
             document.offset ??= 0;
-            document.CPU = cpu;
-            document.feature = feature;
+            Object.defineProperty(document, 'cpu_name', {
+                get() {
+                    return cpu_name;
+                },
+                enumerable: true,
+                configurable: false,
+            });
+            Object.defineProperty(document, 'feature', {
+                get() {
+                    return feature;
+                },
+                enumerable: true,
+                configurable: true,
+            });
         }
     }
 
@@ -210,10 +175,10 @@ export class GCL {
             scl = '',
         } = options;
         this.#file = filename;
-        this.#source =  source;
+        this.#source = source;
         this.#scl = scl;
         this.#MD5 = createHash('md5').update(this.#source).digest('hex');
-        this.parse_documents({ CPU, feature });
+        this.parse_documents();
     }
 
     static async load(filename, options = {}) {
@@ -223,21 +188,6 @@ export class GCL {
             ...options,
             filename,
             source: yaml,
-        });
-        return gcl;
-    }
-
-    static async load_from_SCL(filename, options = {}) {
-        const encoding = options.encoding ?? 'utf8';
-        const content = await read_file(filename, { encoding });
-        const tags = options ?? {};
-        const { scl, yaml, error } = parse_YAML_commented_SCL(content);
-        if (error) elog(error);
-        const gcl = new GCL(yaml, {
-            ...options,
-            filename,
-            source: content,
-            scl: convert(tags, scl), // subsitute tags in SCL
         });
         return gcl;
     }

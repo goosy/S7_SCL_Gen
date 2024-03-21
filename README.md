@@ -175,13 +175,13 @@ includes: |
     Tank1 := W#16#02D0;
   END_DATA_BLOCK
 ```
-II. **数组**   表示文件列表，列表项为同目录下的相对路径名称，或是包含名称和编码格式的对象，转换程序会提取每一个文件内容作为合并来源
+II. **数组** 表示文件列表，列表项为同目录下的相对路径名称，或是包含名称和编码格式的对象，转换程序会提取每一个文件内容作为合并来源
 
 例：
 
 ```yaml
 includes:
-- A101.scl                                   # 只有文件名称的写法，默认该文件编码格式为 UTF-8
+- JSFlow.scl                                 # 只有文件名称的写法，默认该文件编码格式为 UTF-8
 - filename: FXGasFlow.scl                    # 文件对象的写法
   encoding: utf8                             # 指明文件编码
 - {filename: JS_Flow.scl, encoding: gbk}     # 写在一行里的文件对象，指明文件编码
@@ -189,32 +189,55 @@ includes:
 
 includes只能采用上述2种之一，由于在YAML中书写SCL代码有很多局限，推荐用外部文件的方式。
 
-注意： includes 所指向的额外SCL代码需要用户自己编写，生成程序不检查其语法错误。生成器会解析外部SCL文件中含的注释中的S7符号。
+注意： includes 所指向的额外SCL代码需要用户自己编写，生成程序不检查其语法错误。
 
-【高级应用】
+> [!tip] 高级应用1
+> 外部SCL文件可以使用 `{{ expression }}` 替换符，在主 yaml 文件 `attributes` 部分定义要替换要字符串，实现更好的复用。
 
-可以在外部SCL文件中用 `(**` 和 `**)` 两行包裹的注释中依照上文格式进行符号定义，例：
+```SCL
+DATA_BLOCK "PE{{ tag_postfix_number }}"
+{{if platform == "step7"}}_
+{ S7_m_c := 'true'}
+{{endif}}_
+{{if platform == "portal"}}_
+{ S7_Optimized_Access := 'FALSE' }
+{{endif}}_
+AUTHOR:Goosy
+FAMILY:GooLib
+STRUCT
+  U_VFD {S7_m_c := 'true'}: INT ;       // 506 变频器电压
+  I_VFD {S7_m_c := 'true'}: INT ;       // 507 变频器电流
+  Ua {S7_m_c := 'true'}: INT ;          // 511 AA_电压
+  Ub {S7_m_c := 'true'}: INT ;          // 512 BB_电压
+  Uc {S7_m_c := 'true'}: INT ;          // 513 CC_电压
+  error {S7_m_c := 'true'}: INT ;       // 515 故障代码
+END_STRUCT;
+BEGIN
+END_DATA_BLOCK
+```
+
+> [!tip] 高级应用2
+> 可以在外部SCL文件中用 `(**` 和 `**)` 两行包裹注释，这些注释不会输出在最终的SCL中：
 
 ```scl
 (**
-symbols: 
-- [JSFlow, FB801, ~, 智能表头接收处理]
+description: |
+  Syntax_ID: BYTE;     Always 10 Hex
+  DataType: BYTE;      Code for data type
+                       1 BOOL  2 BYTE 3 CHAR  4 WORD  5 INT  6 DWORD  7 DINT  8 REAL
+  count: WORD;         Number of Byte
+  DB_Number: WORD;     Numbet of DB
+  Byte_Pointer: DWORD; Pointer to bit- and byte address
 **)
-FUNCTION_BLOCK "A101L"
-……
-END_FUNCTION_BLOCK
-```
-
-外部SCL文件定义的符号，将会作为该配置就是文档的内置符号，可以在配置文档正文中覆盖该符号定义。
-
-```yaml
-CPU: AS
-feature: MT
-includes:
-- JSFlow.scl # 该文件定义了内置符号 [JSFlow, FB801, ~, 智能表头接收处理]
-symbols: 
-- [JSFlow, FB100, ~, 智能表头接收处理] # 没有本行，JSFlow的地址默认为FB801，本行将地址修改为FB100
-list:
+TYPE UDT_ANY_Pointer
+STRUCT
+  Syntax_ID: BYTE;
+  DataType: BYTE;
+  count: WORD;
+  DB_Number: WORD;
+  Byte_Pointer: DWORD;
+END_STRUCT
+END_TYPE
 ```
 
 #### 3.2.4 files 额外复制的文件
@@ -243,7 +266,8 @@ files:
 - foo/a_folder                       # 文件夹复制，产生目标文件夹 `output_dir/a_folder`，并包含该文件夹下的文件
 ```
 
-【高级应用1】 如果需要复制相对路径，可用"//"放置在需保留的路径范围之前。
+> [!tip] 高级应用1
+> 如果需要复制相对路径，可用"//"放置在需保留的路径范围之前。
 
 ```yaml
 files:
@@ -251,7 +275,8 @@ files:
 - `- ../..//lib/c.scl`               # 会将 `../lib/c.scl` 复制为 `output_dir/lib/c.scl`
 ```
 
-【高级应用2】 可以指明源文件的编码格式，这样可以转换成西门子认识的 GBK 编码格式
+> [!tip] 高级应用2
+> 可以指明源文件的编码格式，这样可以转换成西门子认识的 GBK 编码格式
 
 ```yaml
 files:
@@ -260,7 +285,8 @@ files:
 - {filename: folder, encoding: gbk}  # 在一行里附加编码格式，这里复制 `folder` 文件夹，里面的源文件编码都是GBK
 ```
 
-【高级应用3】 可以使用 glob 匹配符。
+> [!tip] 高级应用3
+> 可以使用 glob 匹配符。
 
 ```yaml
 files:

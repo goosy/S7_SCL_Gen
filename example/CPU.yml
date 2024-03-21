@@ -53,8 +53,8 @@ attributes: # 用于包含文件PE.scl的转换
 includes:       # includes 用来包含到该类型转换后的输出文件中，会解析文件中的符号定义
                 # 可参照本示例写出其它自定义接收块函数。
 - JSFLow.scl    # 指示将配置目录下的 JSFlow.scl 文件包含进来
-                # (该文件包含 JS_flow 符号的定义和接收DB块的数据结构，用于一诺的智能流量表)
-- PE.scl    # 另一个要包含的文件
+                # (该文件包含 JS_flow 的定义和接收DB块的数据结构，用于一诺的智能流量表)
+- PE.scl        # 另一个要包含的文件
 
 files:          # files 仅仅是复制该文件到输出文件夹中
 - ..//README.md # 复制说明文件，也可以复件其它的手工代码的SCL、AWL文件
@@ -87,8 +87,8 @@ symbols:
 # - [Clock_0.625Hz, M10.6]
 # - [Clock_0.5Hz,   M10.7]
 # 没有配置 Clock_Byte 时，则不产生任何时钟存储器符号
-- [Clock_Byte, MB10]   # 设置时钟存储器为MB10，请务必保证该值与在step7项目中的设定一致
-- [JS_flow, FB100]     # 修改JSFLow.scl文件中内置符号，地址由默认的FB01改变为FB100
+- [Clock_Byte, MB10]                   # 设置时钟存储器为MB10，请务必保证该值与在step7项目中的设定一致
+- [JS_flow, FB100, ~, 智能表头接收处理]  # 提供 JSFLow.scl 文件中对应的符号
 
 # 自定义符号
 - [vw1, MW1000] # 测试MW

@@ -1,7 +1,3 @@
-(**
-symbols:
-- [A101L, FB802]
-**)
 FUNCTION_BLOCK "A101L"
 TITLE='珠峰液位接收块'
 VERSION:'1.0'

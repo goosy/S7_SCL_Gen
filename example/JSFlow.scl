@@ -1,7 +1,3 @@
-(**
-symbols:
-- [JS_flow, FB801, ~, 智能表头接收处理]
-**)
 FUNCTION_BLOCK "JS_flow"
 TITLE='一诺智能表接收处理'
 VERSION:'1.0'
