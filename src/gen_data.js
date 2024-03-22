@@ -4,10 +4,10 @@ import { posix } from 'node:path';
 import { globby } from 'globby';
 import { convert } from 'gooconverter';
 import { isMap } from 'yaml';
-import { supported_features, converter, CPU } from './converter.js';
+import { supported_features, converter } from './converter.js';
 import { GCL, get_Seq, isString } from './gcl.js';
 import {
-    add_symbols, gen_symbols,
+    add_symbols, gen_symbols, S7SymbolEmitter,
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
 import { gen_alarms } from './alarms.js';
@@ -16,20 +16,99 @@ import {
     read_file, write_file,
     pad_left, pad_right, fixed_hex, elog
 } from './util.js';
-import { nullable_value, STRING } from "./s7data.js";
+import { nullable_value, STRING, IntHashList } from "./s7data.js";
 
 /**
  * @typedef {import('yaml').Document} Document - YAML Document
  */
 
 /**
- * @typedef  {object} Area
- * @property {Document} document - 文档
- * @property {Array} list - 列表
- * @property {string|string[]} includes - 包括列表
- * @property {string[]} files - 文件列表
- * @property {object} options - 选项
+ * @typedef {object} Area
+ * @property {Document} document
+ * @property {Array} list
+ * @property {object} attributes custom attributes
+ * @property {string|string[]} includes custom SCL code or files list to include into the final generated code
+ * @property {string[]} files files to be copied list
+ * @property {string} loop_begin custom SCL at the beginning of the loop
+ * @property {string} loop_end custom SCL at the end of the loop
+ * @property {object} options options
  */
+
+/**
+ * @typedef {Object} NonSymbol
+ * @property {string} value - 符号表达式
+ * @property {string} desc - 错误描述
+ */
+
+class CPU {
+    /** @type {string} */
+    name;                             // CPU 名称
+    /** @type {string} */
+    platform;                         // 由CPU文档设置，默认 'step7'
+    /** @type {string} */
+    device;                           // 由CPU文档设置
+
+    #areas = {};              // 该CPU的功能区
+    /**
+     * Retrieves the specified feature area from the CPU.
+     *
+     * @param {string} feature -  name of the feature
+     * @return {Area|null} the specified feature from the feature areas
+     */
+    get_area(feature) {
+        return this.#areas[feature];
+    }
+    /**
+     * Set the feature area to the CPU.
+     *
+     * @param {string} feature - name of the feature
+     * @param {Area} area - value of the area
+     * @return {void}
+     */
+    set_area(feature, area) {
+        if (this.#areas[feature]) {
+            throw new Error(`feature ${feature} of the CPU ${this.name} is already defined`);
+        }
+        this.#areas[feature] = area;
+    }
+    /**
+     * Returns an array of area in the CPU.
+     *
+     * @return {[string,Area][]} An array containing all the area in the CPU.
+     */
+    get areas() {
+        return Object.entries(this.#areas);
+    }
+
+    /** @type {string} */
+    output_dir;                       // 输出文件夹
+
+    /** @type {S7SymbolEmitter} */
+    symbols = new S7SymbolEmitter();  // 符号调度中心
+    /** @type {Promise.<S7Symbol>[]} */
+    async_symbols = [];               // 该CPU的异步符号列表
+    /** @type {NonSymbol[]} */
+    non_symbols = [];                 // 该CPU的非符号列表.push({ value, desc: s7_expr_desc });
+
+    /** @type {IntHashList} */
+    conn_ID_list = new IntHashList(16); // 已用连接ID列表
+    /** @type {Object.<string, number>} */
+    conn_host_list = {};             // 已用的连接地址列表
+    /**
+     * @type { {
+     *   tagname: string,
+     *   location: string,
+     *   event: string,
+     *   PV1: string
+     * } }
+     */
+    alarms_list = [];                // 该CPU的报警列表
+
+    constructor(name) {
+        this.name = name;
+        this.output_dir = name;
+    }
+}
 
 const CPUs = {
     /**
@@ -123,7 +202,7 @@ async function create_fake_CPU_doc(CPU) {
  * @date 2022-07-03
  * @param {import('yaml').Document} document
  */
-async function add_conf(document) {
+async function parse_doc(document) {
     // feature
     const feature = supported_features.find(name => converter[name].is_feature(document.feature));
     if (!feature) {
@@ -143,16 +222,16 @@ async function add_conf(document) {
     }
     const _converter = converter[feature];
 
-    // CPU
+    /** @type {CPU} */
     const cpu = document.CPU;
-    if (feature !== 'CPU' && cpu.CPU == null) {
-        // create a blank CPU document if cpu.CPU desn't exist
+    if (feature !== 'CPU' && cpu.get_area('CPU') == null) {
+        // create a blank CPU document if CPU area desn't exist
         const doc = await create_fake_CPU_doc(cpu);
-        add_conf(doc);
+        parse_doc(doc);
     }
-    if (cpu[feature]) {
+    if (cpu.get_area(feature)) {
         console.error(`configuration ${cpu.name}-${feature} is duplicated. 配置 ${cpu.name}-${feature} 重复存在!
-        previous file 上一文件: ${cpu[feature].document.gcl.file}
+        previous file 上一文件: ${cpu.get_area(feature).document.gcl.file}
         current file  当前文件: ${document.gcl.file}
         Please correct and convert again. 请更正后重新转换。`);
         process.exit(2);
@@ -234,13 +313,14 @@ async function add_conf(document) {
     if (options.output_file) {
         options.output_file = convert({ cpu_name }, options.output_file);
     }
+    /** @type Area */
     const area = {
         document, attributes,
         includes, files, list, loop_begin, loop_end,
         options
     };
     // 按类型压入文档至CPU
-    cpu[feature] = area;
+    cpu.set_area(feature, area);
     // 将 area.list 的每一项由 YAMLNode 转换为可供模板使用的数据对象
     _converter.initialize_list(area);
 }
@@ -276,7 +356,7 @@ async function parse_conf() {
             }
         }
         for (const doc of docs) {
-            await add_conf(doc);
+            await parse_doc(doc);
         }
 
         // wait for all symbols to complete
@@ -338,10 +418,7 @@ async function gen_list(cpu_list) {
     const convert_list = [];
     for (const cpu of cpu_list) {
         const { name: cpu_name, platform } = cpu;
-        for (const feature of supported_features) {
-            const area = cpu[feature];
-            if (area === undefined) continue;
-
+        for (const [feature, area] of cpu.areas) {
             const output_dir = posix.join(work_path, cpu.output_dir);
             const common_options = {
                 cpu_name,
@@ -413,7 +490,6 @@ export async function gen_data() {
     const cpu_list = await parse_conf();
 
     // 第二遍扫描 补全数据
-
     // 非符号提示
     if (!context.silent && cpu_list.find(cpu => cpu.non_symbols.length)) {
         console.log(`
@@ -424,10 +500,9 @@ Please make sure they are legal and valid S7 expressions. 请确保它们是合�
         );
     }
     for (const cpu of cpu_list) {
-        for (const feature of supported_features) {
-            const area = cpu[feature];
+        for (const [feature, area] of cpu.areas) {
             const build_list = converter[feature].build_list;
-            if (area && typeof build_list === 'function') build_list(area);
+            if (typeof build_list === 'function') build_list(area);
         };
         const non_symbols = cpu.non_symbols;
         non_symbols.forEach(({ value, desc }) => {
@@ -457,10 +532,9 @@ The converter convert them to the correct type . 转换器将它们转换为合�
         for (const cpu of cpu_list) {
             const name = cpu.name;
             // 生成无注释的配置
-            const yaml = supported_features.reduce(
-                (yaml, feature) => cpu[feature] ? `${yaml}\n\n${cpu[feature].document.toString(options)}` : yaml,
-                `# CPU ${name} configuration`
-            );
+            let yaml = `# CPU ${name} configuration\n\n` + cpu.areas.map(
+                ([feature, area]) => `# feature: ${feature}\n${area.document.toString(options)}`
+            ).join('\n\n');
             const filename = `${posix.join(context.work_path, cpu.output_dir, name)}.zyml`;
             await write_file(filename, yaml, { encoding: 'utf8', line_ending: 'LF' });
             console.log(`\t${filename}`);

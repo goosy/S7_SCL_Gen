@@ -35,66 +35,6 @@
 import * as {{feature}} from './converters/converter_{{feature}}.js';
 {{endfor // converter}}_
 
-import { IntHashList } from './s7data.js';
-import { S7SymbolEmitter } from './symbols.js';
-
-/**
- * @typedef  {object} Area
- * @property {Document} document - 文档
- * @property {Array} list - 列表
- * @property {string|string[]} includes - 包括列表
- * @property {string[]} files - 文件列表
- * @property {object} options - 选项
- */
-
-/**
- * @typedef {Object} NonSymbol
- * @property {string} value - 符号表达式
- * @property {string} desc - 错误描述
- */
-
-class ICPU{
-    /** @type {string} */
-    name;                             // CPU 名称
-    /** @type {string} */
-    platform;                         // 由CPU文档设置，默认 'step7'
-    /** @type {string} */
-    device;                           // 由CPU文档设置
-{{for cat in supported_category}}_
-    /** @type {Area|null} */
-    {{pad_right(cat.feature + ';', 34)}}// 由 {{cat.feature}} 文档设置
-{{endfor}}_
-
-    /** @type {string} */
-    output_dir;                       // 输出文件夹
-
-    /** @type {S7SymbolEmitter} */
-    symbols = new S7SymbolEmitter();  // 符号调度中心
-    /** @type {Promise.<S7Symbol>[]} */
-    asnyc_symbols = [];               // 该CPU的异步符号列表
-    /** @type {NonSymbol[]} */
-    non_symbols = [];                 // 该CPU的非符号列表.push({ value, desc: s7_expr_desc });
-
-    /** @type {IntHashList} */
-    conn_ID_list = new IntHashList(16); // 已用连接ID列表
-    /** @type {Object.<string, number>} */
-    conn_host_list = {};             // 已用的连接地址列表
-    /**
-     * @type { {
-     *   tagname: string,
-     *   location: string,
-     *   event: string,
-     *   PV1: string
-     * } }
-     */
-    alarms_list = [];                // 该CPU的报警列表
-
-    constructor(name){
-        this.name = name;
-        this.output_dir = name;
-    }
-}
-
 const supported_features = [
 {{for cat in supported_category}}_
     '{{cat.feature}}',
@@ -106,4 +46,4 @@ const converter = {
 {{endfor // converter}}_
 }
 
-export { ICPU as CPU, supported_features, converter };
+export { supported_features, converter };
