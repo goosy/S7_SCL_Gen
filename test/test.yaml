@@ -1,5 +1,5 @@
 ---
-name: test-AI
+name: dist-AI
 
 files:
 - filename: test.yaml
