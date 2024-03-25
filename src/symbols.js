@@ -652,7 +652,7 @@ export function gen_symbols(cpu_list) {
             CPU: cpu.name,
             feature: '',
             platform: cpu.platform,
-            path: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
+            dst: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
             tags: { symbol_list },
             template,
         };

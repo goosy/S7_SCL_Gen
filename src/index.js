@@ -14,18 +14,18 @@ async function convert() {
     if (copy_list?.length) {
         silent || console.log("\ncopy file to: 复制文件至：");
         for (const copy_item of copy_list) {
-            const { src, dst, IE, OE, line_ending } = copy_item;
+            const { source, distance, IE, OE, line_ending } = copy_item;
             if (IE == null) { // copy directly without specifying encoding
-                await copy_file(src, dst);
+                await copy_file(source, distance);
             } else {
-                let content = await read_file(src, { encoding: IE });
+                let content = await read_file(source, { encoding: IE });
                 copy_item.content = content;
                 if (OE == 'gbk' && content.charCodeAt(0) === 0xFEFF) { // remove BOM
                     content = content.substring(1);
                 }
-                await write_file(dst, content, { encoding: OE, line_ending });
+                await write_file(distance, content, { encoding: OE, line_ending });
             }
-            silent || console.log(`\t${dst}`)
+            silent || console.log(`\t${distance}`)
         }
     }
 
@@ -33,12 +33,12 @@ async function convert() {
         silent || console.log("\ngenerate file: 生成文件：");
         // Asynchronous sequential execution 异步顺序执行
         for (const convert_item of convert_list) {
-            const { dst, tags, template, OE, line_ending } = convert_item;
+            const { distance, tags, template, OE, line_ending } = convert_item;
             const content = gc(tags, template);
             convert_item.content = content;
             // 由 noconvert 变量决定是否输出
-            context.noconvert || await write_file(dst, content, { encoding: OE, line_ending });
-            context.silent || console.log(`\t${dst}`);
+            context.noconvert || await write_file(distance, content, { encoding: OE, line_ending });
+            context.silent || console.log(`\t${distance}`);
         }
     }
     return { copy_list, convert_list };

@@ -8,7 +8,7 @@ export function gen_alarms(cpu_list) {
             CPU: cpu.name,
             feature: '',
             platform: cpu.platform,
-            path: `${cpu.output_dir}/alarms.csv`,
+            dst: `${cpu.output_dir}/alarms.csv`,
             tags: { list: cpu.alarms_list },
             template,
         })

@@ -92,22 +92,23 @@ export function gen({ document, options = {} }) {
     const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const path = `${output_dir}/${output_file}`;
+    const dst = `${output_dir}/${output_file}`;
     const tags = { LOOP_NAME };
     const template = 'RP.template';
-    return [{ path, tags, template }];
+    return [{ dst, tags, template }];
 }
 
-export function gen_copy_list(item) {
-    function gen_copy_pair(filename) {
-        const src = posix.join(context.module_path, 'RP_Trigger', filename);
-        const IE = 'utf8';
-        const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
-        return { src, dst, IE };
+export function gen_copy_list({ document }) {
+    const copy_list = [];
+    const IE = 'utf8';
+    function push_copy_item(filename) {
+        const src = posix.join('RP_Trigger', filename);
+        const source = posix.join(context.module_path, src);
+        const dst = posix.join(document.CPU.output_dir, filename);
+        const distance = posix.join(context.work_path, dst);
+        copy_list.push({ src, source, dst, distance, IE });
     }
-
-    return [
-        gen_copy_pair(`${CP_NAME}.scl`),
-        gen_copy_pair(`${DP_NAME}.scl`)
-    ];
+    push_copy_item(`${CP_NAME}.scl`);
+    push_copy_item(`${DP_NAME}.scl`);
+    return copy_list;
 }

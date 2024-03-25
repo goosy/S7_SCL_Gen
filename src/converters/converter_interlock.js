@@ -378,10 +378,10 @@ export function gen({ document, options = {} }) {
     const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const path = `${output_dir}/${output_file}`;
+    const dst = `${output_dir}/${output_file}`;
     const tags = { LOOP_NAME };
     const template = 'interlock.template';
-    return [{ path, tags, template }];
+    return [{ dst, tags, template }];
 }
 
 export function gen_copy_list() {

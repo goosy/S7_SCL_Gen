@@ -369,7 +369,9 @@ async function parse_conf() {
 /**
  * @typedef {Object} CopyItem
  * @property {string} src the source file
+ * @property {string} source the source file whit full path
  * @property {string} dst the distance file
+ * @property {string} distance the distance file whit full path
  * @property {string|null} IE the encoding of the source file
  * @property {boolean} enable the enable of converting action or copying action
  * @property {string} CPU the name of the CPU
@@ -389,6 +391,7 @@ async function parse_conf() {
  * @property {object} tags the variables for substitution on the template
  * @property {string} template the template string
  * @property {string} dst the distance file
+ * @property {string} distance the distance file whit full path
  * @property {boolean} enable the enable of converting action or copying action
  * @property {string} CPU the name of the CPU
  * @property {string} feature
@@ -433,19 +436,21 @@ async function gen_list(cpu_list) {
                 const line_ending = file.line_ending ?? context.line_ending;
                 const OE = file.OE ?? context.OE;
                 const is_filename = typeof file === 'string';
-                const name = is_filename ? file : file.filename;
-                if (/\\/.test(name)) elog(new SyntaxError('Use "/" as the path separator!'));
-                let [dir, base] = name.split('//');
+                const src = is_filename ? file : file.filename;
+                if (/\\/.test(src)) elog(new SyntaxError('Use "/" as the path separator!'));
+                let [dir, base] = src.split('//');
                 if (base == undefined) {
-                    base = posix.basename(name);
-                    dir = posix.dirname(name);
+                    base = posix.basename(src);
+                    dir = posix.dirname(src);
                 }
+                const dst = src.replace(dir, output_dir);
                 dir = posix.join(work_path, dir);
-                for (const filename of await globby(posix.join(dir, base))) {
+                for (const source of await globby(posix.join(dir, base))) {
+                    const distance = source.replace(dir, output_dir);
                     copy_list.push({
                         ...common_options,
-                        IE, src: filename,
-                        OE, dst: filename.replace(dir, output_dir),
+                        IE, src, source,
+                        OE, dst, distance,
                         line_ending,
                     });
                 }
@@ -461,7 +466,8 @@ async function gen_list(cpu_list) {
             const gen = converter[feature].gen;
             assert.equal(typeof gen, 'function', `innal error: gen of ${feature} is not a function`);
             for (const item of gen(area)) {
-                const dst = posix.join(work_path, item.path);
+                const dst = item.dst;
+                const distance = posix.join(work_path, dst);
                 const tags = { // 提供一些默认变量
                     context, gcl,
                     pad_left, pad_right, fixed_hex,
@@ -470,15 +476,13 @@ async function gen_list(cpu_list) {
                     ...item.tags,
                 }
                 const template = await get_template(feature, item.template);
-                convert_list.push({ ...common_options, tags, template, dst });
+                convert_list.push({ ...common_options, tags, template, dst, distance });
             };
         }
     };
-    const symbols_list = gen_symbols(cpu_list);
-    symbols_list.forEach(item => item.dst = posix.join(work_path, item.path));
-    const alarms_list = gen_alarms(cpu_list);
-    alarms_list.forEach(item => item.dst = posix.join(work_path, item.path));
-    convert_list.push(...symbols_list, ...alarms_list);
+    const extra_gen_list = [...gen_symbols(cpu_list), ...gen_alarms(cpu_list)];
+    extra_gen_list.forEach(item => item.distance = posix.join(work_path, item.dst));
+    convert_list.push(...extra_gen_list);
     return { copy_list, convert_list };
 }
 

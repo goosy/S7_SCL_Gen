@@ -56,16 +56,18 @@ export function gen({ document, options = {} }) {
     const { CPU } = document;
     const { output_dir } = CPU;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const path = `${output_dir}/${output_file}`;
+    const dst = `${output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME };
     const template = 'timer.template';
-    return [{ path, tags, template }];
+    return [{ dst, tags, template }];
 }
 
-export function gen_copy_list(item) {
-    const filename = item.document.CPU.platform == 'portal' ? `${NAME}(portal).scl` : `${NAME}.scl`;
-    const src = posix.join(context.module_path, NAME, filename);
+export function gen_copy_list({ document }) {
+    const filename = document.CPU.platform == 'portal' ? `${NAME}(portal).scl` : `${NAME}.scl`;
+    const src = posix.join(NAME, filename);
+    const source = posix.join(context.module_path, src);
+    const dst = posix.join(document.CPU.output_dir, `${NAME}.scl`);
+    const distance = posix.join(context.work_path, dst);
     const IE = 'utf8';
-    const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
-    return [{ src, dst, IE }];
+    return [{ src, source, dst, distance, IE }];
 }
