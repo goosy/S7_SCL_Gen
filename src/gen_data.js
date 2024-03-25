@@ -110,18 +110,24 @@ class CPU {
     }
 }
 
-const CPUs = {
+/**
+ * @constructor
+ * @extends {Map<string, CPU>}
+ */
+class Cpu_Pool extends Map {
     /**
      * 按照名称返回一个CPU，如果该名称CPU不存在，就产生一个新CPU
      * @param {string} name
      * @returns {CPU}
      */
-    get_or_create(name) {
-        // 从已有CPU中找，如没有则建立一个初始CPU资源数据
-        return CPUs[name] ??= new CPU(name);
-    },
-};
-
+    get(name) {
+        if (super.has(name)) {
+            return super.get(name);
+        }
+        this.set(name, new CPU(name));
+        return super.get(name);
+    }
+}
 
 /**
  * Parses YAML commented SCL strings and remove `(** **)` comment
@@ -328,6 +334,7 @@ async function parse_doc(document) {
 async function parse_conf() {
     const docs = [];
     const cpu_list = [];
+    const cpu_pool = new Cpu_Pool();
     const work_path = context.work_path;
     const silent = context.silent;
     try {
@@ -337,11 +344,7 @@ async function parse_conf() {
                 const filename = posix.join(work_path, file);
                 const gcl = await GCL.load(filename);
                 for (const doc of gcl.documents) {
-                    let cpu = CPUs[doc.cpu_name];
-                    if (!cpu) {
-                        cpu = CPUs.get_or_create(doc.cpu_name);
-                        cpu_list.push(cpu);
-                    }
+                    let cpu = cpu_pool.get(doc.cpu_name);
                     Object.defineProperty(doc, 'CPU', {
                         value: cpu,
                         writable: false,
@@ -359,6 +362,7 @@ async function parse_conf() {
             await parse_doc(doc);
         }
 
+        cpu_list.push(...cpu_pool.values());
         // wait for all symbols to complete
         cpu_list.forEach(cpu => cpu.symbols.emit('finished'));
         await Promise.all(cpu_list.map(cpu => cpu.async_symbols).flat());
