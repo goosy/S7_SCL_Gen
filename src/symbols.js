@@ -547,7 +547,7 @@ export async function make_s7_expression(value, infos = {}) {
     const allow_symbol_def = infos.disallow_symbol_def !== true;
     const allow_symbol_link = infos.disallow_symbol_link !== true;
     const { document, s7_expr_desc } = infos;
-    const { symbols, asnyc_symbols, non_symbols } = document.CPU;
+    const { symbols, async_symbols, non_symbols } = document.CPU;
     if (value == undefined) {
         if (disallow_null) elog(new Error('不允许空值'));
         return value;
@@ -589,7 +589,7 @@ export async function make_s7_expression(value, infos = {}) {
             });
             symbols.on('finished', fn);
         });
-        asnyc_symbols.push(promise);
+        async_symbols.push(promise);
         return promise;
     } else {
         return do_s7expr(); // 获得S7表达式
