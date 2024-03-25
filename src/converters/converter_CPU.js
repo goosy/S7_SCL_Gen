@@ -110,10 +110,10 @@ export function gen({ document, includes, list, options = {} }) {
     const { output_dir } = CPU;
     const { output_file = NAME + '.scl' } = options;
     if (includes.length || list.length) {
-        const path = `${output_dir}/${output_file}`;
+        const dst = `${output_dir}/${output_file}`;
         const tags = {}
         const template = 'CPU.template';
-        return [{ path, tags, template }];
+        return [{ dst, tags, template }];
     };
     return [];
 }
