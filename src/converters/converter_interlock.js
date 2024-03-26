@@ -1,8 +1,9 @@
+import { posix } from 'node:path';
 import { make_s7_expression, add_symbol, is_common_type } from '../symbols.js';
 import { BOOL, STRING, ensure_value, nullable_value } from '../s7data.js';
 import { isString } from '../gcl.js';
 import { isMap, isSeq } from 'yaml';
-import { elog } from '../util.js';
+import { context, elog } from '../util.js';
 
 export const platforms = ['step7', 'portal']; // platforms supported by this feature
 export const LOOP_NAME = 'Interlock_Loop';
@@ -380,7 +381,7 @@ export function gen({ document, options = {} }) {
     const { output_file = LOOP_NAME + '.scl' } = options;
     const dst = `${output_dir}/${output_file}`;
     const tags = { LOOP_NAME };
-    const template = 'interlock.template';
+    const template = posix.join(context.module_path, 'src/converters/interlock.template');
     return [{ dst, tags, template }];
 }
 

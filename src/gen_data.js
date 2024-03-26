@@ -372,6 +372,7 @@ async function parse_conf() {
  * @property {string} source the source file whit full path
  * @property {string} dst the distance file
  * @property {string} distance the distance file whit full path
+ * @property {string} type 'copy'
  * @property {string|null} IE the encoding of the source file
  * @property {boolean} enable the enable of converting action or copying action
  * @property {string} CPU the name of the CPU
@@ -392,6 +393,7 @@ async function parse_conf() {
  * @property {string} template the template string
  * @property {string} dst the distance file
  * @property {string} distance the distance file whit full path
+ * @property {string} type 'convert'
  * @property {boolean} enable the enable of converting action or copying action
  * @property {string} CPU the name of the CPU
  * @property {string} feature
@@ -437,6 +439,7 @@ async function gen_list(cpu_list) {
                 const OE = file.OE ?? context.OE;
                 const is_filename = typeof file === 'string';
                 const src = is_filename ? file : file.filename;
+                const type = 'copy';
                 if (/\\/.test(src)) elog(new SyntaxError('Use "/" as the path separator!'));
                 let [dir, base] = src.split('//');
                 if (base == undefined) {
@@ -448,7 +451,7 @@ async function gen_list(cpu_list) {
                 for (const source of await globby(posix.join(dir, base))) {
                     const distance = source.replace(dir, output_dir);
                     copy_list.push({
-                        ...common_options,
+                        ...common_options, type,
                         IE, src, source,
                         OE, dst, distance,
                         line_ending,
@@ -459,7 +462,9 @@ async function gen_list(cpu_list) {
             const gcl = area.document.gcl;
             const gen_copy_list = converter[feature].gen_copy_list;
             assert.equal(typeof gen_copy_list, 'function', `innal error: gen_copy_list of ${feature} is not a function`);
-            const f_copy_list = gen_copy_list(area).map(item => ({ ...common_options, ...item }));
+            const f_copy_list = gen_copy_list(area).map(
+                item => ({ ...common_options, ...item, type: 'copy' })
+            );
             copy_list.push(...f_copy_list);
 
             // push each gen(area) to convert_list
@@ -475,13 +480,18 @@ async function gen_list(cpu_list) {
                     ...area,
                     ...item.tags,
                 }
+                const type = 'convert';
                 const template = await get_template(feature, item.template);
-                convert_list.push({ ...common_options, tags, template, dst, distance });
+                convert_list.push({ ...common_options, type, tags, template, dst, distance });
             };
         }
     };
     const extra_gen_list = [...gen_symbols(cpu_list), ...gen_alarms(cpu_list)];
-    extra_gen_list.forEach(item => item.distance = posix.join(work_path, item.dst));
+    extra_gen_list.forEach(item => {
+        item.distance = posix.join(work_path, item.dst);
+        item.enable = true;
+        item.type = 'convert';
+    });
     convert_list.push(...extra_gen_list);
     return { copy_list, convert_list };
 }
