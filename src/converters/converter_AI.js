@@ -97,7 +97,7 @@ export function gen({ document, options = {} }) {
     const { output_file = LOOP_NAME + '.scl' } = options;
     const dst = `${output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME };
-    const template = 'AI.template';
+    const template = posix.join(context.module_path, 'src/converters/AI.template');
     return [{ dst, tags, template }];
 }
 

@@ -6,10 +6,8 @@ import {
 
 import {
     pad_left, pad_right,
-    context, get_template,
+    get_template,
 } from '../src/util.js';
-
-context.custom_converters.AI = { template: 'test/test.template' };
 
 describe('util test', () => {
     it('pad_left test', () => {
@@ -23,6 +21,6 @@ describe('util test', () => {
         strictEqual(pad_right('abcdef', 15, '*'), 'abcdef*********');
     })
     it('get_template test', async () => {
-        strictEqual(await get_template('AI'), '测试: {{LOOP_NAME}}\n文件: {{gcl.file}}');
+        strictEqual(await get_template('AI', 'test/test.template'), '测试: {{LOOP_NAME}}\n文件: {{gcl.file}}');
     })
 });

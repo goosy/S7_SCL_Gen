@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
+import { posix } from 'node:path';
 import { convert } from 'gooconverter';
 import { add_symbols, make_s7_expression } from '../symbols.js';
 import { STRING, nullable_value } from '../s7data.js';
-import { elog } from '../util.js';
+import { context, elog } from '../util.js';
 
 export const NAME = 'CPU';
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
@@ -112,7 +113,7 @@ export function gen({ document, includes, list, options = {} }) {
     if (includes.length || list.length) {
         const dst = `${output_dir}/${output_file}`;
         const tags = {}
-        const template = 'CPU.template';
+        const template = posix.join(context.module_path, 'src/converters/CPU.template');
         return [{ dst, tags, template }];
     };
     return [];

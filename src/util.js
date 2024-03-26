@@ -1,5 +1,5 @@
 import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, posix } from 'node:path';
+import { basename, dirname, posix, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import iconv from 'iconv-lite';
 import { Integer } from './s7data.js';
@@ -34,15 +34,16 @@ const templates_cache = new Map();
  * Retrieves a template for a given feature.
  *
  * @param {string} feature - the feature for which the template is needed
- * @param {string} template_file - the file containing the template
+ * @param {string} file - the file containing the template
  * @return {Promise<string>} the template content as a string
  */
-async function get_template(feature, template_file) {
-    const custom_template_file = context.custom_converters[feature]?.template;
-    template_file ??= `${feature}.template`;
-    const filename = custom_template_file
-        ? posix.join(work_path, custom_template_file)
-        : posix.join(module_path, 'src', 'converters', template_file);
+async function get_template(feature, file) {
+    const template_file = context.custom_converters[feature]?.template
+        ?? file
+        ?? posix.join(module_path, 'src', 'converters', `${feature}.template`);
+    const filename = isAbsolute(template_file)
+        ? template_file
+        : posix.join(work_path, template_file);
     if (templates_cache.has(filename)) return templates_cache.get(filename);
     let template = await read_file(filename);
     templates_cache.set(filename, template);
@@ -184,5 +185,11 @@ function lazyassign(obj, prop, lazyvalue, options) {
             enumerable,
             configurable,
         });
+    }
+}
+
+export async function forEachAsync(arr, callback) {
+    for (const item of arr) {
+        await callback(item);
     }
 }
