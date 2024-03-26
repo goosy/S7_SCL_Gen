@@ -261,7 +261,7 @@ export function gen({ document, invoke_code, options }) {
     const { output_file = LOOP_NAME + '.scl' } = options;
     const dst = `${output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME, invoke_code, POLLS_NAME };
-    const template = 'MT.template';
+    const template = posix.join(context.module_path, 'src/converters/MT.template');
     return [{ dst, tags, template }];
 }
 
