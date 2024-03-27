@@ -5,26 +5,23 @@ import { context, read_file, forEachAsync } from '../src/util.js';
 import { match_list } from '../src/rules.js';
 import { convert } from '../src/index.js';
 
-
 chdir('./test');
 context.work_path = cwd().replace(/\\/g, '/');
 context.silent = true;
-// context.noconvert = true;
-const { copy_list: copy_list1, convert_list: convert_list1 } = await convert([
-    {
-        pattern: { enable: true },
-        actions: { enable: false }, // 不实际输出
-    }
-]);
+context.noconvert = true;
+
+// 实例1
+const { copy_list, convert_list: _1 } = await convert();
+
+// 实例2 应用 rulers
 const template = await read_file('test.template');
-// 支持多实例
-const { copy_list: _, convert_list: convert_list2 } = await convert([
+const { copy_list: _2, convert_list } = await convert([
     {
         pattern: { type: 'copy' },
-        actions: { enable: false },
+        modifications: { enable: false },
     }, {
         pattern: { distance: ['!**.csv', '!**.asc'], template: '*' },
-        actions: { template },
+        modifications: { template },
     }
 ]);
 
@@ -32,14 +29,14 @@ describe('生成SCL测试', () => {
     describe('配置正确转换', () => {
         it('复制指定文件', async () => {
             const src = '**/AI_Proc(step7).scl';
-            match_list(copy_list1, {
+            match_list(copy_list, {
                 CPU: 'dist',
                 feature: 'AI',
                 src,
             }).forEach(item => {
                 equal(item.dst, `dist/AI_Proc.scl`);
             });
-            match_list(copy_list1, {
+            match_list(copy_list, {
                 CPU: 'dist',
                 dst: `**/test.yaml`,
             }).forEach(item => {
@@ -47,7 +44,7 @@ describe('生成SCL测试', () => {
             });
             const source = `${context.work_path}/test.yaml`;
             await forEachAsync(
-                match_list(copy_list1, {
+                match_list(copy_list, {
                     CPU: 'dist',
                     src: '**/test.yaml',
                 }),
@@ -55,20 +52,14 @@ describe('生成SCL测试', () => {
             );
         });
         it('检查指定属性', () => {
-            match_list(copy_list1, {
-                feature: 'CPU',
-            }).forEach(item => {
+            match_list(copy_list, { feature: 'CPU', }).forEach(item => {
                 equal(item.CPU, 'dist');
             });
-            ok(match_list(copy_list1, {
-                feature: 'AI',
-            }).length);
-            ok(match_list(copy_list1, {
-                platform: 'step7',
-            }).length);
+            ok(match_list(copy_list, { feature: 'AI', }).length);
+            ok(match_list(copy_list, { platform: 'step7', }).length);
         });
         it('生成指定文件', () => {
-            const AI_out = match_list(convert_list2, {
+            const AI_out = match_list(convert_list, {
                 feature: 'AI',
                 dst: `**/AI_Loop.scl`,
             });
@@ -77,10 +68,10 @@ describe('生成SCL测试', () => {
                 item.content,
                 `测试: AI_Loop\n文件: D:/codes/AS/S7_SCL_Gen/test/test.yaml`,
             ));
-            ok(match_list(convert_list2, {
-                CPU: 'dist',
-                dst: `**/alarms.csv`,
-            }).length);
+            ok(match_list(
+                convert_list,
+                { CPU: 'dist', dst: `**/alarms.csv`, }
+            ).length);
         });
     });
 });

@@ -5,6 +5,7 @@ import { supported_features, converter } from './converter.js';
 import { apply_rules } from './rules.js';
 
 export { convert, context, supported_features, converter };
+export { get_rules } from './rules.js';
 
 async function _convert(copy_list, convert_list) {
     const silent = context.silent;
