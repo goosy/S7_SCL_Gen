@@ -487,7 +487,7 @@ async function gen_list(cpu_list) {
                     ...item.tags,
                 }
                 const type = 'convert';
-                const template = await get_template(feature, item.template);
+                const template = await get_template(item.template, feature);
                 convert_list.push({ ...common_options, type, tags, template, dst, distance });
             };
         }

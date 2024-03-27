@@ -15,7 +15,6 @@ export {
 
 const module_path = posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), "../../");
 const work_path = process.cwd().replace(/\\/g, '/');
-const custom_converters = {};
 const context = {
     module_path,
     work_path,
@@ -26,7 +25,6 @@ const context = {
     IE: 'utf8',
     OE: 'gbk',
     line_ending: 'CRLF',
-    custom_converters,
 };
 
 const templates_cache = new Map();
@@ -34,13 +32,11 @@ const templates_cache = new Map();
  * Retrieves a template for a given feature.
  *
  * @param {string} feature - the feature for which the template is needed
- * @param {string} file - the file containing the template
+ * @param {string} template_file - the file containing the template
  * @return {Promise<string>} the template content as a string
  */
-async function get_template(feature, file) {
-    const template_file = context.custom_converters[feature]?.template
-        ?? file
-        ?? posix.join(module_path, 'src', 'converters', `${feature}.template`);
+async function get_template(template_file, feature) {
+    template_file ??= posix.join(module_path, 'src', 'converters', `${feature}.template`);
     const filename = isAbsolute(template_file)
         ? template_file
         : posix.join(work_path, template_file);

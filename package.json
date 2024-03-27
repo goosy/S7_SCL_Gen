@@ -41,12 +41,12 @@
         "s7scl": "./lib/cli.js"
     },
     "scripts": {
-        "clean": "rimraf -g ./example/*/ ./lib",
+        "clean": "rimraf -g ./example/*/ ./lib ./test/dist",
         "dev": "rimraf -g ./example/*/ && node ./dev.js",
         "build": "node ./build.js",
         "prepublish": "pnpm clean && pnpm build",
         "watch": "nodemon ./build.js",
-        "test": "mocha"
+        "test": "rimraf -g ./test/dist && mocha"
     },
     "keywords": [
         "modbusTCP",
