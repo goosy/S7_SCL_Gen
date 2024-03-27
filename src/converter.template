@@ -20,13 +20,12 @@
 // - template_file
 //       转换模板文件，文件名可以自定义，建议使用 `<feature_name>.template`
 //       使用建议文件名时，gen 函数返回的每个 ConverItem 可以省略 template_file
-//       当调用方设置了 context.custom_converters[<feature_name>].template 时
-//       该模板文件将被替换为设置值
+//       否则必须在 ConverItem 中设置 template_file 值
 //
 // 每个转换器可选实现
-//   function build_list(area: Area)
+// - function build_list(area: Area)
 //       第二遍扫描文档时完善转换项
-//   <feature_name>.yaml
+// - <feature_name>.yaml
 //       该yaml文件描述该转换类型的内置符号列表，文件放在.js同一文件夹下
 //       如果转换器引用了其它库里的符号，请保证在 `./src/convertersCPU.yaml` 中定义了该符号
 
