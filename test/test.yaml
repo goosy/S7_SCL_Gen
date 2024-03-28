@@ -9,5 +9,21 @@ symbols:
 - [DI01-01, I10.1]
 
 list : # AI列表
-- comment: test
+- comment: AI test
+  DB: [TIT101, DB1]
+  AI: DI01-01
+
+---
+name: dist-alarm
+
+files:
+
+symbols:
+- [LIT001, DB2]
+
+list : # alarm列表
+- comment: alarm test
+  DB: LIT001
+  input: tank485.LIT001
+
 ...

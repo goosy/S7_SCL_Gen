@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isSeq } from 'yaml';
-import { compare_str, pad_right, pad_left, elog } from './util.js';
+import { context, compare_str, pad_right, pad_left, elog } from './util.js';
 import {
     S7HashList, IntHashList, HLError,
     s7addr2foct, foct2S7addr
@@ -652,7 +652,8 @@ export function gen_symbols(cpu_list) {
             CPU: cpu.name,
             feature: '',
             platform: cpu.platform,
-            dst: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
+            distance: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
+            output_dir: context.work_path,
             tags: { symbol_list },
             template,
         };

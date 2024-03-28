@@ -39,7 +39,7 @@ async function get_template(template_file, feature) {
     template_file ??= posix.join(module_path, 'src', 'converters', `${feature}.template`);
     const filename = isAbsolute(template_file)
         ? template_file
-        : posix.join(work_path, template_file);
+        : posix.resolve(template_file);
     if (templates_cache.has(filename)) return templates_cache.get(filename);
     let template = await read_file(filename);
     templates_cache.set(filename, template);
