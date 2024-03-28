@@ -1,7 +1,5 @@
 ---
-configuration: ".."
-
-global_tags: # 全局
+config_path: ".."
 
 rules:             # 规则列表 符合pattern的复制项或转换项，应用modifications的修改
 - pattern:
@@ -11,14 +9,14 @@ rules:             # 规则列表 符合pattern的复制项或转换项，应用
 - pattern:
     type: convert  # 指示是一个 convert_item
   modifications:
-    template: ../test.template
+    template: ../template.md
 - pattern: '*'     # 匹配所有
   modifications:
-    output_dir: test/target
+    output_dir: ../target
 
 ---
 
-configuration: ".."
+config_path: ".."
 
 rules:
 - pattern:

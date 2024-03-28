@@ -119,20 +119,19 @@ export function build_list({ document, list }) {
 }
 
 export function gen({ document, options = {} }) {
-    const { CPU } = document;
-    const { output_dir } = CPU;
+    const output_dir = context.work_path;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const dst = `${output_dir}/${output_file}`;
+    const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME, FM3502_CNT_NAME };
     const template = posix.join(context.module_path, 'src/converters/PI.template');
-    return [{ dst, tags, template }];
+    return [{ distance, output_dir, tags, template }];
 }
 
 export function gen_copy_list({ document }) {
-    const src = posix.join(NAME, `${NAME}.scl`);
-    const source = posix.join(context.module_path, src);
-    const dst = posix.join(document.CPU.output_dir, `${NAME}.scl`);
-    const distance = posix.join(context.work_path, dst);
+    const source = posix.join(NAME, `${NAME}.scl`);
+    const input_dir = context.module_path;
+    const distance = posix.join(document.CPU.output_dir, `${NAME}.scl`);
+    const output_dir = context.work_path;
     const IE = 'utf8';
-    return [{ src, source, dst, distance, IE }];
+    return [{ source, input_dir, distance, output_dir, IE }];
 }
