@@ -212,24 +212,23 @@ export function build_list(SC) {
 }
 
 export function gen({ document, invoke_code, options = {} }) {
-    const { CPU } = document;
-    const { output_dir } = CPU;
+    const output_dir = context.work_path;
     const { output_file = LOOP_NAME + '.scl' } = options;
-    const dst = `${output_dir}/${output_file}`;
+    const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { LOOP_NAME, invoke_code, CP340_NAME, CP341_NAME, POLLS_NAME };
     const template = posix.join(context.module_path, 'src/converters/SC.template');
-    return [{ dst, tags, template }];
+    return [{ distance, output_dir, tags, template }];
 }
 
 export function gen_copy_list({ document, options }) {
     const copy_list = [];
     function push_copy_item(filename, IE) {
         IE ??= 'utf8';
-        const src = posix.join('CP_Poll', filename);
-        const source = posix.join(context.module_path, src);
-        const dst = posix.join(document.CPU.output_dir, filename);
-        const distance = posix.join(context.work_path, dst);
-        copy_list.push({ src, source, dst, distance, IE });
+        const source = posix.join('CP_Poll', filename);
+        const input_dir = context.module_path;
+        const distance = posix.join(document.CPU.output_dir, filename);
+        const output_dir = context.work_path;
+        copy_list.push({ source, input_dir, distance, output_dir, IE });
     }
     if (options.has_CP340) push_copy_item(`${CP340_NAME}.scl`);
     if (options.has_CP341) push_copy_item(`${CP341_NAME}.scl`);

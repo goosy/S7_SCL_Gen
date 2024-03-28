@@ -1,7 +1,7 @@
-import { posix } from 'node:path';
 import mri from 'mri';
+import { posix } from 'node:path';
 import nodemon from 'nodemon';
-import { convert, context, supported_features, get_rules } from './index.js';
+import { context, convert, get_rules } from './index.js';
 import { copy_file } from './util.js';
 
 function show_help() {
@@ -64,10 +64,11 @@ if (argv.version) {
 } else if (argv.help) {
     show_help();
 } else if (cmd === 'convert' || cmd === 'conv') {
+    const base_path = process.cwd().replace(/\\/g, '/');
     if (rules_file) {
         const tasks = await get_rules(rules_file);
         for (const { path, rules } of tasks) {
-            process.chdir(path);
+            process.chdir(posix.join(base_path, path));
             context.work_path = process.cwd().replace(/\\/g, '/');
             await convert(rules);
         }
@@ -96,10 +97,10 @@ if (argv.version) {
         console.log('s7-scl-gen restarted due to: ', files);
     });
 } else if (cmd === 'gcl' || cmd === 'init' || cmd === 'template') {
-    const dst = posix.join(context.work_path, path ?? 'GCL');
-    await copy_file(posix.join(context.module_path, 'example'), dst);
-    await copy_file(posix.join(context.module_path, 'README.md'), dst + '/');
-    const fullname_dst = posix.join(context.work_path, dst);
+    const distance = posix.join(context.work_path, path ?? 'GCL');
+    await copy_file(posix.join(context.module_path, 'example'), distance);
+    await copy_file(posix.join(context.module_path, 'README.md'), distance + '/');
+    const fullname_dst = posix.join(context.work_path, distance);
     const readme = posix.join(fullname_dst, 'README.md');
     console.log(`Generated configuration folder ${fullname_dst}. 已生成配置文件夹 ${fullname_dst}。\nSee instructions in ${readme}. 可以参阅 ${readme} 内的说明。`);
 } else {

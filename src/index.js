@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { convert as gc } from 'gooconverter';
 import { copy_file, read_file, write_file, context } from './util.js'
 import { gen_data } from './gen_data.js';
@@ -13,18 +14,20 @@ async function _convert(copy_list, convert_list) {
     if (copy_list?.length) {
         silent || console.log("\ncopy file to: 复制文件至：");
         for (const copy_item of copy_list.filter(item => item.enable)) {
-            const { source, distance, IE, OE, line_ending } = copy_item;
+            const { source, distance, input_dir, output_dir, IE, OE, line_ending } = copy_item;
+            const src_file = posix.join(input_dir, source);
+            const dst_file = posix.join(output_dir, distance);
             if (IE == null) { // copy directly without specifying encoding
-                await copy_file(source, distance);
+                await copy_file(src_file, dst_file);
             } else {
-                let content = await read_file(source, { encoding: IE });
+                let content = await read_file(src_file, { encoding: IE });
                 copy_item.content = content;
                 if (OE == 'gbk' && content.charCodeAt(0) === 0xFEFF) { // remove BOM
                     content = content.substring(1);
                 }
-                await write_file(distance, content, { encoding: OE, line_ending });
+                await write_file(dst_file, content, { encoding: OE, line_ending });
             }
-            silent || console.log(`\t${distance}`)
+            silent || console.log(`\t${dst_file}`)
         }
     }
 
@@ -32,12 +35,13 @@ async function _convert(copy_list, convert_list) {
         silent || console.log("\ngenerate file: 生成文件：");
         // Asynchronous sequential execution 异步顺序执行
         for (const convert_item of convert_list.filter(item => item.enable)) {
-            const { distance, tags, template, OE, line_ending } = convert_item;
+            const { distance, output_dir, tags, template, OE, line_ending } = convert_item;
+            const filename = posix.join(output_dir, distance);
             const content = gc(tags, template);
             convert_item.content = content;
             // 由 noconvert 变量决定是否输出
-            context.noconvert || await write_file(distance, content, { encoding: OE, line_ending });
-            context.silent || console.log(`\t${distance}`);
+            context.noconvert || await write_file(filename, content, { encoding: OE, line_ending });
+            context.silent || console.log(`\t${filename}`);
         }
     }
 

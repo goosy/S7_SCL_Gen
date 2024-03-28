@@ -1,10 +1,11 @@
-import { dirname, posix, isAbsolute } from 'node:path';
 import { isMatch } from 'matcher';
+import { dirname, isAbsolute, posix } from 'node:path';
+import { parseAllDocuments } from 'yaml';
 import {
-    context, get_template, forEachAsync,
+    forEachAsync,
+    get_template,
     read_file
 } from './util.js';
-import { parseAllDocuments } from 'yaml';
 
 function isPlainObject(obj) {
     return Object.getPrototypeOf(obj) === Object.prototype;
@@ -70,20 +71,20 @@ export const apply_rules = (gen_list, rules) => {
     });
 };
 
-function modify_path(modifications, base_path, attr) {
+function modify_path(modifications, attr, config_path) {
     const path = modifications[attr];
     if (path && typeof path === 'string') {
-        if(isAbsolute(path)) return;
-        modifications[attr] = posix.join(base_path, path);
+        if (isAbsolute(path)) return;
+        modifications[attr] = posix.relative(config_path, path);
     }
 }
 
-export const parse_rules = async (yaml, base_path) => {
+export const parse_rules = async (yaml, rules_path) => {
     const documents = parseAllDocuments(yaml, { version: '1.2' });
     const tasks = [];
     await forEachAsync(documents, async doc => {
-        const { configuration, rules: _rules } = doc.toJS();
-        const path = isAbsolute(configuration) ? configuration : posix.join(base_path, configuration);
+        const { config_path, rules: _rules } = doc.toJS();
+        const path = posix.join(rules_path, config_path);  // 相对于当前路径，与 rules_path 相加
         const rules = [];
         await forEachAsync(_rules, async rule => {
             if (!isPlainObject(rule)) return; // 不正确的规则，返回空
@@ -92,12 +93,15 @@ export const parse_rules = async (yaml, base_path) => {
             if (!isPlainObject(pattern) && !Array.isArray(pattern) && typeof pattern !== 'string') return;
             const modifications = rule.modifications;
             if (!isPlainObject(modifications)) return;
-            ['template', 'output_dir', 'output_file', 'src', 'source', 'dst', 'distance'].forEach(
-                attr => modify_path(modifications, base_path, attr)
-            );
-
-            if (modifications.template) { // 读入模板
-                modifications.template = await get_template(modifications.template);
+            // 'input_dir', 'output_dir' 路径，必须相对于将来的配置路径，与 config_path 相减
+            modify_path(modifications, 'input_dir', config_path);
+            modify_path(modifications, 'output_dir', config_path);
+            // 读入模板，因为在当前处理，路径相对于当前路径，与 rules_path 相加
+            const template_file = modifications.template;
+            if (template_file) {
+                modifications.template = await get_template(
+                    posix.join(rules_path, template_file)
+                );
             }
             rules.push(rule);
         });
@@ -123,6 +127,6 @@ export const parse_rules = async (yaml, base_path) => {
 export const get_rules = async (filename, options = {}) => {
     const encoding = options.encoding ?? 'utf8';
     const yaml = await read_file(filename, { encoding });
-    const base_path = dirname(filename).replace(/\\/g, '/');
-    return await parse_rules(yaml, base_path);
+    const rules_path = dirname(filename).replace(/\\/g, '/');
+    return await parse_rules(yaml, rules_path);
 }

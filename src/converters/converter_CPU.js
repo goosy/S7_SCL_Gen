@@ -107,14 +107,13 @@ export function build_list({ document, list, options }) {
 }
 
 export function gen({ document, includes, list, options = {} }) {
-    const { CPU } = document;
-    const { output_dir } = CPU;
+    const output_dir = context.work_path;
     const { output_file = NAME + '.scl' } = options;
     if (includes.length || list.length) {
-        const dst = `${output_dir}/${output_file}`;
+        const distance = `${document.CPU.output_dir}/${output_file}`;
         const tags = {}
         const template = posix.join(context.module_path, 'src/converters/CPU.template');
-        return [{ dst, tags, template }];
+        return [{ distance, output_dir, tags, template }];
     };
     return [];
 }
