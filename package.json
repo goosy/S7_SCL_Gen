@@ -1,6 +1,6 @@
 {
     "name": "s7-scl-gen",
-    "version": "1.17.3",
+    "version": "1.17.4",
     "type": "module",
     "description": "S7 PLC SCL 代码自动生成",
     "main": "/lib/index.js",
@@ -34,7 +34,7 @@
         "yaml": "^2.4.1"
     },
     "directories": {
-        "conf": "conf",
+        "conf": "example",
         "lib": "lib"
     },
     "bin": {
