@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { posix } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { isSeq } from 'yaml';
 import { context, compare_str, pad_right, pad_left, elog } from './util.js';
 import {
@@ -11,8 +10,8 @@ import {
 import { GCL, isString, get_Seq } from './gcl.js';
 
 export const BUILDIN_SYMBOLS = await GCL.load(posix.join( // Initialized by converter.js
-    fileURLToPath(import.meta.url).replace(/\\/g, '/'),
-    '../symbols_buildin.yaml'
+    import.meta.dirname.replace(/\\/g, '/'),
+    'symbols_buildin.yaml',
 ));
 
 export const WRONGTYPESYMBOLS = new Set();

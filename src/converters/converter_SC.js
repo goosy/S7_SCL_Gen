@@ -232,6 +232,6 @@ export function gen_copy_list({ document, options }) {
     }
     if (options.has_CP340) push_copy_item(`${CP340_NAME}.scl`);
     if (options.has_CP341) push_copy_item(`${CP341_NAME}.scl`);
-    push_copy_item(`${CRC}.awl`, 'gbk');
+    push_copy_item(`${CRC}.awl`);
     return copy_list;
 }

@@ -1,6 +1,5 @@
 import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, posix, isAbsolute } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import iconv from 'iconv-lite';
 import { Integer } from './s7data.js';
 import pkg from '../package.json' with { type: 'json' };
@@ -13,7 +12,7 @@ export {
     elog, lazyassign,
 };
 
-const module_path = posix.join(fileURLToPath(import.meta.url).replace(/\\/g, '/'), "../../");
+const module_path = posix.join(import.meta.dirname.replace(/\\/g, '/').replace(/\\/g, '/'), "..");
 const work_path = process.cwd().replace(/\\/g, '/');
 const context = {
     module_path,
