@@ -6,6 +6,7 @@ import {
     get_template,
     read_file
 } from './util.js';
+import { convert } from 'gooconverter';
 
 function isPlainObject(obj) {
     return Object.getPrototypeOf(obj) === Object.prototype;
@@ -31,20 +32,31 @@ export const match = (item, pattern_object) => {
 export const match_list = (list, pattern_object) => list.filter(item => match(item, pattern_object));
 
 export const apply_rule = (item, rule) => {
-    for (const [key, value] of Object.entries(rule.modifications)) {
+    const MS = rule.modifications;
+    for (let [key, value] of Object.entries(MS)) {
+        if (value === null) {
+            delete item[key];
+            return;
+        }
         if (key == 'tags' && isPlainObject(value)) {
             // tags 浅复制
             item[key] ??= {};
             Object.assign(item[key], value);
             return;
         }
-        if (key in item) {
-            if (typeof value === 'string' || typeof value === 'boolean') {
-                item[key] = value;
-            } else {
-                console.log(`rule error! action: ${key}:${value}`);
-            }
+        if (typeof value === 'boolean') {
+            item[key] = value;
+            return;
         }
+        if (typeof value !== 'string') {
+            console.log(`rule error! modification ${key}:${modi_value}`);
+            return;
+        }
+        // substitution
+        const new_value = key === 'template'
+            ? value :
+            convert({ ...item.tags, ...MS.tags }, value);
+        item[key] = new_value;
     }
 };
 
@@ -83,7 +95,7 @@ export const parse_rules = async (yaml, rules_path) => {
     const documents = parseAllDocuments(yaml, { version: '1.2' });
     const tasks = [];
     await forEachAsync(documents, async doc => {
-        const { config_path, rules: _rules } = doc.toJS();
+        const { config_path, rules: _rules, attributes } = doc.toJS();
         const path = posix.join(rules_path, config_path);  // 相对于当前路径，与 rules_path 相加
         const rules = [];
         await forEachAsync(_rules, async rule => {
@@ -102,6 +114,14 @@ export const parse_rules = async (yaml, rules_path) => {
                 modifications.template = await get_template(
                     posix.join(rules_path, template_file)
                 );
+            }
+            // modifications.tags 增加 attributes
+            if (modifications.tags && !isPlainObject(modifications.tags)) modifications.tags = {};
+            if (attributes) {
+                modifications.tags = {
+                    ...modifications.tags,
+                    ...attributes
+                };
             }
             rules.push(rule);
         });

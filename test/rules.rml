@@ -1,0 +1,34 @@
+---
+config_path: '.'                      # GCL配置文件所在目录
+
+attributes:                           # 全局变量
+  title:
+    dist: "PLC测试"
+
+rules:                                # 规则列表
+
+# 每一项规则的作用是：过滤符合pattern的项，对该项应用modifications的修改
+- pattern:
+    type: copy
+  modifications:
+    enable: false
+- pattern:
+    type: convert                     # 指示是一个 convert_item
+    distance: '*.scl'
+  modifications:
+    template: template.md
+    distance: '{{title[cpu_name]}}.md'
+- pattern: '*'                        # 匹配所有
+  modifications:
+    output_dir: target                # 重新指定输出目录
+
+---
+
+config_path: "."
+
+rules:
+- pattern:
+    type: copy
+  modifications:
+    enable: false
+...
