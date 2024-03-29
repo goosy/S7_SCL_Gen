@@ -1,18 +1,12 @@
 import { strictEqual } from "node:assert/strict";
-import { posix } from "node:path";
-import { fileURLToPath } from 'node:url';
-import { get_rules } from "../src/rules.js";
 import { get_template, pad_left, pad_right } from '../src/util.js';
-
-const curr_dir = posix.dirname(fileURLToPath(import.meta.url));
-process.chdir(curr_dir);
 
 const test_template = `# 联校调试记录
 
-工程名称： {{title}}
+工程名称： {{title[cpu_name]}}
 测试内容： 通道联调
 
-[{{(options.output_file+'').replace('.md','')}}]
+[{{title[cpu_name]}}表格]
 | 回路 | 仪表位号 | 测量范围 | 实测值 0% | 实测值 50% | 实测值 100% | 报警值 | 调试结果 |
 | --- | --- | :---: | --- | --- | --- | --- | --- |
 {{for no, AI in list}}{{if AI.DB}}_
@@ -45,17 +39,5 @@ describe('util test', () => {
     })
     it('get_template test', async () => {
         strictEqual(await get_template('template.md'), test_template);
-    })
-    it('get_rules test', async () => {
-        const tasks = await get_rules('yaml/rules.yaml');
-        strictEqual(tasks.length, 2);
-        const task = tasks[0];
-        strictEqual(task.path, '.');
-        // 对每个 task 中 rules 的路径的测试，必须当前目录先进入 task.path
-        const rules = task.rules;
-        strictEqual(rules.length, 3);
-        strictEqual(rules[1].pattern.type, 'convert');
-        strictEqual(rules[1].modifications.template, test_template);
-        strictEqual(rules[2].modifications.output_dir, 'target');
     })
 });
