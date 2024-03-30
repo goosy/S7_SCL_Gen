@@ -1,7 +1,6 @@
 import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, posix, isAbsolute } from 'node:path';
 import iconv from 'iconv-lite';
-import { Integer } from './s7data.js';
 import pkg from '../package.json' with { type: 'json' };
 
 export {
@@ -155,7 +154,7 @@ function pad_right(item, length, placeholder = ' ') {
 }
 
 function fixed_hex(num, length) {
-    const HEX = num instanceof Integer ? num.HEX : num?.toString(16);
+    const HEX = num?.HEX ?? num?.toString(16) ?? 0;
     return pad_left(HEX, length, '0').toUpperCase();
 }
 
