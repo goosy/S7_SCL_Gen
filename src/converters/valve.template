@@ -15,10 +15,6 @@ AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-    enable_AH := {{valve.$enable_AH}};
-    enable_WH := {{valve.$enable_WH}};
-    enable_WL := {{valve.$enable_WL}};
-    enable_AL := {{valve.$enable_AL}};
 {{if valve.$zero_raw !== undefined}}_
     zero_raw := {{valve.$zero_raw}};
 {{endif}}_
@@ -35,26 +31,14 @@ BEGIN
 {{if valve.remote == null}}_
     remote := TRUE;
 {{endif}}_
-{{if valve.$AH_limit !== undefined}}_
-    AH_limit := {{valve.$AH_limit}};
-{{endif}}_
-{{if valve.$WH_limit !== undefined}}_
-    WH_limit := {{valve.$WH_limit}};
-{{endif}}_
-{{if valve.$WL_limit !== undefined}}_
-    WL_limit := {{valve.$WL_limit}};
-{{endif}}_
-{{if valve.$AL_limit !== undefined}}_
-    AL_limit := {{valve.$AL_limit}};
-{{endif}}_
 {{if valve.$FT_zone !== undefined}}_
     FT_zone := {{valve.$FT_zone}};
 {{endif}}_
-{{if valve.$FT_time !== undefined}}_
-    FT_time := {{valve.$FT_time.DINT}};
+{{if valve.$action_time !== undefined}}_
+    action_time := {{valve.$action_time.DINT}};
 {{endif}}_
-{{if valve.$stop_delay !== undefined}}_
-    stop_delay := {{valve.$stop_delay.DINT}};
+{{if valve.$signal_time !== undefined}}_
+    signal_time := {{valve.$signal_time.DINT}};
 {{endif}}_
 END_DATA_BLOCK
 {{endif}}_
@@ -65,7 +49,22 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 {{if platform == 'portal'}}_
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
-{{endif // platform}}_
+VAR CONSTANT
+    S7_ZERO : Int := 0;
+    S7_SPAN : Int := 27648;
+    S7_AI_MIN : Int := -32768;
+    S7_AI_MIN_WORD : Word := WORD#16#8000;
+    S7_AI_MAX : Int := 32767;
+    S7_AI_MAX_WORD : Word := WORD#16#7FFF;
+    STOP_STATUS : Word := WORD#16#0000;
+    CLOSE_STATUS : Word := WORD#16#0001;
+    OPEN_STATUS : Word := WORD#16#0002;
+    STOPPING_STATUS : Word := WORD#16#0004;
+    CLOSING_STATUS : Word := WORD#16#0008;
+    OPENNING_STATUS : Word := WORD#16#0010;
+    MARCH_STATUS : Word := WORD#16#0020;
+END_VAR
+{{else}}_
 CONST
     S7_ZERO := 0;
     S7_SPAN := 27648;
@@ -76,8 +75,12 @@ CONST
     STOP_STATUS := W#16#0;
     CLOSE_STATUS := W#16#1;
     OPEN_STATUS := W#16#2;
-    MARCH_STATUS :=  W#16#4;
+    STOPPING_STATUS := W#16#4;
+    CLOSING_STATUS := W#16#8;
+    OPENNING_STATUS := W#16#10;
+    MARCH_STATUS :=  W#16#20;
 END_CONST
+{{endif // platform}}_
 BEGIN
 {{if loop_begin}}_
 {{  loop_begin}}
@@ -85,20 +88,27 @@ BEGIN
 {{for valve in list}}
 // {{valve.comment}}
 {{if valve.DB}}_
-{{if platform != 'portal'}}"{{NAME}}".{{endif // platform}}_
+{{if platform == 'portal'}}_
 {{valve.DB.value}}(
-{{if valve.enable_AH != undefined}}_
-    enable_AH := {{valve.enable_AH.value}}, 
-{{endif}}_
-{{if valve.enable_WH != undefined}}
-    enable_WH := {{valve.enable_WH.value}}, 
-{{endif}}_
-{{if valve.enable_WL != undefined}}
-    enable_WL := {{valve.enable_WL.value}}, 
-{{endif}}_
-{{if valve.enable_AL != undefined}}
-    enable_AL := {{valve.enable_AL.value}}, 
-{{endif}}_
+    AI := {{if valve.AI}}{{valve.AI.value}}{{else}}#S7_AI_MIN_WORD{{endif}}_
+{{if valve.CP}},
+    CP := {{valve.CP.value}}{{endif}}_
+{{if valve.OP}},
+    OP := {{valve.OP.value}}{{endif}}_
+{{if valve.error != null}},
+    error := {{valve.error.value}}{{endif}}_
+{{if valve.remote != null}},
+    remote := {{valve.remote.value}}{{endif}}_
+{{if valve.close_action}},
+    close_action => {{valve.close_action.value}}{{endif}}_
+{{if valve.open_action}},
+    open_action => {{valve.open_action.value}}{{endif}}_
+{{if valve.stop_action}},
+    stop_action => {{valve.stop_action.value}}{{endif}}_
+{{if valve.control_action}},
+    control_action => {{valve.control_action.value}}{{endif}});
+{{else  // platform≠portal}}_
+"{{NAME}}".{{valve.DB.value}}(
     AI := {{if valve.AI}}{{valve.AI.value}}{{else}}S7_AI_MIN_WORD{{endif}}_
 {{if valve.CP}},
     CP := {{valve.CP.value}}{{endif}}_
@@ -108,17 +118,7 @@ BEGIN
     error := {{valve.error.value}}{{endif}}_
 {{if valve.remote != null}},
     remote := {{valve.remote.value}}{{endif}}_
-_
-{{if platform == 'portal'}}_
-{{if valve.close_action}},
-    close_action => {{valve.close_action.value}}{{endif}}_
-{{if valve.open_action}},
-    open_action => {{valve.open_action.value}}{{endif}}_
-{{if valve.stop_action}},
-    stop_action => {{valve.stop_action.value}}{{endif}}_
-{{if valve.control_action}},
-    control_action => {{valve.control_action.value}}{{endif}});
-{{else // platform≠portal}});
+);
 {{if valve.close_action}}_
 {{valve.close_action.value}} := {{valve.DB.value}}.close_action;
 {{endif}}_

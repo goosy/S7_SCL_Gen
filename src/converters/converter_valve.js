@@ -53,27 +53,6 @@ export function initialize_list(area) {
             symbol => valve.AI = symbol
         );
 
-        ['AH', 'WH', 'WL', 'AL'].forEach(limit => {
-            const enable_str = 'enable_' + limit;
-            const $enable_str = '$' + enable_str;
-            const $limit_str = '$' + limit + '_limit';
-            // as ex: valve.$AH_limit
-            valve[$limit_str] = nullable_value(REAL, node.get($limit_str));
-            // as ex: valve.$enable_AH
-            valve[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? valve[$limit_str] != null);
-            // as ex: valve.enable_AH
-            make_s7_expression(
-                node.get(enable_str),
-                {
-                    document,
-                    force: { type: 'BOOL' },
-                    s7_expr_desc: `valve ${comment} ${enable_str}`,
-                },
-            ).then(
-                symbol => valve[enable_str] = symbol
-            );
-        });
-
         ['CP', 'OP', 'error', 'remote', 'close_action', 'open_action', 'stop_action', 'control_action'].forEach(prop => {
             const _comment = comment ? `${comment} ${prop}` : '';
             const value = node.get(prop);
@@ -95,8 +74,8 @@ export function initialize_list(area) {
         valve.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
         valve.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
         valve.$FT_zone = nullable_value(REAL, node.get('$FT_zone'));
-        valve.$FT_time = nullable_value(TIME, node.get('$FT_time'));
-        valve.$stop_delay = nullable_value(TIME, node.get('$stop_delay'));
+        valve.$action_time = nullable_value(TIME, node.get('$action_time'));
+        valve.$signal_time = nullable_value(TIME, node.get('$signal_time'));
 
         return valve;
     });
