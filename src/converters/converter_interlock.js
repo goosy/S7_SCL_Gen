@@ -331,12 +331,12 @@ export function build_list({ list }) {
             for (const input of interlock.input_list) {
                 let value;
                 if (input.items) {
-                    const items = input.items.map(item => {
+                    const and_value = input.items.map(item => {
                         const item_value = item.value;
                         return item_value.isExpress ? `(${item_value.value})` : item_value.value;
-                    });
-                    value = items.join(' AND ');
-                    input.value = { value };
+                    }).join(' AND ');
+                    value = `(${and_value})`;
+                    input.value = { value: and_value, isExpress: false };
                 } else {
                     const input_value = input.value;
                     value = input_value.isExpress ? `(${input_value.value})` : input_value.value;

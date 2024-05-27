@@ -150,7 +150,7 @@ name: AS2-CPU
 platform: portal
 
 files:
-- filename: ..//Motor_Proc/**.scl # 复制指定文件夹下的所有SCL文件，并指定文本格式
+- filename: ..//example/*.scl # 复制指定文件夹下的所有SCL文件，并指定文本格式
   IE: utf8
   OE: utf8
   line_ending: LF
