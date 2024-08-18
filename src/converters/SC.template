@@ -9,21 +9,17 @@
 DATA_BLOCK "{{POLLS_NAME}}"
 STRUCT
 {{for module in list}}_
-    {{module.name}} : STRUCT //{{module.comment}} 轮询命令数据
-{{  for poll in module.polls}}_
-        poll_{{poll.index}} : STRUCT
-            next: BOOL; // false为结尾，否则有下一个
-            enable: BOOL := TRUE; // 允许本poll通讯
-            modbusFlag : BOOL; // 是否为modbus协议
-            status: WORD;    // 预留
-            sendDB : INT; // 发送DB，为0时为本块
-            sendDBB : INT; // 发送DB起始地址
-            sendLength : INT; // 发送长度
-            recvDB : INT; // 接收DB
-            recvDBB : INT; // 接收DB起始地址
-            waitCount : INT; // 发送等待次数
-        END_STRUCT;
-{{  endfor // poll}}_
+    {{module.name}} : ARRAY [0 .. {{module.polls.length-1}}] OF STRUCT //{{module.comment}} 轮询命令数据
+        enable: BOOL := TRUE; // 允许本poll通讯
+        next: BOOL; // false为结尾，否则有下一个
+        modbusFlag : BOOL; // 是否为modbus协议
+        status: WORD;    // 预留
+        send_DB : INT; // 发送DB，为0时为本块
+        send_DBB : INT; // 发送DB起始地址
+        send_length : INT; // 发送长度
+        recv_DB : INT; // 接收DB
+        recv_DBB : INT; // 接收DB起始地址
+        waitCount : INT; // 发送等待次数
     END_STRUCT;
 {{endfor // module}}_
 {{for module in list}}_
@@ -33,8 +29,8 @@ STRUCT
 {{if poll.send_data // ----通用发送}}_
         send_data : ARRAY  [0 .. {{poll.send_data.length-1}}] OF BYTE;    //发送数据
 {{else // ----modbus 发送}}_
-        device_ID : BYTE;    //子站地址
-        MFunction : BYTE;    //modbus 功能号
+        unit_ID : BYTE;    //子站地址
+        func_code : BYTE;    //modbus 功能号
         address : WORD;    //起始地址
         data : WORD;    //数据，对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
         CRC : WORD;    //检验字
@@ -49,26 +45,26 @@ BEGIN
     // --- {{module.comment}} 轮询数据
 {{for no,poll in module.polls}}
     // poll {{poll.index}}  {{poll.comment}}
-    {{module.name}}.poll_{{poll.index}}.next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
-    {{module.name}}.poll_{{poll.index}}.modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
-    {{module.name}}.poll_{{poll.index}}.sendDB := {{poll.send_DB.block_no}};
-    {{module.name}}.poll_{{poll.index}}.sendDBB := {{poll.send_start}};
-    {{module.name}}.poll_{{poll.index}}.sendLength := {{poll.send_length}};
-    {{module.name}}.poll_{{poll.index}}.recvDB := {{poll.recv_DB.block_no}};
-    {{module.name}}.poll_{{poll.index}}.recvDBB := {{poll.recv_start}};
-{{if !poll.extra_send_DB //非外部数据块}}_
+    {{module.name}}[{{no}}].next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
+    {{module.name}}[{{no}}].modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
+    {{module.name}}[{{no}}].send_DB := {{poll.send_DB.block_no}};
+    {{module.name}}[{{no}}].send_DBB := {{poll.send_start}};
+    {{module.name}}[{{no}}].send_length := {{poll.send_length}};
+    {{module.name}}[{{no}}].recv_DB := {{poll.recv_DB.block_no}};
+    {{module.name}}[{{no}}].recv_DBB := {{poll.recv_start}};
+{{  if !poll.extra_send_DB //非外部数据块}}_
     // send data
-{{  if poll.send_data}}_
+{{    if poll.send_data}}_
 {{      for index, databyte in poll.send_data}}_
     poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}
 {{      endfor}}_
-{{  else}}_
-    poll_{{poll.index}}_data.device_ID := {{poll.deivce_ID.byteHEX}};
-    poll_{{poll.index}}_data.MFunction := {{poll.function.byteHEX}};
+{{    else}}_
+    poll_{{poll.index}}_data.unit_ID := {{poll.unit_ID.byteHEX}};
+    poll_{{poll.index}}_data.func_code := {{poll.func_code.byteHEX}};
     poll_{{poll.index}}_data.address := {{poll.started_addr.wordHEX}};
     poll_{{poll.index}}_data.data := {{poll.data.wordHEX}};
-{{  endif // send_data}}_
-{{endif // ----poll_send_data 结束}}_
+{{    endif // send_data}}_
+{{  endif // ----poll_send_data 结束}}_
 {{endfor // poll}}_
 {{endfor // module}}_
 END_DATA_BLOCK

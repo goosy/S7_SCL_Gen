@@ -146,9 +146,9 @@ export function initialize_list(area) {
                 poll.send_start = ensure_value(PINT, item.get('send_start'));
                 poll.send_length = ensure_value(PINT, item.get('send_length'));
             } else if (!poll.send_data) {
-                // 无外部发送块但有send_data时，必须有 deivce_ID、function、started_addr 和 data
-                poll.deivce_ID = ensure_value(PINT, item.get('deivce_ID'));
-                poll.function = ensure_value(PINT, item.get('function'));
+                // 无外部发送块但有send_data时，必须有 unit_ID、func_code、started_addr 和 data
+                poll.unit_ID = ensure_value(PINT, item.get('unit_ID'));
+                poll.func_code = ensure_value(PINT, item.get('func_code'));
                 poll.started_addr = nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address'));
                 // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
                 poll.data = nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length'));
@@ -189,10 +189,10 @@ export function build_list(SC) {
                 const data_stream = send_data.split(/ +/);
                 poll.send_data = data_stream.map(byte => fixed_hex(byte, 2));
                 poll.send_length = data_stream.length;
-            } else if (poll.deivce_ID && poll.is_modbus) {
+            } else if (poll.unit_ID && poll.is_modbus) {
                 poll.send_length = 8;
             } else if (!poll.extra_send_DB) { // poll configuration wrong!
-                elog(new SyntaxError(`发送数据在轮询DB中时，poll.deivce_ID 和 poll.send_data 必须有其中一个!\ndeivce_ID:${poll.deivce_ID}\tsend_data:${poll.send_data}`));
+                elog(new SyntaxError(`发送数据在轮询DB中时，poll.unit_ID 和 poll.send_data 必须有其中一个!\nunit_ID:${poll.unit_ID}\tsend_data:${poll.send_data}`));
             }
             if (!poll.extra_send_DB) {
                 poll.send_start = sendDBB;
