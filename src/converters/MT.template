@@ -24,6 +24,12 @@ BEGIN
     TCON_Parameters.rem_tsap_id[1] := B#16#{{conn.port1}};   //PortH {{conn.port}}
     TCON_Parameters.rem_tsap_id[2] := B#16#{{conn.port2}};   //PortL
     TCON_Parameters.spare := W#16#0;
+{{if conn.$interval_time != undefined}}_
+    interval_time := {{conn.$interval_time.DINT}};
+{{endif}}_
+{{if conn.$try_times != undefined}}_
+    try_times := {{conn.$try_times.value}},
+{{endif}}_
 END_DATA_BLOCK
 {{endfor}}_
 
@@ -34,49 +40,32 @@ VERSION : 0.0
 STRUCT
 {{for conn in list}}_
     {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
-        MBAP_seq : WORD ;               //事务号 PLC自动填写
-        MBAP_protocol : WORD ;          //必须为0
-        MBAP_length : WORD  := W#16#6;  //长度，对读命令，通常为6
-        device_ID : BYTE ;              //设备号，不关心的情况下可以填0
-        MFunction : BYTE ;              //modbus功能号
-        address : WORD ;                //起始地址
-        data : WORD ;                   //长度
-        recvDB : INT ;                  //接收数据块号
-        recvDBB : INT ;                 //接收数据块起始地址
+        MBAP_seq : WORD ;               // 事务号 PLC自动填写
+        MBAP_protocol : WORD ;          // 必须为0
+        MBAP_length : WORD  := W#16#6;  // 长度，对读命令，通常为6
+        unit_ID : BYTE ;                // 设备号，不关心的情况下可以填0
+        func_code : BYTE ;              // modbus功能号
+        address : WORD ;                // 起始地址
+        data : WORD ;                   // 长度
+        recv_DB : INT ;                 // 接收数据块号
+        recv_DBB : INT ;                // 接收数据块起始地址
     END_STRUCT ;
 {{endfor // conn}}_
-    buff : STRUCT // 接收缓冲区
-        MBAP_seq : WORD ;               //事务号 PLC自动填写
-        MBAP_protocol : WORD ;          //必须为0
-        MBAP_length : WORD ;            //长度，对读命令，通常为6
-        device_ID : BYTE ;              //设备号，不关心的情况下可以填0
-        MFunction : BYTE ;              //modbus功能号
-        data : ARRAY[0..251] OF BYTE ;  //数据
-    END_STRUCT ;
 END_STRUCT ;
 BEGIN
 {{for conn in list}}_
     // --- {{conn.comment}}
 {{  for no, poll in conn.polls}}_
-    {{conn.name}}[{{no}}].device_ID := B#16#{{poll.deivce_ID}}; // {{poll.comment}}
-    {{conn.name}}[{{no}}].MFunction := B#16#{{poll.function}};
+    {{conn.name}}[{{no}}].unit_ID := B#16#{{poll.unit_ID}}; // {{poll.comment}}
+    {{conn.name}}[{{no}}].func_code := B#16#{{poll.func_code}};
     {{conn.name}}[{{no}}].address := W#16#{{poll.address}};
     {{conn.name}}[{{no}}].data := W#16#{{poll.data}};
-    {{conn.name}}[{{no}}].recvDB := {{poll.recv_DB.block_no}};
-    {{conn.name}}[{{no}}].recvDBB := {{poll.recv_start}};
+    {{conn.name}}[{{no}}].recv_DB := {{poll.recv_DB.block_no}};
+    {{conn.name}}[{{no}}].recv_DBB := {{poll.recv_start}};
 {{  endfor // poll}}_
 {{endfor // conn}}_
 END_DATA_BLOCK
 
-{{for conn in list}}_
-{{if conn.$interval_time != undefined}}_
-DATA_BLOCK {{conn.DB.value}} "{{NAME}}"
-BEGIN
-        intervalTime := {{conn.$interval_time.DINT}};
-END_DATA_BLOCK
-
-{{endif // conn.$interval_time}}_
-{{endfor // conn}}_
 // 调用
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{if loop_begin}}_
@@ -87,10 +76,9 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 // {{conn.comment}}
 "{{NAME}}".{{conn.DB.value}} (
 {{if conn.interval_time != undefined}}_
-    intervalTime := {{conn.interval_time.value}},
+    interval_time := {{conn.interval_time.value}},
 {{endif}}_
-    DATA  := "{{POLLS_NAME}}".{{conn.name}},
-    buff  := "{{POLLS_NAME}}".buff);
+    data := "{{POLLS_NAME}}".{{conn.name}});
 
 {{endfor // conn}}_
 // 接收块

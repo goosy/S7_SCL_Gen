@@ -45,6 +45,11 @@ list : # modbus TCP 连接列表
   # 值类型: 整数 (注意不能是TIME字面量)
   interval_time: [flow_interval, md200]
 
+  # 轮询重试次数，可省略，默认32
+  # 类型: null | 正整数字面量
+  # 该设置用于一个设备的最多询问失败次数，超过该次数标记该设备数据无效
+  $try_times: 32
+
   # 背景块。不必填写type，会自动指定为 MT_Poll
   # 类型: S7符号定义 | S7符号引用
   DB: [conn_flow, DB891]
@@ -77,21 +82,21 @@ list : # modbus TCP 连接列表
   # 该连接下的轮询定义，至少要有一个查询
   polls:
 
-  # deivce_ID function address data|length 配置项允许16进制字符串
+  # unit_ID func_code address data|length 配置项允许16进制字符串
   # 为了在SCL中对发送数据的进行符号引用，转换生成的轮询块发送数据层级为：
   #   MT_polls_DB.{name}[{序号}].{发送字段}
   # 以下方查询1为例：
-  # * MT_polls_DB.polls_example[0].device_ID (BYTE) 子站号
-  # * MT_polls_DB.polls_example[0].MFunction (BYTE) 功能码
-  # * MT_polls_DB.polls_example[0].address (WORD)   开始地址
-  # * MT_polls_DB.polls_example[0].data (WORD)      对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
-  # * MT_polls_DB.polls_example[0].CRC (WORD)       CRC16校验码
+  # * MT_polls_DB.polls_flow[0].unit_ID (BYTE)   子站号
+  # * MT_polls_DB.polls_flow[0].func_code (BYTE) 功能码
+  # * MT_polls_DB.polls_flow[0].address (WORD)   开始地址
+  # * MT_polls_DB.polls_flow[0].data (WORD)      对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
+  # * MT_polls_DB.polls_flow[0].CRC (WORD)       CRC16校验码
   # 每个poll可以使用 uninvoke 属性，见 SC.yaml。这里不作该属性的示例。
 
   - comment: 1#流量计                  # 本查询的注释，可省略。 类型: 字符串
     # 查询1
-    deivce_ID: 1                      # 设备号，即RTU从站地址。 类型: 正整数
-    function: 4                       # modbus 功能号。 类型: 正整数
+    unit_ID: 1                        # 设备号，即RTU从站地址。 类型: 正整数
+    func_code: 4                      # modbus 功能号。 类型: 正整数
     address: 0                        # 查询起始地址。 类型: 正整数
     length: 28                        # 查询长度。 类型: 正整数
     recv_DB: [Flow01, DB802, JS_flow] # 接收块。 类型: S7符号定义 | S7符号引用
@@ -99,8 +104,8 @@ list : # modbus TCP 连接列表
 
   - comment: '2#流量计'
     # 查询2
-    deivce_ID: 0xF                    # 16进制数
-    function: 0x4                     # 16进制数
+    unit_ID: 0xF                      # 16进制数
+    func_code: 0x4                    # 16进制数
     address: 0x10                     # 16进制数
     length: 0x28                      # 16进制数
     recv_DB: [Flow02, DB+, JS_flow]
@@ -108,8 +113,8 @@ list : # modbus TCP 连接列表
 
   - comment: '1#流量计写参数值'
     # 查询3
-    deivce_ID: 1
-    function: 6
+    unit_ID: 1
+    func_code: 6
     address: 66
     data: 200                         # data 属性就是 length 属性，用此名称是为了语义。
     recv_DB: [WriteRet, DB+]

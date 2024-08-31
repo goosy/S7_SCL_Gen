@@ -156,6 +156,7 @@ export function initialize_list(area) {
         conn.R = R ? 'R' + R : '';
         conn.X = X ? 'X' + X : '';
         conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
+        conn.$try_times = nullable_value(PINT, node.get('$try_times'));
         const interval_time = node.get('interval_time');
         make_s7_expression(
             interval_time,
@@ -174,8 +175,8 @@ export function initialize_list(area) {
         conn.polls = polls.items.map(item => {
             const poll = {
                 comment: ensure_value(STRING, item.get('comment') ?? ''),
-                deivce_ID: ensure_value(PINT, item.get('deivce_ID')),
-                function: ensure_value(PINT, item.get('function')),
+                unit_ID: ensure_value(PINT, item.get('unit_ID')),
+                func_code: ensure_value(PINT, item.get('func_code')),
                 started_addr: nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address')),
                 // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
                 data: nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length')),
@@ -240,8 +241,8 @@ export function build_list(MT) {
         conn.port2 = fixed_hex((port & 0xff), 2);
         conn.name ??= new STRING("polls_" + conn.ID);
         conn.polls.forEach(poll => {
-            poll.deivce_ID = fixed_hex(poll.deivce_ID, 2);
-            poll.function = fixed_hex(poll.function, 2);
+            poll.unit_ID = fixed_hex(poll.unit_ID, 2);
+            poll.func_code = fixed_hex(poll.func_code, 2);
             poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
             poll.data = fixed_hex(poll.data ?? poll.length, 4);
             // 用 ??= 确保共用块只遵循第一次的设置
