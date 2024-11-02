@@ -69,27 +69,19 @@ export function initialize_list(area) {
 
 export function build_list({ list }) {
     for (const AI of list) { // Process configuration to form complete data
-        function make_paras(para_list) {
-            const input_paras = [];
-            for (const _para of para_list) {
-                const para_name = _para[0];
-                const para_SCL = _para[1] ?? para_name;
-                const para = AI[para_name];
-                if (para) {
-                    input_paras.push(`${para_SCL} := ${para.value}`);
-                }
-            }
-            return input_paras;
-        }
         const input_paras = [
             ['input', 'AI'],
             ['enable_AH'],
             ['enable_WH'],
             ['enable_WL'],
             ['enable_AL'],
-        ];
-        AI.input_paras = make_paras(input_paras).join(', ');
-        // todo: AI.input_paras = input_paras.map(para => ).join(', ');
+        ].flatMap(input_para => {
+            const para_name = input_para[0];
+            const para_SCL = input_para[1] ?? para_name;
+            const para = AI[para_name];
+            return para ? `${para_SCL} := ${para.value}` : [];
+        });
+        AI.input_paras = input_paras.join(', ');
     }
 }
 

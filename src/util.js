@@ -178,9 +178,3 @@ function lazyassign(obj, prop, lazyvalue, options) {
         });
     }
 }
-
-export async function forEachAsync(arr, callback) {
-    for (const item of arr) {
-        await callback(item);
-    }
-}

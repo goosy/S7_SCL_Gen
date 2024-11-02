@@ -4,7 +4,7 @@ import { posix } from 'node:path';
 import { chdir, cwd } from 'node:process';
 import { convert } from '../src/index.js';
 import { get_rules, match_list } from '../src/rules.js';
-import { context, forEachAsync, read_file } from '../src/util.js';
+import { context, read_file } from '../src/util.js';
 
 // Loading rules
 const base_path = cwd().replace(/\\/g, '/');
@@ -76,13 +76,11 @@ describe('生成SCL测试', () => {
                 equal(item.feature, 'AI');
             }
             const src_file = `${context.work_path}/test.yaml`;
-            await forEachAsync(
-                match_list(list[0].copy_list, {
-                    cpu_name: 'dist',
-                    source: '**/test.yaml',
-                }),
-                async item => equal(item.content, await read_file(src_file))
-            );
+            items = match_list(list[0].copy_list, {
+                cpu_name: 'dist',
+                source: '**/test.yaml',
+            });
+            for (const item of items) equal(item.content, await read_file(src_file));
         });
         it('检查指定属性', () => {
             for (const item of match_list(list[0].copy_list, { feature: 'CPU', })) {

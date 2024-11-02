@@ -48,7 +48,6 @@ async function build() {
     // create fake src/symbols_buildin.yaml
     await write_file(get_module_path('src', 'symbols_buildin.yaml'), '', { encoding: 'utf8', line_ending: 'LF' });
 
-    const features = [];
     const files = (await readdir(get_module_path('src', 'converters')))
     const js_files = files.filter(
         file => file.startsWith('converter_') && file.endsWith('.js')
@@ -57,6 +56,7 @@ async function build() {
         file => file.endsWith('.yaml')
     );
 
+    const features = [];
     for (const file of js_files) {
         const feature = file.replace('converter_', '').replace(/\.js$/, '');
         if (feature === 'CPU') features.unshift(feature); //Ensure that CPU is first

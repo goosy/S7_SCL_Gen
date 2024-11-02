@@ -67,29 +67,25 @@ export function initialize_list(area) {
 
 export function build_list({ document, list }) {
     const platform = document.CPU.platform;
-    function make_paras(motor, para_pair_list) {
-        const ret = [];
-        for (const [name, para] of para_pair_list) {
-            const prop = motor[name];
-            if (prop) {
-                ret.push([para ?? name, prop.value]);
-            }
-        }
-        return ret;
-    }
     for (const motor of list) { // Process configuration to form complete data
-        const input_paras = make_paras(motor, [
+        const input_paras = [
             ['remote'],
             ['enable', 'enable_run'],
             ['run'],
             ['error']
-        ]);
-        const output_paras = make_paras(motor, [
+        ].flatMap(([name, para]) => {
+            const prop = motor[name];
+            return prop ? [[para ?? name, prop.value]] : [];
+        });
+        const output_paras = [
             ['run_action', 'run_coil'],
             ['start_action', 'start_coil'],
             ['stop_action', 'stop_coil'],
             ['estop_action', 'E_stop_coil']
-        ]);
+        ].flatMap(([name, para]) => {
+            const prop = motor[name];
+            return prop ? [[para ?? name, prop.value]] : [];
+        });
         const inputs_len = input_paras.length;
         const outputs_len = output_paras.length;
         const len = platform === 'portal'
