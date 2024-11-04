@@ -4,7 +4,7 @@ import { context, pad_right } from '../util.js';
 import { posix } from 'node:path';
 
 export const platforms = ['step7', 'portal']; // platforms supported by this feature
-export const NAME = `Motor_Proc`;
+export const NAME = 'Motor_Proc';
 export const LOOP_NAME = 'Motor_Loop';
 const feature = 'motor';
 
@@ -13,7 +13,7 @@ export function is_feature(name) {
 }
 
 /**
- * 第一遍扫描 提取符号
+ * First scan to extract symbols
  * @date 2021-12-07
  * @param {S7Item} VItem
  * @returns {void}
@@ -27,7 +27,7 @@ export function initialize_list(area) {
         };
         const comment = motor.comment.value;
         const DB = node.get('DB');
-        if (!DB) return motor; // 空块不处理
+        if (!DB) return motor; // Empty blocks are not processed
         make_s7_expression(
             DB,
             {
@@ -36,9 +36,9 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
-        ).then(
-            symbol => motor.DB = symbol
-        );
+        ).then(symbol => {
+            motor.DB = symbol;
+        });
 
         function make_bool_s7s(prop) {
             const _comment = comment ? `${comment} ${prop}` : '';
@@ -51,9 +51,9 @@ export function initialize_list(area) {
                     default: { comment: _comment },
                     s7_expr_desc: `motor ${comment} ${prop}`,
                 },
-            ).then(
-                symbol => motor[prop] = symbol
-            );
+            ).then(symbol => {
+                motor[prop] = symbol;
+            });
         }
         ['enable', 'run', 'error', 'remote'].forEach(make_bool_s7s);
         ['run_action', 'start_action', 'stop_action', 'estop_action'].forEach(make_bool_s7s);
@@ -69,16 +69,15 @@ export function build_list({ document, list }) {
     const platform = document.CPU.platform;
     function make_paras(motor, para_pair_list) {
         const ret = [];
-        para_pair_list.forEach(([name, para]) => {
+        for (const [name, para] of para_pair_list) {
             const prop = motor[name];
             if (prop) {
-                para ??= name;
-                ret.push([para, prop.value]);
+                ret.push([para ?? name, prop.value]);
             }
-        });
+        }
         return ret;
     }
-    list.forEach(motor => { // 处理配置，形成完整数据
+    for (const motor of list) { // Process configuration to form complete data
         const input_paras = make_paras(motor, [
             ['remote'],
             ['enable', 'enable_run'],
@@ -93,13 +92,13 @@ export function build_list({ document, list }) {
         ]);
         const inputs_len = input_paras.length;
         const outputs_len = output_paras.length;
-        const len = platform == 'portal'
+        const len = platform === 'portal'
             ? inputs_len + outputs_len
             : inputs_len;
         motor.paras_len = len;
         motor.input_paras = input_paras.map(([name, value], index) => {
             let postfix = '';
-            if (platform == 'portal') {
+            if (platform === 'portal') {
                 if (len > 1) name = pad_right(name, 12);
                 if (index + 1 < len) postfix = ',';
             } else {
@@ -110,21 +109,20 @@ export function build_list({ document, list }) {
         });
         motor.output_paras = output_paras.map(([name, value], index) => {
             let postfix = '';
-            if (platform == 'portal') {
+            if (platform === 'portal') {
                 if (len > 1) name = pad_right(name, 12);
                 if (index + 1 < outputs_len) postfix = ',';
                 return `${name} => ${value}${postfix}`;
-            } else {
-                return `${value} := ${motor.DB.value}.${name};`;
             }
+            return `${value} := ${motor.DB.value}.${name};`;
         });
         motor.paras = [...motor.input_paras, ...motor.output_paras]; // for portal
-    });
+    }
 }
 
 export function gen({ document, options = {} }) {
     const output_dir = context.work_path;
-    const { output_file = LOOP_NAME + '.scl' } = options;
+    const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME };
     const template = posix.join(context.module_path, 'src/converters/motor.template');

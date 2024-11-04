@@ -28,7 +28,7 @@ export const devices = [
     "CPU417-5H_PN/DP",
     "CPU410-5H",
 ];
-const DEFAULT_DEVICE = "CPU31x-2PN/DP"; //默认的CPU设备
+const DEFAULT_DEVICE = "CPU31x-2PN/DP";
 
 export function is_feature(name) {
     return name.toUpperCase() === feature;
@@ -62,7 +62,7 @@ export function initialize_list(area) {
     }
     CPU.device = nullable_value(STRING, document.get('device'))?.value ?? 'CPU31x-2_PN/DP';
     if (CPU?.device?.startsWith("CPU31")) {
-        // 修改300CPU的内置符号 GET PUT
+        // Modify the built-in symbol GET PUT of 300CPU
         const symbols = [
             ['GET', 'FB14'],
             ['PUT', 'FB15']
@@ -75,7 +75,7 @@ export function initialize_list(area) {
         const comment = FN.comment.value;
         const block = node.get('block');
         if (!block) elog(new SyntaxError(`${CPU.name}-CPU: 转换配置项必须有block!`));
-        //S7函数类型
+        // S7 function types
         make_s7_expression(
             block,
             {
@@ -83,9 +83,9 @@ export function initialize_list(area) {
                 disallow_s7express: true,
                 default: { comment },
             },
-        ).then(
-            ret => FN.block = ret
-        );
+        ).then(ret => {
+            FN.block = ret;
+        });
         FN.title = nullable_value(STRING, node.get('title'));
         FN.code = new STRING(node.get('code') ?? '');
         return FN;
@@ -94,9 +94,9 @@ export function initialize_list(area) {
 
 export function build_list({ document, list, options }) {
     const CPU = document.CPU;
-    list.forEach(FN => {
+    for (const FN of list) {
         if (!['OB', 'FC'].includes(FN.block.block_name)) elog(new SyntaxError(`${CPU.name}-CPU: 转换配置项block必须是一个 OB 或 FC 符号!`));
-    });
+    }
     if (options.output_dir) {
         CPU.output_dir = convert({
             cpu_name: CPU.name,
@@ -108,7 +108,7 @@ export function build_list({ document, list, options }) {
 
 export function gen({ document, includes, list, options = {} }) {
     const output_dir = context.work_path;
-    const { output_file = NAME + '.scl' } = options;
+    const { output_file = `${NAME}.scl` } = options;
     if (includes.length || list.length) {
         const distance = `${document.CPU.output_dir}/${output_file}`;
         const tags = {}

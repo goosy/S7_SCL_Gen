@@ -12,10 +12,11 @@ const event_desc = {
 };
 
 export function make_fake_DB(item) {
-    if (isSeq(item)) item = item.items[0];
-    if (Array.isArray(item)) item = item[0];
-    if (isString(item)) item = item.value;
-    if (typeof item === 'string') return { name: item };
+    let name = item;
+    if (isSeq(item)) name = item.items[0];
+    else if (Array.isArray(item)) name = item[0];
+    if (isString(name)) name = name.value;
+    if (typeof name === 'string') return { name };
     return undefined;
 }
 
@@ -23,14 +24,14 @@ export function make_alarm_props(item, node, document) {
     const { CPU, gcl } = document;
     const tag = `${CPU.S7Program}/${item.DB.name}`;
     const alarms_list = [];
-    let info = gcl.get_pos_info(...node.range);
+    const info = gcl.get_pos_info(...node.range);
 
     item.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
     item.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(100);
-    ['AH', 'WH', 'WL', 'AL'].forEach(limit => {
-        const enable_str = 'enable_' + limit;
-        const $enable_str = '$' + enable_str;
-        const $limit_str = '$' + limit + '_limit';
+    for (const limit of ['AH', 'WH', 'WL', 'AL']) {
+        const enable_str = `enable_${limit}`;
+        const $enable_str = `$${enable_str}`;
+        const $limit_str = `$${limit}_limit`;
         // as ex: item.$AH_limit
         item[$limit_str] = nullable_value(REAL, node.get($limit_str));
         // as ex: item.$enable_AH
@@ -51,8 +52,10 @@ export function make_alarm_props(item, node, document) {
                 force: { type: 'BOOL' },
                 s7_expr_desc: `${item.DB.name} ${enable_str}`,
             },
-        ).then(ret => item[enable_str] = ret)
-    });
+        ).then(ret => {
+            item[enable_str] = ret;
+        });
+    }
     // limitation validity check
     const AH = item.$AH_limit ?? item.$WH_limit ?? item.$WL_limit ?? item.$AL_limit;
     const WH = item.$WH_limit ?? AH;

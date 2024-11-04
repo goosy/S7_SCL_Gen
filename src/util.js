@@ -34,12 +34,10 @@ const templates_cache = new Map();
  * @return {Promise<string>} the template content as a string
  */
 async function get_template(template_file, feature) {
-    template_file ??= posix.join(module_path, 'src', 'converters', `${feature}.template`);
-    const filename = isAbsolute(template_file)
-        ? template_file
-        : posix.resolve(template_file);
+    const path = template_file ?? posix.join(module_path, 'src', 'converters', `${feature}.template`);
+    const filename = isAbsolute(path) ? path : posix.resolve(path);
     if (templates_cache.has(filename)) return templates_cache.get(filename);
-    let template = await read_file(filename);
+    const template = await read_file(filename);
     templates_cache.set(filename, template);
     return template;
 }
@@ -53,7 +51,7 @@ function elog(msg) {
 }
 
 async function prepare_dir(dir) {
-    let parents = dirname(dir);
+    const parents = dirname(dir);
     await access(parents).catch(async () => {
         await prepare_dir(parents);
     });
@@ -66,23 +64,22 @@ async function prepare_dir(dir) {
     });
 }
 
+async function _copy(src, dst) {
+    if (typeof src !== 'string' || typeof dst !== 'string') return;
+    const d = dst.endsWith('/') ? dst + basename(src) : dst;
+    await prepare_dir(dirname(d));
+    await cp(src, d, { recursive: true });
+}
+
 /**
- * 复制文件
- * 目标为文件夹时，以'/'结尾
- * @date 2021-09-28
+ * Copy files
+ * When the target is a folder, it ends with '/'
  * @param {string} src
  * @param {string|string[]} dst
  */
 async function copy_file(src, dst) {
-    async function _copy(src, dst) {
-        if (typeof src != 'string') return;
-        if (typeof dst != 'string') return;
-        if (dst.endsWith('/')) dst += basename(src);
-        await prepare_dir(dirname(dst));
-        await cp(src, dst, { recursive: true });
-    }
     if (Array.isArray(dst)) {
-        // Asynchronous sequential execution 异步顺序执行
+        // Asynchronous sequential execution
         for (const item of dst) {
             await _copy(src, item);
         }
@@ -117,7 +114,7 @@ async function write_file(filename, content, { encoding, line_ending } = {}) {
     encoding ??= context.OE;
     line_ending ??= context.line_ending;
     await prepare_dir(dirname(filename));
-    let buff = iconv.encode(line_ending == "CRLF" ? LF2CRLF(content) : CRLF2LF(content), encoding);
+    const buff = iconv.encode(line_ending === "CRLF" ? LF2CRLF(content) : CRLF2LF(content), encoding);
     await writeFile(filename, buff);
 }
 
@@ -128,8 +125,8 @@ function compare_str(a, b) {
 }
 
 /**
- * 将item左侧用占位符填充至指定长度
- * 如果item本身超过该长度，则截取item右侧该长度子串
+ * Fill the left side of the item with placeholders to the specified length
+ * If the item itself exceeds this length, intercept the substring of this length on the right side of the item
  * @date 2021-11-17
  * @param {number|string} item
  * @param {number} length
@@ -141,8 +138,8 @@ function pad_left(item, length, placeholder = ' ') {
 }
 
 /**
- * 将item右侧用占位符填充至指定长度
- * 如果item本身超过该长度，则截取item左侧该长度子串
+ * Fill the right side of the item with placeholders to the specified length
+ * If the item itself exceeds this length, intercept the substring of this length on the left side of the item
  * @date 2021-11-17
  * @param {number|string} item
  * @param {number} length
@@ -165,7 +162,7 @@ function lazyassign(obj, prop, lazyvalue, options) {
         Object.defineProperty(obj, prop, {
             get() {
                 const value = lazyvalue();
-                if (value == null) throw new Error(`lazyvalue not ready`);
+                if (value == null) throw new Error('lazyvalue not ready');
                 lazyassign(obj, prop, value, options);
                 return value;
             },

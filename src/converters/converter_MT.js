@@ -15,8 +15,8 @@ export const LOOP_NAME = 'MT_Loop';
 export const POLLS_NAME = 'MT_polls_DB';
 const feature = 'modbusTCP';
 
-const DEFAULT_DEVICE_ID = "B#16#02"; //默认的设备号
-const device_id = { // 只需要填写设备型号
+const DEFAULT_DEVICE_ID = "B#16#02"; // Default device number
+const device_id = { // Just fill in the device model
     "IM151-8_PN/DP": "B#16#01",
     "CPU31x-2_PN/DP": "B#16#02",
     "CPU314C-2_PN/DP": "B#16#02",
@@ -28,7 +28,7 @@ const device_id = { // 只需要填写设备型号
     "CPU414-3_PN/DP": "B#16#05",
     "CPU416-3_PN/DP": "B#16#05",
 }
-const device_X_id = { // 可能需要填写槽号的
+const device_X_id = { // You may need to fill in the slot number
     //['', 'X2', 'X4']
     "CPU317-2_PN/DP": "B#16#02",
     "CPU317-2_PN/DP_X2": "B#16#02",
@@ -38,7 +38,7 @@ const device_X_id = { // 可能需要填写槽号的
     "CPU319-3_PN/DP_X3": "B#16#03",
     "CPU319-3_PN/DP_X4": "B#16#04",
 }
-const device_R_X_id = { // 可能需要填写槽号和机架号的
+const device_R_X_id = { // You may need to fill in the slot number and rack number
     // ['', 'R0', 'R1'] × ['', 'X5']
     // 412-5H
     "CPU412-5H_PN/DP": "B#16#05",
@@ -81,8 +81,8 @@ const device_R_X_id = { // 可能需要填写槽号和机架号的
 }
 
 export function is_feature(name) {
-    name = name.toLowerCase();
-    return name === 'mt' || name === 'modbustcp';
+    const f_name = name.toLowerCase();
+    return f_name === 'mt' || f_name === 'modbustcp';
 }
 
 function get_device_id(device, R, X) {
@@ -99,11 +99,11 @@ function get_device_id(device, R, X) {
     }
     id = device_R_X_id[device_paras.join('_')]
     if (id) return id; // device_R_X is valid
-    return null; // 没有对应设备号
+    return null; // No corresponding device number
 }
 
 /**
- * 第一遍扫描 提取符号
+ * First scan to extract symbols
  * @date 2021-12-07
  * @param {S7Item} VItem
  * @returns {void}
@@ -111,7 +111,7 @@ function get_device_id(device, R, X) {
 export function initialize_list(area) {
     const document = area.document;
     const CPU = document.CPU;
-    // CPU.device 必须第二遍扫描才有效
+    // CPU.device It must be scanned at second time to be effective.
     area.list = area.list.map(node => {
         const conn = {
             node,
@@ -133,9 +133,9 @@ export function initialize_list(area) {
                 force: { type: NAME },
                 default: { comment },
             },
-        ).then(
-            symbol => conn.DB = symbol
-        );
+        ).then(symbol => {
+            conn.DB = symbol;
+        });
 
         // host IP
         let host = node.get('host');
@@ -153,8 +153,8 @@ export function initialize_list(area) {
         });
         const R = nullable_value(PINT, node.get('rack'));
         const X = nullable_value(PINT, node.get('XSlot'));
-        conn.R = R ? 'R' + R : '';
-        conn.X = X ? 'X' + X : '';
+        conn.R = R ? `R${R}` : '';
+        conn.X = X ? `X${X}` : '';
         conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
         conn.$try_times = nullable_value(PINT, node.get('$try_times'));
         const interval_time = node.get('interval_time');
@@ -166,9 +166,9 @@ export function initialize_list(area) {
                 default: { comment: `interval time of ${comment}` },
                 s7_expr_desc: `MT ${comment} conn.interval_time`,
             },
-        ).then(
-            symbol => conn.interval_time = symbol
-        );
+        ).then(symbol => {
+            conn.interval_time = symbol;
+        });
 
         const polls = node.get('polls');
         assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
@@ -178,9 +178,11 @@ export function initialize_list(area) {
                 unit_ID: ensure_value(PINT, item.get('unit_ID')),
                 func_code: ensure_value(PINT, item.get('func_code')),
                 started_addr: nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address')),
-                // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
+                // TODO:The correct information for the error in the previous sentence should be:
+                // new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
                 data: nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length')),
-                // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
+                // TODO:The correct information for the error in the previous sentence should be:
+                // new SyntaxError(`配置项 data 或 length 必须有一个!`)
                 recv_start: ensure_value(PINT, item.get('recv_start')),
                 uninvoke: nullable_value(BOOL, item.get('uninvoke')) ?? new BOOL(false),
             };
@@ -193,9 +195,9 @@ export function initialize_list(area) {
                     disallow_s7express: true,
                     default: { comment },
                 },
-            ).then(
-                symbol => poll.recv_DB = symbol
-            );
+            ).then(symbol => {
+                poll.recv_DB = symbol;
+            });
             return poll;
         })
         return conn;
@@ -205,8 +207,8 @@ export function initialize_list(area) {
 export function build_list(MT) {
     const { document, list } = MT
     const CPU = document.CPU;
-    const DBs = new Set(); // 去重
-    list.forEach(conn => { // 处理配置，形成完整数据
+    const DBs = new Set(); // Remove duplicates
+    for (const conn of list) { // Process configuration to form complete data
         const {
             conn_ID_list,
             conn_host_list,
@@ -215,41 +217,41 @@ export function build_list(MT) {
         conn.device ??= CPU.device;
         const {
             ID,
-            local_device_id = get_device_id(conn.device, conn.R, conn.X), // 已是SCL字面量
+            local_device_id = get_device_id(conn.device, conn.R, conn.X), // Already an SCL literal
             host,
-            // interval_time, // 由SCL程序负责默认的间隔时长
+            // interval_time, // The SCL program is responsible for the default interval length
         } = conn;
         const port = conn.port.value;
 
-        // 指定的device没有对应的通信设备号
+        // The specified device does not have a corresponding communication device number.
         if (local_device_id === null && conn.device) elog(new SyntaxError(`指定的通信设备号"${conn.device} rack${conn.rack} xslot${conn.XSlot}"不存在！`));
-        // 如没指定device，则采用默认设备号
+        // If device is not specified, the default device number is used.
         conn.local_device_id = local_device_id ?? DEFAULT_DEVICE_ID;
 
         // port_list
-        conn_host_list[host] ??= new IntHashList(502); // 默认一个host从502端口开始
+        conn_host_list[host] ??= new IntHashList(502); // By default, a host starts from port 502
         const port_list = conn_host_list[host];
         port_list.push(port);
 
         conn.ID = fixed_hex(conn_ID_list.push(ID), 4);
-        conn.DB.name ??= "conn_MT" + ID;
+        conn.DB.name ??= `conn_MT${ID}`;
         conn.IP1 = fixed_hex(conn.IP[0], 2);
         conn.IP2 = fixed_hex(conn.IP[1], 2);
         conn.IP3 = fixed_hex(conn.IP[2], 2);
         conn.IP4 = fixed_hex(conn.IP[3], 2);
         conn.port1 = fixed_hex((port >>> 8), 2);
         conn.port2 = fixed_hex((port & 0xff), 2);
-        conn.name ??= new STRING("polls_" + conn.ID);
-        conn.polls.forEach(poll => {
+        conn.name ??= new STRING(`polls_${conn.ID}`);
+        for (const poll of conn.polls) {
             poll.unit_ID = fixed_hex(poll.unit_ID, 2);
             poll.func_code = fixed_hex(poll.func_code, 2);
             poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
             poll.data = fixed_hex(poll.data ?? poll.length, 4);
-            // 用 ??= 确保共用块只遵循第一次的设置
+            // Use ??= to ensure that the shared block only respects the first setting
             poll.recv_DB.uninvoke ??= poll.recv_DB.type_name !== 'FB' || poll.uninvoke.value;
             DBs.add(poll.recv_DB);
-        });
-    });
+        }
+    }
     MT.invoke_code = [...DBs].map(DB => {
         const comment = DB.comment ? ` // ${DB.comment}` : '';
         return DB.uninvoke ? `// "${DB.name}" ${DB.comment ?? ''}` : `"${DB.type}"."${DB.name}"();${comment}`;
@@ -258,7 +260,7 @@ export function build_list(MT) {
 
 export function gen({ document, invoke_code, options }) {
     const output_dir = context.work_path;
-    const { output_file = LOOP_NAME + '.scl' } = options;
+    const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME, invoke_code, POLLS_NAME };
     const template = posix.join(context.module_path, 'src/converters/MT.template');

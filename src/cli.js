@@ -88,18 +88,18 @@ if (argv.version) {
         script: posix.join(context.module_path, 'lib', 'cli.js'),
         ext: 'yaml,scl'
     });
-    nodemon.on('start', function () {
+    nodemon.on('start', () => {
         console.log('s7-scl-gen has started');
-    }).on('quit', function () {
+    }).on('quit', () => {
         console.log('s7-scl-gen has quit');
         process.exit();
-    }).on('restart', function (files) {
+    }).on('restart', (files) => {
         console.log('s7-scl-gen restarted due to: ', files);
     });
 } else if (cmd === 'gcl' || cmd === 'init' || cmd === 'template') {
     const distance = posix.join(context.work_path, path ?? 'GCL');
     await copy_file(posix.join(context.module_path, 'example'), distance);
-    await copy_file(posix.join(context.module_path, 'README.md'), distance + '/');
+    await copy_file(posix.join(context.module_path, 'README.md'), `${distance}/`);
     const fullname_dst = posix.join(context.work_path, distance);
     const readme = posix.join(fullname_dst, 'README.md');
     console.log(`Generated configuration folder ${fullname_dst}. 已生成配置文件夹 ${fullname_dst}。\nSee instructions in ${readme}. 可以参阅 ${readme} 内的说明。`);

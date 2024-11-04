@@ -10,8 +10,8 @@ export const LOOP_NAME = 'RP_Loop';
 const feature = 'RP';
 
 export function is_feature(name) {
-    name = name.toUpperCase();
-    return name === feature || name === 'RELAY' || name === 'PULSE';
+    const f_name = name.toUpperCase();
+    return f_name === feature || f_name === 'RELAY' || f_name === 'PULSE';
 }
 
 const FB_dict = {
@@ -24,8 +24,7 @@ const FB_dict = {
 }
 
 /**
- * 第一遍扫描 提取符号
- * @date 2021-12-07
+ * First scan to extract symbols
  * @param {S7Item} VItem
  * @returns {void}
  */
@@ -37,13 +36,13 @@ export function initialize_list(area) {
             comment: new STRING(node.get('comment') ?? '信号近期有变化')
         };
         RP.type = ensure_value(STRING, node.get('type'));
+        const comment = RP.comment.value;
         if (!Object.keys(FB_dict).includes(RP.type?.value)) {
             elog(new SyntaxError(`${document.CPU.name}:RP (${comment}) 的类型 "${RP.type}" 不支持`));
         };
         RP.FB = FB_dict[RP.type.value];
         const DB = node.get('DB');
         if (!DB) elog(new SyntaxError("RP转换必须有DB块!"));
-        const comment = RP.comment.value;
         make_s7_expression(
             DB,
             {
@@ -52,9 +51,9 @@ export function initialize_list(area) {
                 force: { type: RP.FB },
                 default: { comment },
             },
-        ).then(
-            symbol => RP.DB = symbol
-        );
+        ).then(symbol => {
+            RP.DB = symbol;
+        });
         make_s7_expression(
             node.get('input'),
             {
@@ -63,9 +62,9 @@ export function initialize_list(area) {
                 default: { comment },
                 s7_expr_desc: `RP ${comment} input`,
             },
-        ).then(
-            symbol => RP.IN = symbol
-        );
+        ).then(symbol => {
+            RP.IN = symbol;
+        });
         make_s7_expression(
             node.get('output'),
             {
@@ -74,14 +73,14 @@ export function initialize_list(area) {
                 default: { comment },
                 s7_expr_desc: `RP ${comment} output`,
             },
-        ).then(
-            symbol => RP.Q = symbol
-        );
+        ).then(symbol => {
+            RP.Q = symbol;
+        });
         if (RP.type.value === 'onDPulse' || RP.type.value === 'changeDPulse') {
             RP.IncludeFallingEdge = RP.type.value === 'changeDPulse';
         }
         RP.$PT = ensure_value(TIME, node.get('$time') ?? 0);
-        // @TODO 增加运行时PT的符号输入
+        // @TODO Add symbol input for PT at runtime
         // RP.PT = ensure_value(TIME, node.get('time') ?? 0);
 
         return RP;
@@ -90,7 +89,7 @@ export function initialize_list(area) {
 
 export function gen({ document, options = {} }) {
     const output_dir = context.work_path;
-    const { output_file = LOOP_NAME + '.scl' } = options;
+    const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { LOOP_NAME };
     const template = posix.join(context.module_path, 'src/converters/RP.template');

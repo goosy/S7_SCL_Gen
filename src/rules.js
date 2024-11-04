@@ -13,7 +13,7 @@ function isPlainObject(obj) {
 }
 
 export const match = (item, pattern_object) => {
-    if (pattern_object === '*') return true; // * 匹配所有类型的值
+    if (pattern_object === '*') return true; // Matches all types of values
     if (typeof item === 'boolean' && typeof pattern_object === 'boolean') {
         return item === pattern;
     }
@@ -33,13 +33,13 @@ export const match_list = (list, pattern_object) => list.filter(item => match(it
 
 export const apply_rule = (item, rule) => {
     const MS = rule.modifications;
-    for (let [key, value] of Object.entries(MS)) {
+    for (const [key, value] of Object.entries(MS)) {
         if (value === null) {
             delete item[key];
             return;
         }
-        if (key == 'tags' && isPlainObject(value)) {
-            // tags 浅复制
+        if (key === 'tags' && isPlainObject(value)) {
+            // tags shallow copy
             item[key] ??= {};
             Object.assign(item[key], value);
             return;
@@ -76,8 +76,9 @@ export const apply_rules = (gen_list, rules) => {
     return gen_list.map(item => {
         const ret = { ...item };
         if (matched_list.has(item)) {
-            const rules = matched_list.get(item);
-            rules.forEach(rule => apply_rule(ret, rule));
+            for (const rule of matched_list.get(item)) {
+                apply_rule(ret, rule);
+            }
         }
         return ret;
     });
@@ -96,26 +97,26 @@ export const parse_rules = async (yaml, rules_path) => {
     const tasks = [];
     await forEachAsync(documents, async doc => {
         const { config_path, rules: _rules, attributes } = doc.toJS();
-        const path = posix.join(rules_path, config_path);  // 相对于当前路径，与 rules_path 相加
+        const path = posix.join(rules_path, config_path);  // Relative to the current path, added to rules_path
         const rules = [];
         await forEachAsync(_rules, async rule => {
-            if (!isPlainObject(rule)) return; // 不正确的规则，返回空
+            if (!isPlainObject(rule)) return; // Incorrect rule, returns empty
             const pattern = rule.pattern;
             if (!pattern) return;
             if (!isPlainObject(pattern) && !Array.isArray(pattern) && typeof pattern !== 'string') return;
             const modifications = rule.modifications;
             if (!isPlainObject(modifications)) return;
-            // 'input_dir', 'output_dir' 路径，必须相对于将来的配置路径，与 config_path 相减
+            // 'input_dir', 'output_dir' paths must be relative to the future configuration path, subtracted from config_path
             modify_path(modifications, 'input_dir', config_path);
             modify_path(modifications, 'output_dir', config_path);
-            // 读入模板，因为在当前处理，路径相对于当前路径，与 rules_path 相加
+            // Read in the template, because in the current process, the path is relative to the current path, and is added to rules_path
             const template_file = modifications.template;
             if (template_file) {
                 modifications.template = await get_template(
                     posix.join(rules_path, template_file)
                 );
             }
-            // modifications.tags 增加 attributes
+            // modifications.tags add attributes
             if (modifications.tags && !isPlainObject(modifications.tags)) modifications.tags = {};
             if (attributes) {
                 modifications.tags = {
