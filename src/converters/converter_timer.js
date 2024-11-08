@@ -64,10 +64,8 @@ export function gen({ document, options = {} }) {
 
 export function gen_copy_list(item) {
     const filename = item.document.CPU.platform == 'portal' ? `${NAME}(portal).scl` : `${NAME}.scl`;
-    const src = {
-        filename: posix.join(context.module_path, NAME, filename),
-        encoding: 'utf8',
-    };
+    const src = posix.join(context.module_path, NAME, filename);
+    const IE = 'utf8';
     const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
-    return [{ src, dst }];
+    return [{ src, dst, IE }];
 }

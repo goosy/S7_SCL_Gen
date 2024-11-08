@@ -110,10 +110,8 @@ export function gen({ document, options = {} }) {
 }
 
 export function gen_copy_list(item) {
-    const src = {
-        filename: posix.join(context.module_path, NAME, `${NAME}(${item.document.CPU.platform}).scl`),
-        encoding: 'utf8',
-    };
+    const src = posix.join(context.module_path, NAME, `${NAME}(${item.document.CPU.platform}).scl`);
+    const IE = 'utf8';
     const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
-    return [{ src, dst }];
+    return [{ src, dst, IE }];
 }

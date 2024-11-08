@@ -3,6 +3,7 @@ name: test-AI
 
 files:
 - filename: test.yaml
+  IE: utf8
 
 symbols:
 - [DI01-01, I10.1]

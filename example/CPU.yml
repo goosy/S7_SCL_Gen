@@ -132,15 +132,15 @@ list:
 
 options: # 选项，非必需，无需要时可以全部删除或注释掉。
   # output_dir 指令指示所有属于该 CPU 的S7代码输出文件夹
-  # 该指令仅用在 CPU 文档中，可省略，默认为 {{CPU}}
+  # 该指令仅用在 CPU 文档中，可省略，默认为 {{cpu_name}}
   # 类型: 字符串
   # 可以在字符串中使用以下替换:
-  # - {{CPU}}      会自动替换为当前配置的 CPU 名称
+  # - {{cpu_name}} 会自动替换为当前配置的 CPU 名称
   # - {{platform}} 会自动替换为当前配置的 platform
   # - {{device}}   会自动替换为当前配置的 device
-  output_dir: SCL_{{CPU}}_{{platform}}_{{device}}
+  output_dir: SCL_{{cpu_name}}_{{platform}}_{{device}}
 
-  # 输出CPU配置文件名，可省略，默认值是 CPU 名称
+  # 输出CPU配置文件名，可省略，默认值是 `CPU.scl`
   # 类型: 字符串
   output_file: 'main.scl'
 
@@ -150,7 +150,10 @@ name: AS2-CPU
 platform: portal
 
 files:
-- filename: ..//Motor_Proc/**.scl
+- filename: ..//Motor_Proc/**.scl # 复制指定文件夹下的所有SCL文件，并指定文本格式
+  IE: utf8
+  OE: utf8
+  line_ending: LF
 
 attributes: # 用于包含文件PE.scl的转换
     tag_postfix_number: '0201'

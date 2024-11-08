@@ -98,7 +98,7 @@ export function build_list({ document, list, options }) {
     });
     if (options.output_dir) {
         CPU.output_dir = convert({
-            CPU: CPU.name,
+            cpu_name: CPU.name,
             platform: CPU.platform,
             device: CPU.device
         }, options.output_dir);
