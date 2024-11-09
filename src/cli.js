@@ -22,7 +22,8 @@ options:
 --version     | -V | -v      显示版本号，会忽略任何 subcommand 子命令
 --help        | -H           打印本帮助，会忽略任何 subcommand 子命令
 --output-zyml                转换时同时输出无注释的配置文件(后缀为.zyml)
---zyml-only   | -z | -Z      只输出无注释的配置文件，不进行SCL转换
+--no-convert                 不进行SCL转换
+--no-copy                    不进行文件复制
 --silent      | -s | -S      不输出过程信息
 --line-ending                输出文件的换行符: CRLF LF
 --OE                         输出文件的编码: gbk utf8 等
@@ -47,10 +48,12 @@ const argv = mri(process.argv.slice(2), {
     }
 });
 const [cmd = 'convert', path] = argv._;
-const output_zyml = argv['zyml-only'] || argv['output-zyml'];
+const output_zyml = argv['output-zyml'];
 if (output_zyml) context.output_zyml = output_zyml;
-const noconvert = argv['zyml-only'];
-if (noconvert) context.noconvert = noconvert;
+const no_convert = argv['no-convert'];
+if (no_convert) context.no_convert = no_convert;
+const no_copy = argv['no-copy'];
+if (no_copy) context.no_copy = no_copy;
 const silent = argv.silent;
 if (silent) context.silent = silent;
 const encoding = argv.OE;
@@ -79,7 +82,7 @@ if (argv.version) {
         }
         await convert();
     }
-    noconvert || silent || console.log("\nAll GCL files have been converted to SCL files! 所有GCL文件已转换成SCL文件。");
+    no_convert || silent || console.log("\nAll GCL files have been converted to SCL files! 所有GCL文件已转换成SCL文件。");
 } else if (cmd === 'watch' || cmd === 'monitor') {
     process.chdir(path ?? '.');
     nodemon({

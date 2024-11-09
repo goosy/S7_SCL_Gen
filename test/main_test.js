@@ -14,7 +14,8 @@ const tasks = await get_rules('./test/rules.rml');
 chdir('./test');
 context.work_path = cwd().replace(/\\/g, '/');
 context.silent = true;
-context.noconvert = true;
+context.no_convert = true;
+context.no_copy = true;
 const list = [];
 
 // Example 1

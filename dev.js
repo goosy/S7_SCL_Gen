@@ -9,10 +9,12 @@ const argv = mri(process.argv.slice(2), {
         Z: ['z', 'zyml-only'],
     }
 });
-const output_zyml = argv['zyml-only'] || argv['output-zyml'];
+const output_zyml = argv['output-zyml'];
 if (output_zyml) context.output_zyml = output_zyml;
-const noconvert = argv['zyml-only'];
-if (noconvert) context.noconvert = noconvert;
+const no_convert = argv['no-convert'];
+if (no_convert) context.no_convert = no_convert;
+const no_copy = argv['no-copy'];
+if (no_copy) context.no_copy = no_copy;
 const silent = argv.silent;
 if (silent) context.silent = silent;
 const encoding = argv.OE;
@@ -22,4 +24,4 @@ if (line_ending) context.line_ending = line_ending;
 process.chdir('./example');
 context.work_path = process.cwd().replace(/\\/g, '/');
 await convert();
-if (!noconvert) console.log("\nconverted all YAML to SCL!")
+if (!no_convert) console.log("\nconverted all YAML to SCL!")
