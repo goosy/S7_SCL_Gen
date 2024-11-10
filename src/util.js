@@ -3,7 +3,7 @@ import { basename, dirname, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import iconv from 'iconv-lite';
 import { Integer } from './s7data.js';
-import pkg from '../package.json' assert { type: 'json' };
+import pkg from '../package.json' with { type: 'json' };
 
 export {
     context, CURRENT_DOC, CURRENT_NODE,

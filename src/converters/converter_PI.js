@@ -129,11 +129,8 @@ export function gen({ document, options = {} }) {
 }
 
 export function gen_copy_list(item) {
-    const filename = `${NAME}.scl`;
-    const src = {
-        filename: posix.join(context.module_path, NAME, filename),
-        encoding: 'utf8',
-    };
-    const dst = posix.join(context.work_path, item.document.CPU.output_dir, filename);
-    return [{ src, dst }];
+    const src = posix.join(context.module_path, NAME, `${NAME}.scl`);
+    const IE = 'utf8';
+    const dst = posix.join(context.work_path, item.document.CPU.output_dir, `${NAME}.scl`);
+    return [{ src, dst, IE }];
 }
