@@ -22,7 +22,7 @@ async function _convert(copy_list, convert_list) {
             } else {
                 let content = await read_file(src_file, { encoding: IE });
                 copy_item.content = content;
-                if (OE == 'gbk' && content.charCodeAt(0) === 0xFEFF) { // remove BOM
+                if (OE === 'gbk' && content.charCodeAt(0) === 0xFEFF) { // remove BOM
                     content = content.substring(1);
                 }
                 await write_file(dst_file, content, { encoding: OE, line_ending });
@@ -33,13 +33,13 @@ async function _convert(copy_list, convert_list) {
 
     if (convert_list?.length) {
         silent || console.log("\ngenerate file: 生成文件：");
-        // Asynchronous sequential execution 异步顺序执行
+        // Asynchronous sequential execution
         for (const convert_item of convert_list.filter(item => item.enable)) {
             const { distance, output_dir, tags, template, OE, line_ending } = convert_item;
             const filename = posix.join(output_dir, distance);
             const content = gc(tags, template);
             convert_item.content = content;
-            // 由 noconvert 变量决定是否输出
+            // Whether to output is determined by the noconvert variable
             context.noconvert || await write_file(filename, content, { encoding: OE, line_ending });
             context.silent || console.log(`\t${filename}`);
         }

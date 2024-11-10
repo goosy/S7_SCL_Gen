@@ -16,49 +16,50 @@ const ms_per = {
 const time_base2ms = [10, 100, 1000, 10000];
 
 /**
- * 将毫秒数转换成类似 24d_56h_33m_250ms 格式
+ * Convert milliseconds to a format like 24d_56h_33m_250ms
  * @param {number} ms
  * @returns {string}
  */
 function getTimeDurationStr(value) {
-    if (value == 0) return '0';
-    let strList = [];
+    if (value === 0) return '0';
+    const strList = [];
     let remainder;
-    if (value > 0) {
-        remainder = value % ms_per.second;
-        if (remainder > 0) strList.unshift(remainder + "MS");
-        value = value - remainder;
+    let quotient = value;
+    if (quotient > 0) {
+        remainder = quotient % ms_per.second;
+        if (remainder > 0) strList.unshift(`${remainder}MS`);
+        quotient = quotient - remainder;
     }
-    if (value > 0) {
-        remainder = value % ms_per.minute;
-        if (remainder > 0) strList.unshift(remainder / ms_per.second + "S");
-        value = value - remainder;
+    if (quotient > 0) {
+        remainder = quotient % ms_per.minute;
+        if (remainder > 0) strList.unshift(`${remainder / ms_per.second}S`);
+        quotient = quotient - remainder;
     }
-    if (value > 0) {
-        remainder = value % ms_per.hour;
-        if (remainder > 0) strList.unshift(remainder / ms_per.minute + "M");
-        value = value - remainder;
+    if (quotient > 0) {
+        remainder = quotient % ms_per.hour;
+        if (remainder > 0) strList.unshift(`${remainder / ms_per.minute}M`);
+        quotient = quotient - remainder;
     }
-    if (value > 0) {
-        remainder = value % ms_per.day;
-        if (remainder > 0) strList.unshift(remainder / ms_per.hour + "H");
-        value = value - remainder;
+    if (quotient > 0) {
+        remainder = quotient % ms_per.day;
+        if (remainder > 0) strList.unshift(`${remainder / ms_per.hour}H`);
+        quotient = quotient - remainder;
     }
-    if (value > 0) {
-        strList.unshift(value / ms_per.day + "D");
+    if (quotient > 0) {
+        strList.unshift(`${quotient / ms_per.day}D`);
     }
     return strList.join("_");
 }
 
 /**
- * 将其它单位时间字符串转换为毫秒数
+ * Convert other unit time strings to milliseconds
  * @param {string} str
  */
 function parse_unit(str) {
     if (str.endsWith('ms')) {
-        return parseInt(str.slice(0, -2));
+        return Number.parseInt(str.slice(0, -2));
     }
-    let value = parseInt(str.slice(0, -1));
+    const value = Number.parseInt(str.slice(0, -1));
     if (str.endsWith('s')) {
         return value * ms_per.second;
     }
@@ -75,7 +76,7 @@ function parse_unit(str) {
 }
 
 /**
- * 将字符串转换为毫秒数
+ * Convert string to milliseconds
  * @param {string} str
  */
 function parse2ms(str) {
@@ -85,8 +86,8 @@ function parse2ms(str) {
 }
 
 /**
- * 接受 TIME 字面量或毫秒数
- * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
+ * Accepts a TIME literal or a number of milliseconds
+ * range: TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
  * @param {string|number} value
  */
 function get_ms_form(value) {
@@ -99,7 +100,7 @@ function get_ms_form(value) {
     if (!/^(t|time)#(\d+d_?)?(\d+h_?)?(\d+m_?)?(\d+s_?)?(\d+ms)?$/.test(valStr)) elog(INPUT_ERROR);
     valStr = valStr.replace(/(time|t)#/, "").replace(/([dhms])(\d)/ig, '$1_$2');
     let sign = 1;
-    if (valStr[0] == '-') {
+    if (valStr[0] === '-') {
         valStr = valStr.substring(1);
         sign = -1;
     }
@@ -128,12 +129,13 @@ export class BOOL extends S7Value {
         assert(typeof value === 'boolean', `the value "${value}" must be a boolean. 值必须是一个布尔值`);
     }
     constructor(value) {
-        if (value === 0) value = false;
-        if (value === 1) value = true;
-        if (value?.toLowerCase?.() === 'false') value = false;
-        if (value?.toLowerCase?.() === 'true') value = true;
-        BOOL.check(value);
-        super(value);
+        let bool_value = value;
+        if (value === 0) bool_value = false;
+        if (value === 1) bool_value = true;
+        if (value?.toLowerCase?.() === 'false') bool_value = false;
+        if (value?.toLowerCase?.() === 'true') bool_value = true;
+        BOOL.check(bool_value);
+        super(bool_value);
     }
     [Symbol.toPrimitive](hint) {
         if (hint === 'boolean') {
@@ -151,8 +153,7 @@ class S7Number extends S7Value {
         assert(Number.isFinite(value), `the value "${value}" must be a number. 值必须是一个有限数字`);
     }
     constructor(value) {
-        if (typeof value === 'string') value = Number(value);
-        super(value);
+        super(typeof value === 'string' ? Number(value) : value);
         S7Number.check(this._value);
     }
     [Symbol.toPrimitive](hint) {
@@ -162,46 +163,41 @@ class S7Number extends S7Value {
         return this.toString();
     }
     [Symbol.compare](other) {
-        if (this.value < other.value) {
-            return -1;
-        } else if (this.value > other.value) {
-            return 1;
-        } else {
-            return 0;
-        }
+        if (this.value < other.value) return -1;
+        if (this.value > other.value) return 1;
+        return 0;
     }
 }
 
 export class Integer extends S7Number {
     constructor(value) {
-        value = parseInt(value);
-        super(value);
+        super(Number.parseInt(value));
     }
     /**
-     * get Two's Complement 获得补码
+     * get Two's Complement
      */
     TC(exponent) {
         let result = this._value;
         if (this._value < 0) {
             result = ~Math.abs(result) + 1;
         }
-        const mask = Math.pow(2, exponent) - 1;
+        const mask = 2 ** exponent - 1;
         return result & mask;
     }
     get HEX() {
         return this._value.toString(16).toUpperCase();
     }
     get byteHEX() {
-        return 'B#16#' + this.TC(8).toString(16).toUpperCase();
+        return `B#16#${this.TC(8).toString(16).toUpperCase()}`;
     }
     get wordHEX() {
-        return 'W#16#' + this.TC(16).toString(16).toUpperCase();
+        return `W#16#${this.TC(16).toString(16).toUpperCase()}`;
     }
     get dwordHEX() {
-        return 'DW#16#' + this.TC(32).toString(16).toUpperCase();
+        return `DW#16#${this.TC(32).toString(16).toUpperCase()}`;
     }
     get DINT() {
-        return 'L#' + this._value.toString();
+        return `L#${this._value.toString()}`;
     }
 }
 
@@ -242,7 +238,7 @@ export class DINT extends Integer {
 }
 export class TIME extends DINT {
     /**
-     * 原始值
+     * original value
      * @return {number}
      */
     get rawValue() {
@@ -250,8 +246,8 @@ export class TIME extends DINT {
     }
 
     /**
-     * 接受 TIME 字面量或毫秒数
-     * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
+     * Accepts a TIME literal or a number of milliseconds
+     * range: TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
      * @param {string|number} value
      */
     set S7Value(value) {
@@ -259,8 +255,8 @@ export class TIME extends DINT {
     }
 
     /**
-     * 接受 TIME 字面量或毫秒数
-     * 范围： TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
+     * Accepts a TIME literal or a number of milliseconds
+     * range: TIME#-24d_20h_31m_23s_648ms ~ TIME#24d_20h_31m_23s_647ms
      * @param {string|number} value
      */
     set value(value) {
@@ -273,7 +269,7 @@ export class TIME extends DINT {
     }
 
     /**
-     * S7 TIME 字面量形式的字符串
+     * S7 TIME literal string
      * @return {string}
      */
     get S7Value() {
@@ -301,7 +297,7 @@ export class PDINT extends Integer {
         PDINT.check(this._value);
     }
     toString() {
-        return 'L#' + this._value.toString();
+        return `L#${this._value.toString()}`;
     }
 }
 
@@ -315,11 +311,11 @@ export class REAL extends S7Number {
 export class STRING extends S7Value {
     constructor(value) {
         super(value);
-        value = this._value;
-        if (typeof value === 'number' && Number.isFinite(value)) value = String(value);
-        if (typeof value === 'boolean') value = String(value);
-        assert(typeof value === 'string', `the value "${value}" must be a string. 值必须是一个字符串`);
-        this._value = value;
+        let _value = this._value;
+        if (typeof _value === 'number' && Number.isFinite(_value)) _value = String(_value);
+        if (typeof _value === 'boolean') _value = String(_value);
+        assert(typeof _value === 'string', `the value "${_value}" must be a string. 值必须是一个字符串`);
+        this._value = _value;
     }
     toString() {
         return this._value;
@@ -337,7 +333,7 @@ export function ensure_value(type, value) {
 
 function isInt(num) {
     return typeof num === 'number'
-        && !isNaN(num)
+        && !Number.isNaN(num)
         && Number.isInteger(num)
         && Number.isFinite(num);
 }
@@ -347,21 +343,20 @@ function isPInt(num) {
 }
 
 export function dec2foct(num) {
-    if (!isPInt(num)) elog(new TypeError(`${byte} 不是非负整数!`));
+    if (!isPInt(num)) elog(new TypeError(`${num} 不是非负整数!`));
     const bit = num % 8;
     const byte = (num - bit) / 8;
     return [byte, bit];
 }
 
-export function foct2dec(byte, bit) {
+export function foct2dec(byte, bit = 0) {
     if (byte != null && !isPInt(byte)) elog(new TypeError(`byte ${byte} 不是非负整数!`));
-    bit ??= 0;
     if (!isPInt(bit)) elog(new TypeError(`bit ${bit} 不是非负整数!`));
     return (byte == null || bit == null) ? null : byte * 8 + bit;
 }
 
 export function foct2S7addr(byte, bit) {
-    const error = new TypeError(`num is wrong!`);
+    const error = new TypeError('num is wrong!');
     if (!isPInt(byte)) elog(error);
     if (!isPInt(bit) || bit > 7) elog(error);
     return byte + bit / 10;
@@ -369,10 +364,10 @@ export function foct2S7addr(byte, bit) {
 
 export function s7addr2foct(s7addr) {
     const error = new TypeError(`s7 address ${s7addr} is wrong!`);
-    s7addr = s7addr * 10;
-    if (!isPInt(s7addr)) elog(error);
-    const bit = s7addr % 10;
-    const byte = (s7addr - bit) / 10;
+    const s7addr_int = s7addr * 10;
+    if (!isPInt(s7addr_int)) elog(error);
+    const bit = s7addr_int % 10;
+    const byte = (s7addr_int - bit) / 10;
     if (bit > 7) elog(error);
     return [byte, bit];
 }
@@ -388,15 +383,19 @@ function size2dec(size) {
 
 export function get_boundary(num, num_size) {
     if (!isPInt(num)) {
-        elog(new TypeError(`${num} 不是非负整数!`));
+        elog(new TypeError(`${num} Not a non-negative integer!`));
     }
-    if (num_size == 1) return num;
+    if (num_size < 0 || (num_size !== 1 && num_size % 8 !== 0)) {
+        elog(new TypeError(`${num_size} Not a valid variable storage length!`));
+    }
+    if (num_size === 1) return num;
+    let quotient = num;
     let remainder = num % 8;
-    if (remainder > 0) num += 8 - remainder;
-    if (num_size == 8) return num;
-    remainder = num % 16;
-    if (remainder > 0) num += 16 - remainder;
-    return num;
+    if (remainder > 0) quotient += 8 - remainder;
+    if (num_size === 8) return quotient;
+    remainder = quotient % 16;
+    if (remainder > 0) quotient += 16 - remainder;
+    return quotient;
 }
 
 export class HLError extends Error {
@@ -422,9 +421,10 @@ export class HashList {
     }
     check(num) {
         if (num == null) {
-            num = this.get_new();
-        } else if (!isPInt(num)) {
-            elog(new TypeError(`${num} 不是非负整数!`));
+            return this.get_new();
+        }
+        if (!isPInt(num)) {
+            elog(new TypeError(`${num} Not a non-negative integer!`));
         }
         return num;
     }
@@ -436,7 +436,7 @@ export class HashList {
     push(num, size) {
         // Implement checking num by subclass
         // only positioning here
-        if (size != null && !isPInt(size)) elog(new TypeError(`${size} 不是非负整数!`));
+        if (size != null && !isPInt(size)) elog(new TypeError(`${size} Not a non-negative integer!`));
         this.#curr_index = num + size;
         this.#last_size = size;
     }
@@ -446,25 +446,26 @@ export class IntHashList extends HashList {
     #list = [];
 
     check(num) {
-        num = num?.value ? num.value : num; // unbox ref object
-        if (num == null || num === 0) {
+        let n = num?.value ? num.value : num; // unbox ref object
+        if (n == null || n === 0) {
             do {
-                num = super.check(null);
-            } while (this.#list.includes(num));
+                n = super.check(null);
+            } while (this.#list.includes(n));
         } else {
-            num = super.check(num);
-            if (this.#list.includes(num)) {
-                elog(new HLError(`存在重复的地址 ${num}!`));
+            n = super.check(n);
+            if (this.#list.includes(n)) {
+                elog(new HLError(`存在重复的地址 ${n}!`));
             }
         }
-        return num;
+        return n;
     }
 
     push(num) {
         try {
-            num = this.check(num);
-            super.push(num, 1);
-            this.#list.push(num);
+            const n = this.check(num);
+            super.push(n, 1);
+            this.#list.push(n);
+            return n;
         } catch (e) {
             if (e instanceof TypeError) {
                 elog(new TypeError(e.message, { cause: num }));
@@ -472,7 +473,6 @@ export class IntHashList extends HashList {
                 elog(new HLError(e.message, { num }));
             }
         }
-        return num;
     }
 }
 
@@ -483,38 +483,39 @@ export class S7HashList extends HashList {
     }
 
     check(num, nsize) {
-        if (num == null) {
+        let n = num;
+        if (n == null) {
             do {
-                num = super.check(null);
-                num = get_boundary(num, nsize);
-            } while (this.#list[num + ':' + nsize]);
+                n = super.check(null);
+                n = get_boundary(n, nsize);
+            } while (this.#list[`${n}:${nsize}`]);
         } else {
-            if (!isPInt(num) || num !== get_boundary(num, nsize)) {
-                elog(new HLError(`${dec2foct(num).join('.')}不是正确的地址!`));
+            if (!isPInt(n) || n !== get_boundary(n, nsize)) {
+                elog(new HLError(`${dec2foct(n).join('.')}不是正确的地址!`));
             }
-            num = super.check(num);// check if it's a PInt
-            if (this.#list[num + ':' + nsize]) { // cannot be repeated 不能重复
-                elog(new HLError(`存在重复的 ${dec2foct(num).join('.')} (size:${nsize})!`));
+            n = super.check(n);// check if it's a PInt
+            if (this.#list[`${n}:${nsize}`]) { // cannot be repeated
+                elog(new HLError(`存在重复的 ${dec2foct(n).join('.')} (size:${nsize})!`));
             }
         }
-        return num;
+        return n;
     }
 
     push(s7addr, size = 1) {
-        let num;
+        let n;
         try {
             const nsize = size2dec(size);
-            if (s7addr != null) num = foct2dec(...s7addr2foct(s7addr));
-            if (isPInt(num)) num = get_boundary(num, nsize);
-            num = this.check(num, nsize);
-            this.#list[num + ':' + nsize] = true;
-            super.push(num, nsize);
+            if (s7addr != null) n = foct2dec(...s7addr2foct(s7addr));
+            if (isPInt(n)) n = get_boundary(n, nsize);
+            n = this.check(n, nsize);
+            this.#list[`${n}:${nsize}`] = true;
+            super.push(n, nsize);
         } catch (e) {
             if (e instanceof HLError) {
                 elog(new HLError(e.message, { num: s7addr, size }));
             }
             elog(new TypeError(e.message, { cause: s7addr }));
         }
-        return s7addr ?? foct2S7addr(...dec2foct(num));
+        return s7addr ?? foct2S7addr(...dec2foct(n));
     }
 }

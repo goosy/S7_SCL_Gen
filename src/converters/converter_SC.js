@@ -1,6 +1,6 @@
 /**
- * 串行处理
- * 依照3阶段提供3个函数， get_symbols_CP build_CP gen_CP
+ * serial processing
+ * Provide 3 functions according to 3 stages: get_symbols_CP build_CP gen_CP
  * @file SC
  */
 
@@ -20,8 +20,8 @@ export const POLLS_NAME = 'SC_polls_DB';
 const feature = 'SC';
 
 export function is_feature(name) {
-    name = name.toUpperCase();
-    return name === feature || name === 'MB';
+    const f_name = name.toUpperCase();
+    return f_name === feature || f_name === 'MB';
 }
 
 /**
@@ -33,7 +33,7 @@ export function is_feature(name) {
  */
 
 /**
- * 第一遍扫描 提取符号
+ * First scan to extract symbols
  * @date 2021-12-07
  * @param {S7Item} SC_area
  * @returns {void}
@@ -76,9 +76,9 @@ export function initialize_list(area) {
                 force: { type: 'WORD' },
                 default: { comment: 'HW module address' },
             },
-        ).then(
-            symbol => module.module = symbol
-        );
+        ).then(symbol => {
+            module.module = symbol;
+        });
 
         const DB = node.get('DB');
         assert(DB, new SyntaxError(`${CPU.name}:SC 第${index + 1}个 module 没有正确定义背景块!`));
@@ -90,9 +90,9 @@ export function initialize_list(area) {
                 force: { type },
                 default: { comment },
             },
-        ).then(
-            symbol => module.DB = symbol
-        );
+        ).then(symbol => {
+            module.DB = symbol;
+        });
 
         const customREQ = node.get('customREQ');
         if (customREQ) make_s7_expression(
@@ -102,9 +102,9 @@ export function initialize_list(area) {
                 force: { type: 'BOOL' },
                 s7_expr_desc: `SC ${comment} customREQ`,
             },
-        ).then(
-            symbol => module.customREQ = symbol
-        );
+        ).then(symbol => {
+            module.customREQ = symbol;
+        });
 
         const polls = node.get('polls');
         assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
@@ -125,9 +125,9 @@ export function initialize_list(area) {
                     disallow_s7express: true,
                     default: { comment },
                 },
-            ).then(
-                symbol => poll.recv_DB = symbol
-            );
+            ).then(symbol => {
+                poll.recv_DB = symbol;
+            });
             const send_DB = item.get('send_DB');
             poll.extra_send_DB = !!send_DB;
             make_s7_expression(
@@ -137,22 +137,24 @@ export function initialize_list(area) {
                     disallow_s7express: true,
                     default: { comment },
                 },
-            ).then(
-                symbol => poll.send_DB = symbol
-            );
+            ).then(symbol => {
+                poll.send_DB = symbol;
+            });
 
             if (poll.extra_send_DB) {
-                // 有外部发送块时，必须有 send_start 和 send_length
+                // When there is an external send block, send_start and send_length must be present
                 poll.send_start = ensure_value(PINT, item.get('send_start'));
                 poll.send_length = ensure_value(PINT, item.get('send_length'));
             } else if (!poll.send_data) {
-                // 无外部发送块但有send_data时，必须有 unit_ID、func_code、started_addr 和 data
+                // When there is no external send block but send_data, unit_ID, func_code, started_addr and data must be present
                 poll.unit_ID = ensure_value(PINT, item.get('unit_ID'));
                 poll.func_code = ensure_value(PINT, item.get('func_code'));
                 poll.started_addr = nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address'));
-                // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
+                // TODO:The correct information for the error in the previous sentence should be:
+                // new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
                 poll.data = nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length'));
-                // TODO:上一句出错的正确信息应当是 new SyntaxError(`配置项 data 或 length 必须有一个!`)
+                // TODO:The correct information for the error in the previous sentence should be:
+                // new SyntaxError(`配置项 data 或 length 必须有一个!`)
             }
             return poll;
         });
@@ -161,22 +163,21 @@ export function initialize_list(area) {
 }
 
 /**
- * 第二遍扫描 建立数据并查错
- * @date 2021-12-07
+ * Second scan to create data and check for errors
  * @param {S7Item} SC
  * @returns {void}
  */
 export function build_list(SC) {
     const CPU = SC.document.CPU;
-    const DBs = new Set(); // 去重
+    const DBs = new Set(); // Remove duplicates
     const list = SC.list;
-    const polls = list.map(module => module.polls).flat();
-    polls.forEach((poll, index) => poll.index = index);
+    const polls = list.flatMap(module => module.polls);
+    polls.forEach((poll, index) => { poll.index = index; })
     let sendDBB = polls.length * 16;
-    list.forEach(module => { // 处理配置，形成完整数据
+    for (const module of list) { // Process configuration to form complete data
         assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:SC:module(${module.comment}) 模块地址有误!`));
-        module.name ??= "polls_" + module.module.block_no;
-        module.polls.forEach(poll => {
+        module.name ??= `polls_${module.module.block_no}`;
+        for (const poll of module.polls) {
             if (poll.extra_send_DB) assert(
                 poll.send_start && poll.send_length,
                 new SyntaxError(`指定发送块 send_DB:${module.name}/poll_${poll.index} 时，必须同时设置 send_start 和 send_length`)
@@ -198,13 +199,11 @@ export function build_list(SC) {
                 poll.send_start = sendDBB;
                 sendDBB += poll.send_length + poll.send_length % 2;
             }
-            [poll.send_DB, poll.recv_DB].forEach(DB => {
-                // 用 ??= 确保共用块只遵循第一次的设置
-                DB.uninvoke ??= DB.type_name !== 'FB' || poll.uninvoke.value;
-            });
+            poll.send_DB.uninvoke ??= poll.send_DB.type_name !== 'FB' || poll.uninvoke.value;
+            poll.recv_DB.uninvoke ??= poll.recv_DB.type_name !== 'FB' || poll.uninvoke.value;
             DBs.add(poll.send_DB).add(poll.recv_DB);
-        });
-    });
+        }
+    }
     SC.invoke_code = [...DBs].map(DB => {
         const comment = DB.comment ? ` // ${DB.comment}` : '';
         return DB.uninvoke ? `// "${DB.name}" ${DB.comment ?? ''}` : `"${DB.type}"."${DB.name}"();${comment}`;
@@ -213,7 +212,7 @@ export function build_list(SC) {
 
 export function gen({ document, invoke_code, options = {} }) {
     const output_dir = context.work_path;
-    const { output_file = LOOP_NAME + '.scl' } = options;
+    const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { LOOP_NAME, invoke_code, CP340_NAME, CP341_NAME, POLLS_NAME };
     const template = posix.join(context.module_path, 'src/converters/SC.template');
@@ -222,8 +221,7 @@ export function gen({ document, invoke_code, options = {} }) {
 
 export function gen_copy_list({ document, options }) {
     const copy_list = [];
-    function push_copy_item(filename, IE) {
-        IE ??= 'utf8';
+    function push_copy_item(filename, IE = 'utf8') {
         const source = posix.join('CP_Poll', filename);
         const input_dir = context.module_path;
         const distance = posix.join(document.CPU.output_dir, filename);

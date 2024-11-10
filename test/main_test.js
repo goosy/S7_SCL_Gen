@@ -6,21 +6,21 @@ import { convert } from '../src/index.js';
 import { get_rules, match_list } from '../src/rules.js';
 import { context, forEachAsync, read_file } from '../src/util.js';
 
-// 载入规则
+// Loading rules
 const base_path = cwd().replace(/\\/g, '/');
 const tasks = await get_rules('./test/rules.rml');
 
-// 设置主转换环境
+// Set up the main conversion environment
 chdir('./test');
 context.work_path = cwd().replace(/\\/g, '/');
 context.silent = true;
 context.noconvert = true;
 const list = [];
 
-// 实例1
+// Example 1
 list.push(await convert());
 
-// 实例2 3 用 rulers
+// Example 2 3 for rulers
 const template = await read_file('template.md');
 for (const { path, rules } of tasks) {
     process.chdir(posix.join(base_path, path));
@@ -48,7 +48,7 @@ describe('生成SCL测试', () => {
             strictEqual(tasks.length, 2);
             const task = tasks[0];
             strictEqual(task.path, 'test');
-            // 对每个 task 中 rules 的路径的测试，必须当前目录先进入 task.path
+            // To test the path of rules in each task, the current directory must first enter task.path
             const rules = task.rules;
             strictEqual(rules.length, 3);
             strictEqual(rules[0].pattern.type, 'copy');
@@ -60,19 +60,21 @@ describe('生成SCL测试', () => {
     describe('配置正确转换', () => {
         it('复制指定文件', async () => {
             const source = '**/AI_Proc(step7).scl';
-            match_list(list[0].copy_list, {
+            let items = match_list(list[0].copy_list, {
                 cpu_name: 'dist',
                 feature: 'AI',
                 source,
-            }).forEach(item => {
-                equal(item.distance, `dist/AI_Proc.scl`);
             });
-            match_list(list[0].copy_list, {
+            for (const item of items) {
+                equal(item.distance, 'dist/AI_Proc.scl');
+            }
+            items = match_list(list[0].copy_list, {
                 cpu_name: 'dist',
-                distance: `**/test.yaml`,
-            }).forEach(item => {
-                equal(item.feature, 'AI');
+                distance: '**/test.yaml',
             });
+            for (const item of items) {
+                equal(item.feature, 'AI');
+            }
             const src_file = `${context.work_path}/test.yaml`;
             await forEachAsync(
                 match_list(list[0].copy_list, {
@@ -83,26 +85,23 @@ describe('生成SCL测试', () => {
             );
         });
         it('检查指定属性', () => {
-            match_list(list[0].copy_list, { feature: 'CPU', }).forEach(item => {
+            for (const item of match_list(list[0].copy_list, { feature: 'CPU', })) {
                 equal(item.CPU, 'dist');
-            });
+            }
             ok(match_list(list[0].copy_list, { feature: 'AI', }).length);
             ok(match_list(list[0].copy_list, { platform: 'step7', }).length);
         });
         it('生成指定文件', () => {
             const AI_out = match_list(list[1].convert_list, {
                 feature: 'AI',
-                distance: `**.md`,
+                distance: '**.md',
             });
             ok(AI_out.length);
             equal(AI_out[0].output_dir, 'target');
-            AI_out.forEach(item => equal(
-                item.content,
-                test_content,
-            ));
+            for (const item of AI_out) equal(item.content, test_content);
             ok(match_list(
                 list[1].convert_list,
-                { cpu_name: 'dist', distance: `**/alarms.csv`, }
+                { cpu_name: 'dist', distance: '**/alarms.csv', }
             ).length);
         });
     });

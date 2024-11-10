@@ -15,20 +15,20 @@ function merge(document) {
             if (pair.key && pair.key.value === '<<') {
                 const parent = path[path.length - 1];
                 const range = [pair.key.range[0], pair.value.range[2]];
-                const not_a_alias = new SyntaxError(`merge value must be a alias 合并值必须是别名`);
+                const not_a_alias = new SyntaxError('merge value must be a alias 合并值必须是别名');
                 not_a_alias.range = range;
                 assert(isAlias(pair.value), not_a_alias);
                 parent.items.splice(key, 1);
                 const source = pair.value.resolve(document);
-                const not_a_map = new SyntaxError(`merge value must be a Map 合并引用值必须是对象`);
+                const not_a_map = new SyntaxError('merge value must be a Map 合并引用值必须是对象');
                 not_a_map.range = range;
                 assert(isMap(source), not_a_map);
                 let len = 0;
-                source.items.forEach(node => {
-                    if (parent.has(node.key.value)) return;
+                for (const node of source.items) {
+                    if (parent.has(node.key.value)) continue;
                     len++;
                     parent.items.unshift(node);
-                });
+                };
                 return key + len;
             }
         },
@@ -46,7 +46,8 @@ export function isString(node) {
 }
 
 /**
- * 取得指定节点下的列表，如果没有列表，返回空值
+ * Get the list under the specified node, if there is no list, return a null value
+ * 
  * @param {Document} doc
  * @param {string} nodename
  * @returns {array}
@@ -77,12 +78,12 @@ function get_cpu_and_feature(document) {
     let cpu_name = document.get('CPU');
     if (typeof cpu_name !== 'string') {
         cpu_name = '';
-        error = `CPU 没有正确提供!`;
+        error = 'CPU 没有正确提供!';
     }
     let feature = document.get('feature');
     if (typeof feature !== 'string') {
         feature = '';
-        error = `feature 没有正确提供!`;
+        error = 'feature 没有正确提供!';
     }
     return { cpu_name, feature, error };
 }
@@ -119,8 +120,8 @@ export class GCL {
         })
         const pos_data = this.get_pos_data(start, end);
         return `
-        位置: file:///${this.#file}:${pos_data.line}:${pos_data.col}` + (document ? `
-        文档: ${document.CPU.name}-${document.feature}` : '') + `
+        位置: file:///${this.#file}:${pos_data.line}:${pos_data.col}${document ? `
+        文档: ${document.CPU.name}-${document.feature}` : ''}
         代码: \`${pos_data.code}\``;
     }
     #MD5;

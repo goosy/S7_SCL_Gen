@@ -48,28 +48,30 @@ async function build() {
     // create fake src/symbols_buildin.yaml
     await write_file(get_module_path('src', 'symbols_buildin.yaml'), '', { encoding: 'utf8', line_ending: 'LF' });
 
-    const files = await readdir(get_module_path('src', 'converters'));
     const features = [];
-    files.filter(file => file.startsWith('converter_') && file.endsWith('.js')).forEach(file => {
+    const files = (await readdir(get_module_path('src', 'converters')))
+    const js_files = files.filter(
+        file => file.startsWith('converter_') && file.endsWith('.js')
+    );
+    const yaml_files = files.filter(
+        file => file.endsWith('.yaml')
+    );
+
+    for (const file of js_files) {
         const feature = file.replace('converter_', '').replace(/\.js$/, '');
-        if (feature === 'CPU') features.unshift(feature); //保证CPU为第一个
+        if (feature === 'CPU') features.unshift(feature); //Ensure that CPU is first
         else features.push(feature);
-    });
+    }
 
     const converters = {};
     for (const feature of features) {
         const converter = await import(`./src/converters/converter_${feature}.js`);
         converters[feature] = converter;
-        [
-            'is_feature',
-            'initialize_list',
-            'gen',
-            'gen_copy_list'
-        ].forEach(method => {
+        for (const method of ['is_feature', 'initialize_list', 'gen', 'gen_copy_list']) {
             if (typeof converter[method] !== 'function') {
                 throw new Error(`there is no ${method} function in ${feature}.js file.`);
             }
-        })
+        }
     }
     const supported_category = features.map(feature =>
         ({ feature, platforms: JSON.stringify(converters[feature].platforms) })
@@ -78,7 +80,7 @@ async function build() {
     // build src/symbols_buildin.yaml
     const yamls = [];
     for (const [feature, converter] of Object.entries(converters)) {
-        if (files.includes(`${feature}.yaml`)) {
+        if (yaml_files.includes(`${feature}.yaml`)) {
             const yaml_raw = await read_file(get_module_path('src', 'converters', `${feature}.yaml`), { encoding: 'utf8' });
             const yaml = convert(
                 converter,
@@ -89,7 +91,7 @@ async function build() {
             yamls.push(`name: BUILDIN-${feature}\nsymbols: []`);
         }
     }
-    const buildin_yaml = '---\n\n' + yamls.join('\n\n---\n\n') + '\n\n...\n';
+    const buildin_yaml = `---\n\n${yamls.join('\n\n---\n\n')}\n\n...\n`;
     const filenames = [
         get_module_path('src', 'symbols_buildin.yaml'),
         get_module_path('lib', 'symbols_buildin.yaml')
@@ -116,7 +118,8 @@ async function build() {
     console.log(`file ${filename} generated!`);
 
     // build bundle files
-    let main_bundle, cli_bundle;
+    let main_bundle;
+    let cli_bundle;
     let buildFailed = false;
     try {
         main_bundle = await rollup(mainInputOptions);

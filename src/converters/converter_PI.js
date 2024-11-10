@@ -1,6 +1,6 @@
 /**
- * 高速脉冲计数处理
- * 依照3阶段提供3个函数， get_symbols_PI build_PI gen_PI
+ * High-speed pulse counting processing
+ * Provide 3 functions according to 3 stages: get_symbols_PI build_PI gen_PI
  * @file PI
  */
 
@@ -29,8 +29,7 @@ export function is_feature(name) {
  */
 
 /**
- * 第一遍扫描 提取符号
- * @date 2021-12-14
+ * First scan to extract symbols
  * @param {S7Item} VItem
  * @returns {void}
  */
@@ -42,7 +41,7 @@ export function initialize_list(area) {
         const module = {
             node,
             comment: new STRING(node.get('comment') ?? ''),
-            model: ensure_value(STRING, node.get('model') ?? FM3502_CNT_NAME), // 目前只支持FM350-2
+            model: ensure_value(STRING, node.get('model') ?? FM3502_CNT_NAME), // Currently only supports FM350-2
         };
 
         const comment = module.comment.value;
@@ -65,9 +64,9 @@ export function initialize_list(area) {
                 force: { type },
                 default: { comment },
             },
-        ).then(
-            symbol => module.DB = symbol
-        );
+        ).then(symbol => {
+            module.DB = symbol;
+        });
 
         let module_symbol = node.get('module');
         const module_addr = nullable_value(PINT, node.get('module_addr'));
@@ -81,9 +80,9 @@ export function initialize_list(area) {
                 force: { type: 'WORD' },
                 default: { comment: 'HW module address' },
             },
-        ).then(
-            symbol => module.module = symbol
-        );
+        ).then(symbol => {
+            module.module = symbol;
+        });
 
         const count_DB = node.get('count_DB');
         assert(count_DB, new SyntaxError(`${CPU.name}:PI 第${index + 1}个 module 没有正确定义专用数据块!`));
@@ -94,33 +93,33 @@ export function initialize_list(area) {
                 disallow_s7express: true,
                 force: { type: FM3502_CNT_NAME },
             },
-        ).then(
-            symbol => module.count_DB = symbol
-        );
+        ).then(symbol => {
+            module.count_DB = symbol;
+        });
 
         return module;
     });
 }
 
 /**
- * 第二遍扫描 建立数据并查错
+ * Second scan to create data and check for errors
  * @date 2021-12-07
  * @param {S7Item} PI
  * @returns {void}
  */
 export function build_list({ document, list }) {
     const CPU = document.CPU;
-    list.forEach(module => { // 处理配置，形成完整数据
+    for (const module of list) { // Process configuration to form complete data
         assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:PI 的模块(${module.comment}) 模块地址有误!`));
         const MNO = module.module.block_no;
         module.module_no = new PINT(MNO * 1);
         module.channel_no = new PDINT(MNO * 8);
-    });
+    }
 }
 
 export function gen({ document, options = {} }) {
     const output_dir = context.work_path;
-    const { output_file = LOOP_NAME + '.scl' } = options;
+    const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME, FM3502_CNT_NAME };
     const template = posix.join(context.module_path, 'src/converters/PI.template');

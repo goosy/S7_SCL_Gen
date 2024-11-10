@@ -36,19 +36,19 @@ import { nullable_value, STRING, IntHashList } from "./s7data.js";
 
 /**
  * @typedef {Object} NonSymbol
- * @property {string} value - 符号表达式
- * @property {string} desc - 错误描述
+ * @property {string} value - symbolic expression
+ * @property {string} desc - Error description
  */
 
 class CPU {
     /** @type {string} */
-    name;                             // CPU 名称
+    name;                             // CPU name
     /** @type {string} */
-    platform;                         // 由CPU文档设置，默认 'step7'
+    platform;                         // Set by CPU documentation, default 'step7'
     /** @type {string} */
-    device;                           // 由CPU文档设置
+    device;                           // Set by CPU documentation
 
-    #areas = {};              // 该CPU的功能区
+    #areas = {};                      // The CPU's Ribbon
     /**
      * Retrieves the specified feature area from the CPU.
      *
@@ -81,19 +81,19 @@ class CPU {
     }
 
     /** @type {string} */
-    output_dir;                       // 输出文件夹
+    output_dir;                            // output folder
 
     /** @type {S7SymbolEmitter} */
-    symbols = new S7SymbolEmitter();  // 符号调度中心
+    symbols = new S7SymbolEmitter();       // Symbol dispatch center
     /** @type {Promise.<S7Symbol>[]} */
-    async_symbols = [];               // 该CPU的异步符号列表
+    async_symbols = [];                    // List of asynchronous symbols for this CPU
     /** @type {NonSymbol[]} */
-    non_symbols = [];                 // 该CPU的非符号列表.push({ value, desc: s7_expr_desc });
+    non_symbols = [];                      // Non-symbol list for this CPU .push({ value, desc: s7_expr_desc });
 
     /** @type {IntHashList} */
-    conn_ID_list = new IntHashList(16); // 已用连接ID列表
+    conn_ID_list = new IntHashList(16);   // List of used connection IDs
     /** @type {Object.<string, number>} */
-    conn_host_list = {};             // 已用的连接地址列表
+    conn_host_list = {};                  // List of used connection addresses
     /**
      * @type { {
      *   tagname: string,
@@ -102,7 +102,7 @@ class CPU {
      *   PV1: string
      * } }
      */
-    alarms_list = [];                // 该CPU的报警列表
+    alarms_list = [];                     // Alarm list of this CPU
 
     constructor(name) {
         this.name = name;
@@ -116,7 +116,7 @@ class CPU {
  */
 class Cpu_Pool extends Map {
     /**
-     * 按照名称返回一个CPU，如果该名称CPU不存在，就产生一个新CPU
+     * Returns a CPU by name. If the CPU with that name does not exist, generate a new CPU.
      * @param {string} name
      * @returns {CPU}
      */
@@ -143,10 +143,9 @@ function parse_SCL(str) {
         ...str.matchAll(/\r\n|\n|\r/g),
         { index: str.length },
     ].map(match => match.index);
-    const error = new SyntaxError(`SCL文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。`);
+    const error = new SyntaxError('SCL文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。');
     const error_result = { scl, error };
 
-    // SCL中只能用注释进行符号定义
     for (const end of line_ends) {
         const line = str.substring(start, end);
         const head = line.replace(/\n|\r/g, '').substring(0, 3);
@@ -169,9 +168,9 @@ function parse_SCL(str) {
 }
 
 async function parse_includes(includes, options) {
-    if (typeof includes == 'string') return includes;
+    if (typeof includes === 'string') return includes;
     const filenames = includes ? includes.toJSON() : [];
-    let code = [];
+    const code = [];
     if (!Array.isArray(filenames)) return '';
     for (const file of filenames) {
         const filename = typeof file === 'string' ? file : file.filename;
@@ -203,9 +202,8 @@ async function create_fake_CPU_doc(CPU) {
 }
 
 /**
- * 加载指定文档
- * 生命周期为第一遍扫描，主要功能是提取符号
- * @date 2022-07-03
+ * Load specified document
+ * The life cycle is the first scan, and the main function is to extract symbols
  * @param {import('yaml').Document} document
  */
 async function parse_doc(document) {
@@ -217,7 +215,8 @@ async function parse_doc(document) {
         file 文件:"${document.gcl.file}"
         The conversion of this feature will be skipped 将跳过该转换功能s`);
         return;
-    } else if (feature !== document.feature) {
+    }
+    if (feature !== document.feature) {
         Object.defineProperty(document, 'feature', {
             get() {
                 return feature;
@@ -276,7 +275,7 @@ async function parse_doc(document) {
         platform: cpu.platform,
     });
 
-    // 内置符号文档
+    // Built-in symbol documentation
     const buildin_doc = BUILDIN_SYMBOLS.documents.find(doc => doc.feature === feature).clone();
     buildin_doc.CPU = cpu;
     buildin_doc.gcl = BUILDIN_SYMBOLS;
@@ -285,31 +284,29 @@ async function parse_doc(document) {
         get_Seq(buildin_doc, 'symbols')
     );
 
-    // 符号引用 (在符号表中不导出)
+    // Symbol references (not exported in symbol table)
     if (feature === 'CPU') {
-        [
-            // 内置引用
-            ...add_symbols(
-                buildin_doc,
-                get_Seq(buildin_doc, 'reference_symbols')
-            ),
-            // 前置引用
-            ...add_symbols(
-                document,
-                get_Seq(document, 'reference_symbols')
-            ),
-        ].forEach(symbol => {
-            symbol.exportable = false
-        });
+        // built-in references
+        const build_references = add_symbols(
+            buildin_doc,
+            get_Seq(buildin_doc, 'reference_symbols')
+        );
+        for (const symbol of build_references) symbol.exportable = false;
+        // forward reference
+        const references = add_symbols(
+            document,
+            get_Seq(document, 'reference_symbols')
+        );
+        for (const symbol of references) symbol.exportable = false;
     }
 
-    // 文档前置符号
+    // Document prefix
     add_symbols(
         document,
         get_Seq(document, 'symbols')
     );
 
-    // 传递节点以便定位源码位置
+    // Pass the node to locate the source code location
     const list = document.get('list')?.items ?? [];
     const files = (document.get('files')?.items ?? []).map(
         item => isString(item) ? item.value : item.toJSON()
@@ -325,9 +322,9 @@ async function parse_doc(document) {
         includes, files, list, loop_begin, loop_end,
         options
     };
-    // 按类型压入文档至CPU
+    // Push documents by type to CPU
     cpu.set_area(feature, area);
-    // 将 area.list 的每一项由 YAMLNode 转换为可供模板使用的数据对象
+    // Convert each item of area.list from YAMLNode to a data object that can be used by the template
     _converter.initialize_list(area);
 }
 
@@ -344,14 +341,14 @@ async function parse_conf() {
                 const filename = posix.join(work_path, file);
                 const gcl = await GCL.load(filename);
                 for (const doc of gcl.documents) {
-                    let cpu = cpu_pool.get(doc.cpu_name);
+                    const cpu = cpu_pool.get(doc.cpu_name);
                     Object.defineProperty(doc, 'CPU', {
                         value: cpu,
                         writable: false,
                         enumerable: true,
                         configurable: false,
                     });
-                    // 确保CPU优先处理
+                    // Ensure CPU priority
                     if (doc.feature === 'CPU') docs.unshift(doc);
                     else docs.push(doc);
                 }
@@ -364,8 +361,8 @@ async function parse_conf() {
 
         cpu_list.push(...cpu_pool.values());
         // wait for all symbols to complete
-        cpu_list.forEach(cpu => cpu.symbols.emit('finished'));
-        await Promise.all(cpu_list.map(cpu => cpu.async_symbols).flat());
+        for (const cpu of cpu_list) cpu.symbols.emit('finished');
+        await Promise.all(cpu_list.flatMap(cpu => cpu.async_symbols));
     } catch (e) {
         console.log(e);
     }
@@ -448,7 +445,7 @@ async function gen_list(cpu_list) {
                 const type = 'copy';
                 if (/\\/.test(source)) elog(new SyntaxError('Use "/" as the path separator!'));
                 let [dir, base] = source.split('//');
-                if (base == undefined) {
+                if (base === undefined) {
                     base = posix.basename(source);
                     dir = posix.dirname(source);
                 }
@@ -479,7 +476,7 @@ async function gen_list(cpu_list) {
             for (const item of gen(area)) {
                 const distance = item.distance;
                 const output_dir = item.output_dir;
-                const tags = { // 提供一些默认变量
+                const tags = { // Provide some default variables
                     context, gcl,
                     pad_left, pad_right, fixed_hex,
                     cpu_name, feature, platform,
@@ -493,71 +490,72 @@ async function gen_list(cpu_list) {
         }
     };
     const extra_gen_list = [...gen_symbols(cpu_list), ...gen_alarms(cpu_list)];
-    extra_gen_list.forEach(item => {
+    for (const item of extra_gen_list) {
         item.enable = true;
         item.type = 'convert';
-    });
+    }
     convert_list.push(...extra_gen_list);
     return { copy_list, convert_list };
 }
 
 export async function gen_data() {
     WRONGTYPESYMBOLS.clear();
-    // 第一遍扫描 加载配置\提取符号\建立CPU及诊断信息
+    // The first scan loads configuration\extracts symbols\creates CPU and diagnostic information
     const cpu_list = await parse_conf();
 
-    // 第二遍扫描 补全数据
-    // 非符号提示
-    if (!context.silent && cpu_list.find(cpu => cpu.non_symbols.length)) {
-        console.log(`
-warning: 警告：
-The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
-The converter treats them as S7 expressions without checking validity. 转换器将它们视为S7表达式不检验有效性
-Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式`
-        );
-    }
+    // The second scan completes the data
     for (const cpu of cpu_list) {
         for (const [feature, area] of cpu.areas) {
             const build_list = converter[feature].build_list;
             if (typeof build_list === 'function') build_list(area);
         };
-        const non_symbols = cpu.non_symbols;
-        non_symbols.forEach(({ value, desc }) => {
-            context.silent || console.log(`\t${pad_right(value, 24)}: ${desc}`); // 非符号提示
-        });
+    }
+    // non-symbolic prompt
+    const non_symbols_info_list = cpu_list.flatMap(cpu => cpu.non_symbols.map(
+        ({ expression, desc }) => `\t${pad_right(expression, 24)}: ${desc}`
+    ));
+    if (!context.silent && non_symbols_info_list.length) {
+        console.log(`
+warning: 警告：
+The following values isn't a symbol in GCL file. 配置文件中以下符号值无法解析成S7符号
+The converter treats them as S7 expressions without checking validity. 转换器将它们视为S7表达式不检验有效性
+Please make sure they are legal and valid S7 expressions. 请确保它们是合法有效的S7表达式
+${non_symbols_info_list.join('\n')}`
+        );
     }
 
-    // 用户符号类型定义错误提示，错误类型的符号不归于CPU
+    // User symbol type definition error message, the wrong type of symbol does not belong to the CPU
     if (!context.silent && WRONGTYPESYMBOLS.size) {
         console.log(`
 warning: 警告：
 The user defined type of following symbols is wrong. 配置文件中以下符号用户定义的类型有误
 The converter convert them to the correct type . 转换器将它们转换为合法有效的类型`
         );
-        WRONGTYPESYMBOLS.forEach(symbol => {
+        for (const symbol of WRONGTYPESYMBOLS) {
             console.log(`\t${symbol.name}:  'user defined type: ${symbol.userDefinedType}'  'actual type: ${symbol.type}'`);
-        });
+        }
     }
 
-    // 输出无注释配置
+    // Output uncommented configuration
     if (context.output_zyml) {
         console.log('output the uncommented configuration file:');
         const options = {
-            commentString() { return ''; }, //注释选项
-            indentSeq: false                //列表是否缩进
+            commentString() { return ''; }, // Comments options
+            indentSeq: false                // Whether the list is indented
         }
         for (const cpu of cpu_list) {
-            const name = cpu.name;
-            // 生成无注释的配置
-            let yaml = `# CPU ${name} configuration\n\n` + cpu.areas.map(
+            const area_str_list = cpu.areas.map(
                 ([feature, area]) => `# feature: ${feature}\n${area.document.toString(options)}`
-            ).join('\n\n');
-            const filename = `${posix.join(context.work_path, cpu.output_dir, name)}.zyml`;
+            );
+            const cpu_name = cpu.name;
+            // Generate configuration without annotations
+            const yaml = `# CPU ${cpu_name} configuration\n\n${area_str_list.join('\n\n')}`;
+            const filename = `${posix.join(context.work_path, cpu.output_dir, cpu_name)}.zyml`;
             await write_file(filename, yaml, { encoding: 'utf8', line_ending: 'LF' });
             console.log(`\t${filename}`);
         }
     }
 
-    // 生成最终待转换数据
+    // Generate final data to be converted
     return gen_list(cpu_list);
 }
