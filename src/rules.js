@@ -1,11 +1,7 @@
 import { isMatch } from 'matcher';
 import { dirname, isAbsolute, posix } from 'node:path';
 import { parseAllDocuments } from 'yaml';
-import {
-    forEachAsync,
-    get_template,
-    read_file
-} from './util.js';
+import { get_template, read_file } from './util.js';
 import { convert } from 'gooconverter';
 
 function isPlainObject(obj) {
@@ -95,17 +91,17 @@ function modify_path(modifications, attr, config_path) {
 export const parse_rules = async (yaml, rules_path) => {
     const documents = parseAllDocuments(yaml, { version: '1.2' });
     const tasks = [];
-    await forEachAsync(documents, async doc => {
+    for (const doc of documents) {
         const { config_path, rules: _rules, attributes } = doc.toJS();
         const path = posix.join(rules_path, config_path);  // Relative to the current path, added to rules_path
         const rules = [];
-        await forEachAsync(_rules, async rule => {
-            if (!isPlainObject(rule)) return; // Incorrect rule, returns empty
+        for (const rule of _rules) {
+            if (!isPlainObject(rule)) continue; // Incorrect rule, returns empty
             const pattern = rule.pattern;
-            if (!pattern) return;
-            if (!isPlainObject(pattern) && !Array.isArray(pattern) && typeof pattern !== 'string') return;
+            if (!pattern) continue;
+            if (!isPlainObject(pattern) && !Array.isArray(pattern) && typeof pattern !== 'string') continue;
             const modifications = rule.modifications;
-            if (!isPlainObject(modifications)) return;
+            if (!isPlainObject(modifications)) continue;
             // 'input_dir', 'output_dir' paths must be relative to the future configuration path, subtracted from config_path
             modify_path(modifications, 'input_dir', config_path);
             modify_path(modifications, 'output_dir', config_path);
@@ -125,9 +121,9 @@ export const parse_rules = async (yaml, rules_path) => {
                 };
             }
             rules.push(rule);
-        });
+        }
         tasks.push({ path, rules });
-    })
+    }
     return tasks;
 }
 

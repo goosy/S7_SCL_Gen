@@ -220,16 +220,15 @@ export function gen({ document, invoke_code, options = {} }) {
 }
 
 export function gen_copy_list({ document, options }) {
-    const copy_list = [];
-    function push_copy_item(filename, IE = 'utf8') {
+    const copy_list = [`${CRC}.awl`];
+    if (options.has_CP340) copy_list.push(`${CP340_NAME}.scl`);
+    if (options.has_CP341) copy_list.push(`${CP341_NAME}.scl`);
+    const IE = 'utf8';
+    return copy_list.map(filename => {
         const source = posix.join('CP_Poll', filename);
         const input_dir = context.module_path;
         const distance = posix.join(document.CPU.output_dir, filename);
         const output_dir = context.work_path;
-        copy_list.push({ source, input_dir, distance, output_dir, IE });
-    }
-    if (options.has_CP340) push_copy_item(`${CP340_NAME}.scl`);
-    if (options.has_CP341) push_copy_item(`${CP341_NAME}.scl`);
-    push_copy_item(`${CRC}.awl`);
-    return copy_list;
+        return { source, input_dir, distance, output_dir, IE };
+    });
 }

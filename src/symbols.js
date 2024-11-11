@@ -604,7 +604,7 @@ const BLANK_COMMENT_LEN = 80;
  * @returns {string}
  */
 function get_step7_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment, exportable }) {
-    if (!exportable) return null;
+    if (!exportable) return [];
     const name_str = pad_right(name, SYMN_LEN);
     const address = pad_right(block_name, NAME_LEN)
         + pad_left(block_no, NO_LEN)
@@ -625,8 +625,8 @@ function get_step7_symbol({ name, type, block_name, block_no, block_bit, type_na
  * @returns {string}
  */
 function get_portal_symbol({ name, type, address, block_name, comment, exportable }) {
-    if (!exportable) return null;
-    if (INTEGER_PREFIX.includes(block_name)) return null; // Symbols of OB, FB, FC, SFB, SFC, UDT are not generated
+    if (!exportable) return [];
+    if (INTEGER_PREFIX.includes(block_name)) return []; // Symbols of OB, FB, FC, SFB, SFC, UDT are not generated
     const line = `"${name}","%${address}","${type}","True","True","False","${comment}","","True"`;
     return { name, address, line };
 }
@@ -638,8 +638,7 @@ const template = `{{for symbol in symbol_list}}_
 export function gen_symbols(cpu_list) {
     return cpu_list.map(cpu => {
         const symbol_list = cpu.symbols.list
-            .map(cpu.platform === "portal" ? get_portal_symbol : get_step7_symbol)
-            .filter(symbol => symbol !== null) // skip filtered symbols
+            .flatMap(cpu.platform === "portal" ? get_portal_symbol : get_step7_symbol)
             .sort((a, b) => compare_str(a.name, b.name))
             .sort((a, b) => compare_str(a.address, b.address));
         return {

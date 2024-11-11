@@ -97,16 +97,12 @@ export function gen({ document, options = {} }) {
 }
 
 export function gen_copy_list({ document }) {
-    const copy_list = [];
     const IE = 'utf8';
-    function push_copy_item(filename) {
+    return [`${CP_NAME}.scl`,`${DP_NAME}.scl`].map(filename => {
         const source = posix.join('RP_Trigger', filename);
         const input_dir = context.module_path;
         const distance = posix.join(document.CPU.output_dir, filename);
         const output_dir = context.work_path;
-        copy_list.push({ source, input_dir, distance, output_dir, IE });
-    }
-    push_copy_item(`${CP_NAME}.scl`);
-    push_copy_item(`${DP_NAME}.scl`);
-    return copy_list;
+        return { source, input_dir, distance, output_dir, IE };
+    });
 }

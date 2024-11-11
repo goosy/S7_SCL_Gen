@@ -91,9 +91,9 @@ class CPU {
     non_symbols = [];                      // Non-symbol list for this CPU .push({ value, desc: s7_expr_desc });
 
     /** @type {IntHashList} */
-    conn_ID_list = new IntHashList(16);   // List of used connection IDs
+    conn_ID_list = new IntHashList(16);    // List of used connection IDs
     /** @type {Object.<string, number>} */
-    conn_host_list = {};                  // List of used connection addresses
+    conn_host_list = {};                   // List of used connection addresses
     /**
      * @type { {
      *   tagname: string,
@@ -139,10 +139,7 @@ function parse_SCL(str) {
     let scl = '';
     let in_comment = false;
     let start = 0;
-    const line_ends = [
-        ...str.matchAll(/\r\n|\n|\r/g),
-        { index: str.length },
-    ].map(match => match.index);
+    const line_ends = str.matchAll(/\r\n|\n|\r|$/g).map(match => match.index);
     const error = new SyntaxError('SCL文件出错: (** 或 **) 必须在一行的开头，行尾只能有空格，并且必须成对出现。');
     const error_result = { scl, error };
 
@@ -170,8 +167,8 @@ function parse_SCL(str) {
 async function parse_includes(includes, options) {
     if (typeof includes === 'string') return includes;
     const filenames = includes ? includes.toJSON() : [];
-    const code = [];
     if (!Array.isArray(filenames)) return '';
+    const code = [];
     for (const file of filenames) {
         const filename = typeof file === 'string' ? file : file.filename;
         const encoding = file.encoding ?? 'utf8';
