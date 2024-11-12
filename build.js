@@ -55,6 +55,9 @@ async function build() {
     const yaml_files = files.filter(
         file => file.endsWith('.yaml')
     );
+    const template_files = files.filter(
+        file => file.endsWith('.template')
+    );
 
     const features = [];
     for (const file of js_files) {
@@ -73,9 +76,11 @@ async function build() {
             }
         }
     }
-    const supported_category = features.map(feature =>
-        ({ feature, platforms: JSON.stringify(converters[feature].platforms) })
-    );
+
+    const templates = {};
+    for (const file of template_files) {
+        templates[file] = await read_file(get_module_path('src', 'converters', file), { encoding: 'utf8' });
+    };
 
     // build src/symbols_buildin.yaml
     const yamls = [];
@@ -92,30 +97,30 @@ async function build() {
         }
     }
     const buildin_yaml = `---\n\n${yamls.join('\n\n---\n\n')}\n\n...\n`;
-    const filenames = [
+    const dst_yaml_files = [
         get_module_path('src', 'symbols_buildin.yaml'),
         get_module_path('lib', 'symbols_buildin.yaml')
     ];
-    for (const filename of filenames) {
+    for (const yaml_file of dst_yaml_files) {
         await write_file(
-            filename,
+            yaml_file,
             buildin_yaml,
             { encoding: 'utf8', line_ending: 'LF' }
         );
-        console.log(`file ${filename} generated!`);
+        console.log(`file ${yaml_file} generated!`);
     }
 
     // build src/converter.js
-    const filename = get_module_path('src', 'converter.js');
+    const dst_converter_filename = get_module_path('src', 'converter.js');
     await write_file(
-        filename,
+        dst_converter_filename,
         convert( // convert the content of src/converter.template
-            { converters, supported_category, pad_right },
+            { features, templates, pad_right },
             await read_file(get_module_path('src', 'converter.template'), { encoding: 'utf8' }),
         ),
         { encoding: 'utf8', line_ending: 'LF' }
     );
-    console.log(`file ${filename} generated!`);
+    console.log(`file ${dst_converter_filename} generated!`);
 
     // build bundle files
     let main_bundle;

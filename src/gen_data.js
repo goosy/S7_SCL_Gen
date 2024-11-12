@@ -4,14 +4,14 @@ import { posix } from 'node:path';
 import { globby } from 'globby';
 import { convert } from 'gooconverter';
 import { isMap } from 'yaml';
-import { supported_features, converter } from './converter.js';
+import { supported_features, converter, templates } from './converter.js';
 import { GCL, get_Seq, isString } from './gcl.js';
 import {
     add_symbols, gen_symbols, S7SymbolEmitter,
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
 import {
-    context, get_template,
+    context,
     read_file, write_file,
     pad_left, pad_right, fixed_hex, elog
 } from './util.js';
@@ -468,7 +468,7 @@ async function gen_list(cpu_list) {
                     ...item.tags,
                 }
                 const type = 'convert';
-                const template = await get_template(item.template, feature);
+                const template = templates[item.template];
                 convert_list.push({ ...common_options, type, tags, template, distance, output_dir });
             };
         }

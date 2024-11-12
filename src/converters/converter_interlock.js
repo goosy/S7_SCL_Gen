@@ -413,7 +413,7 @@ export function gen({ document, options = {} }) {
     const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { LOOP_NAME };
-    const template = posix.join(context.module_path, 'src/converters/interlock.template');
+    const template = 'interlock.template'; 
     return [{ distance, output_dir, tags, template }];
 }
 

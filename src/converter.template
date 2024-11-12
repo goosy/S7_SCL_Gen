@@ -31,19 +31,25 @@
 //   If the converter references a symbol from other libraries, please ensure that the symbol is defined in `./src/convertersCPU.yaml`
 
 // import all converters
-{{for feature,converter in converters}}_
+{{for feature in features}}_
 import * as {{feature}} from './converters/converter_{{feature}}.js';
-{{endfor // converter}}_
+{{endfor}}_
 
 const supported_features = [
-{{for cat in supported_category}}_
-    '{{cat.feature}}',
+{{for feature in features}}_
+    '{{feature}}',
 {{endfor}}_
 ];
+
 const converter = {
-{{for feature,converter in converters}}_
-    {{feature}}, 
-{{endfor // converter}}_
+{{for feature in features}}_
+    {{feature}},
+{{endfor}}_
 }
 
-export { supported_features, converter };
+const templates = {};
+{{for name, template in templates}}_
+templates['{{name}}'] = `{{template}}`;
+{{endfor}}_
+
+export { supported_features, converter, templates };

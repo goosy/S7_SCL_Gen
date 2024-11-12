@@ -122,7 +122,7 @@ export function gen({ document, options = {} }) {
     const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME, FM3502_CNT_NAME };
-    const template = posix.join(context.module_path, 'src/converters/PI.template');
+    const template = 'PI.template'; 
     return [{ distance, output_dir, tags, template }];
 }
 

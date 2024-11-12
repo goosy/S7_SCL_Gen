@@ -215,7 +215,7 @@ export function gen({ document, invoke_code, options = {} }) {
     const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { LOOP_NAME, invoke_code, CP340_NAME, CP341_NAME, POLLS_NAME };
-    const template = posix.join(context.module_path, 'src/converters/SC.template');
+    const template = 'SC.template'; 
     return [{ distance, output_dir, tags, template }];
 }
 
