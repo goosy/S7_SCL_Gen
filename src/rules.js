@@ -1,10 +1,11 @@
 import { isMatch } from 'matcher';
 import { dirname, isAbsolute, posix } from 'node:path';
 import { parseAllDocuments } from 'yaml';
-import { get_template, read_file } from './util.js';
+import { elog, get_template, read_file } from './util.js';
 import { convert } from 'gooconverter';
 
-function isPlainObject(obj) {
+function is_plain_object(obj) {
+    if (obj === null || obj === undefined) return false;
     return Object.getPrototypeOf(obj) === Object.prototype;
 }
 
@@ -18,77 +19,218 @@ export const match = (item, pattern_object) => {
     )) {
         return isMatch(item, pattern_object);
     }
-    if (!isPlainObject(pattern_object) || !isPlainObject(item)) return false;
+    if (!is_plain_object(pattern_object) || !is_plain_object(item)) return false;
     for (const [key, pattern] of Object.entries(pattern_object)) {
         if (!match(item[key], pattern)) return false;
     }
     return true;
 };
 
-export const match_list = (list, pattern_object) => list.filter(item => match(item, pattern_object));
+export const array_match = (list, pattern_object) => list.filter(item => match(item, pattern_object));
 
-export const apply_rule = (item, rule) => {
-    const MS = rule.modifications;
-    for (const [key, value] of Object.entries(MS)) {
-        if (value === null) {
-            delete item[key];
-            return;
-        }
-        if (key === 'tags' && isPlainObject(value)) {
-            // tags shallow copy
-            item[key] ??= {};
-            Object.assign(item[key], value);
-            return;
-        }
-        if (typeof value === 'boolean') {
-            item[key] = value;
-            return;
-        }
-        if (typeof value !== 'string') {
-            console.log(`rule error! modification ${key}:${modi_value}`);
-            return;
-        }
-        // substitution
-        const new_value = key === 'template'
-            ? value
-            : convert({ ...item.tags, ...MS.tags }, value);
-        item[key] = new_value;
+function merge_tags(merged_tags, tags) {
+    if (!is_plain_object(merged_tags) || !is_plain_object(tags)) {
+        elog(new TypeError('tags must be an object'));
     }
-};
 
-export const apply_rules = (gen_list, rules) => {
-    const matched_list = new Map();
-    for (const rule of rules) {
-        for (const item of gen_list) {
-            if (match(item, rule.pattern)) {
-                if (matched_list.has(item)) {
-                    matched_list.get(item).push(rule);
-                } else {
-                    matched_list.set(item, [rule]);
-                }
-            }
+    for (const [key, value] of Object.entries(tags)) {
+        if (merged_tags[key] === value) continue;
+        if (key === 'files' || key === 'list') {
+            const new_items = value ?? [];
+            merged_tags[key] ??= [];
+            merged_tags[key].push(...new_items); // @todo check duplication
+            continue;
         }
-    }
-    return gen_list.map(item => {
-        const ret = { ...item };
-        if (matched_list.has(item)) {
-            for (const rule of matched_list.get(item)) {
-                apply_rule(ret, rule);
-            }
-        }
-        return ret;
-    });
-};
-
-function modify_path(modifications, attr, config_path) {
-    const path = modifications[attr];
-    if (path && typeof path === 'string') {
-        if (isAbsolute(path)) return;
-        modifications[attr] = posix.relative(config_path, path);
+        // cpu_name, feature, platform of tags will asssign after apply_rule()
+        if (['cpu_name', 'feature', 'platform'].includes(key)) continue;
+        merged_tags[key] ??= value;
     }
 }
 
-export const parse_rules = async (yaml, rules_path) => {
+/**
+ * for the following attributes of merged_item, 
+ * compare the corresponding attributes of merged_item and item:
+ * - enable: it is true initially
+ * - type: when it is inconsistent, set enable to false and stop merging
+ * - template: when it is consistent, it will be the original value, otherwise set enable to false and stop merging.
+ * - distance: when it is consistent, it will be the original value, otherwise set enable to false and stop merging.
+ * - output_dir: when it is consistent, it will be the original value, otherwise set enable to false and stop merging.
+ * - cpu: when it is consistent, it is the original value, if it is inconsistent, it is ''
+ * - feature: when it is consistent, it is the original value, if it is inconsistent, it is ''
+ * - platform: when it is consistent, it is the original value, if it is inconsistent, it is ''
+ * - OE: when it is consistent, it is the original value, if it is inconsistent, it is 'utf8'
+ * - line_ending: when is consistent, it will be the original value, if it is inconsistent, it will be 'LF'
+ * - tags: merge item.tags to merged_item.tags. mainly merge attributes of files, list, includes and options
+ * @param {object} merged_item 
+ * @param {object} item 
+ * @returns 
+ */
+function merge_item(merged_item, item) {
+    merged_item.template ??= item.template;
+    if (merged_item.template !== item.template) {
+        merged_item.template = '';
+    }
+
+    merged_item.distance ??= item.distance;
+    if (merged_item.distance !== item.distance) {
+        merged_item.distance = '';
+    }
+
+    merged_item.output_dir ??= item.output_dir;
+    if (merged_item.output_dir !== item.output_dir) {
+        merged_item.output_dir = '';
+    }
+
+    merged_item.tags ??= {};
+    merge_tags(merged_item.tags, item.tags);
+
+    merged_item.cpu_name ??= item.cpu_name;
+    if (merged_item.cpu_name !== item.cpu_name) {
+        merged_item.cpu_name = '';
+    }
+
+    merged_item.feature ??= item.feature;
+    if (merged_item.feature !== item.feature) {
+        merged_item.feature = '';
+    }
+
+    merged_item.platform ??= item.platform;
+    if (merged_item.platform !== item.platform) {
+        merged_item.platform = '';
+    }
+
+    merged_item.OE ??= item.OE;
+    if (merged_item.OE !== item.OE) {
+        merged_item.OE = 'utf8';
+    }
+
+    merged_item.line_ending ??= item.line_ending;
+    if (merged_item.line_ending !== item.line_ending) {
+        merged_item.line_ending = 'LF';
+    }
+}
+
+export async function apply_rule(item, modify) {
+    // tags shallow copy
+    // cpu_name, feature, platform of tags will asssign after apply_rule()
+    item.tags ??= {};
+    const tags = item.tags;
+    if (is_plain_object(modify.tags)) merge_tags(item.tags, modify.tags);
+    tags.cpu_name = modify.cpu_name ?? item.cpu_name;
+    tags.feature = modify.feature ?? item.feature;
+    tags.platform = modify.platform ?? item.platform;
+
+    for (const [key, value] of Object.entries(modify)) {
+        if (value === null) {
+            delete item[key];
+            continue;
+        }
+        if (key === 'tags') continue;
+        if (key === 'input_dir' || key === 'output_dir') {
+            if (typeof value !== 'string') continue;
+            // 'input_dir', 'output_dir' paths must be relative to the rules path
+            const path = convert(tags, value);
+            item[key] = isAbsolute(path) ? path : posix.join(modify.rules_path, path);
+            continue;
+        }
+        if (typeof value === 'boolean') {
+            item[key] = value;
+            continue;
+        }
+        if (typeof value !== 'string') {
+            console.log(`rule error! modification ${key}:${value}`);
+            continue;
+        }
+        if (key === 'template') {
+            // Read in the template
+            // the template path is relative to the rules_path
+            const path = posix.join(modify.rules_path, convert(tags, modify.template));
+            item.template = await get_template(path);
+            continue;
+        }
+        // includes distance
+        item[key] = convert(tags, value);
+    }
+};
+
+export async function apply_rules(gen_list, rules) {
+    const list_with_rules = new Map();
+    const matched_list = rules.map(rule => ({
+        rule,
+        items: array_match(gen_list, rule.pattern),
+    }));
+
+    // all items in gen_list are of the same type
+    // only merge convertion items
+    const do_merge = gen_list.length > 1 && gen_list[0].type === 'convert';
+    const merge_pairs = [];
+    for (const { rule, items } of matched_list) {
+        const merge = rule.merge;
+        // merge items
+        if (do_merge && merge !== undefined) {
+            if (!rule.type || rule.type === 'convert') {
+                const item = { type: 'convert' };
+                const ok = items.every(_item => {
+                    if (is_plain_object(_item)) {
+                        merge_item(item, _item);
+                        return true;
+                    }
+                    return false;
+                });
+                if (ok) merge_pairs.push({ item, merge });
+            } else {
+                console.warn('warning: the type value of merge rule must be "convert"');
+            }
+        }
+        // modify items
+        const modify = rule.modify;
+        for (const item of items) {
+            if (item.deleted || modify === undefined) continue;
+            if (modify === 'delete') {
+                item.deleted = true;
+                list_with_rules.set(item, []);
+                continue;
+            }
+            if (list_with_rules.has(item)) {
+                list_with_rules.get(item).push(rule);
+            } else {
+                list_with_rules.set(item, [rule]);
+            }
+        }
+    }
+
+    // apply rules
+    const modified_list = [];
+    for (const item of gen_list) {
+        if (item.deleted === true) continue;
+        const ret = { ...item };
+        if (list_with_rules.has(item)) {
+            for (const rule of list_with_rules.get(item)) {
+                await apply_rule(ret, rule.modify);
+            }
+        }
+        modified_list.push(ret);
+    }
+    const merged_list = [];
+    for (const { item, merge } of merge_pairs) {
+        await apply_rule(item, merge);
+        merged_list.push(item);
+    }
+
+    return [...modified_list, ...merged_list];
+};
+
+async function regularize(action, rules_path, attributes) {
+    if (!is_plain_object(action)) return false;
+    action.rules_path = posix.resolve(rules_path);
+    // modify.tags add attributes
+    if (!is_plain_object(action.tags)) action.tags = {};
+    const tags = action.tags;
+    Object.assign(tags, attributes);
+    return true;
+}
+
+export async function parse_rules(yaml, rules_path) {
     const documents = parseAllDocuments(yaml, { version: '1.2' });
     const tasks = [];
     for (const doc of documents) {
@@ -96,31 +238,19 @@ export const parse_rules = async (yaml, rules_path) => {
         const path = posix.join(rules_path, config_path);  // Relative to the current path, added to rules_path
         const rules = [];
         for (const rule of _rules) {
-            if (!isPlainObject(rule)) continue; // Incorrect rule, returns empty
+            // Incorrect rule, returns empty
+            if (!is_plain_object(rule)) continue;
             const pattern = rule.pattern;
             if (!pattern) continue;
-            if (!isPlainObject(pattern) && !Array.isArray(pattern) && typeof pattern !== 'string') continue;
-            const modifications = rule.modifications;
-            if (!isPlainObject(modifications)) continue;
-            // 'input_dir', 'output_dir' paths must be relative to the future configuration path, subtracted from config_path
-            modify_path(modifications, 'input_dir', config_path);
-            modify_path(modifications, 'output_dir', config_path);
-            // Read in the template, because in the current process, the path is relative to the current path, and is added to rules_path
-            const template_file = modifications.template;
-            if (template_file) {
-                modifications.template = await get_template(
-                    posix.join(rules_path, template_file)
-                );
-            }
-            // modifications.tags add attributes
-            if (modifications.tags && !isPlainObject(modifications.tags)) modifications.tags = {};
-            if (attributes) {
-                modifications.tags = {
-                    ...modifications.tags,
-                    ...attributes
-                };
-            }
-            rules.push(rule);
+            if (
+                !is_plain_object(pattern)
+                && !Array.isArray(pattern)
+                && typeof pattern !== 'string'
+            ) continue;
+
+            const modify = regularize(rule.modify, rules_path, attributes);
+            const merge = regularize(rule.merge, rules_path, attributes);
+            if (modify || merge) rules.push(rule);
         }
         tasks.push({ path, rules });
     }

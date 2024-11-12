@@ -374,7 +374,6 @@ async function parse_conf() {
  * @property {string} output_dir base directory for distance file
  * @property {string} type 'copy'
  * @property {string|null} IE the encoding of the source file
- * @property {boolean} enable the enable of converting action or copying action
  * @property {string} CPU the name of the CPU
  * @property {string} feature
  * @property {string} platform
@@ -394,7 +393,6 @@ async function parse_conf() {
  * @property {string} distance the distance file
  * @property {string} output_dir base directory for distance file
  * @property {string} type 'convert'
- * @property {boolean} enable the enable of converting action or copying action
  * @property {string} CPU the name of the CPU
  * @property {string} feature
  * @property {string} platform
@@ -429,7 +427,6 @@ async function gen_list(cpu_list) {
                 platform,
                 OE: context.OE,
                 line_ending: context.line_ending,
-                enable: true,
             }
 
             for (const file of area.files) {
@@ -488,7 +485,6 @@ async function gen_list(cpu_list) {
     };
     const extra_gen_list = [...gen_symbols(cpu_list), ...gen_alarms(cpu_list)];
     for (const item of extra_gen_list) {
-        item.enable = true;
         item.type = 'convert';
     }
     convert_list.push(...extra_gen_list);
