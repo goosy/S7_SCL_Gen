@@ -1,0 +1,30 @@
+---
+config_path: "."
+
+attributes:
+  device: CPU410-5H
+
+rules:
+
+- pattern:
+    cpu_name: AS1
+    feature: [AI, alarm]
+    type: convert
+  merge:
+    feature: 'OS_alarms'
+    template: alarms.template
+    distance: '{{cpu_name}}_alarms.csv'
+    output_dir: 'OS'
+
+- pattern:
+    cpu_name: AS2
+    feature: [AI, alarm]
+    type: convert
+  merge:
+    feature: 'OS_alarms'
+    template: alarms.template
+    distance: '{{cpu_name}}_alarms.csv'
+    output_dir: 'OS'
+
+- pattern: '*'
+  modify: delete

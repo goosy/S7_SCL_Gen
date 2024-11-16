@@ -1,0 +1,7 @@
+NO,eventtag,location,event,PV1
+{{no = stepper()}}_
+{{for item in list}}_
+{{for alarm in item.alarms}}_
+{{no.next()}},{{alarm.tagname}},{{alarm.location}},{{alarm.event}},{{alarm.PV1}}
+{{endfor // alarms}}_
+{{endfor // list}}_

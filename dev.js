@@ -1,4 +1,5 @@
 import { convert, context } from './src/index.js';
+import { get_rules } from './src/rules.js';
 import mri from 'mri';
 
 const argv = mri(process.argv.slice(2), {
@@ -24,4 +25,9 @@ if (line_ending) context.line_ending = line_ending;
 process.chdir('./example');
 context.work_path = process.cwd().replace(/\\/g, '/');
 await convert();
-if (!no_convert) console.log("\nconverted all YAML to SCL!")
+if (!no_convert) console.log("\nconverted all YAML to SCL!");
+
+const tasks = await get_rules('./alarms.rml');
+for (const { rules } of tasks) {
+    await convert(rules);
+}

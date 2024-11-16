@@ -41,7 +41,7 @@ function merge_tags(merged_tags, tags) {
             merged_tags[key].push(...new_items); // @todo check duplication
             continue;
         }
-        // cpu_name, feature, platform of tags will asssign after apply_rule()
+        // the cpu_name, feature, and platform properties of tags will be assigned in apply_rule()
         if (['cpu_name', 'feature', 'platform'].includes(key)) continue;
         merged_tags[key] ??= value;
     }
@@ -112,7 +112,6 @@ function merge_item(merged_item, item) {
 
 export async function apply_rule(item, modify) {
     // tags shallow copy
-    // cpu_name, feature, platform of tags will asssign after apply_rule()
     item.tags ??= {};
     const tags = item.tags;
     if (is_plain_object(modify.tags)) merge_tags(item.tags, modify.tags);
@@ -154,70 +153,73 @@ export async function apply_rule(item, modify) {
 };
 
 export async function apply_rules(gen_list, rules) {
-    const list_with_rules = new Map();
-    const matched_list = rules.map(rule => ({
+    const matched_rules = rules.map(rule => ({
         rule,
         items: array_match(gen_list, rule.pattern),
     }));
+    const modification_dict = new Map();
+    const merge_pairs = [];
 
     // all items in gen_list are of the same type
-    // only merge convertion items
-    const do_merge = gen_list.length > 1 && gen_list[0].type === 'convert';
-    const merge_pairs = [];
-    for (const { rule, items } of matched_list) {
-        const merge = rule.merge;
+    // only convertion items can be merged
+    const is_convertion = gen_list.length > 1 && gen_list[0].type === 'convert';
+
+    for (const { rule, items } of matched_rules) {
         // merge items
-        if (do_merge && merge !== undefined) {
-            if (!rule.type || rule.type === 'convert') {
-                const item = { type: 'convert' };
-                const ok = items.every(_item => {
-                    if (is_plain_object(_item)) {
-                        merge_item(item, _item);
-                        return true;
-                    }
-                    return false;
-                });
-                if (ok) merge_pairs.push({ item, merge });
-            } else {
-                console.warn('warning: the type value of merge rule must be "convert"');
-            }
+        const merge = rule.merge;
+        const mergeable = is_convertion && is_plain_object(merge);
+        if (mergeable && rule.type && rule.type !== 'convert') {
+            console.warn('Warning: The type value of merge rule must be "convert".');
+        } else if (mergeable) {
+            const item = { type: 'convert' };
+            const ok = items.every(_item => {
+                if (is_plain_object(_item)) {
+                    merge_item(item, _item);
+                    return true;
+                }
+                return false;
+            });
+            if (ok) merge_pairs.push({ item, merge });
         }
-        // modify items
-        const modify = rule.modify;
+
+        // modification items
+        const modification = rule.modify;
         for (const item of items) {
-            if (item.deleted || modify === undefined) continue;
-            if (modify === 'delete') {
+            if (item.deleted || modification === undefined) continue;
+            if (modification === 'delete') {
                 item.deleted = true;
-                list_with_rules.set(item, []);
+                modification_dict.delete(item);
                 continue;
             }
-            if (list_with_rules.has(item)) {
-                list_with_rules.get(item).push(rule);
+            if (modification_dict.has(item)) {
+                modification_dict.get(item).push(rule);
             } else {
-                list_with_rules.set(item, [rule]);
+                modification_dict.set(item, [rule]);
             }
         }
     }
 
     // apply rules
-    const modified_list = [];
+    const modification_list = [];
     for (const item of gen_list) {
         if (item.deleted === true) continue;
         const ret = { ...item };
-        if (list_with_rules.has(item)) {
-            for (const rule of list_with_rules.get(item)) {
+        if (modification_dict.has(item)) {
+            for (const rule of modification_dict.get(item)) {
                 await apply_rule(ret, rule.modify);
             }
         }
-        modified_list.push(ret);
+        modification_list.push(ret);
     }
-    const merged_list = [];
+    // apply_rule() must be called after merge_pairs is generated,
+    // to ensure that the merge items are complete
+    const merge_list = [];
     for (const { item, merge } of merge_pairs) {
         await apply_rule(item, merge);
-        merged_list.push(item);
+        merge_list.push(item);
     }
 
-    return [...modified_list, ...merged_list];
+    return [...modification_list, ...merge_list];
 };
 
 async function regularize(action, rules_path, attributes) {

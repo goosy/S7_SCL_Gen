@@ -2,7 +2,7 @@ import { make_s7_expression } from "../symbols.js";
 import { context } from '../util.js';
 import { STRING, ensure_value } from '../s7data.js';
 import { posix } from 'node:path';
-import { make_alarm_props, make_fake_DB } from './alarm_common.js';
+import { make_alarms, make_fake_DB } from './alarm_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'Alarm_Proc';
@@ -21,7 +21,6 @@ export function is_feature(name) {
  */
 export function initialize_list(area) {
     const document = area.document;
-    const alarms_list = document.CPU.alarms_list;
     area.list = area.list.map(node => {
         const location = ensure_value(STRING, node.get('location') ?? '').value;
         const type = ensure_value(STRING, node.get('type') ?? '').value;
@@ -31,6 +30,15 @@ export function initialize_list(area) {
             location,
             type,
             comment,
+            /**
+             * @type { {
+             *   tagname: string,
+             *   location: string,
+             *   event: string,
+             *   PV1: string
+             * }[] }
+             */
+            alarms: [],
         };
         const DB = node.get('DB');
         const input = node.get('input');
@@ -71,9 +79,7 @@ export function initialize_list(area) {
         ).then(ret => {
             alarm.invalid = ret;
         });
-
-        const alarms = make_alarm_props(alarm, node, document);
-        alarms_list.push(...alarms);
+        make_alarms(alarm, node, document);
 
         return alarm;
     });

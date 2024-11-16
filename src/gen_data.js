@@ -10,7 +10,6 @@ import {
     add_symbols, gen_symbols, S7SymbolEmitter,
     BUILDIN_SYMBOLS, WRONGTYPESYMBOLS,
 } from './symbols.js';
-import { gen_alarms } from './alarms.js';
 import {
     context, get_template,
     read_file, write_file,
@@ -94,15 +93,6 @@ class CPU {
     conn_ID_list = new IntHashList(16);    // List of used connection IDs
     /** @type {Object.<string, number>} */
     conn_host_list = {};                   // List of used connection addresses
-    /**
-     * @type { {
-     *   tagname: string,
-     *   location: string,
-     *   event: string,
-     *   PV1: string
-     * } }
-     */
-    alarms_list = [];                     // Alarm list of this CPU
 
     constructor(name) {
         this.name = name;
@@ -483,11 +473,10 @@ async function gen_list(cpu_list) {
             };
         }
     };
-    const extra_gen_list = [...gen_symbols(cpu_list), ...gen_alarms(cpu_list)];
-    for (const item of extra_gen_list) {
+    for (const item of gen_symbols(cpu_list)) {
         item.type = 'convert';
+        convert_list.push(item);
     }
-    convert_list.push(...extra_gen_list);
     return { copy_list, convert_list };
 }
 

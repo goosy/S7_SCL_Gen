@@ -20,10 +20,37 @@ export function make_fake_DB(item) {
     return undefined;
 }
 
-export function make_alarm_props(item, node, document) {
+/**
+ * Convert yaml node to s7 alarm properties and return a list of s7 alarm definitions.
+ * The yaml node is expected to be a mapping with some specific keys:
+ * - $zero: the zero initial value of the analog value
+ * - $span: the span initial value of the analog value
+ * - $enable_AH: bool initial value, whether to enable high high alarm
+ * - enable_AH: bool value, whether to enable high high alarm
+ * - $AH_limit: the high high alarm limit initial value
+ * - AH_limit: the high high alarm limit vlaue
+ * - $enable_WH: bool initial value, whether to enable high alarm
+ * - enable_WH: bool value, whether to enable high alarm
+ * - $WH_limit: the high alarm limit initial value
+ * - WH_limit: the high alarm limit value
+ * - $enable_WL: bool initial value, whether to enable low alarm
+ * - enable_WL: bool value, whether to enable low alarm
+ * - $WL_limit: the low alarm limit initial value
+ * - WL_limit: the low alarm limit value
+ * - $enable_AL: bool initial value, whether to enable low low alarm
+ * - enable_AL: bool value, whether to enable low low alarm
+ * - $AL_limit: the low low alarm limit initial value
+ * - AL_limit: the low low alarm limit value
+ * - $dead_zone: the dead zone initial value of the analog value
+ * - $FT_time: the fault tolerance time initial value
+ * @param {import('yaml').ASTNode} node
+ * @param {import('../gcl.js').GCL} gcl
+ * @param {import('../gcl.js').Document} document
+ * @returns {void}
+ */
+export function make_alarms(item, node, document) {
     const { CPU, gcl } = document;
     const tag = `${CPU.S7Program}/${item.DB.name}`;
-    const alarms_list = [];
     const info = gcl.get_pos_info(...node.range);
 
     item.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
@@ -37,7 +64,7 @@ export function make_alarm_props(item, node, document) {
         // as ex: item.$enable_AH
         item[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? item[$limit_str] != null);
         if (item[$enable_str].value) {
-            alarms_list.push({
+            item.alarms.push({
                 tagname: `${tag}.${limit}_flag`,
                 location: item.location,
                 event: `${item.type}${event_desc[limit]}`,
@@ -65,6 +92,4 @@ export function make_alarm_props(item, node, document) {
         elog(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
     item.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
     item.$FT_time = nullable_value(TIME, node.get('$FT_time'));
-
-    return alarms_list;
 }

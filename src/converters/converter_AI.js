@@ -2,7 +2,7 @@ import { posix } from 'node:path';
 import { make_s7_expression } from "../symbols.js";
 import { INT, STRING, ensure_value, nullable_value } from '../s7data.js';
 import { context } from '../util.js';
-import { make_alarm_props, make_fake_DB } from './alarm_common.js';
+import { make_alarms, make_fake_DB } from './alarm_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'AI_Proc';
@@ -21,7 +21,6 @@ export function is_feature(name) {
  */
 export function initialize_list(area) {
     const document = area.document;
-    const alarms_list = document.CPU.alarms_list;
     area.list = area.list.map(node => {
         const location = ensure_value(STRING, node.get('location') ?? '').value;
         const type = ensure_value(STRING, node.get('type') ?? '').value;
@@ -31,6 +30,15 @@ export function initialize_list(area) {
             location,
             type,
             comment,
+            /**
+             * @type { {
+             *   tagname: string,
+             *   location: string,
+             *   event: string,
+             *   PV1: string
+             * }[] }
+             */
+            alarms: [],
         };
         const DB = node.get('DB');
         const input = node.get('input');
@@ -60,9 +68,8 @@ export function initialize_list(area) {
         AI.$span_raw = nullable_value(INT, node.get('$span_raw'));
         AI.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
         AI.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
+        make_alarms(AI, node, document);
 
-        const alarms = make_alarm_props(AI, node, document);
-        alarms_list.push(...alarms);
         return AI;
     });
 }

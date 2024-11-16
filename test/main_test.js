@@ -146,10 +146,6 @@ describe('生成SCL测试', () => {
         });
         ok(AI_out.length);
         AI_out = array_match(list[0].convert_list, {
-            distance: '**/alarms.csv',
-        });
-        ok(AI_out.length);
-        AI_out = array_match(list[0].convert_list, {
             distance: '**/*.asc',
         });
         ok(AI_out.length);
