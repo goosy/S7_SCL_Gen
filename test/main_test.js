@@ -3,6 +3,7 @@ import { equal, ok, strictEqual } from "node:assert/strict";
 import { posix } from 'node:path';
 import { chdir, cwd } from 'node:process';
 import { access, unlink } from 'node:fs/promises';
+import { suite, test } from 'node:test';
 import { convert } from '../src/index.js';
 import { get_rules, array_match } from '../src/rules.js';
 import { context, read_file } from '../src/util.js';
@@ -77,8 +78,8 @@ const merge_content = `# 联校调试记录
 日期: ________ 年 ____ 月 ____ 日
 `;
 
-describe('生成SCL测试', () => {
-    it('规则加载', async () => {
+suite('生成SCL测试', () => {
+    test('规则加载', async () => {
         strictEqual(tasks.length, 3);
         const task = tasks[0];
         strictEqual(task.path, 'test');
@@ -96,7 +97,7 @@ describe('生成SCL测试', () => {
         strictEqual(rules[0].merge.output_dir, '{{cpu_name}}');
         strictEqual(rules[1].modify, 'delete');
     })
-    it('复制指定文件', async () => {
+    test('复制指定文件', async () => {
         const source = '**/AI_Proc(step7).scl';
         let items = array_match(list[0].copy_list, {
             cpu_name: 'dist',
@@ -127,14 +128,14 @@ describe('生成SCL测试', () => {
         ])
         ok(!do_copy);
     });
-    it('检查指定属性', () => {
+    test('检查指定属性', () => {
         for (const item of array_match(list[0].copy_list, { feature: 'CPU', })) {
             equal(item.CPU, 'dist');
         }
         ok(array_match(list[0].copy_list, { feature: 'AI', }).length);
         ok(array_match(list[0].copy_list, { platform: 'step7', }).length);
     });
-    it('生成指定文件', () => {
+    test('生成指定文件', () => {
         let AI_out = array_match(list[0].convert_list, {
             feature: 'AI',
             cpu_name: 'dist',

@@ -3,20 +3,21 @@ import {
     ok, equal, deepEqual, strictEqual,
     throws
 } from "node:assert/strict";
+import { suite, test } from 'node:test';
 import {
     IntHashList, S7HashList,
     HLError, get_boundary, foct2dec, foct2S7addr, s7addr2foct, dec2foct,
     BOOL, TIME
 } from '../src/s7data.js';
 
-describe('S7Data 测试', () => {
-    it('辅助功能正常', () => {
+suite('S7Data 测试', () => {
+    test('辅助功能正常', () => {
         deepEqual(s7addr2foct(200.1), [200, 1]);
         strictEqual(foct2dec(200, 1),1601);
         deepEqual(dec2foct(1601), [200, 1]);
         strictEqual(foct2S7addr(200, 1), 200.1);
     });
-    it('边界定位', () => {
+    test('边界定位', () => {
         strictEqual(get_boundary(9, 1), 9);
         strictEqual(get_boundary(23, 8), 24);
         strictEqual(get_boundary(7, 32), 16);
@@ -24,7 +25,7 @@ describe('S7Data 测试', () => {
             get_boundary(-33, 32);
         }, TypeError);
     });
-    it('正确分配IntHashList', () => {
+    test('正确分配IntHashList', () => {
         const hl = new IntHashList(8);
         const n1 = hl.push();
         const n2 = hl.push();
@@ -36,7 +37,7 @@ describe('S7Data 测试', () => {
             hl.push(12);
         }, HLError);
     });
-    it('正确分配S7HashList', () => {
+    test('正确分配S7HashList', () => {
         const a = new S7HashList(200.0);
         const n1 = a.push(null, 1.0);
         const n2 = a.push(null, 2.0);
@@ -65,8 +66,8 @@ describe('S7Data 测试', () => {
     });
 });
 
-describe('S7数值测试', () => {
-    it('BOOL test0', () => {
+suite('S7数值测试', () => {
+    test('BOOL test0', () => {
         strictEqual(new BOOL(0).value, false);
         strictEqual(new BOOL(1).value, true);
         strictEqual(new BOOL('False').value, false);
@@ -77,7 +78,7 @@ describe('S7数值测试', () => {
         throws(() => new BOOL(''), AssertionError);
         throws(() => new BOOL([]), AssertionError);
     })
-    it('TIME test1', () => {
+    test('TIME test1', () => {
         const v = new TIME('T#5S');
         strictEqual(v.rawValue, 5000);
     });

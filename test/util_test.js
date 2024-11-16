@@ -1,4 +1,5 @@
 import { strictEqual } from "node:assert/strict";
+import { suite, test } from 'node:test';
 import { get_template, pad_left, pad_right } from '../src/util.js';
 
 const test_template = `# 联校调试记录
@@ -26,18 +27,18 @@ AL: {{AI.$AL_limit}} {{endif}} | 合格 |
 日期: ________ 年 ____ 月 ____ 日
 `
 
-describe('util test', () => {
-    it('pad_left test', () => {
+suite('util test', () => {
+    test('pad_left test', () => {
         strictEqual(pad_left('abcdef', 20), '              abcdef');
         strictEqual(pad_left('abcdef', 4), 'cdef');
         strictEqual(pad_left('abcdef', 15, '*'), '*********abcdef');
     })
-    it('pad_right test', () => {
+    test('pad_right test', () => {
         strictEqual(pad_right('abcdef', 20), 'abcdef              ');
         strictEqual(pad_right('abcdef', 4), 'abcd');
         strictEqual(pad_right('abcdef', 15, '*'), 'abcdef*********');
     })
-    it('get_template test', async () => {
-        strictEqual(await get_template('template.md'), test_template);
+    test('get_template test', async () => {
+        strictEqual(await get_template('test/template.md'), test_template);
     })
 });
