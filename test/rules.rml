@@ -4,14 +4,13 @@ config_path: .
 
 attributes:
   title:
-    dist: PLC测试
+    dist: 替换测试
 
 rules:
 
 - pattern:
     type: copy
-  actions:
-  - delete
+  actions: delete
 - pattern:
     type: convert
     feature: AI
@@ -43,17 +42,38 @@ rules:
     distance: AI_alarm.md
     output_dir: '{{$.cpu_name}}'
 - pattern: '*'
-  actions:
-  - delete
+  actions: delete
 
 --- # 第3个任务
 
 config_path: .
 
+attributes:
+  title: 相交测试
 rules:
 - pattern:
     type: copy
   actions:
-  - delete
+  - action: replace
+    tags: { replace: true} # 对tags 来说，都是应用 join 规则
+    replace_a: [old]
+    replace_o:
+      desc: replace object
+  - action: replace
+    replace_a: [new]
+    replace_o:
+      type: replace
+  - action: join
+    tags: { join: true} # 对tags 来说，都是应用 join 规则
+    join_a: [old]
+    join_o:
+      desc: join object
+  - action: join
+    join_a: [new]
+    join_o:
+      type: join
+- actions:
+  - action: join
+    list: new
 
 ...

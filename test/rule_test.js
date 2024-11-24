@@ -1,6 +1,45 @@
-import { suite, test } from 'node:test';
 import { ok, strictEqual } from "node:assert/strict";
-import { match, match_all, parse_rules } from '../src/rules/index.js';
+import { posix } from 'node:path';
+import { suite, test } from 'node:test';
+import { convert } from '../src/index.js';
+import { get_rules, match, match_all, parse_rules } from '../src/rules/index.js';
+import { context, read_file } from '../src/util.js';
+
+// set up the main conversion environment
+process.chdir(import.meta.dirname);
+context.work_path = process.cwd().replace(/\\/g, '/');
+context.silent = true;
+context.no_convert = true;
+context.no_copy = true;
+
+const replace_content = `# 联校调试记录
+
+工程名称： 替换测试
+测试内容： 通道联调
+
+[替换测试表格]
+| 回路 | 仪表位号 | 测量范围 | 实测值 0% | 实测值 50% | 实测值 100% | 报警值 | 调试结果 |
+| --- | --- | :---: | --- | --- | --- | --- | --- |
+| | TIT101 |  0.0 - 100.0 | 0.000 | 50.000 | 100.000 |  | 合格 |
+
+调试单位: __________________________ 专业工程师: ________ 质量检查员: ________ 施工班组长: ________
+日期: ________ 年 ____ 月 ____ 日
+`;
+
+const merge_content = `# 联校调试记录
+
+工程名称： 合并测试
+测试内容： 通道联调
+
+[合并测试表格]
+| 回路 | 仪表位号 | 测量范围 | 实测值 0% | 实测值 50% | 实测值 100% | 报警值 | 调试结果 |
+| --- | --- | :---: | --- | --- | --- | --- | --- |
+| | TIT101 |  0.0 - 100.0 | 0.000 | 50.000 | 100.000 |  | 合格 |
+| | LIT001 |  0.0 - 100.0 | 0.100 | 50.100 | 99.900 |  | 合格 |
+
+调试单位: __________________________ 专业工程师: ________ 质量检查员: ________ 施工班组长: ________
+日期: ________ 年 ____ 月 ____ 日
+`;
 
 const yaml = `---
 config_path: .
@@ -33,6 +72,19 @@ rules: # 无效规则
 - actions: invaild
 
 ...`;
+
+// loading rules
+const base_path = context.work_path;
+const tasks = await get_rules('./rules.rml');
+
+// generating for rulers
+const list = [];
+const template = await read_file('template.md');
+for (const { path, rules } of tasks) {
+    process.chdir(posix.join(base_path, path));
+    context.work_path = process.cwd().replace(/\\/g, '/');
+    list.push(await convert(rules));
+}
 
 suite('rule test', () => {
     test('match', () => {
@@ -112,4 +164,59 @@ suite('rule test', () => {
         rule = task.rules[1];
         strictEqual(rule.actions.length, 1);
     });
+    test('load', async () => {
+        strictEqual(tasks.length, 3);
+        const task = tasks[0];
+        strictEqual(task.path, '.');
+        // To test the path of rules in each task, the current directory must first enter task.path
+        let rules = task.rules;
+        strictEqual(rules.length, 3);
+        strictEqual(rules[0].pattern.type, 'copy');
+        strictEqual(rules[1].actions[0].template, 'template.md');
+        strictEqual(rules[1].actions[0].distance, '{{title[$.cpu_name]}}.md');
+        strictEqual(rules[2].actions[0].output_dir, 'target');
+        rules = tasks[1].rules;
+        strictEqual(rules.length, 2);
+        strictEqual(rules[0].actions[0].template, 'template.md');
+        strictEqual(rules[0].actions[0].distance, 'AI_alarm.md');
+        strictEqual(rules[0].actions[0].output_dir, '{{$.cpu_name}}');
+        strictEqual(rules[1].actions[0].action, 'delete');
+    });
+    test('generate', async () => {
+        let output = match_all(list[0].convert_list, {
+            feature: 'AI',
+            cpu_name: 'dist',
+        });
+        ok(output.length);
+        for (const item of output) {
+            strictEqual(item.distance, '替换测试.md');
+            strictEqual(item.output_dir, 'D:/codes/AS/S7_SCL_Gen/test/target');
+            strictEqual(item.content, replace_content);
+        }
+        output = match_all(list[1].convert_list, {
+            feature: 'OS_alarms',
+            template,
+            distance: 'AI_alarm.md',
+            output_dir: 'D:/codes/AS/S7_SCL_Gen/test/dist',
+            content: merge_content,
+        });
+        ok(output.length);
+        output = match_all(list[2].copy_list, {
+            replace_a: ['new'],
+            replace_o: { type: 'replace' },
+            join_a: ['old', 'new'],
+            join_o: { desc: 'join object', type: 'join' }
+        });
+        ok(output.length);
+    });
+    test('delete', () => {
+        let output = match_all(list[0].convert_list, {
+            type: 'copy',
+        });
+        strictEqual(output.length, 0);
+        output = match_all(list[1].convert_list, {
+            feature: '!OS_alarms',
+        });
+        strictEqual(output.length, 0);
+    })
 });

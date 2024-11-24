@@ -17,9 +17,10 @@ function parse_rules(yaml, rules_path) {
     return documents.flatMap(doc => {
         const js_object = doc.toJS();
         if (!is_plain_object(js_object)) return [];
-        const { config_path = '.', rules: _rules = [], attributes = {} } = js_object;
-        if (!Array.isArray(_rules)) return [];
+        const config_path = (js_object.config_path ?? '.').replace(/\\/g, '/');
 
+        const _rules = js_object.rules ?? [];
+        if (!Array.isArray(_rules)) return [];
         const rules = _rules.flatMap(rule => {
             // Incorrect rule, returns empty
             if (!is_plain_object(rule)) return [];
@@ -34,7 +35,7 @@ function parse_rules(yaml, rules_path) {
             if (!Array.isArray(rule.actions)) return [];
 
             const actions = rule.actions.flatMap(
-                action => regularize(action, rules_path, attributes)
+                action => regularize(action, rules_path, js_object.attributes ?? {})
             );
             if (actions.length === 0) return [];
             const has_delete = actions.some(action => action.action === 'delete');

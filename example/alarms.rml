@@ -36,9 +36,11 @@ rules:                                # 规则列表
 # - 同时有肯定和否定匹配时，结果为 (否定匹配并集 ⋂ 否定匹配交集)
 #   `cpu_name: ['AS*', '!*2', '!*3']` 匹配 CPU 名为 AS 开头且非2或3结尾的项
 #
-# 每一主规则的 action 是下面3种动作之一:
+# 每一主规则的 action 是下面4种动作之一:
 # - replace 替换
 #     把匹配项按照该动作的对应属性进行替换，如果是数组也替换
+# - join 组合
+#     把匹配项按照该动作的对应属性进行合并，如果是数组则追加
 # - merge 合并
 #     把匹配的 convert 项合并成一个新 convert 项，按以下合并规则:
 #     所有以下规则都是动作值优先
@@ -60,12 +62,6 @@ rules:                                # 规则列表
 # 如果合并后不需要原有项，可以另用 delete 动作
 
 # alarms 输出只能示例 merge 和 delete 动作
-
-# 删除其它非报警项
-- pattern:
-    feature: ['!AI', '!alarm']
-  actions:
-  - action: delete
 
 # 合并 AI alarm 为一个新转换项
 - pattern:
@@ -92,3 +88,8 @@ rules:                                # 规则列表
     distance: '{{$.cpu_name}}_alarms.csv'
     output_dir: OS
   - delete
+
+# 删除其它非报警项
+- pattern:
+    feature: ['!AI', '!alarm']
+  actions: delete # 只有一个动作且是删除动作时，可以用比上2个规则更简化的写法
