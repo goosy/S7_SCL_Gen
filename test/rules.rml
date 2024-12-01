@@ -29,7 +29,7 @@ config_path: .
 
 attributes:
   title:
-    dist: 合并测试
+    dist: 合并与新建测试
 
 rules:
 - pattern:
@@ -41,6 +41,22 @@ rules:
     template: template.md
     distance: AI_alarm.md
     output_dir: '{{$.cpu_name}}'
+- # add 动作即可以依赖匹配项，也可以不依赖匹配项
+  # 本规则没有 pattern ，不产生依赖的匹配项
+  # 无匹配项意味着同时也不能表达式替换
+  actions:
+  - action: add
+    cpu_name: dist
+    feature: OS_alarms
+    platform: 'step7',
+    type: copy
+    IE: utf8
+    OE: gbk
+    line_ending: CRLF
+    source: template.md
+    distance: template
+    input_dir: .
+    output_dir: dist
 - pattern: '*'
   actions: delete
 

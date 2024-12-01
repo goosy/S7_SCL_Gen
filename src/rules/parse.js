@@ -18,6 +18,7 @@ function parse_rules(yaml, rules_path) {
         const js_object = doc.toJS();
         if (!is_plain_object(js_object)) return [];
         const config_path = (js_object.config_path ?? '.').replace(/\\/g, '/');
+        const extra_tags = js_object.attributes ?? {};
 
         const _rules = js_object.rules ?? [];
         if (!Array.isArray(_rules)) return [];
@@ -25,20 +26,27 @@ function parse_rules(yaml, rules_path) {
             // Incorrect rule, returns empty
             if (!is_plain_object(rule)) return [];
             const pattern = rule.pattern;
-            if (!pattern) return [];
+            const no_pattern = pattern == null;
             if (
-                !is_plain_object(pattern)
+                !no_pattern
+                && !is_plain_object(pattern)
                 && !Array.isArray(pattern)
                 && typeof pattern !== 'string'
             ) return [];
             if (rule.actions === 'delete') rule.actions = [{ action: 'delete' }];
             if (!Array.isArray(rule.actions)) return [];
 
-            const actions = rule.actions.flatMap(
-                action => regularize(action, rules_path, js_object.attributes ?? {})
-            );
+            let has_delete = false;
+            const actions = rule.actions.flatMap(_action => {
+                const action = regularize(_action, rules_path, extra_tags);
+                if (action.action === 'delete') has_delete = true;
+                if (no_pattern && action.action !== 'add') {
+                    console.warn('No pattern, but action is not "add", ignored');
+                    return [];
+                }
+                return action;
+            });
             if (actions.length === 0) return [];
-            const has_delete = actions.some(action => action.action === 'delete');
             if (!has_delete) {
                 rule.actions = actions;
                 return rule;

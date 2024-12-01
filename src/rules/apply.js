@@ -230,14 +230,26 @@ function perpare_merge_item(merged_items, action, items) {
     merged_items.push(merge_item);
 }
 
-function perpare_new_item(new_items, action, items) {
-    // @todo
+function perpare_new_item(new_items, action, items, type) {
+    if (type !== action.type) return;
+    if (items == null) {
+        new_items.push({ item: {}, action });
+        return;
+    }
+    for (const item of items) {
+        new_items.push({ item, action });
+    }
 }
 
 export async function apply_rules(list, rules) {
     const items_per_rule = new Map();
     for (const rule of rules) {
-        items_per_rule.set(rule, match_all(list, rule.pattern));
+        if (rule.pattern == null) {
+            // There may be an empty pattern here, used for add actions
+            items_per_rule.set(rule, null);
+        } else {
+            items_per_rule.set(rule, match_all(list, rule.pattern));
+        }
     }
     const modi_actions = new Map();
     const new_items = [];
@@ -263,7 +275,10 @@ export async function apply_rules(list, rules) {
                     perpare_merge_item(merged_items, action, items);
                     break;
                 case 'add': // add items
-                    perpare_new_item(new_items, action, items);
+                    perpare_new_item(
+                        new_items, action, items,
+                        is_convertion ? 'convert' : 'copy'
+                    );
                     break;
                 case 'replace':
                 case 'join':

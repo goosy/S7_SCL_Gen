@@ -28,10 +28,10 @@ const replace_content = `# 联校调试记录
 
 const merge_content = `# 联校调试记录
 
-工程名称： 合并测试
+工程名称： 合并与新建测试
 测试内容： 通道联调
 
-[合并测试表格]
+[合并与新建测试表格]
 | 回路 | 仪表位号 | 测量范围 | 实测值 0% | 实测值 50% | 实测值 100% | 报警值 | 调试结果 |
 | --- | --- | :---: | --- | --- | --- | --- | --- |
 | | TIT101 |  0.0 - 100.0 | 0.000 | 50.000 | 100.000 |  | 合格 |
@@ -176,11 +176,12 @@ suite('rule test', () => {
         strictEqual(rules[1].actions[0].distance, '{{title[$.cpu_name]}}.md');
         strictEqual(rules[2].actions[0].output_dir, 'target');
         rules = tasks[1].rules;
-        strictEqual(rules.length, 2);
+        strictEqual(rules.length, 3);
         strictEqual(rules[0].actions[0].template, 'template.md');
         strictEqual(rules[0].actions[0].distance, 'AI_alarm.md');
         strictEqual(rules[0].actions[0].output_dir, '{{$.cpu_name}}');
-        strictEqual(rules[1].actions[0].action, 'delete');
+        strictEqual(rules[1].actions[0].action, 'add');
+        strictEqual(rules[2].actions[0].action, 'delete');
     });
     test('generate', async () => {
         let output = match_all(list[0].convert_list, {
@@ -199,6 +200,16 @@ suite('rule test', () => {
             distance: 'AI_alarm.md',
             output_dir: 'D:/codes/AS/S7_SCL_Gen/test/dist',
             content: merge_content,
+        });
+        ok(output.length);
+        output = match_all(list[1].copy_list, {
+            cpu_name: 'dist',
+            feature: 'OS_alarms',
+            platform: 'step7',
+            input_dir: 'D:/codes/AS/S7_SCL_Gen/test',
+            output_dir: 'D:/codes/AS/S7_SCL_Gen/test/dist',
+            source: 'template.md',
+            distance: 'template',
         });
         ok(output.length);
         output = match_all(list[2].copy_list, {
