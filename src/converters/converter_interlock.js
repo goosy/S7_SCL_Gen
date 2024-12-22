@@ -125,7 +125,11 @@ export function initialize_list(area) {
             // biome-ignore lint/suspicious/noDoubleEquals: may be null
             if (item == undefined) return item;
 
-            const { comment, s7_expr_desc, trigger_type } = options;
+            const {
+                comment = '',
+                s7_expr_desc = '',
+                trigger_type = 'rising'
+            } = options;
             const expression = isString(item) ? item.value : item;
 
             if (typeof expression === 'string') {
@@ -190,7 +194,6 @@ export function initialize_list(area) {
             extra_code: nullable_value(STRING, node.get('extra_code'))?.value,
             comment
         };
-        const default_trigger = nullable_value(STRING, node.get('trigger'))?.value.toLowerCase() ?? 'rising';
 
         const data_node = node.get('data');
         if (data_node && !isSeq(data_node)) elog(new SyntaxError('interlock 的 data 列表必须是数组!'));
@@ -252,12 +255,12 @@ export function initialize_list(area) {
             // if item is IL_expression then convert to input_item
             let input = parse_IL_expression(item, {
                 s7_expr_desc: `interlock DB:${DB_name} input.value`,
-                trigger_type: default_trigger,
+                trigger_type: 'rising',
                 comment: ''
             });
             if (!input) {
                 if (!isMap(item)) elog(new SyntaxError(`interlock的input项${item}输入错误，必须是input对象、data项名称、S7符号或SCL表达式`));
-                const trigger_type = nullable_value(STRING, item.get('trigger'))?.value.toLowerCase() ?? default_trigger;
+                const trigger_type = nullable_value(STRING, item.get('trigger'))?.value.toLowerCase() ?? 'rising';
                 const comment = new STRING(item.get('comment') ?? '').value;
                 const and = item.get('and');
                 const value = item.get('value');
@@ -286,7 +289,10 @@ export function initialize_list(area) {
             }
 
             // if reset is symbol then convert to interlock_item
-            const reset = parse_IL_expression(item, {
+            const expr = typeof item === 'string'
+                ? item.replace(/(?<!\S)inputs(?!\S)/g, 'output')
+                : item.value;
+            const reset = parse_IL_expression(expr, {
                 s7_expr_desc: `interlock DB:${DB_name} reset.value`,
                 comment: ''
             });
@@ -304,14 +310,12 @@ export function initialize_list(area) {
                 s7_expr_desc: `interlock DB:${DB_name} output.value`,
                 comment: ''
             });
-            let inversion = false;
             if (!output) {
                 if (!isMap(item)) {
                     elog(new SyntaxError('interlock 的 output 项必须是output对象、data项名称、S7符号或SCL表达式!'));
                 }
                 const comment = new STRING(item.get('comment') ?? '').value;
                 const value = item.get('value');
-                inversion = nullable_value(STRING, item.get('inversion'))?.value ?? false;
                 output = parse_IL_expression(value, {
                     s7_expr_desc: `interlock DB:${DB_name} output.value`,
                     comment,
@@ -319,8 +323,25 @@ export function initialize_list(area) {
                 const reset = item.get('reset');
                 if (reset) output.reset = conv_rest(reset);
             }
-            output.setvalue = inversion ? 'FALSE' : 'TRUE';
-            output.resetvalue = inversion ? 'TRUE' : 'FALSE';
+            /**
+             * @type {BOOL}
+             */
+            const inversion = ensure_value(
+                BOOL,
+                (isMap(item) && item.get('inversion')) ?? false
+            );
+            /**
+             * @type {BOOL|null}
+             */
+            const defaultvalue = nullable_value(
+                BOOL,
+                isMap(item) && item.get('default')
+            );
+            output.setvalue = inversion.value ? 'FALSE' : 'TRUE';
+            output.resetvalue = inversion.toString();
+            output.defaultvalue = defaultvalue == null
+                ? output.resetvalue
+                : defaultvalue.toString();
             return output;
         });
         DB.interlocks.push(interlock);
@@ -338,8 +359,9 @@ export function build_list({ list }) {
         const fields = DB.fields;
         const _fields = Object.values(fields);
         for (const item of _fields) {
-            if (item.read) item.assign_read = `"${DB_name}".${item.name} := ${item.read.value};`;
-            if (item.write) item.assign_write = `${item.write.value} := "${DB_name}".${item.name};`;
+            item.expression = `"${DB_name}".${item.name}`;
+            if (item.read) item.assign_read = `${item.expression} := ${item.read.value};`;
+            if (item.write) item.assign_write = `${item.write.value} := ${item.expression};`;
             const init_value = item.init
                 ? ` := ${item.init}`
                 : '';
@@ -393,15 +415,17 @@ export function build_list({ list }) {
                 }
             }
             for (const reset of interlock.reset_list) {
-                reset.resettable = (reset.ref ?? false) && !reset.ref.read;
+                if (reset.ref && !reset.ref.read) {
+                    reset.ref.resettable = true;
+                }
             }
             for (const output of interlock.output_list) {
                 if (output.ref) {
                     if (output.ref.read) elog(new SyntaxError('interlock 的 output 项不能有 read 属性!'));
                 }
                 const reset = output.reset;
-                if (reset) {
-                    reset.resettable = (reset.ref ?? false) && !reset.ref.read;
+                if (reset?.ref && !reset.ref.read) {
+                    reset.ref.resettable = true;
                 }
             }
         }
@@ -413,7 +437,7 @@ export function gen({ document, options = {} }) {
     const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { LOOP_NAME };
-    const template = 'interlock.template'; 
+    const template = 'interlock.template';
     return [{ distance, output_dir, tags, template }];
 }
 

@@ -47,26 +47,31 @@ BEGIN
 {{endfor // assign}}_
 {{for interlock in DB.interlocks}}_
 // {{interlock.comment}}
-reset := NOT "{{DB.name}}".enable{{}}_
-{{for reset in interlock.reset_list}}
-         OR {{reset.value.value}}_
-{{endfor // reset}};
-IF reset THEN
-{{for reset in interlock.reset_list}}_
-{{  if reset.resettable}}_
-    {{  reset.value.value}} := FALSE;
-{{  endif}}_
-{{endfor // reset}}_
-    // 复位联锁输出
+{{if interlock.reset_list.length}}_
+reset := {{}}_
+{{  for no, reset in interlock.reset_list}}_
+{{    if no}}
+         OR {{endif //no}}{{reset.value.value}}_
+{{  endfor // reset}};
+{{endif // reset}}_
+IF NOT "{{DB.name}}".enable THEN
+    // 联锁输出默认值
 {{for output in interlock.output_list}}_
-    {{output.value.value}} := {{output.resetvalue}};
+    {{output.value.value}} := {{output.defaultvalue}};
 {{endfor // output}}_
+{{if interlock.reset_list.length}}_
+ELSIF reset THEN
+    // 复位联锁输出
+{{  for output in interlock.output_list}}_
+    {{output.value.value}} := {{output.resetvalue}};
+{{  endfor // output}}_
+{{endif // reset}}_
 ELSE
     output := {{}}_
 {{for no, input in interlock.input_list}}_
-{{if no}}
+{{  if no}}
               OR {{}}_
-{{endif //no}}_
+{{  endif //no}}_
 {{input.trigger}}_
 {{endfor //input}};
     IF output THEN
@@ -79,9 +84,6 @@ ELSE
 {{reset = output.reset}}_
 {{  if output.reset}}_
     IF {{output.reset.value.value}} THEN
-{{    if reset.resettable}}_
-        {{reset.value.value}} := FALSE;
-{{    endif // resettable}}_
         {{output.value.value}} := {{output.resetvalue}};
     END_IF;
 {{  endif // output.reset}}_
@@ -98,6 +100,12 @@ END_IF;
 {{interlock.extra_code}}
 {{endif // extra_code}}_
 {{endfor // interlock}}_
+// reset 项复位
+{{for field in DB.declarations}}_
+{{  if field.resettable}}_
+{{    field.expression}} := FALSE;
+{{  endif}}_
+{{endfor // field}}_
 // DB "{{DB.name}}" 写出
 {{for assign in DB.write_list}}_
 {{  assign.assign_write}}
