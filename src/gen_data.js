@@ -469,12 +469,16 @@ async function gen_list(cpu_list) {
                 }
                 const type = 'convert';
                 const template = templates[item.template];
+                // { cpu_name, feature, platform, OE, line_ending, type, tags, template, distance, output_dir }
                 convert_list.push({ ...common_options, type, tags, template, distance, output_dir });
             };
         }
     };
-    for (const item of gen_symbols(cpu_list)) {
+    for (const cpu of cpu_list) {
+        const item = gen_symbols(cpu);
         item.type = 'convert';
+        item.OE = context.OE;
+        item.line_ending = context.line_ending;
         convert_list.push(item);
     }
     return { copy_list, convert_list };

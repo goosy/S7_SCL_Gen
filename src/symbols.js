@@ -605,14 +605,20 @@ const BLANK_COMMENT_LEN = 80;
  */
 function get_step7_symbol({ name, type, block_name, block_no, block_bit, type_name, type_no = '', comment, exportable }) {
     if (!exportable) return [];
-    const name_str = pad_right(name, SYMN_LEN);
-    const address = pad_right(block_name, NAME_LEN)
-        + pad_left(block_no, NO_LEN)
-        + (type === 'BOOL' ? `.${block_bit}` : '  ');
-    const type_str = pad_right(type_name, NAME_LEN) + pad_left(type_no, NO_LEN);
-    const cm = pad_right(comment, BLANK_COMMENT_LEN);
-    const line = `126,${name_str} ${address} ${type_str} ${cm}`;
-    return { name, address, line };
+    return {
+        name, type, block_name, block_no, block_bit, type_name, type_no, comment,
+        get address() {
+            return pad_right(this.block_name, NAME_LEN)
+                + pad_left(this.block_no, NO_LEN)
+                + (this.type === 'BOOL' ? `.${this.block_bit}` : '  ');
+        },
+        get line() {
+            const name_str = pad_right(this.name, SYMN_LEN);
+            const type_str = pad_right(this.type_name, NAME_LEN) + pad_left(this.type_no, NO_LEN);
+            const cm = pad_right(this.comment, BLANK_COMMENT_LEN);
+            return `126,${name_str} ${this.address} ${type_str} ${cm}`;
+        },
+    };
 }
 
 /**
@@ -627,28 +633,31 @@ function get_step7_symbol({ name, type, block_name, block_no, block_bit, type_na
 function get_portal_symbol({ name, type, address, block_name, comment, exportable }) {
     if (!exportable) return [];
     if (INTEGER_PREFIX.includes(block_name)) return []; // Symbols of OB, FB, FC, SFB, SFC, UDT are not generated
-    const line = `"${name}","%${address}","${type}","True","True","False","${comment}","","True"`;
-    return { name, address, line };
+    return {
+        name, type, address, block_name, comment,
+        get line() {
+            return `"${this.name}","%${this.address}","${this.type}","True","True","False","${this.comment}","","True"`
+        },
+    };
 }
 
-const template = `{{for symbol in symbol_list}}_
+const template = `{{for symbol in list}}_
 {{symbol.line}}
 {{endfor // symbol}}`;
 
-export function gen_symbols(cpu_list) {
-    return cpu_list.map(cpu => {
-        const symbol_list = cpu.symbols.list
-            .flatMap(cpu.platform === "portal" ? get_portal_symbol : get_step7_symbol)
-            .sort((a, b) => compare_str(a.name, b.name))
-            .sort((a, b) => compare_str(a.address, b.address));
-        return {
-            cpu_name: cpu.name,
-            feature: '',
-            platform: cpu.platform,
-            distance: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
-            output_dir: context.work_path,
-            tags: { symbol_list },
-            template,
-        };
-    });
+export function gen_symbols(cpu) {
+    const list = cpu.symbols.list
+        .flatMap(cpu.platform === "portal" ? get_portal_symbol : get_step7_symbol)
+        .sort((a, b) => compare_str(a.name, b.name))
+        .sort((a, b) => compare_str(a.address, b.address));
+    // return { cpu_name, feature, platform, OE, line_ending, type, tags, template, distance, output_dir }
+    return {
+        cpu_name: cpu.name,
+        feature: 'symbol',
+        platform: cpu.platform,
+        distance: `${cpu.output_dir}/symbols.${cpu.platform === "portal" ? 'sdf' : 'asc'}`,
+        output_dir: context.work_path,
+        tags: { list },
+        template,
+    };
 }
