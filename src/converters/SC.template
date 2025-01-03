@@ -22,10 +22,11 @@ STRUCT
         waitCount : INT; // 发送等待次数
     END_STRUCT;
 {{endfor // module}}_
+{{poll_index = stepper(0, 1)}}_
 {{for module in list}}_
 {{for poll in module.polls}}_
 {{if !poll.extra_send_DB}}_
-    poll_{{poll.index}}_data : STRUCT
+    poll_{{poll_index.next()}}_data : STRUCT
 {{if poll.send_data // ----通用发送}}_
         send_data : ARRAY  [0 .. {{poll.send_data.length-1}}] OF BYTE;    //发送数据
 {{else // ----modbus 发送}}_
@@ -41,10 +42,11 @@ STRUCT
 {{endfor // module}}_
 END_STRUCT;
 BEGIN
+{{poll_index = stepper(0, 1)}}_
 {{for module in list}}
     // --- {{module.comment}} 轮询数据
 {{for no,poll in module.polls}}
-    // poll {{poll.index}}  {{poll.comment}}
+    // poll {{poll_index.next()}}  {{poll.comment}}
     {{module.name}}[{{no}}].next := {{no + 1 == module.polls.length ? 'FALSE' : 'TRUE'}};
     {{module.name}}[{{no}}].modbusFlag := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
     {{module.name}}[{{no}}].send_DB := {{poll.send_DB.block_no}};
@@ -56,13 +58,13 @@ BEGIN
     // send data
 {{    if poll.send_data}}_
 {{      for index, databyte in poll.send_data}}_
-    poll_{{poll.index}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}
+    poll_{{poll_index.value}}_data.send_data[{{index}}] := B#16#{{databyte}};    //发送数据{{index}}
 {{      endfor}}_
 {{    else}}_
-    poll_{{poll.index}}_data.unit_ID := {{poll.unit_ID.byteHEX}};
-    poll_{{poll.index}}_data.func_code := {{poll.func_code.byteHEX}};
-    poll_{{poll.index}}_data.address := {{poll.started_addr.wordHEX}};
-    poll_{{poll.index}}_data.data := {{poll.data.wordHEX}};
+    poll_{{poll_index.value}}_data.unit_ID := {{poll.unit_ID.byteHEX}};
+    poll_{{poll_index.value}}_data.func_code := {{poll.func_code.byteHEX}};
+    poll_{{poll_index.value}}_data.address := {{poll.started_addr.wordHEX}};
+    poll_{{poll_index.value}}_data.data := {{poll.data.wordHEX}};
 {{    endif // send_data}}_
 {{  endif // ----poll_send_data 结束}}_
 {{endfor // poll}}_

@@ -171,9 +171,7 @@ export function build_list(SC) {
     const CPU = SC.document.CPU;
     const DBs = new Set(); // Remove duplicates
     const list = SC.list;
-    const polls = list.flatMap(module => module.polls);
-    polls.forEach((poll, index) => { poll.index = index; })
-    let sendDBB = polls.length * 16;
+    let sendDBB = list.flatMap(module => module.polls).length * 16;
     for (const module of list) { // Process configuration to form complete data
         assert.equal(typeof module.module?.block_no, 'number', new SyntaxError(`${CPU.name}:SC:module(${module.comment}) 模块地址有误!`));
         module.name ??= `polls_${module.module.block_no}`;

@@ -17,19 +17,19 @@
     },
     "dependencies": {
         "iconv-lite": "^0.6.3",
-        "nodemon": "^3.1.7"
+        "nodemon": "^3.1.9"
     },
     "devDependencies": {
-        "@rollup/plugin-commonjs": "^28.0.1",
+        "@rollup/plugin-commonjs": "^28.0.2",
         "@rollup/plugin-json": "^6.1.0",
-        "@rollup/plugin-node-resolve": "^15.3.0",
+        "@rollup/plugin-node-resolve": "^16.0.0",
         "globby": "^13.2.2",
-        "gooconverter": "^1.0.3",
+        "gooconverter": "^1.0.5",
         "matcher": "^5.0.0",
         "mri": "^1.2.0",
         "rimraf": "^6.0.1",
-        "rollup": "^4.26.0",
-        "yaml": "^2.6.0"
+        "rollup": "^4.29.1",
+        "yaml": "^2.7.0"
     },
     "directories": {
         "conf": "example",
