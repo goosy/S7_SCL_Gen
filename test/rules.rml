@@ -1,72 +1,59 @@
 --- # 第1个任务
 
-config_path: '.'                      # GCL配置文件所在目录
+config_path: .
 
-attributes:                           # 全局变量
+attributes:
   title:
     dist: PLC测试
 
-rules:                                # 规则列表
-
-# 每一项规则的作用是：过滤符合pattern的项，对该项应用以下指定动作：
-#
-# - modify 修改
-#          当值为 delete 时，把匹配项从列表中删除，即不再进行转换或复制
-#          当值为对象时，把匹配项的具体属性按照 modify 进行修改
-# - merge  合并 把匹配项合并成一个新项
-#          tags 为merge.tags，并以 CPU_feature 键名加入匹配项的tags
-#          合并的新项中，修改值优先，否则：
-#          CPU\feature\platform 一致时为原值，不一致为 ''
-#          OE一致时为原值，不一致为 'utf8'
-#          line_ending 一致时为原值，不一致为 'LF'
-#          enable 为 true
-#          type 不一致时取消合并
-#          template 一致时为为原值，否则取消合并
-#          distance 一致时为为原值，否则取消合并
-#          output_dir 一致时为为原值，否则取消合并
-#
-# merge 动作会产生新项，并不影响原有项，即原有项依然独立进行转换或复制。
-# 如果合并后不需要原有项，可以同时指定 delete 动作
+rules:
 
 - pattern:
     type: copy
-  modify: delete
+  actions:
+  - delete
 - pattern:
-    type: convert                     # 指示是一个 convert_item
-    feature: AI                       # 仅匹配 AI 类型的文件
-  modify:
+    type: convert
+    feature: AI
+  actions:
+  - action: replace
     template: template.md
-    distance: '{{title[cpu_name]}}.md'
-- pattern: '*'                        # 匹配所有
-  modify:
-    output_dir: target                # 重新指定输出目录
+    distance: '{{title[$.cpu_name]}}.md'
+- pattern: '*'
+  actions:
+  - action: replace
+    output_dir: target
 
 --- # 第2个任务
 
-config_path: "."
+config_path: .
 
-attributes:                           # 全局变量
+attributes:
   title:
     dist: 合并测试
 
 rules:
 - pattern:
     feature: [AI, alarm]
-  merge:
-    cpu_name: "dist"
+  actions:
+  - action: merge
+    feature: OS_alarms
+    cpu_name: dist
     template: template.md
-    distance: 'AI_alarm.md'
-    output_dir: '{{cpu_name}}'
+    distance: AI_alarm.md
+    output_dir: '{{$.cpu_name}}'
 - pattern: '*'
-  modify: delete
+  actions:
+  - delete
 
 --- # 第3个任务
 
-config_path: "."
+config_path: .
 
 rules:
 - pattern:
     type: copy
-  modify: delete
+  actions:
+  - delete
 
 ...

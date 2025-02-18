@@ -87,15 +87,15 @@ suite('生成SCL测试', () => {
         let rules = task.rules;
         strictEqual(rules.length, 3);
         strictEqual(rules[0].pattern.type, 'copy');
-        strictEqual(rules[1].modify.template, 'template.md');
-        strictEqual(rules[1].modify.distance, '{{title[cpu_name]}}.md');
-        strictEqual(rules[2].modify.output_dir, 'target');
+        strictEqual(rules[1].actions[0].template, 'template.md');
+        strictEqual(rules[1].actions[0].distance, '{{title[$.cpu_name]}}.md');
+        strictEqual(rules[2].actions[0].output_dir, 'target');
         rules = tasks[1].rules;
         strictEqual(rules.length, 2);
-        strictEqual(rules[0].merge.template, 'template.md');
-        strictEqual(rules[0].merge.distance, 'AI_alarm.md');
-        strictEqual(rules[0].merge.output_dir, '{{cpu_name}}');
-        strictEqual(rules[1].modify, 'delete');
+        strictEqual(rules[0].actions[0].template, 'template.md');
+        strictEqual(rules[0].actions[0].distance, 'AI_alarm.md');
+        strictEqual(rules[0].actions[0].output_dir, '{{$.cpu_name}}');
+        strictEqual(rules[1].actions[0].action, 'delete');
     })
     test('复制指定文件', async () => {
         const source = '**/AI_Proc(step7).scl';
@@ -136,36 +136,46 @@ suite('生成SCL测试', () => {
         ok(match_all(list[0].copy_list, { platform: 'step7', }).length);
     });
     test('生成指定文件', () => {
-        let AI_out = match_all(list[0].convert_list, {
+        let output = match_all(list[0].convert_list, {
             feature: 'AI',
             cpu_name: 'dist',
         });
-        ok(AI_out.length);
-        AI_out = match_all(list[0].convert_list, {
+        ok(output.length);
+        output = match_all(list[0].convert_list, {
             feature: 'alarm',
             cpu_name: 'dist',
         });
-        ok(AI_out.length);
-        AI_out = match_all(list[0].convert_list, {
+        ok(output.length);
+        output = match_all(list[0].convert_list, {
             distance: '**/*.asc',
         });
-        ok(AI_out.length);
-        AI_out = match_all(list[1].convert_list, {
+        ok(output.length);
+        output = match_all(list[1].convert_list, {
             feature: 'AI',
             cpu_name: 'dist',
         });
-        ok(AI_out.length);
-        for (const item of AI_out) {
+        ok(output.length);
+        for (const item of output) {
             equal(item.distance, 'PLC测试.md');
-            equal(item.output_dir, '/codes/AS/S7_SCL_Gen/test/target');
+            equal(item.output_dir, 'D:/codes/AS/S7_SCL_Gen/test/target');
             equal(item.content, test_content);
         }
-        AI_out = match_all(list[2].convert_list, {
+        output = match_all(list[2].convert_list, {
             template,
             distance: 'AI_alarm.md',
-            output_dir: '/codes/AS/S7_SCL_Gen/test/dist',
+            output_dir: 'D:/codes/AS/S7_SCL_Gen/test/dist',
             content: merge_content,
         });
-        ok(AI_out.length);
+        ok(output.length);
+    });
+    test('删除指定文件', () => {
+        let output = match_all(list[1].convert_list, {
+            type: 'copy',
+        });
+        strictEqual(output.length, 0);
+        output = match_all(list[2].convert_list, {
+            feature: '!OS_alarms',
+        });
+        strictEqual(output.length, 0);
     });
 });

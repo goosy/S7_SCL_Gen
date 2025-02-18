@@ -1,5 +1,5 @@
 import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, posix, isAbsolute } from 'node:path';
+import { basename, dirname, posix } from 'node:path';
 import iconv from 'iconv-lite';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -36,7 +36,7 @@ const templates_cache = new Map();
  */
 async function get_template(template_file, feature) {
     const path = template_file ?? posix.join(module_path, 'src', 'converters', `${feature}.template`);
-    const filename = isAbsolute(path) ? path : posix.resolve(path);
+    const filename = posix.resolve(path);
     if (templates_cache.has(filename)) return templates_cache.get(filename);
     const template = await read_file(filename);
     templates_cache.set(filename, template);

@@ -1,9 +1,41 @@
 import { suite, test } from 'node:test';
 import { ok, strictEqual } from "node:assert/strict";
-import { match, match_all } from '../src/rules/index.js';
+import { match, match_all, parse_rules } from '../src/rules/index.js';
 
-suite('util test', () => {
-    test('match test', () => {
+const yaml = `---
+config_path: .
+rules:
+- pattern: "*"
+  actions:
+  - ~ # 无效动作
+  - action: ~ # 无效动作
+  - action: replace # 由于存在delete，此动作将被忽略
+    host: '*'
+  - action: merge # 有效动作
+    cpu_name: as1
+  - delete # 有效动作
+  - action: join # 由于存在delete，此动作将被忽略
+    files: [sample.scl]
+- pattern:
+    type: copy
+  actions: delete
+
+---
+# 空任务
+
+---
+config_path: .
+# 空规则
+
+---
+config_path: .
+rules: # 无效规则
+- actions: invaild
+
+...`;
+
+suite('rule test', () => {
+    test('match', () => {
         // null
         ok(!match(null, '*'));
         ok(match(null, '%u'));
@@ -43,13 +75,13 @@ suite('util test', () => {
         // array
         ok(match([], '%a'));
         ok(!match(0, '%a'));
-        ok(!match('', '%a')); 
+        ok(!match('', '%a'));
         ok(!match(true, '%a'));
         ok(!match({}, '%a'));
         // object
         ok(match({}, '%o'));
         ok(match(
-            {str: 'abcdef', foo: 'foo'},
+            { str: 'abcdef', foo: 'foo' },
             { str: '*', foo: 'foo' }
         ));
         ok(!match('', '%o'));
@@ -57,7 +89,7 @@ suite('util test', () => {
         ok(!match(0, '%o'));
         ok(!match(true, '%o'));
     });
-    test('match_all test', () => {
+    test('match_all', () => {
         strictEqual(
             match_all(['fee', 'foo', 'doo', 'fum', 'zoo'], 'f*').join(', '),
             'fee, foo, fum'
@@ -66,5 +98,18 @@ suite('util test', () => {
             match_all(['fee', 'foo', 'doo', 'fum', 'zoo'], ['f*', 'd*']).join(', '),
             'fee, foo, doo, fum'
         );
+    });
+    test('parse', () => {
+        const tasks = parse_rules(yaml, 'test');
+        strictEqual(tasks.length, 1);
+        const task = tasks[0];
+        strictEqual(task.path, 'test');
+        strictEqual(task.rules.length, 2);
+        // To test the path of rules in each task, the current directory must first enter task.path
+        let rule = task.rules[0];
+        strictEqual(rule.actions.length, 2);
+        strictEqual(rule.pattern, '*');
+        rule = task.rules[1];
+        strictEqual(rule.actions.length, 1);
     });
 });
