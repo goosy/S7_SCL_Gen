@@ -20,7 +20,7 @@ const replace_content = `# 联校调试记录
 [替换测试表格]
 | 回路 | 仪表位号 | 测量范围 | 实测值 0% | 实测值 50% | 实测值 100% | 报警值 | 调试结果 |
 | --- | --- | :---: | --- | --- | --- | --- | --- |
-| | TIT101 |  0.0 - 100.0 | 0.000 | 50.000 | 100.000 |  | 合格 |
+| | TIT101 | 0.0 - 100.0 | 0.000 | 50.000 | 100.000 | AH: 2.5 WH: 2.0 AL: -0.1 | 合格 |
 
 调试单位: __________________________ 专业工程师: ________ 质量检查员: ________ 施工班组长: ________
 日期: ________ 年 ____ 月 ____ 日
@@ -34,8 +34,8 @@ const merge_content = `# 联校调试记录
 [合并与新建测试表格]
 | 回路 | 仪表位号 | 测量范围 | 实测值 0% | 实测值 50% | 实测值 100% | 报警值 | 调试结果 |
 | --- | --- | :---: | --- | --- | --- | --- | --- |
-| | TIT101 |  0.0 - 100.0 | 0.000 | 50.000 | 100.000 |  | 合格 |
-| | LIT001 |  0.0 - 100.0 | 0.100 | 50.100 | 99.900 |  | 合格 |
+| | TIT101 | 0.0 - 100.0 | 0.000 | 50.000 | 100.000 | AH: 2.5 WH: 2.0 AL: -0.1 | 合格 |
+| | LIT001 | 0.0 - 100.0 | 0.100 | 50.100 | 99.900 | AH: 2.5 WL: -0.05 AL: -0.1 | 合格 |
 
 调试单位: __________________________ 专业工程师: ________ 质量检查员: ________ 施工班组长: ________
 日期: ________ 年 ____ 月 ____ 日
@@ -130,7 +130,7 @@ suite('rule test', () => {
         ok(!match('', '%a'));
         ok(!match(true, '%a'));
         ok(!match({}, '%a'));
-        // object
+        // plain object
         ok(match({}, '%o'));
         ok(match(
             { str: 'abcdef', foo: 'foo' },
@@ -140,6 +140,13 @@ suite('rule test', () => {
         ok(!match([], '%o'));
         ok(!match(0, '%o'));
         ok(!match(true, '%o'));
+        // other object
+        ok(match(new Set(), '%O'));
+        ok(match(
+            { foo: new RegExp('foo') },
+            { foo: '%O' }
+        ));
+        ok(!match({}, '%O'));
     });
     test('match_all', () => {
         strictEqual(
@@ -149,6 +156,11 @@ suite('rule test', () => {
         strictEqual(
             match_all(['fee', 'foo', 'doo', 'fum', 'zoo'], ['f*', 'd*']).join(', '),
             'fee, foo, doo, fum'
+        );
+        const O = new Set(['foo', 'fee', 'bar']);
+        strictEqual(
+            match_all(O, 'f*').join(', '),
+            'foo, fee'
         );
     });
     test('parse', () => {
@@ -176,7 +188,7 @@ suite('rule test', () => {
         strictEqual(action_target.tags.list.length, 5);
     });
     test('load', async () => {
-        strictEqual(tasks.length, 3);
+        strictEqual(tasks.length, 4);
         const task = tasks[0];
         strictEqual(task.path, '.');
         // To test the path of rules in each task, the current directory must first enter task.path
@@ -228,6 +240,20 @@ suite('rule test', () => {
             replace_o: { type: 'replace' },
             join_a: ['old', 'new'],
             join_o: { desc: 'join object', type: 'join' }
+        });
+        ok(output.length);
+        output = list[3].convert_list;
+        strictEqual(output.size, 1);
+        output = match_all(output, {
+            template: 'NO,eventtag,location,event,PV1\n' +
+                '{{no = stepper()}}_\n' +
+                '{{for item in list}}_\n' +
+                '{{no.next()}},{{item.tagname}},{{item.location}},{{item.event}},{{item.PV1}}\n' +
+                '{{endfor // list}}_\n',
+            content: 'NO,eventtag,location,event,PV1\n' +
+                '1,S7Program/TIT101.AH_flag,,高高报警,S7Program/TIT101.AH_PV\n' +
+                '2,S7Program/TIT101.WH_flag,,高警告,S7Program/TIT101.WH_PV\n' +
+                '3,S7Program/TIT101.AL_flag,,低低报警,S7Program/TIT101.AL_PV\n'
         });
         ok(output.length);
     });

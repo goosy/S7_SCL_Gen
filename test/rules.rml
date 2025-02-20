@@ -95,4 +95,68 @@ rules:
   - action: join
     list: new
 
+--- # 第4个任务
+
+config_path: .
+
+attributes:
+  title: 文档规则测试
+rules:
+- pattern:
+    feature: '!AI'
+  scope: origin
+  actions: delete
+- pattern:
+    feature: AI
+    type: convert
+  scope: origin
+  actions:
+  - action_scope: matched
+    action_type: replace
+    template: alarms.template
+  - action_scope: matched
+    rules: # 即默认了 `action_type: inner_rules`
+    - pattern:
+        $enable_AH: {value: true}
+      scope: origin
+      actions:
+      - action_type: add
+        action_scope: matched
+        tagname: 'S7Program/{{$.DB.name}}.AH_flag'
+        location: '{{$.location}}'
+        event: '{{$.type}}高高报警'
+        PV1: 'S7Program/{{$.DB.name}}.AH_PV'
+    - pattern:
+        $enable_WH: {value: true}
+      scope: origin
+      actions:
+      - action_type: add
+        action_scope: matched
+        tagname: 'S7Program/{{$.DB.name}}.WH_flag'
+        location: '{{$.location}}'
+        event: '{{$.type}}高警告'
+        PV1: 'S7Program/{{$.DB.name}}.WH_PV'
+    - pattern:
+        $enable_WL: {value: true}
+      scope: origin
+      actions:
+      - action_type: add
+        action_scope: matched
+        tagname: 'S7Program/{{$.DB.name}}.WL_flag'
+        location: '{{$.location}}'
+        event: '{{$.type}}低警告'
+        PV1: 'S7Program/{{$.DB.name}}.WL_PV'
+    - pattern:
+        $enable_AL: {value: true}
+      scope: origin
+      actions:
+      - action_type: add
+        action_scope: matched
+        tagname: 'S7Program/{{$.DB.name}}.AL_flag'
+        location: '{{$.location}}'
+        event: '{{$.type}}低低报警'
+        PV1: 'S7Program/{{$.DB.name}}.AL_PV'
+    - pattern: '*'
+      scope: origin
+      actions: delete
 ...
