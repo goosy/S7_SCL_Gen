@@ -2,14 +2,96 @@ import { dirname, posix } from 'node:path';
 import { parseAllDocuments } from 'yaml';
 import { is_plain_object, read_file } from '../util.js';
 
-function regularize(action, rules_path, extra_tags) {
-    const ret = action === 'delete' ? { action: 'delete' } : action;
-    if (!is_plain_object(ret) || !ret.action) return [];
-    if (action.action === 'delete') return ret;
+function regularize(action, rules_path, extra_tags, using_inner_rules) {
+    const action_type = action.action_type;
+    // Document rules do not support "merge" or "inner_rules" action
+    if (using_inner_rules && (action_type === 'merge' || action_type === 'inner_rules')) {
+        console.warn('merge or inner_rules action is not allowed in inner_rules, ignored');
+        return [];
+    }
+    const ret = Array.isArray(action)
+        ? { action_type: 'inner_rules', rules: action } // array is treated as inner_rules
+        : action === 'delete' ? { action_type: 'delete' } : action;
+    if (!is_plain_object(ret)) return [];
+    ret.action_type ??= Array.isArray(ret.rules) ? 'inner_rules' : 'replace'; // default action type
+    ret.action_scope ??= 'matched'; // default action scope
+    // delete and merge action only works on matched items
+    if ((ret.action_type === 'delete' || ret.action_type === 'merge') && ret.action_scope !== 'matched') {
+        console.warn('delete and merge action only works on matched items, ignored');
+        return [];
+    }
+    if (ret.action_type === 'delete') return ret;
     ret.rules_path = posix.resolve(rules_path);
     if (!is_plain_object(ret.tags)) ret.tags = {};
-    Object.assign(ret.tags, extra_tags);
+    if (is_plain_object(extra_tags)) Object.assign(ret.tags, extra_tags);
     return ret;
+}
+
+function _parse_rules(rules_raw, extra_tags, rules_path, using_inner_rules = false) {
+    return rules_raw.flatMap(rule => {
+        // Incorrect rule, returns empty
+        if (!is_plain_object(rule)) return [];
+        const pattern = rule.pattern;
+        const no_pattern = pattern == null;
+        if (
+            !no_pattern
+            && !is_plain_object(pattern)
+            && !Array.isArray(pattern)
+            && typeof pattern !== 'string'
+        ) return [];
+        rule.scope ??= 'applied';
+        if (rule.actions === 'delete') rule.actions = [{ action_type: 'delete' }];
+        if (!Array.isArray(rule.actions)) return [];
+
+        let has_delete = false;
+        let has_inner_rules = false;
+        const actions = rule.actions.flatMap(_action => {
+            if (_action == null) { // ignore null actions
+                console.warn('Null action is illegal, ignored');
+                return [];
+            }
+            const action_type = _action.action_type;
+            // Ensure that no pattern action can only be "add"
+            if (no_pattern && action_type !== 'add') {
+                console.warn('No pattern, but action is not "add", ignored');
+                return [];
+            }
+            // Ensure that the inner_rules action is executed only once in the same rule
+            if (!using_inner_rules && has_inner_rules && action_type === 'inner_rules') {
+                console.warn('Only one "inner_rules" action is allowed, ignored');
+                return [];
+            }
+            // Ensure that the delete action is executed only once and before any other action in the same rule
+            if (has_delete) {
+                console.warn('A "delete" action already exists, rest actions will be ignored');
+                return [];
+            }
+            const action = regularize(_action, rules_path, extra_tags, using_inner_rules);
+            if (action.action_type === 'delete') has_delete = true;
+            if (action.action_type === 'inner_rules') has_inner_rules = true;
+            return action;
+        });
+
+        rule.actions = actions.flatMap(action => {
+            const type = action.action_type;
+            const scope = action.action_scope;
+            // If there is a delete action, remove replace, join or inner_rules action with matched scope
+            if (
+                has_delete && scope === 'matched' &&
+                (type === 'replace' || type === 'join' || type === 'inner_rules')
+            ) {
+                return [];
+            }
+            const rules = action.rules;
+            if (type === 'inner_rules' && Array.isArray(rules)) {
+                action.rules = _parse_rules(rules, extra_tags, rules_path, true);
+            }
+            return action;
+        });
+
+        if (rule.actions.length === 0) return [];
+        return rule;
+    });
 }
 
 function parse_rules(yaml, rules_path) {
@@ -22,40 +104,7 @@ function parse_rules(yaml, rules_path) {
 
         const _rules = js_object.rules ?? [];
         if (!Array.isArray(_rules)) return [];
-        const rules = _rules.flatMap(rule => {
-            // Incorrect rule, returns empty
-            if (!is_plain_object(rule)) return [];
-            const pattern = rule.pattern;
-            const no_pattern = pattern == null;
-            if (
-                !no_pattern
-                && !is_plain_object(pattern)
-                && !Array.isArray(pattern)
-                && typeof pattern !== 'string'
-            ) return [];
-            if (rule.actions === 'delete') rule.actions = [{ action: 'delete' }];
-            if (!Array.isArray(rule.actions)) return [];
-
-            let has_delete = false;
-            const actions = rule.actions.flatMap(_action => {
-                const action = regularize(_action, rules_path, extra_tags);
-                if (action.action === 'delete') has_delete = true;
-                if (no_pattern && action.action !== 'add') {
-                    console.warn('No pattern, but action is not "add", ignored');
-                    return [];
-                }
-                return action;
-            });
-            if (actions.length === 0) return [];
-            if (!has_delete) {
-                rule.actions = actions;
-                return rule;
-            }
-            rule.actions = actions.filter(
-                action => action.action !== 'replace' && action.action !== 'join'
-            );
-            return rule;
-        });
+        const rules = _parse_rules(_rules, extra_tags, rules_path);
         if (rules.length === 0) return [];
 
         const path = posix.join(rules_path, config_path);  // Relative to the current path, added to rules_path

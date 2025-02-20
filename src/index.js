@@ -11,7 +11,7 @@ export { convert, context, supported_features, converter };
 async function _convert(copy_list, convert_list) {
     const { silent, no_copy, no_convert } = context;
 
-    if (copy_list?.length && !no_copy) {
+    if (copy_list != null && typeof copy_list[Symbol.iterator] === 'function' && !no_copy) {
         silent || console.log("\ncopy file to: 复制文件至：");
         for (const copy_item of copy_list) {
             const { source, distance, input_dir, output_dir, IE, OE, line_ending } = copy_item;
@@ -29,7 +29,7 @@ async function _convert(copy_list, convert_list) {
         }
     }
 
-    if (convert_list?.length) {
+    if (convert_list != null && typeof convert_list[Symbol.iterator] === 'function') {
         silent || no_convert || console.log("\ngenerate file: 生成文件：");
         // Asynchronous sequential execution
         for (const convert_item of convert_list) {

@@ -2,7 +2,7 @@ import { ok, strictEqual } from "node:assert/strict";
 import { posix } from 'node:path';
 import { suite, test } from 'node:test';
 import { convert } from '../src/index.js';
-import { get_rules, match, match_all, parse_rules } from '../src/rules/index.js';
+import { apply_action, get_rules, match, match_all, parse_rules } from '../src/rules/index.js';
 import { context, read_file } from '../src/util.js';
 
 // set up the main conversion environment
@@ -47,13 +47,13 @@ rules:
 - pattern: "*"
   actions:
   - ~ # 无效动作
-  - action: ~ # 无效动作
-  - action: replace # 由于存在delete，此动作将被忽略
+  - action_type: ~ # 无效动作
+  - action_type: replace # 由于存在delete，此动作将被忽略
     host: '*'
-  - action: merge # 有效动作
+  - action_type: merge # 有效动作
     cpu_name: as1
   - delete # 有效动作
-  - action: join # 由于存在delete，此动作将被忽略
+  - action_type: join # 由于存在delete，此动作将被忽略
     files: [sample.scl]
 - pattern:
     type: copy
@@ -164,6 +164,17 @@ suite('rule test', () => {
         rule = task.rules[1];
         strictEqual(rule.actions.length, 1);
     });
+    test('apply', async () => {
+        const orgin = {
+            tags: {
+                list: ['fee', 'foo', 'doo', 'fum', 'zoo']
+            },
+            type: 'convert',
+        };
+        const action_target = {};
+        await apply_action(orgin, { action_type: 'merge', action_target });
+        strictEqual(action_target.tags.list.length, 5);
+    });
     test('load', async () => {
         strictEqual(tasks.length, 3);
         const task = tasks[0];
@@ -171,17 +182,17 @@ suite('rule test', () => {
         // To test the path of rules in each task, the current directory must first enter task.path
         let rules = task.rules;
         strictEqual(rules.length, 3);
-        strictEqual(rules[0].pattern.type, 'copy');
-        strictEqual(rules[1].actions[0].template, 'template.md');
-        strictEqual(rules[1].actions[0].distance, '{{title[$.cpu_name]}}.md');
-        strictEqual(rules[2].actions[0].output_dir, 'target');
+        strictEqual(rules[2].pattern.type, 'copy');
+        strictEqual(rules[0].actions[0].template, 'template.md');
+        strictEqual(rules[0].actions[0].distance, '{{title[$.cpu_name]}}.md');
+        strictEqual(rules[1].actions[0].output_dir, 'target');
         rules = tasks[1].rules;
         strictEqual(rules.length, 3);
         strictEqual(rules[0].actions[0].template, 'template.md');
         strictEqual(rules[0].actions[0].distance, 'AI_alarm.md');
         strictEqual(rules[0].actions[0].output_dir, '{{$.cpu_name}}');
-        strictEqual(rules[1].actions[0].action, 'add');
-        strictEqual(rules[2].actions[0].action, 'delete');
+        strictEqual(rules[1].actions[0].action_type, 'add');
+        strictEqual(rules[2].actions[0].action_type, 'delete');
     });
     test('generate', async () => {
         let output = match_all(list[0].convert_list, {
@@ -229,5 +240,5 @@ suite('rule test', () => {
             feature: '!OS_alarms',
         });
         strictEqual(output.length, 0);
-    })
+    });
 });

@@ -4,13 +4,21 @@ config_path: .                        # GCL配置文件所在目录
 attributes:                           # 全局变量
   device: CPU410-5H
 
-rules:                                # 规则列表
+# 定义： `全局列表` 是由 S7_SCL_Gen 对 config_path 所在配置生成的列表（convert_list 或 copy_list）
+# 定义： `全局项` 是全局列表的具体项。
+# 定义： `全局规则` 是对全局列表进行转换的规则，规则定义了匹配和转换动作。所有全局规则为全局规则列表。
+# 定义： `匹配列表` 是全局列表中匹配全局规则的所有项
+# 定义： `匹配项` 是匹配列表的某一全局项
 
-# 每一项为一个主规则，包括 pattern、 actions 2个部分
-# 该规则的作用是：过滤符合 pattern 的项，对每一个匹配项依次应用 actions。
-# 为与应用于 list 的规则加以区别，rules 下的规则也叫主规则
+rules:  # 在这里定义全局规则列表
+
+# 全局规则包括 pattern、scope、actions 三个部分
+# 每个全局规则的作用是依次执行以下：
+#   1 对 scope 的所有集合进行过滤，筛选出符合 pattern 的匹配项
+#   2 对每一个匹配项依次应用 actions，实现对匹配项的修改或生成新项
+#   3 如果是 convert 类型，可以定义 inner_rules 动作对文档内部项进行转换
 #
-# 每一主规则的 pattern 属性是一个对象，符合该对象的各属性匹配表达式的项才会被筛选
+# 每一全局规则的 pattern 属性是一个对象，符合该对象的各属性匹配表达式的列表项才会被筛选
 #
 # 当 pattern 某个属性是一个字符串且为下列值时，代表特殊匹配:
 # - '*' 表示匹配非 null 的项
@@ -27,7 +35,7 @@ rules:                                # 规则列表
 # - 当字符串以 ! 开头，代表否定字符串匹配:
 #   `cpu_name: '!AS1'` 表示匹配 CPU 名不是 AS1 的项
 #
-# 当 pattern 某个属性是一个字符串数组的话，而是一个多项匹配模式。
+# 当 pattern 某个属性是一个字符串数组的话，表明这是一个多项匹配模式。
 # 最终结果是满足所有否定匹配并同时满足任意一个肯定匹配的项集合
 # - 肯定匹配是并集
 #   `feature: [AI, alarm]` 匹配 CPU 名为 AS1 或 AS2 的项
@@ -36,15 +44,19 @@ rules:                                # 规则列表
 # - 同时有肯定和否定匹配时，结果为 (否定匹配并集 ⋂ 否定匹配交集)
 #   `cpu_name: ['AS*', '!*2', '!*3']` 匹配 CPU 名为 AS 开头且非2或3结尾的项
 #
-# 每一主规则的 action 是下面5种动作之一:
+# 每一全局规则的 scope 是下面2种范围之一:
+# - origin 全局列表
+# - applied 已被之前规则应用后的列表
+#
+# 每一全局规则的 action 是下面6种动作之一，可由动作的 action_type 属性指定:
 # - replace 替换
-#     把匹配项按照该动作的对应属性进行替换，如果是数组也替换
+#     把原始项按照该动作的对应属性进行替换，如果是数组(比如files list)也替换
 # - join 组合
-#     把匹配项按照该动作的对应属性进行合并，如果是数组则追加
+#     把原始项按照该动作的对应属性进行合并，如果是数组(比如files list)则追加
 # - merge 合并
 #     把匹配的 convert 项合并成一个新 convert 项，按以下合并规则:
 #     所有以下规则都是动作值优先
-#     - 合并动作只对 convet 项有效，否则取消合并。type 值为 convert
+#     - 合并动作只对 convet 项有效，否则取消合并。 即其 type 值为 "convert"
 #     - 以 join 方式合并 tags，动作值 tags 最终 join 到 tags 中
 #     - enable 为 true
 #     - 动作值 CPU\feature\platform 优先，否则一致时为原值，不一致为 ''
@@ -60,42 +72,63 @@ rules:                                # 规则列表
 #     在替换表达式中可使用 item 变量引用匹配项
 #     规则不使用 pattern 时，建立不依赖于匹配项的新项，这时 item 变量将不可用
 # - delete 删除
-#     把匹配项从列表中删除，并忽略所有剩余的 actions。
-#     即匹配项不再进行转换或复制。
-#     建议在 delete 动作之前只有 merge 或 add 动作
+#     把匹配项从列表中删除，即匹配项不再进行转换或复制。
+#     程序会忽略之前的非 merge 或 add 动作，并忽略所有剩余的动作。
+# 所有动作依照定义顺序执行。
 #
-# merge 动作会产生新项，并不影响原有项，即原有项依然独立进行转换或复制。
-# 如果合并后不需要原有项，可以另用 delete 动作
+# 动作的作用范围有如下4种，由动作的 action_scope 属性指示:
+# - matched 本规则 pattern 匹配的项
+# - new 本规则 add 动作增加的新项
+# - merged 本规则 merge 动作合并的新项
+# - all
+# 动作应用的对象，省略时默认为 matched
+# delete merge 动作的作用范围只能为 matched
+#
+# 提示：
+# - add 和 merge 动作会产生新项，并不影响原有项，即原有项依然独立进行转换或复制。
+# - 如果合并后不需要原有项，可以另用 delete 动作
 
-# alarms 输出只能示例 merge 和 delete 动作
 
-# 合并 AI alarm 为一个新转换项
+# 本 alarms 输出只示例 merge delete 动作
+# 合并 AI alarm 为一个新文档内部项
 - pattern:
     cpu_name: AS1
     feature: [AI, alarm]
     type: convert
+
+  # scope 指定规则的应用范围
+  # 由 GCL 配置文件产生的项为 origin
+  # 经过本规则之前规则处理输出的项集合为 applied
+  # 可省略，默认为 applied
+  scope: origin
+
   actions:
-  # 所有的 action 子项都可以使用模板替换，$ 变量为原始匹配项
-  - action: merge
+
+  # 所有的 action 子项都可以使用模板替换，$ 变量为匹配的全局项
+
+  - action_type: merge # 该属性用于指示动作类型，见上方说明
+    action_scope: matched # 该属性用于指示动作应用范围，见上方说明
+    # 其它属性指示动作要执行的转换
     feature: OS_alarms
     template: alarms.template
     distance: '{{$.cpu_name}}_alarms.csv'
     output_dir: OS
-  - delete # 这是 `- action: delete` 的简化写法
+  - delete # 这是 `- action_type: delete` 的简化写法 (对本例而言，这里的删除并不必须)
 
 - pattern:
     cpu_name: AS2
     feature: [AI, alarm]
     type: convert
+  scope: origin
   actions:
-  - action: merge
+  - action_type: merge
     feature: OS_alarms
     template: alarms.template
     distance: '{{$.cpu_name}}_alarms.csv'
     output_dir: OS
-  - delete
 
 # 删除其它非报警项
 - pattern:
-    feature: ['!AI', '!alarm']
+    feature: '!OS_alarms'
+  scope: origin
   actions: delete # 只有一个动作且是删除动作时，可以用比上2个规则更简化的写法

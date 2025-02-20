@@ -10,7 +10,7 @@ export function match(item, pattern_object) {
     if (pattern_object === '*') return true; // Matches all values ​​except null undefined
     if (typeof item === 'boolean') {
         if (pattern_object === '%b') return true;
-        if (typeof pattern_object === 'boolean') return item === pattern;
+        if (typeof pattern_object === 'boolean') return item === pattern_object;
     }
     if (typeof item === 'string') {
         if (pattern_object === '%s') return true;
@@ -42,6 +42,6 @@ export function match(item, pattern_object) {
 }
 
 export function match_all(list, pattern_object) {
-    if(pattern_object == null) return [];
-    return list.filter(item => match(item, pattern_object));
+    if (pattern_object == null) return [];
+    return [...list].filter(item => match(item, pattern_object));
 }

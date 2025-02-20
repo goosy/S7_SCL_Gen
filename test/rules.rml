@@ -9,19 +9,19 @@ attributes:
 rules:
 
 - pattern:
-    type: copy
-  actions: delete
-- pattern:
     type: convert
     feature: AI
   actions:
-  - action: replace
+  - action_type: replace
     template: template.md
     distance: '{{title[$.cpu_name]}}.md'
 - pattern: '*'
   actions:
-  - action: replace
+  - action_type: replace
     output_dir: target
+- pattern:
+    type: copy
+  actions: delete
 
 --- # 第2个任务
 
@@ -34,18 +34,20 @@ attributes:
 rules:
 - pattern:
     feature: [AI, alarm]
+  scope: origin
   actions:
-  - action: merge
+  - action_type: merge
     feature: OS_alarms
     cpu_name: dist
     template: template.md
     distance: AI_alarm.md
     output_dir: '{{$.cpu_name}}'
-- # add 动作即可以依赖匹配项，也可以不依赖匹配项
+- scope: origin
+  # add 动作即可以依赖匹配项，也可以不依赖匹配项
   # 本规则没有 pattern ，不产生依赖的匹配项
   # 无匹配项意味着同时也不能表达式替换
   actions:
-  - action: add
+  - action_type: add
     cpu_name: dist
     feature: OS_alarms
     platform: 'step7',
@@ -58,6 +60,7 @@ rules:
     input_dir: .
     output_dir: dist
 - pattern: '*'
+  scope: origin
   actions: delete
 
 --- # 第3个任务
@@ -70,21 +73,21 @@ rules:
 - pattern:
     type: copy
   actions:
-  - action: replace
+  - action_type: replace
     tags: { replace: true} # 对tags 来说，都是应用 join 规则
     replace_a: [old]
     replace_o:
       desc: replace object
-  - action: replace
+  - action_type: replace
     replace_a: [new]
     replace_o:
       type: replace
-  - action: join
+  - action_type: join
     tags: { join: true} # 对tags 来说，都是应用 join 规则
     join_a: [old]
     join_o:
       desc: join object
-  - action: join
+  - action_type: join
     join_a: [new]
     join_o:
       type: join
