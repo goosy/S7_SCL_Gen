@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { posix } from 'node:path';
 import { isSeq } from 'yaml';
-import { context, compare_str, pad_right, pad_left, elog } from './util.js';
+import { context, multi_sort, pad_right, pad_left, elog } from './util.js';
 import {
     S7HashList, IntHashList, HLError,
     s7addr2foct, foct2S7addr
@@ -646,10 +646,8 @@ const template = `{{for symbol in list}}_
 {{endfor // symbol}}`;
 
 export function gen_symbols(cpu) {
-    const list = cpu.symbols.list
-        .flatMap(cpu.platform === "portal" ? get_portal_symbol : get_step7_symbol)
-        .sort((a, b) => compare_str(a.name, b.name))
-        .sort((a, b) => compare_str(a.address, b.address));
+    const list = cpu.symbols.list.flatMap(cpu.platform === "portal" ? get_portal_symbol : get_step7_symbol);
+    multi_sort(list, ['address', 'name']);
     // return { cpu_name, feature, platform, OE, line_ending, type, tags, template, distance, output_dir }
     return {
         cpu_name: cpu.name,

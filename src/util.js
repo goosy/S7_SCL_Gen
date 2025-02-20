@@ -7,7 +7,8 @@ export {
     context, CURRENT_DOC, CURRENT_NODE,
     is_plain_object, get_template,
     prepare_dir, copy_file, read_file, write_file,
-    compare_str, pad_left, pad_right, fixed_hex,
+    compare, multi_sort, get_object_prop,
+    pad_left, pad_right, fixed_hex,
     elog,
 };
 
@@ -119,10 +120,47 @@ async function write_file(filename, content, { encoding, line_ending } = {}) {
     await writeFile(filename, buff);
 }
 
-function compare_str(a, b) {
-    if (a > b) return 1;
-    if (a < b) return -1;
+/**
+ * Compare two values
+ * @param {*} a - value 1
+ * @param {*} b - value 2
+ * @param {boolean} [dec=false] - descending order
+ * @returns {number} 1 if a > b, -1 if a < b, 0 if a === b
+ */
+function compare(a, b, dec = false) {
+    if (typeof a !== typeof b) return 0;
+    const factor = dec ? -1 : 1;
+    if (a > b) return 1 * factor;
+    if (a < b) return -1 * factor;
     return 0;
+}
+
+/**
+ * Get the nested property value of an object
+ * @param {Object} obj - target object
+ * @param {string} path - property path, e.g. 'cpu.name'
+ * @returns {*} - property value
+ */
+function get_object_prop(obj, path) {
+    return path.split('.').reduce((current, key) => {
+        return current?.[key];
+    }, obj);
+}
+
+/**
+ * Custom sort
+ * @param {Array} list - list
+ * @param {Array} sort - sort rules
+ */
+function multi_sort(list, sort) {
+    if (!Array.isArray(list)) return;
+    if (!Array.isArray(sort)) return;
+    while (sort.length) {
+        const key = sort.pop();
+        const dec = key.startsWith('@');
+        const path = dec ? key.slice(1) : key;
+        list.sort((a, b) => compare(get_object_prop(a, path), get_object_prop(b, path), dec));
+    }
 }
 
 /**
