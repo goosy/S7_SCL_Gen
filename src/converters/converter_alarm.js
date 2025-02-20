@@ -38,7 +38,6 @@ export function initialize_list(area) {
              *   PV1: string
              * }[] }
              */
-            alarms: [],
         };
         const DB = node.get('DB');
         const input = node.get('input');

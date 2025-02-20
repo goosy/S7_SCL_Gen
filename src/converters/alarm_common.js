@@ -4,24 +4,22 @@ import { isString } from '../gcl.js';
 import { isSeq } from 'yaml';
 import { elog } from '../util.js';
 
-const event_desc = {
-    'AH': '高高报警',
-    'WH': '高警告',
-    'WL': '低警告',
-    'AL': '低低报警'
-};
+function get_name(item) {
+    if (typeof item === 'string') return item;
+    if (isSeq(item)) return get_name(item.items[0]);
+    if (Array.isArray(item)) return get_name(item[0]);
+    if (isString(item)) return get_name(item.value);
+    return undefined;
+}
 
 export function make_fake_DB(item) {
-    let name = item;
-    if (isSeq(item)) name = item.items[0];
-    else if (Array.isArray(item)) name = item[0];
-    if (isString(name)) name = name.value;
-    if (typeof name === 'string') return { name };
+    const name = get_name(item);
+    if (name) return { name };
     return undefined;
 }
 
 /**
- * Convert yaml node to s7 alarm properties and return a list of s7 alarm definitions.
+ * Convert yaml node to s7 alarm properties.
  * The yaml node is expected to be a mapping with some specific keys:
  * - $zero: the zero initial value of the analog value
  * - $span: the span initial value of the analog value
@@ -43,16 +41,13 @@ export function make_fake_DB(item) {
  * - AL_limit: the low low alarm limit value
  * - $dead_zone: the dead zone initial value of the analog value
  * - $FT_time: the fault tolerance time initial value
- * @param {import('yaml').ASTNode} node
- * @param {import('../gcl.js').GCL} gcl
- * @param {import('../gcl.js').Document} document
+ * @param {object} item
+ * @param {import('yaml').Node} node
+ * @param {import('yaml').Document} document
  * @returns {void}
  */
 export function make_alarms(item, node, document) {
-    const { CPU, gcl } = document;
-    const tag = `${CPU.S7Program}/${item.DB.name}`;
-    const info = gcl.get_pos_info(...node.range);
-
+    const info = document.gcl.get_pos_info(...node.range);
     item.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
     item.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(100);
     for (const limit of ['AH', 'WH', 'WL', 'AL']) {
@@ -63,14 +58,6 @@ export function make_alarms(item, node, document) {
         item[$limit_str] = nullable_value(REAL, node.get($limit_str));
         // as ex: item.$enable_AH
         item[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? item[$limit_str] != null);
-        if (item[$enable_str].value) {
-            item.alarms.push({
-                tagname: `${tag}.${limit}_flag`,
-                location: item.location,
-                event: `${item.type}${event_desc[limit]}`,
-                PV1: `${tag}.${limit}_PV`,
-            });
-        }
         // as ex: item.enable_AH
         make_s7_expression(
             node.get(enable_str),
