@@ -1,4 +1,4 @@
-import { ok, strictEqual } from "node:assert/strict";
+import { ok, strictEqual, deepStrictEqual } from "node:assert/strict";
 import { posix } from 'node:path';
 import { suite, test } from 'node:test';
 import { convert } from '../src/index.js';
@@ -149,18 +149,18 @@ suite('rule test', () => {
         ok(!match({}, '%O'));
     });
     test('match_all', () => {
-        strictEqual(
-            match_all(['fee', 'foo', 'doo', 'fum', 'zoo'], 'f*').join(', '),
-            'fee, foo, fum'
+        deepStrictEqual(
+            match_all(['fee', 'foo', 'doo', 'fum', 'zoo'], 'f*'),
+            ['fee', 'foo', 'fum'],
         );
-        strictEqual(
-            match_all(['fee', 'foo', 'doo', 'fum', 'zoo'], ['f*', 'd*']).join(', '),
-            'fee, foo, doo, fum'
+        deepStrictEqual(
+            match_all(['fee', 'foo', 'doo', 'fum', 'zoo'], ['f*', 'd*']),
+            ['fee', 'foo', 'doo', 'fum'],
         );
         const O = new Set(['foo', 'fee', 'bar']);
-        strictEqual(
-            match_all(O, 'f*').join(', '),
-            'foo, fee'
+        deepStrictEqual(
+            match_all(O, ['f*', 'd*']),
+            ['foo', 'fee'],
         );
     });
     test('parse', () => {
@@ -185,7 +185,7 @@ suite('rule test', () => {
         };
         const action_target = {};
         await apply_action(orgin, { action_type: 'merge', action_target });
-        strictEqual(action_target.tags.list.length, 5);
+        deepStrictEqual(action_target.tags, { files: [], list: ['fee', 'foo', 'doo', 'fum', 'zoo'] });
     });
     test('load', async () => {
         strictEqual(tasks.length, 4);
@@ -235,27 +235,58 @@ suite('rule test', () => {
             distance: 'template',
         });
         ok(output.length);
-        output = match_all(list[2].copy_list, {
+        const copy_list = list[2].copy_list;
+        output = match_all(copy_list, {
             replace_a: ['new'],
             replace_o: { type: 'replace' },
             join_a: ['old', 'new'],
             join_o: { desc: 'join object', type: 'join' }
         });
-        ok(output.length);
+        strictEqual(output.length, copy_list.size);
         output = list[3].convert_list;
         strictEqual(output.size, 1);
-        output = match_all(output, {
-            template: 'NO,eventtag,location,event,PV1\n' +
-                '{{no = stepper()}}_\n' +
-                '{{for item in list}}_\n' +
-                '{{no.next()}},{{item.tagname}},{{item.location}},{{item.event}},{{item.PV1}}\n' +
-                '{{endfor // list}}_\n',
-            content: 'NO,eventtag,location,event,PV1\n' +
-                '1,S7Program/TIT101.AH_flag,,高高报警,S7Program/TIT101.AH_PV\n' +
-                '2,S7Program/TIT101.WH_flag,,高警告,S7Program/TIT101.WH_PV\n' +
-                '3,S7Program/TIT101.AL_flag,,低低报警,S7Program/TIT101.AL_PV\n'
-        });
-        ok(output.length);
+        output = output.values().next().value;
+        strictEqual(
+            output.template,
+            'NO,eventtag,location,event,PV1\n' +
+            '{{no = stepper()}}_\n' +
+            '{{for item in list}}_\n' +
+            '{{no.next()}},{{item.tagname}},{{item.location}},{{item.event}},{{item.PV1}}\n' +
+            '{{endfor // list}}_\n'
+        );
+        strictEqual(
+            output.content,
+            'NO,eventtag,location,event,PV1\n' +
+            '1,S7Program/TIT101.AH_flag,,高高报警,S7Program/TIT101.AH_PV\n' +
+            '2,S7Program/TIT101.WH_flag,,高警告,S7Program/TIT101.WH_PV\n' +
+            '3,S7Program/TIT101.AL_flag,,低低报警,S7Program/TIT101.AL_PV\n'
+        );
+        deepStrictEqual(
+            output.tags.list,
+            new Set([
+                {
+                    tagname: 'S7Program/TIT101.AH_flag',
+                    location: '',
+                    event: '高高报警',
+                    PV1: 'S7Program/TIT101.AH_PV',
+                    oo: '0',
+                },
+                {
+                    tagname: 'S7Program/TIT101.WH_flag',
+                    location: '',
+                    event: '高警告',
+                    PV1: 'S7Program/TIT101.WH_PV',
+                    oo: '0',
+                },
+                {
+                    tagname: 'S7Program/TIT101.AL_flag',
+                    location: '',
+                    event: '低低报警',
+                    PV1: 'S7Program/TIT101.AL_PV',
+                    oo: '0',
+                },
+            ])
+        );
     });
     test('delete', () => {
         let output = match_all(list[0].convert_list, {

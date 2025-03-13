@@ -126,6 +126,7 @@ rules:
         location: '{{$.location}}'
         event: '{{$.type}}高高报警'
         PV1: 'S7Program/{{$.DB.name}}.AH_PV'
+        oo: '{{$.__original_index}}'
     - pattern:
         $enable_WH: {value: true}
       scope: origin
@@ -136,6 +137,7 @@ rules:
         location: '{{$.location}}'
         event: '{{$.type}}高警告'
         PV1: 'S7Program/{{$.DB.name}}.WH_PV'
+        oo: '{{$.__original_index}}'
     - pattern:
         $enable_WL: {value: true}
       scope: origin
@@ -146,6 +148,7 @@ rules:
         location: '{{$.location}}'
         event: '{{$.type}}低警告'
         PV1: 'S7Program/{{$.DB.name}}.WL_PV'
+        oo: '{{$.__original_index}}'
     - pattern:
         $enable_AL: {value: true}
       scope: origin
@@ -156,7 +159,10 @@ rules:
         location: '{{$.location}}'
         event: '{{$.type}}低低报警'
         PV1: 'S7Program/{{$.DB.name}}.AL_PV'
+        oo: '{{$.__original_index}}'
     - pattern: '*'
       scope: origin
       actions: delete
+    - sort_by:
+      - oo
 ...

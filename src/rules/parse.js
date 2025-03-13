@@ -31,6 +31,8 @@ function _parse_rules(rules_raw, extra_tags, rules_path, using_inner_rules = fal
     return rules_raw.flatMap(rule => {
         // Incorrect rule, returns empty
         if (!is_plain_object(rule)) return [];
+        const sort_by = rule.sort_by;
+        if (sort_by) return { sort_by };
         const pattern = rule.pattern;
         const no_pattern = pattern == null;
         if (

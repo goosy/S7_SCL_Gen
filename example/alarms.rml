@@ -18,13 +18,26 @@ attributes:                           # 全局变量
 
 rules:  # 在这里定义全局规则列表
 
-# 全局规则包括 pattern、scope、actions 三个部分
-# 每个全局规则的作用是依次执行以下：
-#   1 对 scope 的所有集合进行过滤，筛选出符合 pattern 的匹配项
+# 全局规则分二种，一般规则和排序规则
+# - 排序规则只包括一个 sort_by 属性，其值为字符串数组，规则作用为按照 sort 的每一项指示进行排序。
+# - 一般规则包括 pattern、scope、actions 三个属性，规则的作用是依次执行以下：
+#   1 对 scope 集合的所有项进行过滤，筛选出符合 pattern 的匹配项
 #   2 对每一个匹配项依次应用 actions，实现对匹配项的修改或生成新项
 #   3 如果是 convert 类型，可以定义 inner_rules 动作对文档内部项进行转换
+#   
+# # 排序规则
 #
-# 每一全局规则的 pattern 属性是一个对象，符合该对象的各属性匹配表达式的列表项才会被筛选
+# sort_by 数组的每一项为一个字符串，指示用于排序的属性名称和是否降序
+# 比如 key 为 'cpu.name'，集合的某一项为 item，则 item.cpu.name 值作为排序基准
+# 以 @ 开头的排序指示降序排序，无 @ 代表升序排序。
+# 具体作用步骤为：
+# 1 取出 sort_by 数组的最后一个排序指示 p，作为排序的基准
+# 2 对当前集合(即之前规则应用后的结果)每一项，依照 p 进行排序
+# 3 重复步骤 1~2，直到 sort_by 数组所有项都做为基准对当前集合应用排序
+#
+# # 一般规则
+#
+# 规则的 pattern 属性是一个对象，符合该对象的各属性匹配表达式的列表项才会被筛选
 #
 # 当 pattern 某个属性是一个字符串且为下列值时，代表特殊匹配:
 # - '*' 表示匹配非 null 的项
@@ -147,6 +160,7 @@ rules:  # 在这里定义全局规则列表
         location: '{{$.location}}'
         event: '{{$.type}}高高报警'
         PV1: 'S7Program/{{$.DB.name}}.AH_PV'
+        oo: '{{$.__original_index}}'
     - pattern:
         $enable_WH: {value: true}
       scope: origin
@@ -157,6 +171,7 @@ rules:  # 在这里定义全局规则列表
         location: '{{$.location}}'
         event: '{{$.type}}高警告'
         PV1: 'S7Program/{{$.DB.name}}.WH_PV'
+        oo: '{{$.__original_index}}'
     - pattern:
         $enable_WL: {value: true}
       scope: origin
@@ -167,6 +182,7 @@ rules:  # 在这里定义全局规则列表
         location: '{{$.location}}'
         event: '{{$.type}}低警告'
         PV1: 'S7Program/{{$.DB.name}}.WL_PV'
+        oo: '{{$.__original_index}}'
     - pattern:
         $enable_AL: {value: true}
       scope: origin
@@ -177,9 +193,12 @@ rules:  # 在这里定义全局规则列表
         location: '{{$.location}}'
         event: '{{$.type}}低低报警'
         PV1: 'S7Program/{{$.DB.name}}.AL_PV'
+        oo: '{{$.__original_index}}'
     - pattern: '*'
       scope: origin
       actions: delete
+    - sort_by:
+      - oo
 
   - delete # 这是 `- action_type: delete` 的简化写法 (对本例而言，这里的删除并不必须)
 
@@ -239,6 +258,8 @@ rules:  # 在这里定义全局规则列表
     - pattern: '*'
       scope: origin
       actions: delete
+    - sort_by:
+      - tagname
 
 # 删除其它非报警项
 - pattern:
