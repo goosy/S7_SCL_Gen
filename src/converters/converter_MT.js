@@ -13,6 +13,7 @@ export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'MT_Poll';
 export const LOOP_NAME = 'MT_Loop';
 export const POLLS_NAME = 'MT_polls_DB';
+export const TRY_TIMES = 10;
 const feature = 'modbusTCP';
 
 const DEFAULT_DEVICE_ID = "B#16#02"; // Default device number
@@ -156,7 +157,6 @@ export function initialize_list(area) {
         conn.R = R ? `R${R}` : '';
         conn.X = X ? `X${X}` : '';
         conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
-        conn.$try_times = nullable_value(PINT, node.get('$try_times'));
         const interval_time = node.get('interval_time');
         make_s7_expression(
             interval_time,
@@ -174,17 +174,12 @@ export function initialize_list(area) {
         assert(isSeq(polls), SyntaxError(`配置项"polls"必须为数组且个数大于0!`));
         conn.polls = polls.items.map(item => {
             const poll = {
+                enable: nullable_value(BOOL, item.get('enable')),
+                custom_trigger: nullable_value(BOOL, item.get('custom_trigger')),
                 comment: ensure_value(STRING, item.get('comment') ?? ''),
-                unit_ID: ensure_value(PINT, item.get('unit_ID')),
-                func_code: ensure_value(PINT, item.get('func_code')),
-                started_addr: nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address')),
-                // TODO:The correct information for the error in the previous sentence should be:
-                // new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
-                data: nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length')),
-                // TODO:The correct information for the error in the previous sentence should be:
-                // new SyntaxError(`配置项 data 或 length 必须有一个!`)
                 recv_start: ensure_value(PINT, item.get('recv_start')),
-                uninvoke: nullable_value(BOOL, item.get('uninvoke')) ?? new BOOL(false),
+                extra_code: nullable_value(STRING, item.get('extra_code')),
+                try_times: ensure_value(PINT, item.get('try_times') ?? TRY_TIMES),
             };
             const comment = poll.comment.value;
             const recv_DB = item.get('recv_DB');
@@ -198,6 +193,38 @@ export function initialize_list(area) {
             ).then(symbol => {
                 poll.recv_DB = symbol;
             });
+
+            const send_DB = item.get('send_DB');
+            poll.extra_send_DB = !!send_DB;
+            make_s7_expression(
+                send_DB ?? POLLS_NAME,
+                {
+                    document,
+                    disallow_s7express: true,
+                    default: { comment },
+                },
+            ).then(symbol => {
+                poll.send_DB = symbol;
+            });
+
+            if (poll.extra_send_DB) {
+                // When there is an external send block, send_start must be present
+                poll.send_start = ensure_value(PINT, item.get('send_start'));
+            } else {
+                // When there is no external send block
+                // the unit_ID, func_code, started_addr and data must be present
+                poll.unit_ID = ensure_value(PINT, item.get('unit_ID'));
+                poll.func_code = ensure_value(PINT, item.get('func_code'));
+                poll.started_addr = nullable_value(PINT, item.get('started_addr')) ?? nullable_value(PINT, item.get('address'));
+                assert(poll.started_addr !== null, new SyntaxError('The configuration item address or started_addr must have one!配置项 address 或 started_addr 必须有一个!'));
+                poll.data = nullable_value(PINT, item.get('data')) ?? nullable_value(PINT, item.get('length'));
+                assert(poll.data !== null, new SyntaxError('The configuration item data or length must have one!配置项 data 或 length 必须有一个!'));
+                const func_code = poll.func_code.value;
+                if (func_code === 15 || func_code === 16) {
+                    // When the function code is 15 or 16, the extra_data configuration item must be present
+                    poll.extra_data = ensure_value(STRING, item.get('extra_data')).value;
+                }
+            }
             return poll;
         })
         return conn;
@@ -205,9 +232,10 @@ export function initialize_list(area) {
 }
 
 export function build_list(MT) {
-    const { document, list } = MT
+    const { document, list, options } = MT
     const CPU = document.CPU;
     const DBs = new Set(); // Remove duplicates
+    let poll_index = list.flatMap(conn => conn.polls).length * 16;
     for (const conn of list) { // Process configuration to form complete data
         const {
             conn_ID_list,
@@ -243,27 +271,48 @@ export function build_list(MT) {
         conn.port2 = fixed_hex((port & 0xff), 2);
         conn.name ??= new STRING(`polls_${conn.ID}`);
         for (const poll of conn.polls) {
-            poll.unit_ID = fixed_hex(poll.unit_ID, 2);
-            poll.func_code = fixed_hex(poll.func_code, 2);
-            poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
-            poll.data = fixed_hex(poll.data ?? poll.length, 4);
-            // Use ??= to ensure that the shared block only respects the first setting
-            poll.recv_DB.uninvoke ??= poll.recv_DB.type_name !== 'FB' || poll.uninvoke.value;
+            if (!poll.extra_send_DB) {
+                poll.send_start = new PINT(poll_index);
+                // When there is an external send block
+                poll.unit_ID = fixed_hex(poll.unit_ID, 2);
+                poll.func_code = fixed_hex(poll.func_code, 2);
+                poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
+                poll.data = fixed_hex(poll.data ?? poll.length, 4);
+                poll.MBAP_protocol = '00';
+                const extra_data = poll.extra_data;
+                if (extra_data) {
+                    poll.extra_data = extra_data.trim().split(/ +/).map(byte => fixed_hex(byte, 2));
+                    poll.extra_data_length = poll.extra_data.length;
+                    poll.MBAP_length = 7 + poll.extra_data_length;
+                } else {
+                    poll.extra_data = [];
+                    poll.extra_data_length = 0;
+                    poll.MBAP_length = 6;
+                }
+                // the packet struct starts at an even address.
+                poll_index += poll.MBAP_length + 6 + poll.MBAP_length % 2;
+            }
+            if (poll.extra_code) {
+                poll.recv_DB.invoke = false;
+            } else {
+                // Use ??= to ensure that the shared block only respects the first setting
+                poll.recv_DB.invoke ??= poll.recv_DB.type_name === 'FB';
+            }
             DBs.add(poll.recv_DB);
         }
     }
-    MT.invoke_code = [...DBs].map(DB => {
+    options.invoke_code = [...DBs].flatMap(DB => {
         const comment = DB.comment ? ` // ${DB.comment}` : '';
-        return DB.uninvoke ? `// "${DB.name}" ${DB.comment ?? ''}` : `"${DB.type}"."${DB.name}"();${comment}`;
+        return DB.invoke ? `"${DB.type}"."${DB.name}"();${comment}` : [];
     }).join('\n');
 }
 
-export function gen({ document, invoke_code, options }) {
+export function gen({ document, options }) {
     const output_dir = context.work_path;
-    const { output_file = `${LOOP_NAME}.scl` } = options;
+    const { output_file = `${LOOP_NAME}.scl`, invoke_code } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME, invoke_code, POLLS_NAME };
-    const template = 'MT.template'; 
+    const template = 'MT.template';
     return [{ distance, output_dir, tags, template }];
 }
 

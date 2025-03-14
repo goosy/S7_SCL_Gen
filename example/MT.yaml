@@ -19,6 +19,8 @@ symbols:
 # - [MT_polls_DB, DB881]  用于保存轮询命令数据
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 - [MT_polls_DB, DB901] # 修改内置DB块 MT_polls_DB 的地址
+- [FB_write, FB812]    # 处理流量计1的写入操作
+- [FB_IO, FB813]       # 处理远程IO的写入操作
 
 # 本配置用的 JS_Flow 已在 CPU 文档中定义
 
@@ -44,11 +46,6 @@ list : # modbus TCP 连接列表
   # 类型: null | S7表达式 | S7符号定义 | S7符号引用
   # 值类型: 整数 (注意不能是TIME字面量)
   interval_time: [flow_interval, md200]
-
-  # 轮询重试次数，可省略，默认32
-  # 类型: null | 正整数字面量
-  # 该设置用于一个设备的最多询问失败次数，超过该次数标记该设备数据无效
-  $try_times: 32
 
   # 背景块。不必填写type，会自动指定为 MT_Poll
   # 类型: S7符号定义 | S7符号引用
@@ -79,22 +76,37 @@ list : # modbus TCP 连接列表
   rack: 1                         # 机架号  部分CPU可省略
   XSlot: 8                        # 插槽号  非多IF可省略
 
-  # 该连接下的轮询定义，至少要有一个查询
-  polls:
 
-  # unit_ID func_code address data|length 配置项允许16进制字符串
-  # 为了在SCL中对发送数据的进行符号引用，转换生成的轮询块发送数据层级为：
-  #   MT_polls_DB.{name}[{序号}].{发送字段}
-  # 以下方查询1为例：
-  # * MT_polls_DB.polls_flow[0].unit_ID (BYTE)   子站号
-  # * MT_polls_DB.polls_flow[0].func_code (BYTE) 功能码
-  # * MT_polls_DB.polls_flow[0].address (WORD)   开始地址
-  # * MT_polls_DB.polls_flow[0].data (WORD)      对 01 02 03 04 功能码来说为长度，对 05 06 功能码来说为写入值
-  # * MT_polls_DB.polls_flow[0].CRC (WORD)       CRC16校验码
-  # 每个poll可以使用 uninvoke 属性，见 SC.yaml。这里不作该属性的示例。
+  polls:  # 该连接下的轮询定义，至少要有一个查询
 
-  - comment: 1#流量计                  # 本查询的注释，可省略。 类型: 字符串
-    # 查询1
+  # 为了在SCL中对查询进行控制，可以使用符号引用，轮询块具体一个查询的引用为：
+  #   MT_polls_DB.{name}[{序号}].{控制项}
+  # 以下方查询0为例，自动产生以下字段用于控制轮询：
+  # - MT_polls_DB.polls_flow[0].enable         允许该查询，默认为 true
+  # - MT_polls_DB.polls_flow[0].timeout        是否超时，只读
+  # - MT_polls_DB.polls_flow[0].cyclicity      指示自动周期性发送请求，只读，默认为true
+  #                                            以 interval_time 为同期触发
+  # - MT_polls_DB.polls_flow[0].custom_trigger 自定义发送请求，在上升沿发送查询
+  # - MT_polls_DB.polls_flow[0].try_times      最多询问失败间隔次数
+  # - MT_polls_DB.polls_flow[0].send_DB        发送块的块号，默认为 MT_polls_DB 的块号
+  # - MT_polls_DB.polls_flow[0].send_start     发送块的起始地址
+  # - MT_polls_DB.polls_flow[0].recv_DB        接收块的块号，必须由用户指定
+  # - MT_polls_DB.polls_flow[0].recv_start     接收块的起始地址
+
+  # 注意：以下在 poll 中的配置项为发送 PDU 中的数据
+  #   - unit_ID
+  #   - func_code
+  #   - address
+  #   - data | length
+  #   - count
+  #   - extra_data
+  # 并不能通过 MT_polls_DB.polls_flow[0] 去引用发送 PDU 数据本身
+  # 如果想在运行中动态改变发送数据，请使用外部发送块，即指定的 send_DB
+
+  # unit_ID func_code address data|length 配置项允许16进制字符串，写法为 `0x` 开头
+
+  - comment: 读取过程值                # 本查询的注释，可省略。 类型: 字符串
+    # 查询0 可通过 MT_polls_DB.polls_flow[0]
     unit_ID: 1                        # 设备号，即RTU从站地址。 类型: 正整数
     func_code: 4                      # modbus 功能号。 类型: 正整数
     address: 0                        # 查询起始地址。 类型: 正整数
@@ -102,29 +114,87 @@ list : # modbus TCP 连接列表
     recv_DB: [Flow01, DB802, JS_flow] # 接收块。 类型: S7符号定义 | S7符号引用
     recv_start: 0                     # 接收开始位置。 类型: 正整数
 
-  - comment: '2#流量计'
-    # 查询2
-    unit_ID: 0xF                      # 16进制数
-    func_code: 0x4                    # 16进制数
-    address: 0x10                     # 16进制数
-    length: 0x28                      # 16进制数
-    recv_DB: [Flow02, DB+, JS_flow]
+  - comment: 循环写1个参数值
+    # 查询1 本查询对应的地址为 MT_polls_DB.polls_flow[1]
+
+    # enable 属性指示是否使能该查询，默认为 true
+    # 为 true 时，恢复正常轮询，轮询时机或频率由后面 cyclicity  或 custom_trigger 决定
+    # 配置项 enable 指示其初始值，运行时如需更改，外部代码直接操作 MT_polls_DB.polls_flow[1].enable
+    enable: false                    # 初始禁用该查询
+
+    unit_ID: 0x6                      # 16进制数形式 6 号功能码写寄存器
+    func_code: 0x6                    # 16进制数形式
+    address: 0x10                     # 16进制数形式
+    data: 0x28                        # data 配置项和 length 配置项等效，用此名称是为了语义。
+    recv_DB: [Flow01_paras, DB+, FB_write]
     recv_start: 0
 
-  - comment: '1#流量计写参数值'
-    # 查询3
+    # 轮询计次，可省略，默认10次
+    # 类型: null | 正整数字面量
+    # 用于设置未返回数据的计次，单位次，超过该次数标记该设备数据无效
+    # 1次时间即轮询间隔时间
+    # try_times 配置项指示初始值
+    try_times: 20
+
+  - comment: 非循环写多个参数值
+    # 查询2 本查询对应的地址为 MT_polls_DB.polls_flow[2]
+
+    # 为了避免循环写入操作，可以用 custom_trigger 控制发送请求
+    # 使用 custom_trigger 配置项与 enable 是不同的，它在查询成功一次后自动复位
+    # 外部代码通过对其置位来实现定制本查询的发送时机。
+    # $custom_trigger 配置项指示初值值：
+    #    MT_polls_DB.polls_flow[2].custom_trigger := 初值值
+    # 只要设置了 $custom_trigger ，无论初始值是 true 还是 false，
+    # 转换程序都会将 cyclicity  初始值设为false
+    #    MT_polls_DB.polls_flow[2].cyclicity  := false
+    custom_trigger: false     # 设置 custom_trigger 初值值为 false
+
     unit_ID: 1
-    func_code: 6
+    func_code: 16                     # 16 号功能码写寄存器
+    address: 17
+    length: 2                         # 写入个数，单位依赖于功能码，这里是2个字，写一个浮点数
+    recv_DB: Flow01_paras
+    recv_start: 8
+    # 以下1项仅用于 15 16 功能码，为 PDU 中的数据
+    # 使用外部发送块时，也不需要这一项
+    # 转换程序会自动生成 MBAP_length 和 extra_data_length
+    # 下面示例中，自动计算出的 MBAP_length:17 extra_data_length:4
+    extra_data: 42 FF 33 33           # 15 16 功能码的额外数据，使用空格分隔的16进制字符串
+
+  - comment: 非循环写布尔值，用于控制
+    # 查询3 本查询对应的地址为 MT_polls_DB.polls_flow[3]
+
+    custom_trigger: false
+    unit_ID: 1
+    func_code: 15
     address: 66
-    data: 200                         # data 属性就是 length 属性，用此名称是为了语义。
-    recv_DB: [WriteRet, DB+]
-    recv_start: 0
+    length: 20                        # 写入个数，单位依赖于功能码，这里是比特
+    recv_DB: Flow01_paras
+    recv_start: 7
+    extra_data: 3A 5B 80              # 15 16 功能码的额外数据，使用空格分隔的16进制字符串
+
+  - comment: 通过 modbutTCP 的远程 IO
+    # 查询4 本查询对应的地址为 MT_polls_DB.polls_flow[4]
+    # 15 16 功能码查询的 PDU 是变长的，必须指定整个 PDU 的长度
+    # 同时为了能动态改变写入数据的个数和数值，这里指定使用外部发送块
+    custom_trigger: true              # 指示自定义发送请求，初始值为 true
+    send_DB: [remote_IO, DB+, FB_IO]  # 指定外部发送块，这样不必指定具体的发送数据了
+    send_start: 26                    # 发送开始位置
+    recv_DB: remote_IO                # 接收块
+    recv_start: 0                     # 接收开始位置
+    # extra_code 用于额外的代码，比如用于控制发送数据
+    # 当有 extra_code 时，不再自动调用 "FB_IO"."remote_IO"();
+    extra_code: |- # 本 pool 的额外处理代码
+      // 远程 IO 的控制
+      "FB_IO"."remote_IO"(enable := "reading");
+    # 如果仅仅是取消对背景块的调用，可以使用空字符串： `extra_code: ''`
 
 # 更多的连接设置，可以依照上方书写，注意对齐，以对齐表示层级
 
 # 用户自写SCL代码，放在循环的开始和结束处。
 loop_begin: |-
   // 这里的代码将在 MT_Loop 循环开始时执行
+
 loop_end: |-
   // 这里的代码将在 MT_Loop 循环结束时执行
 

@@ -23,12 +23,9 @@ BEGIN
     TCON_Parameters.rem_staddr[4] := B#16#{{conn.IP4}};    //IP4 {{conn.IP[3]}}
     TCON_Parameters.rem_tsap_id[1] := B#16#{{conn.port1}};   //PortH {{conn.port}}
     TCON_Parameters.rem_tsap_id[2] := B#16#{{conn.port2}};   //PortL
-    TCON_Parameters.spare := W#16#0;
+    TCON_Parameters.spare := W#16#0;             //固定为0
 {{if conn.$interval_time != undefined}}_
     interval_time := {{conn.$interval_time.DINT}};
-{{endif}}_
-{{if conn.$try_times != undefined}}_
-    try_times := {{conn.$try_times.value}},
 {{endif}}_
 END_DATA_BLOCK
 {{endfor}}_
@@ -39,30 +36,77 @@ TITLE = "轮询定义"
 VERSION : 0.0
 STRUCT
 {{for conn in list}}_
-    {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF STRUCT// 轮询列表 {{conn.comment}}
+    {{conn.name}} : ARRAY  [0 .. {{conn.polls.length-1}}] OF // ===== 轮询列表 {{conn.comment}}
+    STRUCT
+        enable         : BOOL := TRUE;  // 允许本poll通讯
+        timeout        : BOOL ;         // 本 poll 通讯超时
+        cyclicity      : BOOL := TRUE;  // 自动周期性触发询问，默认为TRUE，为 FALSE 时由下方手动触发
+        custom_trigger : BOOL ;         // 手动触发询问
+        try_times      : INT := 10;     // 最多询问失败次数，超过该次数标记该设备数据无效
+        send_DB        : INT ;          // 发送DB，为0时为本块
+        send_start     : INT ;          // 发送DB起始地址
+        recv_DB        : INT ;          // 接收数据块号
+        recv_start     : INT ;          // 接收数据块起始地址
+        status         : WORD ;         // 状态
+        wait_count     : INT ;          // 等待计时
+    END_STRUCT ;
+{{endfor // conn}}_
+{{poll_index = 0}}_
+{{for conn in list}}_
+{{  for poll in conn.polls}}_
+{{    if !poll.extra_send_DB}}_
+    p{{poll_index}}_data : STRUCT{{  poll_index+=1}}
         MBAP_seq : WORD ;               // 事务号 PLC自动填写
         MBAP_protocol : WORD ;          // 必须为0
         MBAP_length : WORD  := W#16#6;  // 长度，对读命令，通常为6
         unit_ID : BYTE ;                // 设备号，不关心的情况下可以填0
         func_code : BYTE ;              // modbus功能号
         address : WORD ;                // 起始地址
-        data : WORD ;                   // 长度
-        recv_DB : INT ;                 // 接收数据块号
-        recv_DBB : INT ;                // 接收数据块起始地址
-    END_STRUCT ;
+        data : WORD ;                   // 数据，对 05 06 功能码来说为写入值，对其它功能码来说为长度
+{{      if poll.extra_data_length}}_
+        extra_data_length : BYTE;       // 额外数据长度
+        extra_data : ARRAY  [0 .. {{poll.extra_data_length-1}}] OF BYTE;    //额外数据
+{{      endif // extra_data}}_
+    END_STRUCT;
+{{    endif // extra_send_DB}}_
+{{  endfor // poll}}_
 {{endfor // conn}}_
 END_STRUCT ;
 BEGIN
+{{poll_index = 0}}_
 {{for conn in list}}_
     // --- {{conn.comment}}
 {{  for no, poll in conn.polls}}_
-    {{conn.name}}[{{no}}].unit_ID := B#16#{{poll.unit_ID}}; // {{poll.comment}}
-    {{conn.name}}[{{no}}].func_code := B#16#{{poll.func_code}};
-    {{conn.name}}[{{no}}].address := W#16#{{poll.address}};
-    {{conn.name}}[{{no}}].data := W#16#{{poll.data}};
+    // {{poll.comment}}
+{{    if poll.enable != null}}_
+    {{conn.name}}[{{no}}].enable := {{poll.enable.value ? 'TRUE' : 'FALSE'}};
+{{    endif}}_
+    {{conn.name}}[{{no}}].cyclicity  := {{poll.custom_trigger == null ? 'TRUE' : 'FALSE'}};
+{{    if poll.custom_trigger != null}}_
+    {{conn.name}}[{{no}}].custom_trigger := {{poll.custom_trigger.value ? 'TRUE' : 'FALSE'}};
+{{    endif}}_
+    {{conn.name}}[{{no}}].try_times := {{poll.try_times.value}};
+    {{conn.name}}[{{no}}].send_DB := {{poll.send_DB.block_no}};
+    {{conn.name}}[{{no}}].send_start := {{poll.send_start}};
     {{conn.name}}[{{no}}].recv_DB := {{poll.recv_DB.block_no}};
-    {{conn.name}}[{{no}}].recv_DBB := {{poll.recv_start}};
-{{  endfor // poll}}_
+    {{conn.name}}[{{no}}].recv_start := {{poll.recv_start}};
+{{    if !poll.extra_send_DB}}_
+    // send data
+    p{{poll_index}}_data.MBAP_protocol := W#16#{{poll.MBAP_protocol}};
+    p{{poll_index}}_data.MBAP_length := W#16#{{poll.MBAP_length}};
+    p{{poll_index}}_data.unit_ID := B#16#{{poll.unit_ID}};
+    p{{poll_index}}_data.func_code := B#16#{{poll.func_code}};
+    p{{poll_index}}_data.address := W#16#{{poll.address}};
+    p{{poll_index}}_data.data := W#16#{{poll.data}};
+{{      if poll.extra_data_length}}_
+    p{{poll_index}}_data.extra_data_length := B#16#{{poll.extra_data_length.toString(16).padStart(2, '0')}};
+{{        for no, databyte in poll.extra_data}}_
+    p{{poll_index}}_data.extra_data[{{no}}] := B#16#{{databyte}};
+{{        endfor}}_
+{{      endif // extra_data}}_
+{{      poll_index+=1}}_
+{{    endif // extra_send_DB}}_
+{{  endfor // poll}}
 {{endfor // conn}}_
 END_DATA_BLOCK
 
@@ -74,11 +118,18 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 {{endif}}_
 {{for conn in list}}_
 // {{conn.comment}}
+{{  for no, poll in conn.polls}}_
+{{  endfor // poll}}_
 "{{NAME}}".{{conn.DB.value}} (
-{{if conn.interval_time != undefined}}_
+{{  if conn.interval_time != undefined}}_
     interval_time := {{conn.interval_time.value}},
-{{endif}}_
+{{  endif}}_
     data := "{{POLLS_NAME}}".{{conn.name}});
+{{  for no, poll in conn.polls}}_
+{{    if poll.extra_code}}_
+{{      poll.extra_code.value}}
+{{    endif}}_
+{{  endfor // poll}}_
 
 {{endfor // conn}}_
 // 接收块
