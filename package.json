@@ -1,6 +1,6 @@
 {
     "name": "s7-scl-gen",
-    "version": "1.18.3",
+    "version": "1.19.0",
     "type": "module",
     "description": "S7 PLC SCL 代码自动生成",
     "main": "/lib/index.js",
@@ -44,7 +44,7 @@
         "build": "node ./build.js",
         "prepublish": "pnpm clean && pnpm build",
         "watch": "nodemon ./build.js",
-        "test": "rimraf -g ./test/dist && node --test"
+        "test": "node --test"
     },
     "keywords": [
         "modbusTCP",

@@ -1,32 +1,7 @@
-import { isMatch } from 'matcher';
-import { dirname, isAbsolute, posix } from 'node:path';
-import { parseAllDocuments } from 'yaml';
-import { elog, get_template, read_file } from './util.js';
+import { isAbsolute, posix } from 'node:path';
 import { convert } from 'gooconverter';
-
-function is_plain_object(obj) {
-    if (obj === null || obj === undefined) return false;
-    return Object.getPrototypeOf(obj) === Object.prototype;
-}
-
-export const match = (item, pattern_object) => {
-    if (pattern_object === '*') return true; // Matches all types of values
-    if (typeof item === 'boolean' && typeof pattern_object === 'boolean') {
-        return item === pattern;
-    }
-    if (typeof item === 'string' && (
-        typeof pattern_object === 'string' || Array.isArray(pattern_object)
-    )) {
-        return isMatch(item, pattern_object);
-    }
-    if (!is_plain_object(pattern_object) || !is_plain_object(item)) return false;
-    for (const [key, pattern] of Object.entries(pattern_object)) {
-        if (!match(item[key], pattern)) return false;
-    }
-    return true;
-};
-
-export const array_match = (list, pattern_object) => list.filter(item => match(item, pattern_object));
+import { match_all } from './match.js';
+import { elog, get_template, is_plain_object } from '../util.js';
 
 function merge_tags(merged_tags, tags) {
     if (!is_plain_object(merged_tags) || !is_plain_object(tags)) {
@@ -155,7 +130,7 @@ export async function apply_rule(item, modify) {
 export async function apply_rules(gen_list, rules) {
     const matched_rules = rules.map(rule => ({
         rule,
-        items: array_match(gen_list, rule.pattern),
+        items: match_all(gen_list, rule.pattern),
     }));
     const modification_dict = new Map();
     const merge_pairs = [];
@@ -221,61 +196,3 @@ export async function apply_rules(gen_list, rules) {
 
     return [...modification_list, ...merge_list];
 };
-
-async function regularize(action, rules_path, attributes) {
-    if (!is_plain_object(action)) return false;
-    action.rules_path = posix.resolve(rules_path);
-    // modify.tags add attributes
-    if (!is_plain_object(action.tags)) action.tags = {};
-    const tags = action.tags;
-    Object.assign(tags, attributes);
-    return true;
-}
-
-export async function parse_rules(yaml, rules_path) {
-    const documents = parseAllDocuments(yaml, { version: '1.2' });
-    const tasks = [];
-    for (const doc of documents) {
-        const { config_path, rules: _rules, attributes } = doc.toJS();
-        const path = posix.join(rules_path, config_path);  // Relative to the current path, added to rules_path
-        const rules = [];
-        for (const rule of _rules) {
-            // Incorrect rule, returns empty
-            if (!is_plain_object(rule)) continue;
-            const pattern = rule.pattern;
-            if (!pattern) continue;
-            if (
-                !is_plain_object(pattern)
-                && !Array.isArray(pattern)
-                && typeof pattern !== 'string'
-            ) continue;
-
-            const modify = regularize(rule.modify, rules_path, attributes);
-            const merge = regularize(rule.merge, rules_path, attributes);
-            if (modify || merge) rules.push(rule);
-        }
-        tasks.push({ path, rules });
-    }
-    return tasks;
-}
-
-/**
- * @typedef {Object} Task
- * @property {string} Task.path
- * @property {Rule[]} Task.rules
- */
-
-/**
- * Retrieves and parses a set of rules from a YAML file.
- *
- * @param {string} filename - The path to the YAML file containing the rules.
- * @param {Object} [options={}] - Optional parameters for reading the file.
- * @param {string} [options.encoding='utf8'] - The encoding to use when reading the file.
- * @return {Promise<Array<Task>} A promise that resolves to the parsed rules.
- */
-export const get_rules = async (filename, options = {}) => {
-    const encoding = options.encoding ?? 'utf8';
-    const yaml = await read_file(filename, { encoding });
-    const rules_path = dirname(filename).replace(/\\/g, '/');
-    return await parse_rules(yaml, rules_path);
-}

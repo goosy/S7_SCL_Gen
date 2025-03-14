@@ -1,12 +1,12 @@
 import { posix } from "node:path";
 import { convert as gc } from 'gooconverter';
-import { copy_file, read_file, write_file, context } from './util.js'
+import { converter, supported_features } from './converter.js';
 import { gen_data } from './gen_data.js';
-import { supported_features, converter } from './converter.js';
-import { apply_rules } from './rules.js';
+import { apply_rules } from './rules/index.js';
+import { context, copy_file, read_file, write_file } from './util.js'
 
+export { apply_rules, get_rules } from './rules/index.js';
 export { convert, context, supported_features, converter };
-export { get_rules } from './rules.js';
 
 async function _convert(copy_list, convert_list) {
     const { silent, no_copy, no_convert } = context;

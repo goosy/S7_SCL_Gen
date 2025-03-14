@@ -1,5 +1,5 @@
 import { convert, context } from './src/index.js';
-import { get_rules } from './src/rules.js';
+import { get_rules } from './src/rules/index.js';
 import mri from 'mri';
 
 const argv = mri(process.argv.slice(2), {

@@ -25,20 +25,20 @@ AL: {{AI.$AL_limit}} {{endif}} | 合格 |
 {{endif // AI.DB}}{{endfor}}
 调试单位: __________________________ 专业工程师: ________ 质量检查员: ________ 施工班组长: ________
 日期: ________ 年 ____ 月 ____ 日
-`
+`;
 
 suite('util test', () => {
     test('pad_left test', () => {
         strictEqual(pad_left('abcdef', 20), '              abcdef');
         strictEqual(pad_left('abcdef', 4), 'cdef');
         strictEqual(pad_left('abcdef', 15, '*'), '*********abcdef');
-    })
+    });
     test('pad_right test', () => {
         strictEqual(pad_right('abcdef', 20), 'abcdef              ');
         strictEqual(pad_right('abcdef', 4), 'abcd');
         strictEqual(pad_right('abcdef', 15, '*'), 'abcdef*********');
-    })
+    });
     test('get_template test', async () => {
         strictEqual(await get_template('test/template.md'), test_template);
-    })
+    });
 });

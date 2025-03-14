@@ -5,10 +5,10 @@ import pkg from '../package.json' with { type: 'json' };
 
 export {
     context, CURRENT_DOC, CURRENT_NODE,
-    get_template,
+    is_plain_object, get_template,
     prepare_dir, copy_file, read_file, write_file,
     compare_str, pad_left, pad_right, fixed_hex,
-    elog, lazyassign,
+    elog,
 };
 
 const module_path = posix.join(import.meta.dirname.replace(/\\/g, '/').replace(/\\/g, '/'), "..");
@@ -156,26 +156,7 @@ function fixed_hex(num, length) {
     return pad_left(HEX, length, '0').toUpperCase();
 }
 
-function lazyassign(obj, prop, lazyvalue, options) {
-    // must enumerable default
-    const { writable = false, enumerable = true, configurable = false } = options ?? {};
-    if (typeof lazyvalue === 'function') {
-        Object.defineProperty(obj, prop, {
-            get() {
-                const value = lazyvalue();
-                if (value == null) throw new Error('lazyvalue not ready');
-                lazyassign(obj, prop, value, options);
-                return value;
-            },
-            enumerable,
-            configurable: true
-        });
-    } else {
-        Object.defineProperty(obj, prop, {
-            value: lazyvalue,
-            writable,
-            enumerable,
-            configurable,
-        });
-    }
+function is_plain_object(obj) {
+    if (obj === null || obj === undefined) return false;
+    return Object.getPrototypeOf(obj) === Object.prototype;
 }

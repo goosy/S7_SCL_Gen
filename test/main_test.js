@@ -5,7 +5,7 @@ import { chdir, cwd } from 'node:process';
 import { access, unlink } from 'node:fs/promises';
 import { suite, test } from 'node:test';
 import { convert } from '../src/index.js';
-import { get_rules, array_match } from '../src/rules.js';
+import { get_rules, match_all } from '../src/rules/index.js';
 import { context, read_file } from '../src/util.js';
 
 // Loading rules
@@ -99,7 +99,7 @@ suite('生成SCL测试', () => {
     })
     test('复制指定文件', async () => {
         const source = '**/AI_Proc(step7).scl';
-        let items = array_match(list[0].copy_list, {
+        let items = match_all(list[0].copy_list, {
             cpu_name: 'dist',
             feature: 'AI',
             source,
@@ -107,7 +107,7 @@ suite('生成SCL测试', () => {
         for (const item of items) {
             equal(item.distance, 'dist/AI_Proc.scl');
         }
-        items = array_match(list[0].copy_list, {
+        items = match_all(list[0].copy_list, {
             cpu_name: 'dist',
             distance: '**/test.yaml',
         });
@@ -116,7 +116,7 @@ suite('生成SCL测试', () => {
         }
         const src_file = `${context.work_path}/test.yaml`;
         const test_yaml_content = await read_file(src_file);
-        items = array_match(list[0].copy_list, {
+        items = match_all(list[0].copy_list, {
             cpu_name: 'dist',
             source: '**/test.yaml',
         });
@@ -129,28 +129,28 @@ suite('生成SCL测试', () => {
         ok(!do_copy);
     });
     test('检查指定属性', () => {
-        for (const item of array_match(list[0].copy_list, { feature: 'CPU', })) {
+        for (const item of match_all(list[0].copy_list, { feature: 'CPU', })) {
             equal(item.CPU, 'dist');
         }
-        ok(array_match(list[0].copy_list, { feature: 'AI', }).length);
-        ok(array_match(list[0].copy_list, { platform: 'step7', }).length);
+        ok(match_all(list[0].copy_list, { feature: 'AI', }).length);
+        ok(match_all(list[0].copy_list, { platform: 'step7', }).length);
     });
     test('生成指定文件', () => {
-        let AI_out = array_match(list[0].convert_list, {
+        let AI_out = match_all(list[0].convert_list, {
             feature: 'AI',
             cpu_name: 'dist',
         });
         ok(AI_out.length);
-        AI_out = array_match(list[0].convert_list, {
+        AI_out = match_all(list[0].convert_list, {
             feature: 'alarm',
             cpu_name: 'dist',
         });
         ok(AI_out.length);
-        AI_out = array_match(list[0].convert_list, {
+        AI_out = match_all(list[0].convert_list, {
             distance: '**/*.asc',
         });
         ok(AI_out.length);
-        AI_out = array_match(list[1].convert_list, {
+        AI_out = match_all(list[1].convert_list, {
             feature: 'AI',
             cpu_name: 'dist',
         });
@@ -160,7 +160,7 @@ suite('生成SCL测试', () => {
             equal(item.output_dir, '/codes/AS/S7_SCL_Gen/test/target');
             equal(item.content, test_content);
         }
-        AI_out = array_match(list[2].convert_list, {
+        AI_out = match_all(list[2].convert_list, {
             template,
             distance: 'AI_alarm.md',
             output_dir: '/codes/AS/S7_SCL_Gen/test/dist',
