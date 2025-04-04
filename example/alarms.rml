@@ -116,7 +116,6 @@ rules:  # 在这里定义全局规则列表
 # 本 alarms 输出只示例 merge inner_rules delete 动作
 # 合并 AI alarm 为一个新文档内部项
 - pattern:
-    cpu_name: AS1
     feature: [AI, alarm]
     type: convert
 
@@ -128,27 +127,44 @@ rules:  # 在这里定义全局规则列表
 
   actions:
 
-  # 所有的 action 子项都可以使用模板替换，$ 变量为匹配的全局项
+  # 所有的 action 子项都可以使用模板替换，可以用 $ 变量引用匹配的全局项或文档项
 
-  - action_type: merge # 该属性用于指示动作类型，见上方说明
+  - # action_type 属性用于指示动作类型，见上方说明。可以省略，默认为 replace
+    # 其它全局动作对 item.tags.list 的修改功能很弱，文档规则可以执行更复杂的修改。
+    # 当 action_type 为 inner_rules 时也可以省略，因为该动作必须指示 rules 属性
+    # 本例为 inner_rules 动作，即文档规则动作
+    action_type: inner_rules
+
+    # action_scope 为范围指示，见上方说明
+    # 本例 matched 值指示动作应用于匹配项
+    action_scope: matched
+
+    # rules 是 inner_rules 动作的必须属性
+    # 在这里递归应用规则，作用于文档内部的列表
+    rules:
+    - pattern: '*'
+      actions:
+      - action_type: replace
+        action_scope: matched
+        link_name: '{{cpu_name}}' # 保存 CPU 名称用于连接名
+
+  - action_type: merge
     action_scope: matched # 该属性用于指示动作应用范围，见上方说明
     # 其它属性指示动作要执行的转换
     feature: OS_alarms
     template: alarms.template
-    distance: '{{$.cpu_name}}_alarms.csv'
+    distance: 'alarms.csv'
     output_dir: OS
 
-  - # inner_rules type 指示文档规则动作，可以省略，因为该动作必须指示 rules 属性
-    # 其它全局动作对 item.tags.list 的修改功能很弱，文档规则可以执行更复杂的修改。
-    # 具体的文档内部项，在下方文档动作中也可以使用 $ 引用
-    # 建议文档规则定义放在其它全局动作之后。
-    action_type: inner_rules
-
-    # 这里指示动作应用于上方 merge 动作合并的新项
+  - # action_scope 指示动作应用于上方 merge 动作合并的新项
     action_scope: merged
 
     # 在这里定义文档规则
+    # 在文档规则的动作中
+    #   - 也可以使用 $ 引用原项
+    #   - 可以使用 $.__original_index 引用原项顺序的索引值
     # 文档规则只对 convert 全局项有效
+    # 这里省略了 action_type: inner_rules，因为有 rules 属性
     rules:  # rules 是 inner_rules 动作的必须属性
     - pattern:
         $enable_AH: {value: true}
@@ -156,10 +172,10 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.AH_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.AH_flag'
         location: '{{$.location}}'
         event: '{{$.type}}高高报警'
-        PV1: 'S7Program/{{$.DB.name}}.AH_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.AH_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_WH: {value: true}
@@ -167,10 +183,10 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.WH_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.WH_flag'
         location: '{{$.location}}'
         event: '{{$.type}}高警告'
-        PV1: 'S7Program/{{$.DB.name}}.WH_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.WH_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_WL: {value: true}
@@ -178,10 +194,10 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.WL_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.WL_flag'
         location: '{{$.location}}'
         event: '{{$.type}}低警告'
-        PV1: 'S7Program/{{$.DB.name}}.WL_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.WL_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_AL: {value: true}
@@ -189,77 +205,16 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.AL_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.AL_flag'
         location: '{{$.location}}'
         event: '{{$.type}}低低报警'
-        PV1: 'S7Program/{{$.DB.name}}.AL_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.AL_PV'
         oo: '{{$.__original_index}}'
     - pattern: '*'
       scope: origin
       actions: delete
     - sort_by:
       - oo
-
-  - delete # 这是 `- action_type: delete` 的简化写法 (对本例而言，这里的删除并不必须)
-
-- pattern:
-    cpu_name: AS2
-    feature: [AI, alarm]
-    type: convert
-  scope: origin
-  actions:
-  - action_type: merge
-    feature: OS_alarms
-    template: alarms.template
-    distance: '{{$.cpu_name}}_alarms.csv'
-    output_dir: OS
-  - action_scope: merged
-    rules: # 即默认了 `action_type: inner_rules`
-    - pattern:
-        $enable_AH: {value: true}
-      scope: origin
-      actions:
-      - action_type: add
-        action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.AH_flag'
-        location: '{{$.location}}'
-        event: '{{$.type}}高高报警'
-        PV1: 'S7Program/{{$.DB.name}}.AH_PV'
-    - pattern:
-        $enable_WH: {value: true}
-      scope: origin
-      actions:
-      - action_type: add
-        action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.WH_flag'
-        location: '{{$.location}}'
-        event: '{{$.type}}高警告'
-        PV1: 'S7Program/{{$.DB.name}}.WH_PV'
-    - pattern:
-        $enable_WL: {value: true}
-      scope: origin
-      actions:
-      - action_type: add
-        action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.WL_flag'
-        location: '{{$.location}}'
-        event: '{{$.type}}低警告'
-        PV1: 'S7Program/{{$.DB.name}}.WL_PV'
-    - pattern:
-        $enable_AL: {value: true}
-      scope: origin
-      actions:
-      - action_type: add
-        action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.AL_flag'
-        location: '{{$.location}}'
-        event: '{{$.type}}低低报警'
-        PV1: 'S7Program/{{$.DB.name}}.AL_PV'
-    - pattern: '*'
-      scope: origin
-      actions: delete
-    - sort_by:
-      - tagname
 
 # 删除其它非报警项
 - pattern:

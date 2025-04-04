@@ -122,10 +122,10 @@ rules:
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.AH_flag'
+        tagname: '{{$.cpu_name}}Program/{{$.DB.name}}.AH_flag'
         location: '{{$.location}}'
         event: '{{$.type}}高高报警'
-        PV1: 'S7Program/{{$.DB.name}}.AH_PV'
+        PV1: '{{$.cpu_name}}Program/{{$.DB.name}}.AH_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_WH: {value: true}
@@ -133,10 +133,10 @@ rules:
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.WH_flag'
+        tagname: '{{$.cpu_name}}Program/{{$.DB.name}}.WH_flag'
         location: '{{$.location}}'
         event: '{{$.type}}高警告'
-        PV1: 'S7Program/{{$.DB.name}}.WH_PV'
+        PV1: '{{$.cpu_name}}Program/{{$.DB.name}}.WH_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_WL: {value: true}
@@ -144,10 +144,10 @@ rules:
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.WL_flag'
+        tagname: '{{$.cpu_name}}Program/{{$.DB.name}}.WL_flag'
         location: '{{$.location}}'
         event: '{{$.type}}低警告'
-        PV1: 'S7Program/{{$.DB.name}}.WL_PV'
+        PV1: '{{$.cpu_name}}Program/{{$.DB.name}}.WL_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_AL: {value: true}
@@ -155,10 +155,10 @@ rules:
       actions:
       - action_type: add
         action_scope: matched
-        tagname: 'S7Program/{{$.DB.name}}.AL_flag'
+        tagname: '{{$.cpu_name}}Program/{{$.DB.name}}.AL_flag'
         location: '{{$.location}}'
         event: '{{$.type}}低低报警'
-        PV1: 'S7Program/{{$.DB.name}}.AL_PV'
+        PV1: '{{$.cpu_name}}Program/{{$.DB.name}}.AL_PV'
         oo: '{{$.__original_index}}'
     - pattern: '*'
       scope: origin

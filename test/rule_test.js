@@ -143,7 +143,7 @@ suite('rule test', () => {
         // other object
         ok(match(new Set(), '%O'));
         ok(match(
-            { foo: new RegExp('foo') },
+            { foo: /foo/ },
             { foo: '%O' }
         ));
         ok(!match({}, '%O'));
@@ -257,36 +257,33 @@ suite('rule test', () => {
         strictEqual(
             output.content,
             'NO,eventtag,location,event,PV1\n' +
-            '1,S7Program/TIT101.AH_flag,,高高报警,S7Program/TIT101.AH_PV\n' +
-            '2,S7Program/TIT101.WH_flag,,高警告,S7Program/TIT101.WH_PV\n' +
-            '3,S7Program/TIT101.AL_flag,,低低报警,S7Program/TIT101.AL_PV\n'
+            '1,distProgram/TIT101.AH_flag,,高高报警,distProgram/TIT101.AH_PV\n' +
+            '2,distProgram/TIT101.WH_flag,,高警告,distProgram/TIT101.WH_PV\n' +
+            '3,distProgram/TIT101.AL_flag,,低低报警,distProgram/TIT101.AL_PV\n'
         );
-        deepStrictEqual(
-            output.tags.list,
-            new Set([
-                {
-                    tagname: 'S7Program/TIT101.AH_flag',
-                    location: '',
-                    event: '高高报警',
-                    PV1: 'S7Program/TIT101.AH_PV',
-                    oo: '0',
-                },
-                {
-                    tagname: 'S7Program/TIT101.WH_flag',
-                    location: '',
-                    event: '高警告',
-                    PV1: 'S7Program/TIT101.WH_PV',
-                    oo: '0',
-                },
-                {
-                    tagname: 'S7Program/TIT101.AL_flag',
-                    location: '',
-                    event: '低低报警',
-                    PV1: 'S7Program/TIT101.AL_PV',
-                    oo: '0',
-                },
-            ])
-        );
+        deepStrictEqual(output.tags.list, [
+            {
+                tagname: 'distProgram/TIT101.AH_flag',
+                location: '',
+                event: '高高报警',
+                PV1: 'distProgram/TIT101.AH_PV',
+                oo: '000000',
+            },
+            {
+                tagname: 'distProgram/TIT101.WH_flag',
+                location: '',
+                event: '高警告',
+                PV1: 'distProgram/TIT101.WH_PV',
+                oo: '000000',
+            },
+            {
+                tagname: 'distProgram/TIT101.AL_flag',
+                location: '',
+                event: '低低报警',
+                PV1: 'distProgram/TIT101.AL_PV',
+                oo: '000000',
+            },
+        ]);
     });
     test('delete', () => {
         let output = match_all(list[0].convert_list, {

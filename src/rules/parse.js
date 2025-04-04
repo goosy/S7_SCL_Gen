@@ -58,9 +58,9 @@ function _parse_rules(rules_raw, extra_tags, rules_path, using_inner_rules = fal
                 console.warn('No pattern, but action is not "add", ignored');
                 return [];
             }
-            // Ensure that the inner_rules action is executed only once in the same rule
-            if (!using_inner_rules && has_inner_rules && action_type === 'inner_rules') {
-                console.warn('Only one "inner_rules" action is allowed, ignored');
+            // Ensure that the inner_rules action is only in the main rule
+            if (using_inner_rules && action_type === 'inner_rules') {
+                console.warn('The "inner_rules" action is only allowed in the main rule, ignored');
                 return [];
             }
             // Ensure that the delete action is executed only once and before any other action in the same rule
