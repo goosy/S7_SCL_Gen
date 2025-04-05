@@ -38,7 +38,8 @@ const rules = await convert();
 suite('生成SCL测试', () => {
     test('复制指定文件', async () => {
         const source = '**/AI_Proc(step7).scl';
-        let items = match_all(rules.copy_list, {
+        let items = match_all(rules, {
+            type: 'copy',
             cpu_name: 'dist',
             feature: 'AI',
             source,
@@ -46,7 +47,8 @@ suite('生成SCL测试', () => {
         for (const item of items) {
             strictEqual(item.distance, 'dist/AI_Proc.scl');
         }
-        items = match_all(rules.copy_list, {
+        items = match_all(rules, {
+            type: 'copy',
             cpu_name: 'dist',
             distance: '**/test.yaml',
         });
@@ -55,11 +57,14 @@ suite('生成SCL测试', () => {
         }
         const src_file = `${context.work_path}/test.yaml`;
         const test_yaml_content = await read_file(src_file);
-        items = match_all(rules.copy_list, {
+        items = match_all(rules, {
+            type: 'copy',
             cpu_name: 'dist',
             source: '**/test.yaml',
         });
-        for (const item of items) strictEqual(item.content, test_yaml_content);
+        for (const item of items) {
+            strictEqual(item.content, test_yaml_content);
+        }
         const do_copy = await checkAndDeleteFiles([
             `${context.work_path}/dist/AI_Proc.scl`,
             `${context.work_path}/dist/Alarm_Proc.scl`,
@@ -68,24 +73,39 @@ suite('生成SCL测试', () => {
         ok(!do_copy);
     });
     test('检查指定属性', () => {
-        for (const item of match_all(rules.copy_list, { feature: 'CPU', })) {
+        let items = match_all(rules, {
+            type: 'copy',
+            feature: 'CPU',
+        });
+        for (const item of items) {
             strictEqual(item.CPU, 'dist');
         }
-        ok(match_all(rules.copy_list, { feature: 'AI', }).length);
-        ok(match_all(rules.copy_list, { platform: 'step7', }).length);
+        items = match_all(rules, {
+            type: 'copy',
+            feature: 'AI',
+        });
+        ok(items.length > 0);
+        items = match_all(rules, {
+            type: 'copy',
+            platform: 'step7',
+        });
+        ok(items.length > 0);
     });
     test('生成指定文件', () => {
-        let output = match_all(rules.convert_list, {
+        let output = match_all(rules, {
+            type: 'convert',
             feature: 'AI',
             cpu_name: 'dist',
         });
         ok(output.length > 0);
-        output = match_all(rules.convert_list, {
+        output = match_all(rules, {
+            type: 'convert',
             feature: 'alarm',
             cpu_name: 'dist',
         });
         ok(output.length > 0);
-        output = match_all(rules.convert_list, {
+        output = match_all(rules, {
+            type: 'convert',
             distance: '**/*.asc',
         });
         ok(output.length > 0);

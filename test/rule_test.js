@@ -207,7 +207,7 @@ suite('rule test', () => {
         strictEqual(rules[2].actions[0].action_type, 'delete');
     });
     test('generate', async () => {
-        let output = match_all(list[0].convert_list, {
+        let output = match_all(list[0], {
             feature: 'AI',
             cpu_name: 'dist',
         });
@@ -217,7 +217,8 @@ suite('rule test', () => {
             strictEqual(item.output_dir, 'D:/codes/AS/S7_SCL_Gen/test/target');
             strictEqual(item.content, replace_content);
         }
-        output = match_all(list[1].convert_list, {
+        output = match_all(list[1], {
+            type: 'convert',
             feature: 'OS_alarms',
             template,
             distance: 'AI_alarm.md',
@@ -225,7 +226,8 @@ suite('rule test', () => {
             content: merge_content,
         });
         ok(output.length);
-        output = match_all(list[1].copy_list, {
+        output = match_all(list[1], {
+            type: 'copy',
             cpu_name: 'dist',
             feature: 'OS_alarms',
             platform: 'step7',
@@ -235,17 +237,18 @@ suite('rule test', () => {
             distance: 'template',
         });
         ok(output.length);
-        const copy_list = list[2].copy_list;
-        output = match_all(copy_list, {
+        output = match_all(list[2], {
+            type: 'copy',
             replace_a: ['new'],
             replace_o: { type: 'replace' },
             join_a: ['old', 'new'],
             join_o: { desc: 'join object', type: 'join' }
         });
-        strictEqual(output.length, copy_list.size);
-        output = list[3].convert_list;
-        strictEqual(output.size, 1);
-        output = output.values().next().value;
+        const copy_list = [...list[2]].filter(item => item.type === 'copy');
+        strictEqual(output.length, copy_list.length);
+        output = [...list[3]].filter(item => item.type === 'convert');
+        strictEqual(output.length, 1);
+        output = output[0];
         strictEqual(
             output.template,
             'NO,eventtag,location,event,PV1\n' +
@@ -286,11 +289,11 @@ suite('rule test', () => {
         ]);
     });
     test('delete', () => {
-        let output = match_all(list[0].convert_list, {
+        let output = match_all(list[0], {
             type: 'copy',
         });
         strictEqual(output.length, 0);
-        output = match_all(list[1].convert_list, {
+        output = match_all(list[1], {
             feature: '!OS_alarms',
         });
         strictEqual(output.length, 0);

@@ -481,7 +481,7 @@ async function gen_list(cpu_list) {
         item.line_ending = context.line_ending;
         convert_list.push(item);
     }
-    return { copy_list, convert_list };
+    return [...copy_list, ...convert_list];
 }
 
 export async function gen_data() {

@@ -8,35 +8,38 @@ import { context, copy_file, read_file, write_file } from './util.js'
 export { apply_rules, get_rules } from './rules/index.js';
 export { convert, context, supported_features, converter };
 
-async function _convert(copy_list, convert_list) {
+async function process(list) {
     const { silent, no_copy, no_convert } = context;
 
-    if (copy_list != null && typeof copy_list[Symbol.iterator] === 'function' && !no_copy) {
-        silent || console.log("\ncopy file to: 复制文件至：");
-        for (const copy_item of copy_list) {
-            const { source, distance, input_dir, output_dir, IE, OE, line_ending } = copy_item;
+    // Ensure it's iterable, such as Array or Set
+    if (list == null || typeof list[Symbol.iterator] !== 'function') return;
+    let current_type = '';
+    for (const item of list) {
+        const type = item.type;
+        if (type === 'copy' && !no_copy) {
+            silent || current_type === type || console.log("\ncopy file to: 复制文件至：");
+            current_type = type;
+            const { source, distance, input_dir, output_dir, IE, OE, line_ending } = item;
             const src_file = posix.join(input_dir, source);
             const dst_file = posix.join(output_dir, distance);
             if (IE == null) { // copy directly without specifying encoding
                 await copy_file(src_file, dst_file);
             } else {
                 const content = await read_file(src_file, { encoding: IE });
-                copy_item.content = OE === 'gbk' && content.charCodeAt(0) === 0xFEFF
+                item.content = OE === 'gbk' && content.charCodeAt(0) === 0xFEFF
                     ? content.substring(1) : content;
-                await write_file(dst_file, copy_item.content, { encoding: OE, line_ending });
+                await write_file(dst_file, item.content, { encoding: OE, line_ending });
             }
             silent || console.log(`\t${dst_file}`)
         }
-    }
-
-    if (convert_list != null && typeof convert_list[Symbol.iterator] === 'function') {
-        silent || no_convert || console.log("\ngenerate file: 生成文件：");
-        // Asynchronous sequential execution
-        for (const convert_item of convert_list) {
-            const { distance, output_dir, tags, template, OE, line_ending } = convert_item;
+        if (type === 'convert') {
+            silent || current_type === type || console.log("\ngenerate file: 生成文件：");
+            current_type = type;
+            // Asynchronous sequential execution
+            const { distance, output_dir, tags, template, OE, line_ending } = item;
             const filename = posix.join(output_dir, distance);
             const content = gc(tags, template);
-            convert_item.content = content;
+            item.content = content;
             // Whether to output is determined by the no_convert variable
             if (!no_convert) {
                 await write_file(filename, content, { encoding: OE, line_ending });
@@ -44,16 +47,14 @@ async function _convert(copy_list, convert_list) {
             }
         }
     }
-
-    return { copy_list, convert_list };
+    return list;
 }
 
 async function convert(rules) {
     context.silent || console.log(`current conversion folder 当前转换文件夹: ${context.work_path}`);
-    let { copy_list, convert_list } = await gen_data();
+    let list = await gen_data();
     if (Array.isArray(rules) && rules.length) {
-        copy_list = await apply_rules(copy_list, rules);
-        convert_list = await apply_rules(convert_list, rules);
+        list = await apply_rules(list, rules);
     }
-    return _convert(copy_list, convert_list);
+    return process(list);
 }
