@@ -177,7 +177,10 @@ export function initialize_list(area) {
                 enable: nullable_value(BOOL, item.get('enable')),
                 custom_trigger: nullable_value(BOOL, item.get('custom_trigger')),
                 comment: ensure_value(STRING, item.get('comment') ?? ''),
-                recv_start: ensure_value(PINT, item.get('recv_start')),
+                recv_start: ensure_value(PINT, item.get('recv_start'),
+                    'recv_start must be gaven and be a positive integer!\n' +
+                    '配置项 recv_start 必须提供并且是一个正整数!'
+                ),
                 extra_code: nullable_value(STRING, item.get('extra_code')),
                 try_times: ensure_value(PINT, item.get('try_times') ?? TRY_TIMES),
             };
@@ -209,20 +212,32 @@ export function initialize_list(area) {
 
             if (poll.extra_send_DB) {
                 // When there is an external send block, send_start must be present
-                poll.send_start = ensure_value(PINT, item.get('send_start'));
+                poll.send_start = ensure_value(PINT, item.get('send_start'),
+                    'when an external send block is present, send_start must be gaven and be a positive integer!\n' +
+                    '当指定外部发送块时，配置项 send_start 必须提供并且是一个正整数!'
+                );
             } else {
                 // When there is no external send block
                 // the unit_ID, func_code, started_addr and data must be present
-                poll.unit_ID = ensure_value(PINT, item.get('unit_ID'));
-                poll.func_code = ensure_value(PINT, item.get('func_code'));
-                poll.started_addr = nullable_value(PINT, item.get('started_addr')) ?? nullable_value(PINT, item.get('address'));
-                assert(poll.started_addr !== null, new SyntaxError('The configuration item address or started_addr must have one!配置项 address 或 started_addr 必须有一个!'));
-                poll.data = nullable_value(PINT, item.get('data')) ?? nullable_value(PINT, item.get('length'));
-                assert(poll.data !== null, new SyntaxError('The configuration item data or length must have one!配置项 data 或 length 必须有一个!'));
+                poll.unit_ID = ensure_value(PINT, item.get('unit_ID'),
+                    'Either send_DB or unit_ID must be present! and unit_ID must be a positive integer!\n' +
+                    '配置项 send_DB 或 unit_ID 必须有一个! unit_ID 必须是一个正整数!'
+                );
+                poll.func_code = ensure_value(PINT, item.get('func_code'),
+                    'when send_DB is present, func_code must be gaven and be a positive integer!\n' +
+                    '当指定 send_DB 时，配置项 func_code 必须提供并且是一个正整数!'
+                );
+                poll.started_addr = ensure_value(PINT, item.get('started_addr') ?? item.get('address'),
+                    'The configuration item address or started_addr must have one!配置项 address 或 started_addr 必须有一个!'
+                );
+                poll.data = ensure_value(PINT, item.get('data') ?? item.get('length'),
+                    'The configuration item data or length must have one!配置项 data 或 length 必须有一个!'
+                );
                 const func_code = poll.func_code.value;
                 if (func_code === 15 || func_code === 16) {
-                    // When the function code is 15 or 16, the extra_data configuration item must be present
-                    poll.extra_data = ensure_value(STRING, item.get('extra_data')).value;
+                    poll.extra_data = ensure_value(STRING, item.get('extra_data'),
+                        'When the function code is 15 or 16, the extra_data configuration item must be present!',
+                    ).value;
                 }
             }
             return poll;

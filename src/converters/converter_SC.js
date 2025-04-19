@@ -112,7 +112,10 @@ export function initialize_list(area) {
             const poll = {
                 comment: ensure_value(STRING, item.get('comment') ?? ''),
                 send_data: nullable_value(STRING, item.get('send_data')),
-                recv_start: ensure_value(PINT, item.get('recv_start')),
+                recv_start: ensure_value(PINT, item.get('recv_start'),
+                    'recv_start must be gaven and be a positive integer!\n' +
+                    '配置项 recv_start 必须提供并且是一个正整数!'
+                ),
                 uninvoke: ensure_value(BOOL, item.get('uninvoke') ?? false),
             }
             poll.is_modbus = !poll.send_data;
@@ -143,18 +146,32 @@ export function initialize_list(area) {
 
             if (poll.extra_send_DB) {
                 // When there is an external send block, send_start and send_length must be present
-                poll.send_start = ensure_value(PINT, item.get('send_start'));
-                poll.send_length = ensure_value(PINT, item.get('send_length'));
+                poll.send_start = ensure_value(PINT, item.get('send_start'),
+                    'when an external send block is present, send_start must be gaven and be a positive integer!\n' +
+                    '当指定外部发送块时，配置项 send_start 必须提供并且是一个正整数!'
+                );
+                poll.send_length = ensure_value(PINT, item.get('send_length'),
+                    'when an external send block is present, send_length must be gaven and be a positive integer!\n' +
+                    '当指定外部发送块时，配置项 send_length 必须提供并且是一个正整数!'
+                );
             } else if (!poll.send_data) {
                 // When there is no external send block but send_data, unit_ID, func_code, started_addr and data must be present
-                poll.unit_ID = ensure_value(PINT, item.get('unit_ID'));
-                poll.func_code = ensure_value(PINT, item.get('func_code'));
-                poll.started_addr = nullable_value(PINT, item.get('started_addr')) ?? ensure_value(PINT, item.get('address'));
-                // TODO:The correct information for the error in the previous sentence should be:
-                // new SyntaxError(`配置项 address 或 started_addr 必须有一个!`)
-                poll.data = nullable_value(PINT, item.get('data')) ?? ensure_value(PINT, item.get('length'));
-                // TODO:The correct information for the error in the previous sentence should be:
-                // new SyntaxError(`配置项 data 或 length 必须有一个!`)
+                poll.unit_ID = ensure_value(PINT, item.get('unit_ID'),
+                    'Either send_DB, send_data or unit_ID must be present! and unit_ID must be a positive integer!\n' +
+                    '配置项 send_DB、send_data 或 unit_ID 必须有一个! unit_ID 必须是一个正整数!'
+                );
+                poll.func_code = ensure_value(PINT, item.get('func_code'),
+                    'when send_DB is present, func_code must be gaven and be a positive integer!\n' +
+                    '当指定 send_DB 时，配置项 func_code 必须提供并且是一个正整数!'
+                );
+                poll.started_addr = ensure_value(PINT, item.get('started_addr') ?? item.get('address'),
+                    'Either configuration item address or started_addr must be present!\n' +
+                    '配置项 address 或 started_addr 必须有一个!'
+                );
+                poll.data = ensure_value(PINT, item.get('data') ?? item.get('length'),
+                    'Either configuration item data or length must be present!\n' +
+                    '配置项 data 或 length 必须有一个!'
+                );
             }
             return poll;
         });
@@ -213,7 +230,7 @@ export function gen({ document, invoke_code, options = {} }) {
     const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { LOOP_NAME, invoke_code, CP340_NAME, CP341_NAME, POLLS_NAME };
-    const template = 'SC.template'; 
+    const template = 'SC.template';
     return [{ distance, output_dir, tags, template }];
 }
 

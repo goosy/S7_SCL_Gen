@@ -327,8 +327,21 @@ export function nullable_value(type, value) {
     return new type(value);
 }
 
-export function ensure_value(type, value) {
-    return new type(value);
+/**
+ * Create an instance of the given type from the given value.
+ * If the given value cannot be converted to the given type, an error is logged.
+ * @template T
+ * @param {new(value: any) => T} type - The constructor of the type to create an instance of.
+ * @param {any} value - The value to convert to the given type.
+ * @param {string} [error_msg] - The error message to log if the conversion fails.
+ * @returns {T} The created instance of the given type.
+ */
+export function ensure_value(type, value, error_msg) {
+    try {
+        return new type(value);
+    } catch (e) {
+        elog(error_msg ?? e);
+    }
 }
 
 function isInt(num) {
