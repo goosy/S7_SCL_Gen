@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { access, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, posix } from 'node:path';
 import iconv from 'iconv-lite';
@@ -8,7 +9,7 @@ export {
     is_plain_object, get_template,
     prepare_dir, copy_file, read_file, write_file,
     compare, multi_sort, get_object_prop,
-    pad_left, pad_right, fixed_hex,
+    pad_left, pad_right, fixed_hex, parse_hex_array,
     elog,
 };
 
@@ -197,4 +198,25 @@ function fixed_hex(num, length) {
 function is_plain_object(obj) {
     if (obj === null || obj === undefined) return false;
     return Object.getPrototypeOf(obj) === Object.prototype;
+}
+
+/**
+ * Parse a hexadecimal string into an array of bytes
+ * @param {string|null} hex_string - string in hexadecimal format, each byte separated by a space
+ * @param {string} [error_msg] - error message if the input string is illegal
+ * @returns {string[]} - array of bytes, each byte is a 2-character hexadecimal string
+ * @throws {SyntaxError} - if the input string is illegal
+ */
+function parse_hex_array(hex_string, error_msg) {
+    if (hex_string == null) return [];
+    const data_error = new SyntaxError(
+        error_msg ??
+        `wrong hex string 错误16进制字符串: "${hex_string}"
+        must be a space-separated hexadecimal string
+        必须是一个由空格分隔的16进制字符串`
+    );
+    assert.strictEqual(typeof hex_string, 'string', data_error);
+    const str = hex_string.trim();
+    assert(/^[0-9a-f]{2}( +[0-9a-f]{2})+$/i.test(str), data_error);
+    return str.split(/ +/).map(byte => fixed_hex(byte, 2));
 }
