@@ -37,10 +37,10 @@ symbols:
 # 这类FB不通用，需要另外单独写SCL代码。
 - [A101L, FB802]
 - [FXGasFlow, FB803, ~, 福鑫天然气流量接收块]
-- [FXGasWrite, FB811, ~, 写气表参数处理块]
+- [write_SC, FB811, ~, 写处理块]
 - [Flow30, DB830, JS_flow]
 - [GAS, DB841, FXGasFlow]
-- [cmd_ret, DB+, FXGasWrite]
+- [cmd_ret, DB+, write_SC]
 # JS_Flow 已在 CPU 文档中定义
 
 list : # CP 模块列表
@@ -98,6 +98,17 @@ list : # CP 模块列表
   polls:
   - comment: 流量计30
 
+    # 轮询模式，可省略，默认为 continuous
+    # 值: 字符串
+    # 有3种模式可供选择: continuous, periodicity, custom
+    mode: continuous
+
+    # 超时或周期时间，单位ms，默认 2000ms
+    # 值: 正整数
+    # continuous 或 custom 模式下，代表一个询问的最长等待时间
+    # periodicity 模式下，代表一个询问的周期时间
+    timeout: 2000
+
     # 没有 send_DB 和 send_data 配置项时， 由以下配置项定义 modbusRTU 发送数据
     # unit_ID func_code address data|length 配置项为十进制整数
     # 但如果采用字符串，则表示16进制，两种类型数字都是允许的。
@@ -127,28 +138,34 @@ list : # CP 模块列表
     recv_DB: GAS                      # 接收块，引用GAS符号
     recv_start: 20                    # 要注意开始地址不一样
 
-    # 值： BOOL
-    # 类型: S7符号定义 | S7符号引用 | SCL表达式
-    # 指示由外部触发通信，省略时将自动使用顺序发送
-    request: Clock_1Hz
+    mode: periodicity  # 周期模式
+    timeout: 1000 # 指定1秒同期
+    extra_code: FB
 
-  - comment: 天然气总表写参数 10#
+  - comment: 读取线圈
+    unit_ID: 4
+    func_code: 1
+    address: 0
+    length: 8
+    recv_DB: cmd_ret
+    recv_start: 0
+
+  - comment: 写线圈
+    mode: custom  # 人工控制写，不会自动轮询
     # 正常情况下，无论是不是modbus，发送的数据都是固定的。
     # 固定数据时，转换程序会自动为接收块为背景块的情形自动调用接收块处理FB
     # 当发送数据不固定时，比如 modbus 05 命令，建议使用指定的FB背景块作为发送数据区
     send_DB: cmd_ret
-    send_start: 10
-    send_length: 8
+    send_start: 20
     recv_DB: cmd_ret
     recv_start: 0
-    extra_code: FB
+    extra_code: |- # 通过设置 custom_trigger 来控制发送
+      "write_SC"."cmd_ret"(writing := "SC_polls_DB".CP01[4].custom_trigger);
 
 # 用户自写SCL代码，放在循环的开始和结束处。
 loop_begin: |-
   // 这里的代码将在 AI_Loop 循环开始时执行
 loop_end: |-
   // 这里的代码将在 AI_Loop 循环结束时执行
-  // uninvoke poll 的处理代码应当放在这里
-  "FXGasFlow".GAS(has_received := M10.0);
 
 ...

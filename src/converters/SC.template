@@ -13,12 +13,13 @@ STRUCT
     {{module.DB.name}} : ARRAY [0 .. {{module.polls.length-1}}] OF STRUCT //{{module.comment}} 轮询命令数据
         enable         : BOOL := TRUE; // 允许本poll通讯
         pause          : BOOL ;        // 本 poll 通讯因通讯失败暂停，由程序自动维护
-        continuous     : BOOL := TRUE; // 不间断询问，默认为TRUE，为 FALSE 时由下方手动触发
-        is_modbus      : BOOL := TRUE; // 是否为modbus协议，默认为true
-        custom_trigger : BOOL ;        // 手动触发询问，当 continuous 为 FALSE 时有效
-        request        : BOOL ;        // 询问请求，仅 continuous 为 FALSE 时有效，它的上升沿置位 custom_trigger
-        request_fo     : BOOL ;        // 询问请求跟随，判断上升沿
-        timeout        : INT := 2000;  // 询问失败超时，超过时间标记本次通讯失败，单位毫秒
+        continuous     : BOOL := TRUE; // 不间断询问，默认为是，为否时由 periodicity 或 custom_trigger 决定
+        periodicity    : BOOL ;        // 固定周期询问，默认为否
+        is_modbus      : BOOL := TRUE; // 是否为modbus协议，默认为是
+        custom_trigger : BOOL ;        // 手动触发询问，当 continuous 和 periodicity 都为否时本标志触发询问
+        request        : BOOL ;        // 询问请求，当 continuous 和 periodicity 都为否时有效
+        request_fo     : BOOL ;        // 询问请求跟随，判断上升沿。上升沿时置位 custom_trigger
+        timeout        : INT := 2000;  // 询问超时或询问周期，单位毫秒。超过时间未正确回应标记询问失败
         send_DB        : INT ;         // 发送DB，为0时为本块
         send_start     : INT ;         // 发送DB起始地址
         recv_DB        : INT ;         // 接收DB
@@ -64,11 +65,12 @@ BEGIN{{poll_index = stepper(0, 1)}}_
         {{_if poll.enable != null}}_
     {{module_name}}[{{no}}].enable := {{poll.enable.value ? 'TRUE' : 'FALSE'}};
         {{_endif}}_
-    {{module_name}}[{{no}}].continuous := {{(poll.custom_trigger ?? poll.request) ? 'FALSE' : 'TRUE'}};
-        {{_if poll.custom_trigger != null}}_
-    {{module_name}}[{{no}}].custom_trigger := {{poll.custom_trigger.value ? 'TRUE' : 'FALSE'}};
-        {{_endif}}_
+    {{module_name}}[{{no}}].continuous := {{poll.continuous ? 'TRUE' : 'FALSE'}};
+    {{module_name}}[{{no}}].periodicity := {{poll.periodicity ? 'TRUE' : 'FALSE'}};
+    {{module_name}}[{{no}}].custom_trigger := FALSE;
+        {{_if poll.timeout != null}}_
     {{module_name}}[{{no}}].timeout := {{poll.timeout.value}};
+        {{_endif}}_
     {{module_name}}[{{no}}].is_modbus := {{poll.is_modbus ? 'TRUE' : 'FALSE'}};
     {{module_name}}[{{no}}].send_DB := {{poll.send_DB.block_no}};
     {{module_name}}[{{no}}].send_start := {{poll.send_start}};
@@ -121,9 +123,6 @@ FUNCTION "{{LOOP_NAME}}" : VOID
     module_addr := {{module.module.block_no}},
     DATA        := "{{POLLS_NAME}}".{{module.DB.name}});
     {{_for no, poll in module.polls}}_
-        {{_if poll.request != null}}_
-"{{POLLS_NAME}}".{{module.DB.name}}[{{no}}].request := {{poll.request.value}};
-        {{_endif // request}}_
         {{_if poll.extra_code}}_
             {{_poll.extra_code.value}}
         {{_endif}}_

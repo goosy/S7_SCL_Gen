@@ -17,7 +17,6 @@ export const CP341_NAME = 'CP341_Poll';
 export const LOOP_NAME = 'SC_Loop';
 export const CRC = 'CRC16';
 export const POLLS_NAME = 'SC_polls_DB';
-export const TIMEOUT = 2000;
 const feature = 'SC';
 
 export function is_feature(name) {
@@ -117,7 +116,7 @@ export function initialize_list(area) {
                     '配置项 recv_start 必须提供并且是一个正整数!'
                 ),
                 extra_code: nullable_value(STRING, item.get('extra_code')),
-                timeout: ensure_value(PINT, item.get('timeout') ?? TIMEOUT),
+                timeout: nullable_value(PINT, item.get('timeout')),
             };
             const comment = poll.comment.value;
             const recv_DB = item.get('recv_DB');
@@ -132,15 +131,13 @@ export function initialize_list(area) {
                 poll.recv_DB = symbol;
             });
 
-            const request = item.get('request');
-            if (request) make_s7_expression(
-                request,
-                {
-                    document,
-                },
-            ).then(symbol => {
-                poll.request = symbol;
-            });
+            const mode = ensure_value(STRING, item.get('mode') ?? 'continuous',
+                'mode must be a string!\n' +
+                '配置项 mode 必须为字符串'
+            ).value;
+            poll.periodicity = mode === 'periodicity';
+            poll.custom = mode === 'custom';
+            poll.continuous = !poll.periodicity && !poll.custom;
 
             const send_DB = item.get('send_DB');
             poll.extra_send_DB = send_DB != null;
