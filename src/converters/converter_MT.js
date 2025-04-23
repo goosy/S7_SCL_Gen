@@ -5,9 +5,9 @@ import { make_s7_expression } from '../symbols.js';
 import {
     BOOL, PINT, STRING, TIME,
     nullable_value, ensure_value,
-    IntHashList
+    IntHashList,
 } from '../s7data.js';
-import { context, fixed_hex, elog } from '../util.js';
+import { context, fixed_hex, parse_hex_array, elog } from '../util.js';
 
 export const platforms = ['step7']; // platforms supported by this feature
 export const NAME = 'MT_Poll';
@@ -117,14 +117,13 @@ export function initialize_list(area) {
         const conn = {
             node,
             ID: nullable_value(PINT, node.get('ID')),
-            name: nullable_value(STRING, node.get('name') ?? node.get('polls_name')),
+            name: nullable_value(STRING, node.get('name')),
             comment: new STRING(node.get('comment') ?? '')
         };
         const comment = conn.comment.value;
-        const name = conn.name?.value;
         const DB = node.get('DB');
         assert(DB, new SyntaxError(
-            `${CPU.name}:MT:conn(${name ?? conn.ID}) DB is not defined correctly! 没有正确定义DB!`
+            `${CPU.name}:MT:conn_${conn.name?.value ?? conn.ID}'s DB is not defined correctly! 没有正确定义DB!`
         ));
         make_s7_expression(
             DB,
@@ -136,6 +135,14 @@ export function initialize_list(area) {
             },
         ).then(symbol => {
             conn.DB = symbol;
+            const name = symbol.name;
+            assert(/^[\p{L}_][\p{L}\p{N}_]*$/u.test(name), new SyntaxError('DB name must be a valid identifier!'));
+            // Check the uniqueness of connection DB within the CPU range
+            CPU.conn_DBs ??= new Set();
+            if (CPU.conn_DBs.has(name)) {
+                throw new SyntaxError(`DB name "${name}" is not unique!`);
+            }
+            CPU.conn_DBs.add(name);
         });
 
         // host IP
@@ -227,7 +234,7 @@ export function initialize_list(area) {
                     'when send_DB is present, func_code must be gaven and be a positive integer!\n' +
                     '当指定 send_DB 时，配置项 func_code 必须提供并且是一个正整数!'
                 );
-                poll.started_addr = ensure_value(PINT, item.get('started_addr') ?? item.get('address'),
+                poll.address = ensure_value(PINT, item.get('started_addr') ?? item.get('address'),
                     'The configuration item address or started_addr must have one!配置项 address 或 started_addr 必须有一个!'
                 );
                 poll.data = ensure_value(PINT, item.get('data') ?? item.get('length'),
@@ -235,9 +242,13 @@ export function initialize_list(area) {
                 );
                 const func_code = poll.func_code.value;
                 if (func_code === 15 || func_code === 16) {
-                    poll.extra_data = ensure_value(STRING, item.get('extra_data'),
+                    const extra_data = ensure_value(STRING, item.get('extra_data'),
                         'When the function code is 15 or 16, the extra_data configuration item must be present!',
-                    ).value;
+                    );
+                    poll.extra_data = parse_hex_array(extra_data.value,
+                        `"extra_data:${extra_data}"\n\textra_data must be a space-separated hexadecimal string\n\t必须是一个由空格分隔的16进制字符串`
+                    );
+                    poll.extra_data_length = new PINT(poll.extra_data.length);
                 }
             }
             return poll;
@@ -247,7 +258,7 @@ export function initialize_list(area) {
 }
 
 export function build_list(MT) {
-    const { document, list, options } = MT
+    const { document, list, options } = MT;
     const CPU = document.CPU;
     const DBs = new Set(); // Remove duplicates
     let poll_index = list.flatMap(conn => conn.polls).length * 16;
@@ -277,56 +288,47 @@ export function build_list(MT) {
         port_list.push(port);
 
         conn.ID = fixed_hex(conn_ID_list.push(ID), 4);
-        conn.DB.name ??= `conn_MT${ID}`;
         conn.IP1 = fixed_hex(conn.IP[0], 2);
         conn.IP2 = fixed_hex(conn.IP[1], 2);
         conn.IP3 = fixed_hex(conn.IP[2], 2);
         conn.IP4 = fixed_hex(conn.IP[3], 2);
         conn.port1 = fixed_hex((port >>> 8), 2);
         conn.port2 = fixed_hex((port & 0xff), 2);
-        conn.name ??= new STRING(`polls_${conn.ID}`);
         for (const poll of conn.polls) {
-            if (!poll.extra_send_DB) {
-                poll.send_start = new PINT(poll_index);
-                // When there is an external send block
-                poll.unit_ID = fixed_hex(poll.unit_ID, 2);
-                poll.func_code = fixed_hex(poll.func_code, 2);
-                poll.address = fixed_hex(poll.address ?? poll.started_addr, 4);
-                poll.data = fixed_hex(poll.data ?? poll.length, 4);
-                poll.MBAP_protocol = '00';
-                const extra_data = poll.extra_data;
-                if (extra_data) {
-                    poll.extra_data = extra_data.trim().split(/ +/).map(byte => fixed_hex(byte, 2));
-                    poll.extra_data_length = poll.extra_data.length;
-                    poll.MBAP_length = 7 + poll.extra_data_length;
-                } else {
-                    poll.extra_data = [];
-                    poll.extra_data_length = 0;
-                    poll.MBAP_length = 6;
-                }
-                // the packet struct starts at an even address.
-                poll_index += poll.MBAP_length + 6 + poll.MBAP_length % 2;
+            if (poll.extra_code?.value === 'FB') {
+                const DB_list = poll.send_DB === poll.recv_DB ? [poll.send_DB] : [poll.send_DB, poll.recv_DB];
+                const extra_code = DB_list.flatMap(DB => {
+                    if (DB.type_name !== 'FB') return [];
+                    if (DBs.has(DB)) {
+                        elog(new SyntaxError(`DB "${DB.type}"."${DB.name}" is called repeatedly! 重复调用！`));
+                    }
+                    DBs.add(DB);
+                    const comment = DB.comment ? ` // ${DB.comment}` : '';
+                    return `"${DB.type}"."${DB.name}"();${comment}`;
+                }).join('\n');
+                poll.extra_code = extra_code === '' ? null : new STRING(extra_code);
             }
-            if (poll.extra_code) {
-                poll.recv_DB.invoke = false;
-            } else {
-                // Use ??= to ensure that the shared block only respects the first setting
-                poll.recv_DB.invoke ??= poll.recv_DB.type_name === 'FB';
+            // When there is an external send block then skip the following
+            if (poll.extra_send_DB) continue;
+
+            poll.send_start = new PINT(poll_index);
+            poll.MBAP_protocol = 0;
+            let length = 6;
+            if (poll.extra_data_length) {
+                length += 1 + poll.extra_data_length.value;
             }
-            DBs.add(poll.recv_DB);
+            poll.MBAP_length = new PINT(length);
+            // the packet struct starts at an even address.
+            poll_index += 6 + length + length % 2;
         }
     }
-    options.invoke_code = [...DBs].flatMap(DB => {
-        const comment = DB.comment ? ` // ${DB.comment}` : '';
-        return DB.invoke ? `"${DB.type}"."${DB.name}"();${comment}` : [];
-    }).join('\n');
 }
 
 export function gen({ document, options }) {
     const output_dir = context.work_path;
-    const { output_file = `${LOOP_NAME}.scl`, invoke_code } = options;
+    const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
-    const tags = { NAME, LOOP_NAME, invoke_code, POLLS_NAME };
+    const tags = { NAME, LOOP_NAME, POLLS_NAME };
     const template = 'MT.template';
     return [{ distance, output_dir, tags, template }];
 }
