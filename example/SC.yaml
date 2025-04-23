@@ -72,11 +72,6 @@ list : # CP 模块列表
   # 类型: S7符号定义 | S7符号引用
   DB: [CP_01, DB881]
 
-  # 值： BOOL
-  # 类型: S7符号定义 | S7符号引用 | SCL表达式
-  # 指示由外部触发通信，省略时将自动使用顺序发送
-  customREQ: Clock_1Hz
-
   polls:
   - comment: '液位'                   # 值: 字符串
     # 值: 字符串 必须是一个由空格分隔的16进制字节的字符串
@@ -89,8 +84,9 @@ list : # CP 模块列表
     recv_DB: [tankLitre, DB20, A101L]
     # 值: 正整数
     recv_start: 0
+    extra_code: FB
 
-- comment: CP02 Module752 河口来油流量与天然气流量
+- comment: CP02 Module752
   name: polls_flow
   # module 和 module_addr 必须填写一个，用于指明使用哪一个CP模块硬件
   # 值: 正整数
@@ -100,7 +96,7 @@ list : # CP 模块列表
   DB: [CP_02, DB882]
 
   polls:
-  - comment: 河口1#流量计 30
+  - comment: 流量计30
 
     # 没有 send_DB 和 send_data 配置项时， 由以下配置项定义 modbusRTU 发送数据
     # unit_ID func_code address data|length 配置项为十进制整数
@@ -110,8 +106,8 @@ list : # CP 模块列表
     # 但在生成的SCL中只有 data 这一字段
     # 采用2个配置名称是为了功能码的读写语义，建议为了配置的可阅读性
     # 01 02 03 04 功能用 length，05 06 功能用 data
-    unit_ID: 0x1e                    # 16进制数用字符串形式 等同于 30
-    func_code: 0x4                      # 16进制数用字符串形式 等同于 4
+    unit_ID: 0x1e                      # 16进制数用字符串形式 等同于 30
+    func_code: 0x4                     # 16进制数用字符串形式 等同于 4
     address: 12                        # 10进制数用整数形式 等同于 'c'
     length: 0x1c                       # 16进制数用字符串形式 等同于 28
 
@@ -119,18 +115,22 @@ list : # CP 模块列表
     recv_DB: Flow30
     recv_start: 0
 
-  - comment: 天然气3#流量计             # 非modbus发送，不要有unit_ID属性，直接在send_data属性上写16进制发送数据
-    # 可以通过设置 uninvoke 为 true，让转换程序不再自动调用FB，
-    # 这样方便自定义函数处理发送与接收数据，参见下方loop_end处
+    extra_code: FB                    # 将自动产生 `JS_flow.Flow30();`
+
+  - comment: 天然气3#流量计            # 非modbus发送，不要有unit_ID属性，直接在send_data属性上写16进制发送数据
     # 自定义函数可通过 SC_polls_DB.poll_{序号}_data.{数据符号} 来处理发送数据
     # 比如本poll的发送数据SCL符号地址为：
     #   `"SC_polls_DB".polls_HK[2].sendLength` 发送长度
     #   `"SC_polls_DB".poll_2_data.send_data` (ARRAY OF BYTE)
     # 如果 send_data 要动态变化，send_data要填充0满足最大长度
-    uninvoke: true                     # 取消自动调用，参看下方 loop_end 处的手动调用
-    send_data: 03 03 00 00 18 8E 5D    # send_data 必须是一个由空格分隔的16进制字节的字符串
-    recv_DB: GAS                       # 接收块，引用GAS符号
-    recv_start: 20                     # 要注意开始地址不一样
+    send_data: 03 03 00 00 0C 8E 5D   # send_data 必须是一个由空格分隔的16进制字节的字符串
+    recv_DB: GAS                      # 接收块，引用GAS符号
+    recv_start: 20                    # 要注意开始地址不一样
+
+    # 值： BOOL
+    # 类型: S7符号定义 | S7符号引用 | SCL表达式
+    # 指示由外部触发通信，省略时将自动使用顺序发送
+    request: Clock_1Hz
 
   - comment: 天然气总表写参数 10#
     # 正常情况下，无论是不是modbus，发送的数据都是固定的。
@@ -141,6 +141,7 @@ list : # CP 模块列表
     send_length: 8
     recv_DB: cmd_ret
     recv_start: 0
+    extra_code: FB
 
 # 用户自写SCL代码，放在循环的开始和结束处。
 loop_begin: |-
