@@ -23,8 +23,7 @@ BEGIN
 {{  endif //over_time}}_
 END_DATA_BLOCK
 {{endif // motor.DB}}_
-{{endfor // motor}}_
-
+{{endfor // motor}}
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID

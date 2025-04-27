@@ -24,8 +24,7 @@ STRUCT
 END_STRUCT;
 BEGIN
 END_DATA_BLOCK
-{{endfor // DB}}_
-
+{{endfor // DB}}
 
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{if platform == 'portal'}}_

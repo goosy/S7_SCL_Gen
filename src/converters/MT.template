@@ -28,8 +28,7 @@ BEGIN
     interval_time := {{conn.$interval_time.DINT}};
 {{endif}}_
 END_DATA_BLOCK
-{{endfor}}_
-
+{{endfor}}
 // 轮询定义数据块 "{{POLLS_NAME}}"
 DATA_BLOCK "{{POLLS_NAME}}"
 TITLE = "轮询定义"
@@ -51,11 +50,11 @@ STRUCT
         wait_count     : INT ;          // 等待计时
     END_STRUCT ;
 {{endfor // conn}}_
-{{poll_index = 0}}_
+{{poll_index = stepper(0, 1)}}_
 {{for conn in list}}_
 {{  for poll in conn.polls}}_
 {{    if !poll.extra_send_DB}}_
-    p{{poll_index}}_data : STRUCT{{  poll_index+=1}}
+    p{{poll_index.value}}_data : STRUCT
         MBAP_seq : WORD ;               // 事务号 PLC自动填写
         MBAP_protocol : WORD ;          // 必须为0
         MBAP_length : WORD  := W#16#6;  // 长度，对读命令，通常为6
@@ -69,15 +68,16 @@ STRUCT
 {{      endif // extra_data}}_
     END_STRUCT;
 {{    endif // extra_send_DB}}_
+{{    poll_index.next()}}_
 {{  endfor // poll}}_
 {{endfor // conn}}_
 END_STRUCT ;
 BEGIN
-{{poll_index = 0}}_
-{{for conn in list}}_
-    // --- {{conn.comment}}
+{{poll_index = stepper(0, 1)}}_
+{{for conn_no, conn in list}}_
+    // conn{{conn_no}} --- {{conn.comment}}
 {{  for no, poll in conn.polls}}_
-    // {{poll.comment}}
+    // poll {{poll_index.value}}: {{poll.comment}}
 {{    if poll.enable != null}}_
     {{conn.name}}[{{no}}].enable := {{poll.enable.value ? 'TRUE' : 'FALSE'}};
 {{    endif}}_
@@ -92,20 +92,20 @@ BEGIN
     {{conn.name}}[{{no}}].recv_start := {{poll.recv_start}};
 {{    if !poll.extra_send_DB}}_
     // send data
-    p{{poll_index}}_data.MBAP_protocol := W#16#{{poll.MBAP_protocol}};
-    p{{poll_index}}_data.MBAP_length := W#16#{{poll.MBAP_length}};
-    p{{poll_index}}_data.unit_ID := B#16#{{poll.unit_ID}};
-    p{{poll_index}}_data.func_code := B#16#{{poll.func_code}};
-    p{{poll_index}}_data.address := W#16#{{poll.address}};
-    p{{poll_index}}_data.data := W#16#{{poll.data}};
+    p{{poll_index.value}}_data.MBAP_protocol := W#16#{{poll.MBAP_protocol}};
+    p{{poll_index.value}}_data.MBAP_length := W#16#{{poll.MBAP_length}};
+    p{{poll_index.value}}_data.unit_ID := B#16#{{poll.unit_ID}};
+    p{{poll_index.value}}_data.func_code := B#16#{{poll.func_code}};
+    p{{poll_index.value}}_data.address := W#16#{{poll.address}};
+    p{{poll_index.value}}_data.data := W#16#{{poll.data}};
 {{      if poll.extra_data_length}}_
-    p{{poll_index}}_data.extra_data_length := B#16#{{poll.extra_data_length.toString(16).padStart(2, '0')}};
+    p{{poll_index.value}}_data.extra_data_length := B#16#{{poll.extra_data_length.toString(16).padStart(2, '0')}};
 {{        for no, databyte in poll.extra_data}}_
-    p{{poll_index}}_data.extra_data[{{no}}] := B#16#{{databyte}};
+    p{{poll_index.value}}_data.extra_data[{{no}}] := B#16#{{databyte}};
 {{        endfor}}_
 {{      endif // extra_data}}_
-{{      poll_index+=1}}_
 {{    endif // extra_send_DB}}_
+{{    poll_index.next()}}_
 {{  endfor // poll}}
 {{endfor // conn}}_
 END_DATA_BLOCK

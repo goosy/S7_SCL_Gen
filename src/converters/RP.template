@@ -4,6 +4,7 @@
 {{if includes}}
 {{  includes}}
 {{endif}}_
+
 {{for RP in list}}
 // RP背景块: {{RP.comment}}
 DATA_BLOCK {{RP.DB.value}}
@@ -25,6 +26,8 @@ BEGIN
 END_DATA_BLOCK
 {{endfor // RP}}_
 
+{{}}
+// 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{if platform == 'portal'}}_
 { S7_Optimized_Access := 'TRUE' }
@@ -33,13 +36,14 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 BEGIN
 {{if loop_begin}}_
 {{  loop_begin}}
-
 {{endif}}_
-{{for RP in list}}_
+
+{{for RP in list}}
 {{if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{endif // platform}}_
 {{RP.DB.value}}(IN := {{RP.IN.value}}_
 {{if RP.PT != undefined}}, PT := {{RP.PT}}{{endif}}); // {{RP.comment}}
 {{endfor // RP}}_
+
 {{if loop_end}}
 {{  loop_end}}
 {{endif}}_

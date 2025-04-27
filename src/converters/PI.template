@@ -11,8 +11,7 @@ BEGIN
     MOD_ADR := {{module.module_no.wordHEX}}; // FM350-2模块地址
     CH_ADR := {{module.channel_no.dwordHEX}}; // 通道地址，即模块地址乘8
 END_DATA_BLOCK
-{{endfor // module}}_
-
+{{endfor // module}}
 // 主调用
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{if loop_begin}}_

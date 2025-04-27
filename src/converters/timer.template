@@ -4,6 +4,7 @@
 {{if includes}}
 {{  includes}}
 {{endif}}_
+
 {{if platform == 'portal'}}_
 {{for timer in list}}_
 {{if timer.DB}}
@@ -16,7 +17,7 @@ FAMILY : GooLib
 BEGIN
 END_DATA_BLOCK
 {{endif // timer.DB}}_
-{{endfor // timer}}_
+{{endfor // timer}}
 {{endif // portal}}_
 
 // 主循环调用
@@ -29,6 +30,7 @@ BEGIN
 {{if loop_begin}}_
 {{  loop_begin}}
 {{endif}}_
+
 {{for timer in list}}
 // {{timer.comment}}
 {{if platform != 'portal'}}"{{NAME}}".{{endif // platform}}_
@@ -41,6 +43,7 @@ BEGIN
 {{endif}}_
     PPS := {{timer.PPS.value}});
 {{endfor // timer}}_
+
 {{if loop_end}}
 {{  loop_end}}
 {{endif}}_

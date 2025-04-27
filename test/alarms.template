@@ -1,5 +1,5 @@
 NO,eventtag,location,event,PV1
 {{no = stepper()}}_
 {{for item in list}}_
-{{no.next()}},{{item.tagname}},{{item.location}},{{item.event}},{{item.PV1}}
+{{no.next()}}{{no.value}},{{item.tagname}},{{item.location}},{{item.event}},{{item.PV1}}
 {{endfor // list}}_

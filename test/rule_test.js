@@ -254,7 +254,7 @@ suite('rule test', () => {
             'NO,eventtag,location,event,PV1\n' +
             '{{no = stepper()}}_\n' +
             '{{for item in list}}_\n' +
-            '{{no.next()}},{{item.tagname}},{{item.location}},{{item.event}},{{item.PV1}}\n' +
+            '{{no.next()}}{{no.value}},{{item.tagname}},{{item.location}},{{item.event}},{{item.PV1}}\n' +
             '{{endfor // list}}_\n'
         );
         strictEqual(
