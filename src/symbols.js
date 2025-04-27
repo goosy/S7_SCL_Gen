@@ -448,18 +448,18 @@ export function add_symbol(document, symbol_raw) {
 
     const name = symbol.name;
     const ref = symbols.get(name);
-    if (symbols.is_buildin(name) && ref) {
-        // If the built-in symbol already exists, the new address will be used.
-        ref.address = symbol.address;
-    } else if (ref) {
+    if (ref) {
+        if (symbols.is_buildin(name)) {
+            // If the built-in symbol already exists, the new address will be used.
+            ref.address = symbol.address;
+            return ref;
+        }
         // Duplication of symbol names is not allowed
         throw_symbol_conflict(`符号"${name}"名称重复!`, symbol, symbols.get(name));
-    } else {
-        // The new symbol is saved
-        symbols.add(name, symbol);
     }
-
-    return ref ?? symbol;
+    // The new symbol is saved
+    symbols.add(name, symbol);
+    return symbol;
 }
 
 /**

@@ -119,9 +119,11 @@ export class GCL {
             return range[0] < start && end < range[2];
         })
         const pos_data = this.get_pos_data(start, end);
+        // the documents of builtin symbols don't have CPU property
+        // so must be use document.cpu_name directly
         return `
         位置: file:///${this.#file}:${pos_data.line}:${pos_data.col}${document ? `
-        文档: ${document.CPU.name}-${document.feature}` : ''}
+        文档: ${document.cpu_name}-${document.feature}` : ''}
         代码: \`${pos_data.code}\``;
     }
     #MD5;

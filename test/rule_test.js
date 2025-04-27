@@ -83,7 +83,7 @@ const template = await read_file('template.md');
 for (const { path, rules } of tasks) {
     process.chdir(posix.join(base_path, path));
     context.work_path = process.cwd().replace(/\\/g, '/');
-    list.push(await convert(rules));
+    list.push(await convert({ rules }));
 }
 
 suite('rule test', () => {

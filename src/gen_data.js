@@ -39,7 +39,7 @@ import { nullable_value, STRING, IntHashList } from "./s7data.js";
  * @property {string} desc - Error description
  */
 
-class CPU {
+export class CPU {
     /** @type {string} */
     name;                             // CPU name
     /** @type {string} */
@@ -104,7 +104,7 @@ class CPU {
  * @constructor
  * @extends {Map<string, CPU>}
  */
-class Cpu_Pool extends Map {
+export class Cpu_Pool extends Map {
     /**
      * Returns a CPU by name. If the CPU with that name does not exist, generate a new CPU.
      * @param {string} name
@@ -193,7 +193,7 @@ async function create_fake_CPU_doc(CPU) {
  * The life cycle is the first scan, and the main function is to extract symbols
  * @param {import('yaml').Document} document
  */
-async function parse_doc(document) {
+export async function parse_doc(document) {
     // feature
     const feature = supported_features.find(name => converter[name].is_feature(document.feature));
     if (!feature) {
@@ -315,31 +315,44 @@ async function parse_doc(document) {
     _converter.initialize_list(area);
 }
 
-async function parse_conf() {
+
+async function parse_conf({ yaml, filename = 'yaml_string' } = {}) {
     const docs = [];
     const cpu_list = [];
     const cpu_pool = new Cpu_Pool();
     const work_path = context.work_path;
     const silent = context.silent;
+    function initialize_gcl(gcl) {
+        const filename = gcl.file;
+        for (const doc of gcl.documents) {
+            const cpu = cpu_pool.get(doc.cpu_name);
+            Object.defineProperty(doc, 'CPU', {
+                value: cpu,
+                writable: false,
+                enumerable: true,
+                configurable: false,
+            });
+            // Ensure CPU priority
+            if (doc.feature === 'CPU') docs.unshift(doc);
+            else docs.push(doc);
+        }
+        silent || console.log(`\t${filename}`);
+    }
     try {
         silent || console.log('\nreadding GCL files: 读取配置文件：');
-        for (const file of await readdir(work_path)) {
-            if (/^.*\.ya?ml$/i.test(file)) {
-                const filename = posix.join(work_path, file);
-                const gcl = await GCL.load(filename);
-                for (const doc of gcl.documents) {
-                    const cpu = cpu_pool.get(doc.cpu_name);
-                    Object.defineProperty(doc, 'CPU', {
-                        value: cpu,
-                        writable: false,
-                        enumerable: true,
-                        configurable: false,
-                    });
-                    // Ensure CPU priority
-                    if (doc.feature === 'CPU') docs.unshift(doc);
-                    else docs.push(doc);
+        if (yaml) {
+            const gcl = new GCL(yaml, {
+                filename,
+                scoure: yaml,
+            });
+            initialize_gcl(gcl);
+        } else {
+            for (const file of await readdir(work_path)) {
+                if (/^.*\.ya?ml$/i.test(file)) {
+                    const filename = posix.join(work_path, file);
+                    const gcl = await GCL.load(filename);
+                    initialize_gcl(gcl);
                 }
-                silent || console.log(`\t${filename}`);
             }
         }
         for (const doc of docs) {
@@ -484,10 +497,10 @@ async function gen_list(cpu_list) {
     return [...copy_list, ...convert_list];
 }
 
-export async function gen_data() {
+export async function gen_data(options) {
     WRONGTYPESYMBOLS.clear();
     // The first scan loads configuration\extracts symbols\creates CPU and diagnostic information
-    const cpu_list = await parse_conf();
+    const cpu_list = await parse_conf(options);
 
     // The second scan completes the data
     for (const cpu of cpu_list) {

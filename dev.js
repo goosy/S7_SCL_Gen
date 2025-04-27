@@ -29,5 +29,5 @@ if (!no_convert) console.log("\nconverted all YAML to SCL!");
 
 const tasks = await get_rules('./alarms.rml');
 for (const { rules } of tasks) {
-    await convert(rules);
+    await convert({ rules });
 }

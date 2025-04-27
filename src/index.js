@@ -50,9 +50,10 @@ async function process(list) {
     return list;
 }
 
-async function convert(rules) {
+async function convert(options = {}) {
     context.silent || console.log(`current conversion folder 当前转换文件夹: ${context.work_path}`);
-    let list = await gen_data();
+    const { rules, ...opts } = options;
+    let list = await gen_data(opts);
     if (Array.isArray(rules) && rules.length) {
         list = await apply_rules(list, rules);
     }
