@@ -8,6 +8,7 @@ VAR_INPUT
   work_F {S7_m_c := 'true'} : BOOL ;  //设备正常指示 
   invalid {S7_m_c := 'true'} : BOOL ;  //设备无效指示 
   on_recevie {S7_m_c := 'true'} : BOOL ; //有新数据收到
+  pause {S7_m_c := 'true'} : BOOL; //设备暂停指示
   unit_ID {S7_m_c := 'true'} : BYTE ; //设备号
   func_no {S7_m_c := 'true'} : BYTE ;  //modbus功能号
   length {S7_m_c := 'true'} : BYTE ; //长度
