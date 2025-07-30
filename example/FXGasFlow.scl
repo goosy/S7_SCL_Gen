@@ -23,8 +23,8 @@ FAMILY:JSLib
 VAR_INPUT
   workOK {S7_m_c := 'true'} : BOOL ;
   invalid {S7_m_c := 'true'} : BOOL ;
-  on_receive {S7_m_c := 'true'} : BOOL ;
-  sending {S7_m_c := 'true'} : BOOL;   //正在向设备发送标识
+  on_receive : BOOL ;
+  pause {S7_m_c := 'true'} : BOOL;
   deviceID {S7_m_c := 'true'} : BYTE ; //设备号
   funcNo : BYTE ;  //modbus功能号
   len : BYTE ; //长度
@@ -63,7 +63,7 @@ VAR_INPUT
     workOK : BOOL;     //设备正常指示
     error : BOOL;      //设备错误指示
     on_receive : BOOL; //设备接收指示
-    sending : BOOL;    //正在向设备发送标识
+    pause : BOOL;      //设备暂停指示
     ID : BYTE;         //子站地址
     func : BYTE;       //modbus 功能号
     start : WORD;      //起始地址

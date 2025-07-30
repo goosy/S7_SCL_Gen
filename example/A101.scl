@@ -9,6 +9,7 @@ VAR_INPUT
     workOK {S7_m_c := 'true'} : BOOL ;
     invalid {S7_m_c := 'true'} : BOOL ;
     on_receive {S7_m_c := 'true'} : BOOL ;
+    pause {S7_m_c := 'true'} : BOOL;
     begin_flag : CHAR ; // 'A' 65
     raw_data : ARRAY[0..31] OF CHAR; //液位数据
     end_flag : WORD; // W#16#0D0A
