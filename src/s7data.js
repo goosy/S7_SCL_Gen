@@ -412,11 +412,11 @@ export function get_boundary(num, num_size) {
 }
 
 export class HLError extends Error {
-    num;
+    number;
     size;
     constructor(message, options) {
         super(message, options);
-        this.num = options?.num;
+        this.number = options?.number;
         this.size = options?.size;
     }
 }
@@ -437,7 +437,7 @@ export class HashList {
             return this.get_new();
         }
         if (!isPInt(num)) {
-            elog(new TypeError(`${num} Not a non-negative integer!`));
+            elog(new TypeError(`${num} Not a non-negative integer\n非负整数!`));
         }
         return num;
     }
@@ -449,7 +449,9 @@ export class HashList {
     push(num, size) {
         // Implement checking num by subclass
         // only positioning here
-        if (size != null && !isPInt(size)) elog(new TypeError(`${size} Not a non-negative integer!`));
+        if (size != null && !isPInt(size)) {
+            elog(new TypeError(`${size} Not a non-negative integer!`));
+        }
         this.#curr_index = num + size;
         this.#last_size = size;
     }
@@ -467,25 +469,20 @@ export class IntHashList extends HashList {
         } else {
             n = super.check(n);
             if (this.#list.includes(n)) {
-                elog(new HLError(`存在重复的地址 ${n}!`));
+                elog(new HLError(
+                    `exist duplicate address 存在重复的地址: ${n}!`,
+                    { number: n }
+                ));
             }
         }
         return n;
     }
 
     push(num) {
-        try {
-            const n = this.check(num);
-            super.push(n, 1);
-            this.#list.push(n);
-            return n;
-        } catch (e) {
-            if (e instanceof TypeError) {
-                elog(new TypeError(e.message, { cause: num }));
-            } else if (e instanceof HLError) {
-                elog(new HLError(e.message, { num }));
-            }
-        }
+        const n = this.check(num);
+        super.push(n, 1);
+        this.#list.push(n);
+        return n;
     }
 }
 
@@ -495,23 +492,26 @@ export class S7HashList extends HashList {
         super(foct2dec(...s7addr2foct(next)));
     }
 
-    check(num, nsize) {
-        let n = num;
-        if (n == null) {
+    check(num, size) {
+        let number = num;
+        if (number == null) {
             do {
-                n = super.check(null);
-                n = get_boundary(n, nsize);
-            } while (this.#list[`${n}:${nsize}`]);
+                number = super.check(null);
+                number = get_boundary(number, size);
+            } while (this.#list[`${number}:${size}`]);
         } else {
-            if (!isPInt(n) || n !== get_boundary(n, nsize)) {
-                elog(new HLError(`${dec2foct(n).join('.')}不是正确的地址!`));
+            if (!isPInt(number) || number !== get_boundary(number, size)) {
+                elog(new TypeError(`${dec2foct(number).join('.')}isn't a valid address.不是正确的地址!`));
             }
-            n = super.check(n);// check if it's a PInt
-            if (this.#list[`${n}:${nsize}`]) { // cannot be repeated
-                elog(new HLError(`存在重复的 ${dec2foct(n).join('.')} (size:${nsize})!`));
+            number = super.check(number);
+            if (this.#list[`${number}:${size}`]) { // cannot be repeated
+                elog(new HLError(
+                    `存在重复的 ${dec2foct(number).join('.')} (size:${size})!`,
+                    { number, size }
+                ));
             }
         }
-        return n;
+        return number;
     }
 
     push(s7addr, size = 1) {
@@ -525,7 +525,8 @@ export class S7HashList extends HashList {
             super.push(n, nsize);
         } catch (e) {
             if (e instanceof HLError) {
-                elog(new HLError(e.message, { num: s7addr, size }));
+                e.number = s7addr;
+                elog(e);
             }
             elog(new TypeError(e.message, { cause: s7addr }));
         }

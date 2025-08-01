@@ -306,7 +306,8 @@ class S7Symbol {
 }
 
 export class S7SymbolEmitter extends EventEmitter {
-    #dict = {};
+    #dict = {}; // Dictionary by name
+    #dict_by_address = {}; // Dictionary by address
 
     OB_list = new IntHashList(100);     // List of used OBs
     DB_list = new IntHashList(100);     // List of used DBs
@@ -365,46 +366,58 @@ export class S7SymbolEmitter extends EventEmitter {
      * and checking for duplicate addresses.
      */
     build_symbols() {
-        const exist_bno = {};
+        // build symbol.block_no and symbol.address
         // Check for duplicates and index
         for (const symbol of this.list) {
             const name = symbol.name;
+            let decimal_places = 0;
             try {
                 if (INTEGER_PREFIX.includes(symbol.block_name)) { // Automatically assign OB DB FB FC SFB SFC UDT block numbers
-                    symbol.block_no = this[`${symbol.block_name}_list`].push(symbol.block_no);
-                    symbol.address = symbol.block_name + symbol.block_no;
+                    const area_list = this[`${symbol.block_name}_list`];
+                    // The push method may throw an exception, 
+                    // so assign symbol.address temporarily first.
+                    symbol.address = symbol.block_name + (symbol.block_no?.toFixed(0) ?? '+');
+                    const block_no = area_list.push(symbol.block_no);
+                    if (block_no !== symbol.block_no) {
+                        symbol.block_no = block_no;
+                        symbol.address = symbol.block_name + block_no;
+                    }
                 } else if (S7MEM_PREFIX.includes(symbol.block_name)) {
                     // list is one of PIA_list, PQA_list, MA_list, IA_list, QA_list
                     const prefix = ['PI', 'PQ', 'M', 'I', 'Q'].find(prefix => symbol.block_name.startsWith(prefix));
                     const area_list = this[`${prefix}A_list`];
+                    if (symbol.type === 'BOOL') decimal_places = 1;
                     const s7addr = symbol.block_no == null
                         ? null // Area automatically assigns addresses
                         : foct2S7addr(symbol.block_no, symbol.block_bit);
                     const size = area_size[symbol.block_name];
+                    // The push method may throw an exception, 
+                    // so assign symbol.address temporarily first.
+                    symbol.address = symbol.block_name + (s7addr?.toFixed(decimal_places) ?? '+');
                     const final_s7addr = area_list.push(s7addr, size);
-                    const decimal_places = symbol.type === 'BOOL' ? 1 : 0;
-                    symbol.address = symbol.block_name + final_s7addr.toFixed(decimal_places);
-                    if (s7addr == null) {
+                    if (s7addr !== final_s7addr) {
+                        symbol.address = symbol.block_name + final_s7addr.toFixed(decimal_places);
                         const [block_no, block_bit] = s7addr2foct(final_s7addr);
                         symbol.block_no = block_no;
                         symbol.block_bit = block_bit;
                     }
-                } else if (exist_bno[symbol.address]) { // Check for duplication in other cases
+                } else if (this.#dict_by_address[symbol.address]) { // Check for duplication in other cases
                     elog(new RangeError(`重复地址 Duplicate address ${name} ${symbol.address}!`));
-                } else { // If it is not repeated, it indicates that the address already exists.
-                    exist_bno[symbol.address] = true;
                 }
+                // If it is not repeated, it indicates that the address already exists.
+                this.#dict_by_address[symbol.address] = symbol;
             } catch (e) {
-                if (e instanceof TypeError) {
-                    elog(new TypeError(e.message, { cause: e }));
-                } else if (e instanceof HLError || e instanceof RangeError) {
+                if (e instanceof HLError || e instanceof RangeError) {
                     throw_symbol_conflict(
-                        `符号地址错误 Symbol address error: ${e.message}`,
+                        `符号地址错误 Symbol address error:\n\t${e.message}`,
                         symbol,
-                        this.list.find(sym => symbol !== sym && sym.address === symbol.address)
+                        this.#dict_by_address[symbol.address],
                     );
+                } else if (e instanceof TypeError) {
+                    elog(new TypeError(e.message, { cause: e }));
+                } else {
+                    elog(e);
                 }
-                console.log(e.message);
             }
             // Completion type
             symbol.complete_type();

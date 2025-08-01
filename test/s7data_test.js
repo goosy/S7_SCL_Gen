@@ -59,7 +59,7 @@ suite('S7Data 测试', () => {
         }, TypeError);
         throws(() => {
             a.check(38, 16); // 4.6 2.0
-        }, HLError);
+        }, TypeError);
         throws(() => {
             a.push(200.0, 1.0);
         }, HLError);
