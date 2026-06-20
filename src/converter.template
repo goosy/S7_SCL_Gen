@@ -37,13 +37,13 @@ import * as {{feature}} from './converters/converter_{{feature}}.js';
 
 const supported_features = [
 {{for feature in features}}_
-    '{{feature}}',
+  '{{feature}}',
 {{endfor}}_
 ];
 
 const converter = {
 {{for feature in features}}_
-    {{feature}},
+  {{feature}},
 {{endfor}}_
 }
 

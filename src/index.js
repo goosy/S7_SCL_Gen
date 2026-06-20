@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import { convert as gc } from 'gooconverter';
+import { convert as gc } from 'gooplate';
 import { converter, supported_features } from './converter.js';
 import { gen_data } from './gen_data.js';
 import { apply_rules } from './rules/index.js';

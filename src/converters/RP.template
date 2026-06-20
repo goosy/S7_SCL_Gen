@@ -2,31 +2,31 @@
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{if includes}}
-{{  includes}}
+  {{_includes}}
 {{endif}}_
 
 {{for RP in list}}
 // RP背景块: {{RP.comment}}
 DATA_BLOCK {{RP.DB.value}}
-{{if platform == 'portal'}}_
+  {{_if platform == 'portal'}}_
 { S7_Optimized_Access := 'FALSE' }
-{{else}}_
+  {{_else}}_
 { S7_m_c := 'true' }
-{{endif // portal}}_
+  {{_endif // portal}}_
 AUTHOR:Goosy
 FAMILY:GooLib
 "{{RP.FB}}"
 BEGIN
-{{if RP.$PT != undefined}}_
+  {{_if RP.$PT != undefined}}_
     PT := {{RP.$PT}}; // 脉冲时长
-{{endif // RP.$PT}}_
-{{if RP.IncludeFallingEdge != undefined}}_
+  {{_endif // RP.$PT}}_
+  {{_if RP.IncludeFallingEdge != undefined}}_
     IncludeFallingEdge := {{RP.IncludeFallingEdge}}; // 是否包含下降沿
-{{endif // RP.IncludeFallingEdge}}_
+  {{_endif // RP.IncludeFallingEdge}}_
 END_DATA_BLOCK
-{{endfor // RP}}_
+{{endfor // RP}}
+{{}}_
 
-{{}}
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{if platform == 'portal'}}_
@@ -35,16 +35,16 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 // 主循环
 BEGIN
 {{if loop_begin}}_
-{{  loop_begin}}
+  {{_loop_begin}}
 {{endif}}_
 
 {{for RP in list}}
-{{if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{endif // platform}}_
+  {{_if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{endif // platform}}_
 {{RP.DB.value}}(IN := {{RP.IN.value}}_
-{{if RP.PT != undefined}}, PT := {{RP.PT}}{{endif}}); // {{RP.comment}}
+  {{_if RP.PT != undefined}}, PT := {{RP.PT}}{{endif}}); // {{RP.comment}}
 {{endfor // RP}}_
 
 {{if loop_end}}
-{{  loop_end}}
+  {{_loop_end}}
 {{endif}}_
 END_FUNCTION

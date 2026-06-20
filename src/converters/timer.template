@@ -2,12 +2,13 @@
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{if includes}}
-{{  includes}}
+  {{_includes}}
 {{endif}}_
 
-{{if platform == 'portal'}}_
-{{for timer in list}}_
-{{if timer.DB}}
+{{if platform == 'portal'  // 博途平台}}_
+
+  {{_for timer in list}}_
+    {{_if timer.DB}}
 // timer背景块: {{timer.comment}}
 DATA_BLOCK {{timer.DB.value}}
 { S7_Optimized_Access := 'FALSE' }
@@ -16,35 +17,35 @@ FAMILY : GooLib
 "{{NAME}}"
 BEGIN
 END_DATA_BLOCK
-{{endif // timer.DB}}_
-{{endfor // timer}}
+    {{_endif // timer.DB}}_
+  {{_endfor // timer}}
 {{endif // portal}}_
 
 // 主循环调用
 FUNCTION "{{LOOP_NAME}}" : VOID
-{{if platform == 'portal'}}_
+{{if platform == 'portal'  // 博途平台}}_
 { S7_Optimized_Access := 'TRUE' }
 {{endif // portal}}_
 // 计时主循环
 BEGIN
 {{if loop_begin}}_
-{{  loop_begin}}
+  {{_loop_begin}}
 {{endif}}_
 
 {{for timer in list}}
 // {{timer.comment}}
-{{if platform != 'portal'}}"{{NAME}}".{{endif // platform}}_
-{{timer.DB.value}}(
-{{if timer.enable}}_
+  {{_if platform != 'portal'}}"{{NAME}}".{{endif // platform}}_
+  {{_timer.DB.value}}(
+  {{_if timer.enable}}_
     enable := {{timer.enable.value}},
-{{endif}}_
-{{if timer.reset}}_
+  {{_endif}}_
+  {{_if timer.reset}}_
     reset := {{timer.reset.value}},
-{{endif}}_
+  {{_endif}}_
     PPS := {{timer.PPS.value}});
 {{endfor // timer}}_
 
 {{if loop_end}}
-{{  loop_end}}
+  {{_loop_end}}
 {{endif}}_
 END_FUNCTION
