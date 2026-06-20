@@ -2,15 +2,15 @@
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{if includes}}
-{{  includes}}
+  {{_includes}}
 {{endif}}_
 {{for alarm in list}}_
-{{if alarm.DB}}
+  {{_if alarm.DB}}
 // Alarm_Proc 背景块：{{alarm.comment}}
 DATA_BLOCK {{alarm.DB.value}}
-{{if platform == 'portal'}}_
+    {{_if platform == 'portal'}}_
 { S7_Optimized_Access := 'FALSE' }
-{{endif // portal}}_
+    {{_endif // portal}}_
 AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
@@ -19,32 +19,32 @@ BEGIN
     enable_WH := {{alarm.$enable_WH}};
     enable_WL := {{alarm.$enable_WL}};
     enable_AL := {{alarm.$enable_AL}};
-{{if alarm.$zero !== undefined}}_
+    {{_if alarm.$zero !== undefined}}_
     zero := {{alarm.$zero}};
-{{endif}}_
-{{if alarm.$span !== undefined}}_
+    {{_endif}}_
+    {{_if alarm.$span !== undefined}}_
     span := {{alarm.$span}};
-{{endif}}_
-{{if alarm.$AH_limit != null}}_
+    {{_endif}}_
+    {{_if alarm.$AH_limit != null}}_
     AH_limit := {{alarm.$AH_limit}};
-{{endif}}_
-{{if alarm.$WH_limit != null}}_
+    {{_endif}}_
+    {{_if alarm.$WH_limit != null}}_
     WH_limit := {{alarm.$WH_limit}};
-{{endif}}_
-{{if alarm.$WL_limit != null}}_
+    {{_endif}}_
+    {{_if alarm.$WL_limit != null}}_
     WL_limit := {{alarm.$WL_limit}};
-{{endif}}_
-{{if alarm.$AL_limit != null}}_
+    {{_endif}}_
+    {{_if alarm.$AL_limit != null}}_
     AL_limit := {{alarm.$AL_limit}};
-{{endif}}_
-{{if alarm.$dead_zone != null}}_
+    {{_endif}}_
+    {{_if alarm.$dead_zone != null}}_
     dead_zone := {{alarm.$dead_zone}};
-{{endif}}_
-{{if alarm.$FT_time != null}}_
+    {{_endif}}_
+    {{_if alarm.$FT_time != null}}_
     FT_time := {{alarm.$FT_time.DINT}};
-{{endif}}_
+    {{_endif}}_
 END_DATA_BLOCK
-{{endif // alarm.DB}}_
+  {{_endif // alarm.DB}}_
 {{endfor // alarm}}
 
 // 主循环调用
@@ -55,18 +55,18 @@ VERSION : 0.1
 {{endif // platform}}_
 BEGIN
 {{if loop_begin}}_
-{{  loop_begin}}
-
+  {{_loop_begin}}
+  {{_// 空行}}
 {{endif}}_
 {{for alarm in list}}_
-{{if alarm.DB}}_
-{{  if platform == 'step7' || platform == 'pcs7'}}_
+  {{_if alarm.DB}}_
+    {{_if platform == 'step7' || platform == 'pcs7'}}_
 "{{NAME}}".{{// 非博途平台必须有FB块名}}_
-{{  endif // platform}}_
-{{  alarm.DB.value}}({{alarm.input_paras}}); {{}}_
-{{endif // alarm.DB}}// {{alarm.comment}}
+    {{_endif // platform}}_
+{{alarm.DB.value}}({{alarm.input_paras}}); {{}}_
+  {{_endif // alarm.DB}}// {{alarm.comment}}
 {{endfor // alarm}}_
 {{if loop_end}}
-{{  loop_end}}
+  {{_loop_end}}
 {{endif}}_
 END_FUNCTION

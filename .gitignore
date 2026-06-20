@@ -59,13 +59,15 @@ typings/
 
 # package
 .npm
-package-lock.json
 .yarn-integrity
-yarn.lock
 .yarn/
 .yarnrc.yml
 .pnp*js
+package-lock.json
+yarn.lock
 pnpm-lock.yaml
+pnpm.lock
+pnpm-workspace.yaml
 
 # production
 src/converter.js

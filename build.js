@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
 import { posix } from 'node:path';
-import { convert } from 'gooconverter';
+import { convert } from 'gooplate';
 import { rolldown } from 'rolldown';
 import pkg from './package.json' with { type: 'json' };
 import { context, read_file, write_file, pad_right } from './src/util.js';

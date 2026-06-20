@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { posix } from 'node:path';
-import { convert } from 'gooconverter';
+import { convert } from 'gooplate';
 import { add_symbols, make_s7_expression } from '../symbols.js';
 import { STRING, nullable_value } from '../s7data.js';
 import { context, elog } from '../util.js';
