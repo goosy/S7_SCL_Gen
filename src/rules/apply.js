@@ -1,6 +1,6 @@
 import { ok } from "node:assert/strict";
 import { posix, resolve } from 'node:path';
-import { convert } from 'gooconverter';
+import { convert } from 'gooplate';
 import { get_template, is_plain_object, multi_sort } from '../util.js';
 import { match_all } from './match.js';
 

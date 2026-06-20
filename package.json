@@ -21,7 +21,7 @@
     },
     "devDependencies": {
         "globby": "^13.2.2",
-        "gooconverter": "^1.1.0",
+        "gooplate": "^1.0.0",
         "matcher": "^5.0.0",
         "mri": "^1.2.0",
         "rimraf": "^6.1.3",

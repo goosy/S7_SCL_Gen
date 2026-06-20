@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readdir } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { globby } from 'globby';
-import { convert } from 'gooconverter';
+import { convert } from 'gooplate';
 import { isMap } from 'yaml';
 import { supported_features, converter, templates } from './converter.js';
 import { GCL, get_Seq, isString } from './gcl.js';

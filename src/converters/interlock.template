@@ -2,25 +2,25 @@
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{if includes}}
-{{  includes}}
+  {{_includes}}
 {{endif}}_
 {{for DB in list}}
 // {{DB.comment}}
 DATA_BLOCK "{{DB.name}}"
-{{if platform == 'portal'}}_
+  {{_if platform == 'portal'}}_
 { S7_Optimized_Access := 'FALSE' }
-{{else}}_
+  {{_else}}_
 { S7_m_c := 'true' }
-{{endif // portal}}_
+  {{_endif // portal}}_
 AUTHOR:Goosy
 FAMILY:GooLib
 STRUCT
-{{for field in DB.declarations}}_
+  {{_for field in DB.declarations}}_
     {{field.declaration}} // {{field.comment}}
-{{endfor // field}}_
-{{for edge in DB.edges}}_
+  {{_endfor // field}}_
+  {{_for edge in DB.edges}}_
     {{edge.edge_field}} : BOOL ; // 用于检测{{edge.name}}上升沿的追随变量
-{{endfor // edge}}_
+  {{_endfor // edge}}_
 END_STRUCT;
 BEGIN
 END_DATA_BLOCK
@@ -37,78 +37,79 @@ VAR_TEMP
 END_VAR
 BEGIN
 {{if loop_begin}}_
-{{  loop_begin}}
+  {{_loop_begin}}
 {{endif}}_
 {{for DB in list}}
 // DB "{{DB.name}}" 读入
-{{for assign in DB.read_list}}_
-{{  assign.assign_read}}
-{{endfor // assign}}_
-{{for interlock in DB.interlocks}}_
+  {{_for assign in DB.read_list}}_
+    {{_assign.assign_read}}
+  {{_endfor // assign}}_
+  {{_for interlock in DB.interlocks}}_
 // {{interlock.comment}}
-{{if interlock.reset_list.length}}_
+    {{_if interlock.reset_list.length}}_
 reset := {{}}_
-{{  for no, reset in interlock.reset_list}}_
-{{    if no}}
-         OR {{endif //no}}{{reset.value.value}}_
-{{  endfor // reset}};
-{{endif // reset}}_
+      {{_for no, reset in interlock.reset_list}}_
+        {{_if no}}
+         OR {{}}_
+        {{_endif //no}}{{reset.value.value}}_
+      {{_endfor // reset}};
+    {{_endif // reset}}_
 IF NOT "{{DB.name}}".enable THEN
     // 联锁输出默认值
-{{for output in interlock.output_list}}_
+    {{_for output in interlock.output_list}}_
     {{output.value.value}} := {{output.defaultvalue}};
-{{endfor // output}}_
-{{if interlock.reset_list.length}}_
+    {{_endfor // output}}_
+    {{_if interlock.reset_list.length}}_
 ELSIF reset THEN
     // 复位联锁输出
-{{  for output in interlock.output_list}}_
+      {{_for output in interlock.output_list}}_
     {{output.value.value}} := {{output.resetvalue}};
-{{  endfor // output}}_
-{{endif // reset}}_
+      {{_endfor // output}}_
+    {{_endif // reset}}_
 ELSE
     output := {{}}_
-{{for no, input in interlock.input_list}}_
-{{  if no}}
+    {{_for no, input in interlock.input_list}}_
+      {{_if no}}
               OR {{}}_
-{{  endif //no}}_
-{{input.trigger}}_
-{{endfor //input}};
+      {{_endif //no}}_
+        {{_input.trigger}}_
+    {{_endfor //input}};
     IF output THEN
         // 置位联锁输出
-{{for output in interlock.output_list}}_
+    {{_for output in interlock.output_list}}_
         {{output.value.value}} := {{output.setvalue}};
-{{endfor // output}}_
+    {{_endfor // output}}_
     END_IF;
-{{for output in interlock.output_list}}_
-{{reset = output.reset}}_
-{{  if output.reset}}_
+    {{_for output in interlock.output_list}}_
+      {{_reset = output.reset}}_
+      {{_if output.reset}}_
     IF {{output.reset.value.value}} THEN
         {{output.value.value}} := {{output.resetvalue}};
     END_IF;
-{{  endif // output.reset}}_
-{{endfor // output}}_
+      {{_endif // output.reset}}_
+    {{_endfor // output}}_
 END_IF;
 // 输入边沿维护
-{{for no, input in interlock.input_list}}_
-{{  if input.edge_field}}_
+    {{_for no, input in interlock.input_list}}_
+      {{_if input.edge_field}}_
 "{{DB.name}}".{{input.edge_field}} := {{input.value.value}};
-{{  endif}}_
-{{endfor //input}}_
-{{if interlock.extra_code}}_
+      {{_endif}}_
+    {{_endfor //input}}_
+    {{_if interlock.extra_code}}_
 // 附加输出
-{{interlock.extra_code}}
-{{endif // extra_code}}_
-{{endfor // interlock}}_
+      {{_interlock.extra_code}}
+    {{_endif // extra_code}}_
+  {{_endfor // interlock}}_
 // reset 项复位
-{{for field in DB.declarations}}_
-{{  if field.resettable}}_
-{{    field.expression}} := FALSE;
-{{  endif}}_
-{{endfor // field}}_
+  {{_for field in DB.declarations}}_
+    {{_if field.resettable}}_
+      {{_field.expression}} := FALSE;
+    {{_endif}}_
+  {{_endfor // field}}_
 // DB "{{DB.name}}" 写出
-{{for assign in DB.write_list}}_
-{{  assign.assign_write}}
-{{endfor // assign}}_
+  {{_for assign in DB.write_list}}_
+    {{_assign.assign_write}}
+  {{_endfor // assign}}_
 {{endfor // DB}}_
 {{if loop_end}}
 {{  loop_end}}

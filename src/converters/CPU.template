@@ -2,24 +2,24 @@
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{if includes}}
-{{  includes}}
+  {{_includes}}
 {{endif}}_
 {{for FN in list}}_
-{{if FN.block.block_name === 'OB'}}
+  {{_if FN.block.block_name === 'OB'}}
 ORGANIZATION_BLOCK "{{FN.block.name}}"
-{{if FN.title}}_
+    {{_if FN.title}}_
 TITLE = "{{FN.title}}"
-{{endif // +title}}_
-{{if platform == 'portal'}}_
+    {{_endif // +title}}_
+    {{_if platform == 'portal'}}_
 { S7_Optimized_Access := 'TRUE' }
-{{endif // portal}}_
+    {{_endif // portal}}_
 BEGIN
-{{FN.code}}
+    {{_FN.code}}
 END_ORGANIZATION_BLOCK
-{{else}}
+  {{_else}}
 FUNCTION "{{FN.block.name}}" : VOID
 BEGIN
-{{FN.code}}
+    {{_FN.code}}
 END_FUNCTION
-{{endif // block_name}}_
+  {{_endif // block_name}}_
 {{endfor // FN}}

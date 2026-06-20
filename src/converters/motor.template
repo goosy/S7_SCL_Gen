@@ -2,27 +2,27 @@
 // 配置文件: {{gcl.file}}
 // 摘要: {{gcl.MD5}}
 {{if includes}}
-{{includes}}
+  {{_includes}}
 {{endif}}_
 {{for motor in list}}_
-{{if motor.DB}}
+  {{_if motor.DB}}
 // motor背景块: {{motor.comment}}
 DATA_BLOCK {{motor.DB.value}}
-{{if platform == 'portal'}}_
+    {{_if platform == 'portal'}}_
 { S7_Optimized_Access := 'FALSE' }
-{{endif // portal}}_
+    {{_endif // portal}}_
 AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-{{  if motor.$stateless != null}}_
+    {{_if motor.$stateless != null}}_
     stateless := {{motor.$stateless}};
-{{  endif //$stateless}}_
-{{  if motor.$over_time != null}}_
+    {{_endif //$stateless}}_
+    {{_if motor.$over_time != null}}_
     over_time := {{motor.$over_time.DINT}};
-{{  endif //over_time}}_
+    {{_endif //over_time}}_
 END_DATA_BLOCK
-{{endif // motor.DB}}_
+  {{_endif // motor.DB}}_
 {{endfor // motor}}
 
 // 主循环调用
@@ -31,47 +31,47 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
 {{endif // platform}}_
+
 BEGIN
 {{if loop_begin}}_
-{{  loop_begin}}
-
-{{endif}}_
-{{for motor in list}}_
-{{len = motor.paras_len}}_
+  {{_loop_begin}}
+  {{_// 空行}}
+{{endif // loop_begin}}_
+{{for motor in list}}{{len = motor.paras_len}}_
 // {{motor.comment}}
-{{if motor.DB}}_
-{{if platform == 'step7'}}_
+  {{_if motor.DB}}_
+    {{_if platform == 'step7'}}_
 "{{NAME}}".{{}}_
-{{endif // platform}}_
-{{motor.DB.value}}({{
+    {{_endif // platform}}_
+{{motor.DB.value}}{{"("}}_
 
-if platform == 'portal' // 博途平台
+    {{_if platform == 'portal' // 博途平台}}_
 
-}}{{for no,para in motor.paras}}_
-{{    if len > 1}}
-    {{// 增加换行}}_
-{{    endif // len}}_
-{{    para}}_
-{{  endfor // para}});
-{{
+      {{_for no,para in motor.paras}}_
+        {{_if len > 1 // 增加换行与缩进}}
+          {{_"    "}}_
+        {{_endif // len}}_
+        {{_para}}_
+      {{_endfor // para}});
+      {{_ }}_
 
-else // other platform // 非博途平台
+    {{_else // other platform // 非博途平台}}_
 
-}}{{for no,para in motor.input_paras}}_
-{{    if len > 1}}
-    {{// 增加换行}}_
-{{    endif // len}}_
-{{  para}}_
-{{  endfor // no,para}});
-{{  for para in motor.output_paras}}_
-{{    para}}
-{{  endfor // para}}{{
+      {{_for no,para in motor.input_paras}}_
+        {{_if len > 1 // 增加换行与缩进}}
+          {{_"    "}}_
+        {{_endif // len}}_
+        {{_para}}_
+      {{_endfor // no,para}});
+      {{_for para in motor.output_paras}}_
+        {{_para}}
+      {{_endfor // para}}_
 
-endif // 平台判断结束
+    {{_endif // 平台判断结束}}_
 
-}}{{endif // motor.DB}}
+  {{_endif // motor.DB}}
 {{endfor // motor}}_
 {{if loop_end}}_
-{{  loop_end}}
+  {{_loop_end}}
 {{endif}}_
 END_FUNCTION

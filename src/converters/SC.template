@@ -97,23 +97,23 @@ BEGIN{{poll_index = stepper(0, 1)}}_
             {{_endif // send type}}_
         {{_endif // extra_send_DB ---- 发送数据结束}}_
         {{_poll_index.next()}}_
-{{endfor // poll}}_
+    {{_endfor // poll}}_
 {{endfor // module}}_
 END_DATA_BLOCK
 
 // 主调用
 FUNCTION "{{LOOP_NAME}}" : VOID
 {{if loop_begin}}_
-{{  loop_begin}}
+    {{_loop_begin}}
 {{endif}}_
 
 {{for no, module in list}}
 // {{no+1}}. {{module.model}} {{module.comment}}
-"{{if module.model == 'CP341'}}_
-{{CP341_NAME}}_
-{{else}}_
-{{CP340_NAME}}_
-{{endif}}".{{module.DB.value}}(
+"   {{_if module.model == 'CP341'}}_
+        {{_CP341_NAME}}_
+    {{_else}}_
+        {{_CP340_NAME}}_
+    {{_endif}}".{{module.DB.value}}(
     {{_if module.try_times != undefined}}_
     try_times := {{module.try_times.value}},
     {{_endif}}_
@@ -130,6 +130,6 @@ FUNCTION "{{LOOP_NAME}}" : VOID
 {{endfor // module}}_
 
 {{if loop_end}}
-{{  loop_end}}_
+    {{_loop_end}}_
 {{endif}}
 END_FUNCTION
