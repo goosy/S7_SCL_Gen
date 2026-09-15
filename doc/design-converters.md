@@ -1,0 +1,156 @@
+# Design: Converter Plugin Interface
+
+Each feature in [spec-converters.md](spec-converters.md) is implemented as a
+self-contained module under `src/converters/converter_<feature>.js`,
+discovered and wired together automatically at build time (see
+[design-pipeline.md §5](design-pipeline.md#5-build-time-self-generation)).
+This document covers the interface contract every converter must satisfy,
+the template-rendering convention, and notable per-feature implementation
+details that don't belong in the behavioral spec.
+
+## 1. Required exports
+
+| Export | Required | Signature | Purpose |
+|---|---|---|---|
+| `platforms` | yes | `string[]` | Which of `step7`/`portal`/`pcs7` this feature supports; `parse_doc` skips (with a warning) any document whose CPU's platform isn't in this list. |
+| `is_feature(name)` | yes | `(string) => boolean` | Case-insensitive match against the document's `feature` directive, including any aliases (e.g. `MT`/`modbusTCP`, `SC`/`MB`, `interlock`/`il`). |
+| `initialize_list(area)` | yes | `(Area) => void` | Pass-1: mutates `area.list` in place from raw YAML nodes to plain objects; registers/resolves symbols via `make_s7_expression`/`add_symbol`. |
+| `gen(area)` | yes | `(Area) => ConvertDescriptor[]` | Returns zero or more `{ distance, output_dir, tags, template }` descriptors describing generated output file(s). `template` names a key in the generated `templates` map (§2), conventionally `<feature>.template`. |
+| `gen_copy_list(area)` | yes | `(Area) => CopyDescriptor[]` | Returns zero or more `{ source, input_dir, distance, output_dir, IE }` descriptors for static library files to copy (see [spec.md §5](spec.md#5-external-dependencies)). |
+| `build_list(area)` | no | `(Area) => void` | Pass-2, run after all CPUs' symbols are fully resolved (see [design-pipeline.md §3](design-pipeline.md#3-two-pass-processing)); only needed if the feature has cross-item or cross-symbol derived data. |
+| `<feature>.yaml` | no | — | Built-in symbol declarations for this feature, see [design-symbols.md §3](design-symbols.md#3-built-in-symbols). |
+| `<feature>.template` | conventionally required | — | The gooplate template `gen()`'s descriptor(s) reference by name. |
+
+`build.js` enforces the four required functions exist for every
+`converter_*.js` file at build time and throws if one is missing — this is
+the authoritative list, not merely a convention.
+
+A converter is free to export additional named constants (`NAME`,
+`LOOP_NAME`, `POLLS_NAME`, etc. — see individual converters); these are
+commonly reused both in `gen()`'s `tags` and in the feature's own
+`<feature>.yaml` (rendered with the converter module itself as gooplate
+tags, so e.g. `AI.yaml` can write `{{NAME}}`/`{{LOOP_NAME}}`).
+
+## 2. The `templates` map
+
+`gen()` never reads a template file itself; it just names one
+(`template: 'AI.template'`). `gen_list()` (`src/gen_data.js`) looks that name
+up in the `templates` object exported by the generated `src/converter.js`,
+which embeds every `src/converters/*.template` file's contents as a string
+constant at build time. This means:
+
+- Templates are plain [gooplate](https://www.npmjs.com/package/gooplate)
+  syntax — consult gooplate's own docs/API for the templating language
+  itself (`{{if}}`/`{{for}}`/`{{_...}}` line-continuation, `{{// comment}}`,
+  etc.); this project only supplies the tags.
+- A template's available tags are the union of: the common tags `gen_list()`
+  always injects (`context`, `gcl`, `pad_left`/`pad_right`/`fixed_hex`,
+  `cpu_name`, `feature`, `platform`), everything on the `Area` (`includes`,
+  `list`, `loop_begin`, `loop_end`, `options`, ...), and whatever `gen()`
+  put in its descriptor's own `tags`.
+- Changing a `.template` file's content takes effect on the next `pnpm
+  build` (or automatically under `pnpm watch`, which rebuilds on `.scl`/
+  `.yaml` changes) — not immediately, since the content is baked into
+  `src/converter.js`.
+
+## 3. Common per-item lifecycle
+
+Nearly every converter (excluding `CPU` and `interlock`, which have
+CPU/DB-centric rather than one-object-per-item shapes) follows the same
+`initialize_list` skeleton:
+
+```js
+export function initialize_list(area) {
+    const document = area.document;
+    area.list = area.list.map(node => {
+        const item = { node, comment: new STRING(node.get('comment') ?? '') };
+        const DB = node.get('DB');
+        if (!DB) return item; // an item without a DB is left inert
+        make_s7_expression(DB, {
+            document, disallow_s7express: true,
+            force: { type: NAME },      // pin the instance DB's type to this feature's FB
+            default: { comment: item.comment.value },
+        }).then(symbol => { item.DB = symbol; });
+        // ...resolve the remaining fields the same way...
+        return item;
+    });
+}
+```
+
+Because `make_s7_expression` may return a `Promise` (forward reference), the
+assignment always happens in a `.then()` — by the time `build_list`/`gen`
+run, every promise the pipeline queued has already resolved (see
+[design-pipeline.md §3](design-pipeline.md#3-two-pass-processing)), so
+downstream code can read `item.DB.value`/`item.DB.block_no`/etc.
+synchronously. **A converter must never read a `make_s7_expression` result
+synchronously right after calling it** — only from within pass 2
+(`build_list`) or later.
+
+## 4. Notable per-feature deviations
+
+- **`CPU`**: `list` items are raw `OB`/`FC` blocks (`block` + `code`), not a
+  DB-per-item pattern; `build_list` validates `block.block_name` is `OB` or
+  `FC`. It also derives the standard clock-bit symbols from a `Clock_Byte`
+  built-in symbol, and resolves `options.output_dir` (which the rest of the
+  pipeline reads as `CPU.output_dir`).
+- **`AI`/`alarm`**: share their limit/scaling-field parsing via
+  `make_alarms()`/`make_fake_DB()` in `src/converters/alarm_common.js`
+  rather than duplicating it — see that file's own docstring for the full
+  field list. `make_fake_DB` lets templates render a placeholder `AI.DB`
+  even before the real symbol promise resolves (needed because `gen()` can
+  run before all promises settle for informational rendering paths).
+- **`interlock`**: the only feature whose `area.list` is re-shaped in
+  `initialize_list` from "one entry per YAML list item" to "one entry per
+  distinct `DB`" (via `create_DB_set`/`get_or_create`), because multiple
+  YAML `list` items can target the same instance DB and must accumulate into
+  one set of fields/interlocks. See [§5](#5-interlock-data-model).
+- **`MT`/`SC`**: both pack multiple polls' request/response frames into a
+  shared struct DB (`MT_polls_DB`/`SC_polls_DB`) with hand-computed byte
+  offsets (`poll_index`, advanced by each poll's frame length, word-aligned)
+  — this bookkeeping lives entirely in `build_list`, since it requires
+  knowing every poll's final frame length across the whole CPU first.
+- **`RP`**: the only feature whose instance DB name and copied library file
+  aren't parallel to `NAME`/`LOOP_NAME` constants — `RP.FB` is picked per
+  item from `FB_dict` based on the item's `type`, and `gen_copy_list` always
+  copies both `CP.scl` and `DP.scl` regardless of which types are actually
+  used.
+- **`motor`/`valve`**: parameter-list rendering branches on
+  `document.CPU.platform` inside `build_list` itself (Portal: one combined
+  in+out positional call; Step 7/PCS7: input-only call plus separate output
+  assignment statements) rather than pushing the branching into the
+  template — see each converter's `build_list`.
+
+## 5. `interlock` data model
+
+`interlock` accumulates potentially many YAML `list` items that reference
+the same `DB` name into one shared record per DB. In `initialize_list`, raw
+YAML items are bucketed by DB; each bucket becomes one generated item in
+`area.list`.
+
+Each DB-level item owns the shared field declarations and all interlock
+groups for that DB:
+
+- `fields`: DB-scoped `data`/`input`/`reset`/`output` fields.
+- `interlocks`: grouped input/reset/output rules parsed from the YAML items.
+- `edges`: edge-memory BOOL fields needed by non-level input triggers.
+- `declarations`/`read_list`/`write_list`: derived in `build_list` for the
+  generated `DATA_BLOCK` and loop function.
+
+Important implementation details in `converter_interlock.js`:
+
+- `DB.fields` is a dictionary-like object (name -> field) with a hidden
+  `push(item)` method that auto-assigns a `b_<n>` name if the item has none,
+  and rejects duplicate names.
+- An `Input`'s `trigger_type` (`rising` (default) | `falling` | `change` |
+  `on` | `off`) determines whether it needs an edge-memory field (`edges`,
+  rendered as `<name>_fo` BOOL fields in the DB) and how `build_list`
+  synthesizes its `trigger` SCL expression (e.g. rising:
+  `value AND NOT "DB".name_fo`).
+- An `Output`'s `inversion` flag swaps which boolean literal means
+  "activated" vs. "reset/default", and its optional `reset` is itself a
+  parsed reset expression that can mark a referenced `data` field
+  `resettable` (auto-cleared at the end of the DB's processing block).
+- `DB.declarations`/`read_list`/`write_list` (computed in `build_list`) are
+  the fields that actually need a `STRUCT` declaration line / a read
+  assignment / a write assignment in the generated `DATA_BLOCK` and loop
+  function respectively.
