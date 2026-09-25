@@ -162,7 +162,7 @@ serial module, structurally parallel to `MT` but over RS232/422/485,
 backed by `CP_Poll` (`CP340_Poll`/`CP341_Poll`/`CRC16`).
 
 - Platforms: `step7` only.
-- Aliases: `MB`.
+- Aliases: `MB`, `modbusRTU`.
 - Key `list` item (module) keys: `DB` (module instance, type
   `CP340_Poll`/`CP341_Poll` depending on `model`), `module`/`module_addr`,
   `try_times`/`retry_times`.

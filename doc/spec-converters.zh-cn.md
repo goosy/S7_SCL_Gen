@@ -150,7 +150,7 @@
 （`CP340_Poll`/`CP341_Poll`/`CRC16`）支撑。
 
 - 平台：仅 `step7`。
-- 别名：`MB`。
+- 别名：`MB`、`modbusRTU`。
 - `list` 条目（模块）关键键：`DB`（模块实例，类型视 `model` 而定为
   `CP340_Poll`/`CP341_Poll`）、`module`/`module_addr`、
   `try_times`/`retry_times`。

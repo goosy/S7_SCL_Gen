@@ -1,168 +1,170 @@
 # S7_SCL_Gen
 
-S7_SCL_Gen 为SCL生成器，用户只要配置好配置文件，运行生成器会产生 S7 CPU 对应功能所需要的 SCL 源码。
+S7_SCL_Gen is an SCL generator. Once the user has written the configuration files, running the generator produces the SCL source code that the corresponding functions of an S7 CPU need.
 
-## 1. 安装 install
+## 1. Install
 
 * npm: `npm install s7-scl-gen -G`
 * yarn: `yarn global add s7-scl-gen`
 * pnpm: `pnpm add s7-scl-gen -G`
 
-## 2. 命令使用 usage
+## 2. Usage
 
-我们将配置文件称为GCL文件，将配置文件所在的文件夹称为GCL文件夹。
+We call a configuration file a GCL file, and the folder containing the configuration files a GCL folder.
 
-SCL生成器能够将GCL文件翻译成对应的SCL文件，后者用于西门子S7项目中。输出文件夹在GCL文件（准确说是CPU文档）中定义。
+The SCL generator translates GCL files into the corresponding SCL files, which are used in Siemens S7 projects. The output folder is defined in the GCL files (more precisely, in the CPU document).
 
-安装 S7_SCL_Gen 后，便可以使用命令 `s7scl` 来进行相关操作了。
+After installing S7_SCL_Gen, you can use the `s7scl` command.
 
-命令 `s7scl` 有一系列子命令，比如 `s7scl help` 子命令即可显示该命令的帮助。
+The `s7scl` command has a set of subcommands; for example, `s7scl help` shows the help for the command.
 
-下面简要说明一些子命令的用法：
+The usage of some subcommands is briefly described below:
 
-### 2.1 生成一个配置文件夹模板
-
-```bash
-s7scl gcl [GCL文件夹路径]
-```
-
-执行后会在指定GCL文件夹中生成GCL样板文件，该文件夹内含样本配置文件和本说明文件`README.md`，然后可以自行修改以符合业务。
-
-如果省略`GCL文件夹路径`时，则会在当前文件夹中生成一个名为GCL的文件夹用于生成GCL样板文件。
-
-### 2.2 生成SCL源码
+### 2.1 Generate a configuration folder template
 
 ```bash
-s7scl convert [GCL文件夹路径]
+s7scl gcl [GCL folder path]
 ```
 
-省略`GCL文件夹路径`时，默认为当前文件夹 `.`，这时需要先进入到对应的GCL配置文件夹下。
+This generates GCL template files in the given GCL folder. The folder contains sample configuration files and this document, `README.md`; you can then edit them to fit your business.
 
-事实上，如果GCL文件夹为当前文件夹的话，`convert` 子命令也可以省略，用下方命令即可完成当前文件夹的配置文件转换。
+If `GCL folder path` is omitted, a folder named GCL is created in the current folder to hold the GCL template files.
+
+### 2.2 Generate SCL source code
+
+```bash
+s7scl convert [GCL folder path]
+```
+
+When `GCL folder path` is omitted, it defaults to the current folder `.`; in that case you need to enter the GCL configuration folder first.
+
+In fact, if the GCL folder is the current folder, the `convert` subcommand can also be omitted; the command below converts the configuration files in the current folder.
 
 ```bash
 s7scl
 ```
 
-### 2.3 命令使用帮助
+### 2.3 Command help
 
-执行 `s7scl help` 查看生成器命令帮助
+Run `s7scl help` to view the generator's command help.
 
-### 2.4 监视
+### 2.4 Watch
 
 ```bash
-s7scl watch [GCL文件夹路径]
+s7scl watch [GCL folder path]
 ```
 
-用于持续转换，在GCL文件夹中对GCL的任何修改，都会触发转换器生成新的SCL文件。
+Used for continuous conversion: any change to the GCL in the GCL folder triggers the converter to generate new SCL files.
 
-## 3. 配置文档语法
+## 3. Configuration document syntax
 
-配置文档采用YAML语法，包含配置文档的YAML文件在这里称为GCL文件。
+Configuration documents use YAML syntax; a YAML file containing configuration documents is called a GCL file here.
 
-一个GCL文件可以包括多个文档，下面的示例有2个配置文档：
+A GCL file can contain multiple documents. The example below has 2 configuration documents:
 
 ```YAML
---- # 文档分界指令
-#CPU: AS1     # 指示属于哪一个CPU
-#feature: CPU # 指示本配置的功能
+--- # document separator directive
+#CPU: AS1     # indicates which CPU this belongs to
+#feature: CPU # indicates the feature of this configuration
 name: AS1-CPU 
 
-platform: step7 # 运行平台
+platform: step7 # runtime platform
 
 device: CPU410-5H
 
 symbols:
-- [Clock_Byte, MB10] # 设置时钟存储器为MB10
+- [Clock_Byte, MB10] # set the clock memory to MB10
 
 options:
-  output_dir : SCL # 设置输出文件夹
+  output_dir : SCL # set the output folder
 
---- # 文档分界指令
-# CPU: AS1    # 指示属于哪一个CPU
-# feature: AI # 指示本配置的功能
-# name 指令相当于 CPU 和 feature 指令的组合
+--- # document separator directive
+# CPU: AS1    # indicates which CPU this belongs to
+# feature: AI # indicates the feature of this configuration
+# the name directive is equivalent to the combination of the CPU and feature directives
 name: AS1-AI
 
-list: # 功能项列表
-- comment: 气温
+list: # feature item list
+- comment: air temperature
   DB: [TIT002, DB+]
   input: [AI01-03, PIW516]
   $zero: "-40.0"
   $span: "80.0"
-- comment: 液位
+- comment: liquid level
   DB: [LIT010, DB+]
   input: '"RecvDB".Tank1'
 
-... # 文档结束指令
+... # document end directive
 ```
 
-* `---` YAML语法，它指示一个配置文档开始；
-* `...` YAML语法，它指示一个配置文档结束；
-* 一个配置文档为一个基本配置单位，不可分割；
-* 可以在一个文件里书写多个配置文档，当然也可以将配置文档分散在多个文件中；
-* 每个文档的根属性称为指令，比如上方的 `feature` `CPU` `list` `options`
+* `---` is YAML syntax; it marks the start of a configuration document;
+* `...` is YAML syntax; it marks the end of a configuration document;
+* A configuration document is a basic configuration unit and cannot be split;
+* You can write multiple configuration documents in one file, or of course spread them across multiple files;
+* The root properties of each document are called directives, e.g. `feature` `CPU` `list` `options` above
 
-注意指令兼容性，运行 `s7scl -v` 查看生成器的当前指令版本。
+Mind directive compatibility: run `s7scl -v` to see the generator's current directive version.
 
-### 3.1 必须书写的指令
+### 3.1 Required directives
 
-配置文档必须有 `name` 指令，或 `CPU`,`feature` 组合指令，两种方法用一种。
+A configuration document must have the `name` directive, or the `CPU`,`feature` directive combination; use one of the two methods.
 
-这2个指令值类型都是字符串，name 相当于后2者组合而成  `<CPU>-<feature>` ，作用一样，推荐 name 便于理解文档唯一性。
+Both directive values are strings. name is equivalent to the combination of the latter two, `<CPU>-<feature>`, and has the same effect; name is recommended because it makes document uniqueness easier to understand.
 
-每个文档的 name 必须唯一，即相同 CPU 和 feature 组合的配置文档只能有一个。
+Each document's name must be unique, i.e. there can be only one configuration document for a given combination of CPU and feature.
 
-目前只实现了9种类型配置文档——CPU文档和8种功能文档，由 `feature` 指令指示，不区分大小写。分别是：
+Currently 11 types of configuration documents are implemented — the CPU document and 10 feature documents, indicated by the `feature` directive, case-insensitive. They are:
 
-* `CPU`          CPU文档
-  指示这是一个CPU功能，使用该CPU的其它配置文档都共享的资源、信息和指令。
-  比如指示 CPU 所属的平台、输出文件夹、共用的符号和包含等。
-  所有属于同一CPU的配置文件，会在生成代码时，统一检查资源冲突情况、统一资源分配、自动合并符号表，避免占用同一DB块、同一连接等。
-* `AI`           AI通道的模拟量（含超限报警）功能文档
-* `Alarm`        过程量限值与报警功能文档
-  用于非AI通道过来的过程值报警，比如485接收的过程值
-* `PI`           脉冲量转换功能文档
-* `SC`           串行轮询功能文档
-  用在RS232 RS422 RS485通信功能中。
-  该功能包括了 modbus RTU 轮询，故指令也可以写为 `MB` `modbusRTU`
-* `ModbusTCP`    modbusTCP 轮询功能文档
-  指令名称也可以缩写为 `MT`
-* `Valve`        阀门控制功能文档
-* `Motor`        电机控制功能文档
-* `Interlock`    报警连锁功能文档（实现最简单的输入_或运算_后上升沿输出）
-* `Timer`        计时功能文档
+* `CPU`          CPU document
+  Indicates a CPU feature: the resources, information and directives shared by all other configuration documents that use this CPU.
+  For example, the platform the CPU belongs to, the output folder, shared symbols and includes, etc.
+  When generating code, all configuration files belonging to the same CPU are checked together for resource conflicts, allocated resources together, and have their symbol tables merged automatically, to avoid occupying the same DB block, the same connection, etc.
+* `AI`           Feature document for analog values of AI channels (including limit alarms)
+* `Alarm`        Feature document for process value limits and alarms
+  Used for alarms on process values that do not come from AI channels, e.g. process values received over 485
+* `PI`           Feature document for pulse value conversion
+* `SC`           Feature document for serial polling
+  Used in RS232 RS422 RS485 communication.
+  This feature includes modbus RTU polling, so the directive can also be written as `MB` `modbusRTU`
+* `ModbusTCP`    Feature document for modbusTCP polling
+  The directive name can also be abbreviated as `MT`
+* `Valve`        Feature document for valve control
+* `Motor`        Feature document for motor control
+* `Interlock`    Feature document for alarm interlocks (implements the simplest input _OR operation_ followed by rising-edge output)
+* `Timer`        Feature document for timing
+* `RP`           Feature document for relay delays and pulses
+  Signal shaping built on TON/TOF/TP and CP/DP: on-delay, off-delay, pulse, etc. The directive can also be written as `RELAY` `PULSE`
 
-具体功能文档的配置和说明可参看 example 目录下的YAML文件
+For the configuration and description of each specific feature document, see the YAML files in the example directory.
 
-### 3.2 所有文档都可选的指令
+### 3.2 Optional directives for all documents
 
-#### 3.2.1 options 选项参数
+#### 3.2.1 options
 
-* 类型: 键值对
+* Type: key-value pairs
 
-一些额外设定，比如 options.output_file 设定输出文件名
+Some extra settings, e.g. options.output_file sets the output file name
 
-#### 3.2.2 symbols 符号列表
+#### 3.2.2 symbols
 
-* 类型: 数组
-* 数组元素: S7符号定义
+* Type: array
+* Array element: S7 symbol definition
 
-每类配置文档都内置了一些符号，内置符号都有默认地址。
+Each type of configuration document has some built-in symbols, and all built-in symbols have default addresses.
 
-内置符号通常不必书写，但如果存在地址冲突，可以在 symbols 列表中重写内置符号以更改地址和注释，但内置符号的名称不可更改。
+Built-in symbols usually don't need to be written, but if there is an address conflict, you can rewrite a built-in symbol in the symbols list to change its address and comment; the name of a built-in symbol cannot be changed.
 
-#### 3.2.3 includes 附加代码
+#### 3.2.3 includes: extra code
 
-* 类型: 字符串数组|字符串
+* Type: string array | string
 
-indludes指示要在当前功能输出文件中附加包含的SCL代码，并将代码内容合并在输出文件开始处。
+includes specifies SCL code to be included in the current feature's output file; the code content is merged at the beginning of the output file.
 
-includes指令值分2种：
+The includes directive value comes in 2 kinds:
 
-I. **字符串** 表示直接将字符串作为SCL代码合并
+I. **String**: the string is merged directly as SCL code
 
-例：
+Example:
 
 ```yaml
 includes: |
@@ -175,24 +177,24 @@ includes: |
     Tank1 := W#16#02D0;
   END_DATA_BLOCK
 ```
-II. **数组** 表示文件列表，列表项为同目录下的相对路径名称，或是包含名称和编码格式的对象，转换程序会提取每一个文件内容作为合并来源
+II. **Array**: a list of files; each item is a relative path name in the same directory, or an object containing the name and encoding. The converter extracts the content of each file as the merge source
 
-例：
+Example:
 
 ```yaml
 includes:
-- JSFlow.scl                                 # 只有文件名称的写法，默认该文件编码格式为 UTF-8
-- filename: FXGasFlow.scl                    # 文件对象的写法
-  encoding: utf8                             # 指明文件编码
-- {filename: JS_Flow.scl, encoding: gbk}     # 写在一行里的文件对象，指明文件编码
+- JSFlow.scl                                 # file name only; the file encoding defaults to UTF-8
+- filename: FXGasFlow.scl                    # file object form
+  encoding: utf8                             # specify the file encoding
+- {filename: JS_Flow.scl, encoding: gbk}     # file object written on one line, specifying the file encoding
 ```
 
-includes只能采用上述2种之一，由于在YAML中书写SCL代码有很多局限，推荐用外部文件的方式。
+includes can only use one of the 2 kinds above. Since writing SCL code in YAML has many limitations, using external files is recommended.
 
-注意： includes 所指向的额外SCL代码需要用户自己编写，生成程序不检查其语法错误。
+Note: the extra SCL code referenced by includes must be written by the user; the generator does not check it for syntax errors.
 
-> [!tip] 高级应用1
-> 外部SCL文件可以使用 `{{ expression }}` 替换符，在主 yaml 文件 `attributes` 部分定义要替换要字符串，实现更好的复用。
+> [!tip] Advanced usage 1
+> External SCL files can use `{{ expression }}` placeholders; define the strings to substitute in the `attributes` section of the main yaml file for better reuse.
 
 ```SCL
 DATA_BLOCK "PE{{ tag_postfix_number }}"
@@ -205,19 +207,19 @@ DATA_BLOCK "PE{{ tag_postfix_number }}"
 AUTHOR:Goosy
 FAMILY:GooLib
 STRUCT
-  U_VFD {S7_m_c := 'true'}: INT ;       // 506 变频器电压
-  I_VFD {S7_m_c := 'true'}: INT ;       // 507 变频器电流
-  Ua {S7_m_c := 'true'}: INT ;          // 511 AA_电压
-  Ub {S7_m_c := 'true'}: INT ;          // 512 BB_电压
-  Uc {S7_m_c := 'true'}: INT ;          // 513 CC_电压
-  error {S7_m_c := 'true'}: INT ;       // 515 故障代码
+  U_VFD {S7_m_c := 'true'}: INT ;       // 506 VFD voltage
+  I_VFD {S7_m_c := 'true'}: INT ;       // 507 VFD current
+  Ua {S7_m_c := 'true'}: INT ;          // 511 AA voltage
+  Ub {S7_m_c := 'true'}: INT ;          // 512 BB voltage
+  Uc {S7_m_c := 'true'}: INT ;          // 513 CC voltage
+  error {S7_m_c := 'true'}: INT ;       // 515 fault code
 END_STRUCT;
 BEGIN
 END_DATA_BLOCK
 ```
 
-> [!tip] 高级应用2
-> 可以在外部SCL文件中用 `(**` 和 `**)` 两行包裹注释，这些注释不会输出在最终的SCL中：
+> [!tip] Advanced usage 2
+> In an external SCL file you can wrap comments between the two lines `(**` and `**)`; these comments are not output to the final SCL:
 
 ```scl
 (**
@@ -240,128 +242,128 @@ END_STRUCT
 END_TYPE
 ```
 
-#### 3.2.4 files 额外复制的文件
+#### 3.2.4 files: extra files to copy
 
-* 类型: 字符串数组
+* Type: string array
 
-指示要额外复制的文件或文件夹，会在输出文件夹中生成同样名称文件。
+Specifies extra files or folders to copy; files with the same names are created in the output folder.
 
-files数组的每一项是相对于当前配置文件目录的相对路径。必须使用 `/` 符为路径分隔符。
+Each item of the files array is a path relative to the directory of the current configuration file. `/` must be used as the path separator.
 
-注意：
+Notes:
 
-- 与includes不同，files 只能采用外部文件的方式，并且可以是任何类型的文件（建议SCL或AWL代码文件）
-- 只有文件名的方式，会只复制，不进行编码转换
-- 指明编码格式的文件，会转换成 GBK 保存的目标文件夹中。（GBK格式是为了方便西门子软件导入文件）
-- 默认不会将路径复制到目标目录中，在输出文件夹（这里假设是 `output_dir` ）中只有路径最后的文件或文件夹。
+- Unlike includes, files can only use external files, and they can be files of any type (SCL or AWL code files are recommended)
+- A file given by name only is just copied, without encoding conversion
+- A file with a specified encoding is converted to GBK and saved in the target folder. (GBK makes it easy for Siemens software to import the files)
+- By default the path is not copied to the target directory; the output folder (assumed here to be `output_dir`) contains only the last file or folder of the path.
 
-大多数情况下，都不用指明编码，只要书写文件名就可以了。
+In most cases you don't need to specify an encoding; just write the file name.
 
-假设目标文件夹是 output_dir ，则：
-
-```yaml
-files:
-- a/b/c.scl                          # 复制后的文件为 `output_dir/c.scl` 仅仅复制文件
-- ../readme.docx                     # 复制后的文件为 `output_dir/readme.docx` 非文本文件一定只写名称
-- foo/a_folder                       # 文件夹复制，产生目标文件夹 `output_dir/a_folder`，并包含该文件夹下的文件
-```
-
-> [!tip] 高级应用1
-> 如果需要复制相对路径，可用"//"放置在需保留的路径范围之前。
+Assuming the target folder is output_dir:
 
 ```yaml
 files:
-- `- os//ab/c.scl`                   # 会将 `os/ab/c.scl` 复制为 `output_dir/ab/c.scl`
-- `- ../..//lib/c.scl`               # 会将 `../lib/c.scl` 复制为 `output_dir/lib/c.scl`
+- a/b/c.scl                          # the copied file is `output_dir/c.scl`; only the file is copied
+- ../readme.docx                     # the copied file is `output_dir/readme.docx`; non-text files must be written by name only
+- foo/a_folder                       # folder copy, creating the target folder `output_dir/a_folder` containing the files in that folder
 ```
 
-> [!tip] 高级应用2
-> 可以指明源文件的编码格式，这样可以转换成西门子认识的 GBK 编码格式
+> [!tip] Advanced usage 1
+> If you need to copy a relative path, put "//" before the part of the path to keep.
 
 ```yaml
 files:
-- filename: myfunc.scl               # 复制后的文件为 `output_dir/myfunc.scl`
-  encoding: utf8                     # 指明文件编码是 UTF-8 ，复制后的文件编码强制为GBK
-- {filename: folder, encoding: gbk}  # 在一行里附加编码格式，这里复制 `folder` 文件夹，里面的源文件编码都是GBK
+- os//ab/c.scl                       # copies `os/ab/c.scl` to `output_dir/ab/c.scl`
+- ../..//lib/c.scl                   # copies `../lib/c.scl` to `output_dir/lib/c.scl`
 ```
 
-> [!tip] 高级应用3
-> 可以使用 glob 匹配符。
+> [!tip] Advanced usage 2
+> You can specify the source file's encoding, so it can be converted to the GBK encoding that Siemens software recognizes
 
 ```yaml
 files:
-- `- lib/*`                 # 复制 lib 目录下的所有文件，不包括子目录
-- filename: - lib//**.scl   # 复制 lib 目录及其子目录下的所有 word 文件
-  encoding: utf8            # 所有匹配的文件，其编码都是 UTF-8
+- filename: myfunc.scl               # the copied file is `output_dir/myfunc.scl`
+  encoding: utf8                     # the file encoding is UTF-8; the copied file is forced to GBK
+- {filename: folder, encoding: gbk}  # encoding attached on one line; this copies the `folder` folder, whose source files are all GBK
 ```
 
-注意：生成器不检查文件内容的错误，也不解析文件。
+> [!tip] Advanced usage 3
+> glob patterns can be used.
 
-### 3.3 可选的指令
+```yaml
+files:
+- lib/*                     # copies all files in the lib directory, excluding subdirectories
+- filename: [lib//**.scl]   # copies all SCL files in the lib directory and its subdirectories
+  encoding: utf8            # all matched files are UTF-8 encoded
+```
 
-* list 对应功能的列表
-  类型: 对象列表
-* loop_begin  附加代码
-  类型: 字符串
-  指令值为SCL代码，合并在当前循环函数体开始处
-* loop_end  附加代码
-  类型: 字符串
-  指令值为SCL代码，合并在当前循环函数体末尾处
+Note: the generator does not check file contents for errors, nor does it parse the files.
 
-## 4. 配置值类型
+### 3.3 Optional directives
 
-对具体指令下的某个配置项，它的值通常为以下几类之一。对于具体某个配置项的类型，可参看样本配置文件。
+* list: the list for the corresponding feature
+  Type: object list
+* loop_begin: extra code
+  Type: string
+  The directive value is SCL code, merged at the beginning of the current loop function body
+* loop_end: extra code
+  Type: string
+  The directive value is SCL code, merged at the end of the current loop function body
 
-### 4.1 布尔量
+## 4. Configuration value types
 
-可用的字面量有2个： `true` `false`
+For a given configuration item under a specific directive, its value is usually one of the following kinds. For the type of a specific configuration item, see the sample configuration files.
 
-不区分大小写。
+### 4.1 Boolean
 
-### 4.2 数字
+There are 2 available literals: `true` `false`
 
-配置项值为数字，其字面量可以是十进制数字，也可以是16进制的数字。16进制字面量的例子： 0x4A98
+Case-insensitive.
 
-数字值的例子有 AI 配置中的 `zero` `span` 等。
+### 4.2 Number
 
-### 4.3 字符串
+The configuration item value is a number; its literal can be a decimal number or a hexadecimal number. Example of a hexadecimal literal: 0x4A98
 
-大多数情况下字符值串可以不使用引号，具体参看在YAML语法。
+Examples of number values include `zero` `span` in the AI configuration.
 
-### 4.4 SCL表达式
+### 4.3 String
 
-字面量形式同字符串，但要求其内容是一个标准的SCL表达式，具体要求以SCL语法为准。
+In most cases string values can be written without quotes; see YAML syntax for details.
 
-如果字面量中有双引号，要依照YAML语法要求，用单引号包裹表达式，比如 `'NOT "TIT001".AL_Flag'`
+### 4.4 SCL expression
 
-### 4.5 S7符号定义
+The literal form is the same as a string, but its content must be a standard SCL expression; SCL syntax is the authority on the exact requirements.
 
-S7符号对应指西门子软件中的符号，通常有名称、地址、类型。在配置文件有很多配置项要求是一个S7符号。
+If the literal contains double quotes, wrap the expression in single quotes as YAML syntax requires, e.g. `'NOT "TIT001".AL_Flag'`
 
-该配置项的值通常用一个YAML方括号语法的数组来指定，形式为 `[名称, 地址, 类型, 注释]`，数组后二项可省略，类型必须是一个有效的S7类型。
+### 4.5 S7 symbol definition
 
-比如 `[recvDB, DB100, FB512, 接收块]` 就定义一个名为“recvDB”的DB块符号，该DB为FB512的背景块。`[length, M100, INT, 长度]`也是一个有效的M区域符号。
+An S7 symbol corresponds to a symbol in Siemens software, usually with a name, address and type. Many configuration items in the configuration files are required to be an S7 symbol.
 
-每个符号只能定义一次，即名称和地址不得重复，否则转换器会提示出错。
+The value of such an item is usually given as an array in YAML square-bracket syntax, in the form `[name, address, type, comment]`; the last two items of the array can be omitted, and the type must be a valid S7 type.
 
-所有FB、FC、UDT符号的类型一定是它自身，所以这三种符号的type可以省略，DB符号省略类型时默认类型为自身。
+For example, `[recvDB, DB100, FB512, receive block]` defines a DB block symbol named "recvDB", which is the instance DB of FB512. `[length, M100, INT, length]` is also a valid M area symbol.
 
-在symbols指令的每一个配置项，其值必须是符号定义。
+Each symbol can be defined only once, i.e. names and addresses must not be duplicated, otherwise the converter reports an error.
 
-### 4.6 S7符号引用
+The type of every FB, FC and UDT symbol is always itself, so the type of these three kinds of symbols can be omitted; when a DB symbol's type is omitted, it defaults to itself.
 
-如果已配置过一个符号定义，在另一处要使用相同的S7符号，可以简单地用符号名称来引用。
+For each configuration item of the symbols directive, the value must be a symbol definition.
 
-比如可以用 `recvDB` 来指示上面 `[recvDB, DB100, FB512, 接收块]` 定义的S7符号。
+### 4.6 S7 symbol reference
 
-### 4.7 数组与对象
+If a symbol definition has already been configured and the same S7 symbol is needed elsewhere, you can simply reference it by the symbol name.
 
-这2种类型为以上配置项类型的组合。
+For example, `recvDB` can be used to refer to the S7 symbol defined above by `[recvDB, DB100, FB512, receive block]`.
 
-### 4.8 联合类型
+### 4.7 Arrays and objects
 
-有些配置项可以是多种配置值类型之一。
+These 2 types are combinations of the configuration item types above.
 
-比如AI配置文档中的 `DB` 和 `input` 配置项，可以是符号定义，也可以是符号引用。
+### 4.8 Union types
 
-再比如interlock配置文档中的 `input_list` 中的每个元素，配置项类型可以是对象，也可以是符号定义，也可以是符号引用，也可以是SCL表达式。
+Some configuration items can be one of several configuration value types.
+
+For example, the `DB` and `input` configuration items in the AI configuration document can be either a symbol definition or a symbol reference.
+
+Another example: each element of `input_list` in the interlock configuration document can be an object, a symbol definition, a symbol reference, or an SCL expression.
