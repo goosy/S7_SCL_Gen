@@ -103,6 +103,7 @@ if (argv.version) {
     const distance = posix.join(context.work_path, path ?? 'GCL');
     await copy_file(posix.join(context.module_path, 'example'), distance);
     await copy_file(posix.join(context.module_path, 'README.md'), `${distance}/`);
+    await copy_file(posix.join(context.module_path, 'README.zh-cn.md'), `${distance}/`);
     const fullname_dst = posix.join(context.work_path, distance);
     const readme = posix.join(fullname_dst, 'README.md');
     console.log(`Generated configuration folder ${fullname_dst}. 已生成配置文件夹 ${fullname_dst}。\nSee instructions in ${readme}. 可以参阅 ${readme} 内的说明。`);

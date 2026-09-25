@@ -21,7 +21,7 @@ const feature = 'SC';
 
 export function is_feature(name) {
     const f_name = name.toUpperCase();
-    return f_name === feature || f_name === 'MB';
+    return f_name === feature || f_name === 'MB' || f_name === 'MODBUSRTU';
 }
 
 /**
