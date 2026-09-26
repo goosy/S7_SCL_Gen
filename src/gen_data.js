@@ -166,11 +166,11 @@ async function parse_includes(includes, options) {
         const tags = { ...options, encoding };
         const { scl, error } = parse_SCL(content);
         if (error) {
-            console.error(err.message);
-            return '';
-        };
+            console.error(`${error.message}\n\tfile: ${filename}`);
+            continue;
+        }
         code.push(convert(tags, scl)); // subsitute tags in SCL
-    };
+    }
     return code.join('\n\n');
 }
 
@@ -219,7 +219,7 @@ export async function parse_doc(document) {
     if (feature !== 'CPU' && cpu.get_area('CPU') == null) {
         // create a blank CPU document if CPU area desn't exist
         const doc = await create_fake_CPU_doc(cpu);
-        parse_doc(doc);
+        await parse_doc(doc);
     }
     if (cpu.get_area(feature)) {
         console.error(`configuration ${cpu.name}-${feature} is duplicated. 配置 ${cpu.name}-${feature} 重复存在!
@@ -343,7 +343,7 @@ async function parse_conf({ yaml, filename = 'yaml_string' } = {}) {
         if (yaml) {
             const gcl = new GCL(yaml, {
                 filename,
-                scoure: yaml,
+                source: yaml,
             });
             initialize_gcl(gcl);
         } else {
@@ -430,7 +430,7 @@ async function gen_list(cpu_list) {
                 platform,
                 OE: context.OE,
                 line_ending: context.line_ending,
-            }
+            };
 
             for (const file of area.files) {
                 /** @type string | undinfied */
@@ -457,7 +457,7 @@ async function gen_list(cpu_list) {
                         line_ending,
                     });
                 }
-            };
+            }
 
             const gcl = area.document.gcl;
             const gen_copy_list = converter[feature].gen_copy_list;
@@ -484,9 +484,9 @@ async function gen_list(cpu_list) {
                 const template = templates[item.template];
                 // { cpu_name, feature, platform, OE, line_ending, type, tags, template, distance, output_dir }
                 convert_list.push({ ...common_options, type, tags, template, distance, output_dir });
-            };
+            }
         }
-    };
+    }
     for (const cpu of cpu_list) {
         const item = gen_symbols(cpu);
         item.type = 'convert';
@@ -507,7 +507,7 @@ export async function gen_data(options) {
         for (const [feature, area] of cpu.areas) {
             const build_list = converter[feature].build_list;
             if (typeof build_list === 'function') build_list(area);
-        };
+        }
     }
     // non-symbolic prompt
     const non_symbols_info_list = cpu_list.flatMap(cpu => cpu.non_symbols.map(
