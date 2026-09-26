@@ -70,6 +70,7 @@ pnpm.lock
 pnpm-workspace.yaml
 
 CLAUDE.md
+AGENTS.md
 
 # production
 src/converter.js
@@ -81,3 +82,6 @@ lib/
 .vscode/
 .editorconfig
 test/dist/
+
+# local maintainer notes
+.local/
