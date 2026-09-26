@@ -5,8 +5,8 @@ name: AS1-motor # 相当于上面2条被注释的指令
 
 symbols:  
 # 系统已有2个内置符号，其内容由本程序自动生成：
-# - [Motor_Proc, FB513]   电机主处理函数
-# - [Motor_Loop, FC513]   主调用函数
+# - [Motor_Proc, FB514]   电机主处理函数
+# - [Motor_Loop, FC514]   主调用函数
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
 # 以下为自定义符号
@@ -54,9 +54,6 @@ list :
   start_action: DO05-02          # 启电机线路，设备侧自保持
   stop_action: DO05-03           # 停电机线路
   estop_action: DO05-04          # 紧急停机线路
-  run_command: HMI.run_cmd
-  stop_command: HMI.stop_cmd
-  estop_command: HMI.estop_cmd
 
   # 常用输入输出
 - comment: B电机
@@ -90,8 +87,8 @@ name: AS2-motor
 
 symbols:  
 # 系统已有2个内置符号，其内容由本程序自动生成：
-# - [Motor_Proc, FB513]   电机主处理函数
-# - [Motor_Loop, FC513]   主调用函数
+# - [Motor_Proc, FB514]   电机主处理函数
+# - [Motor_Loop, FC514]   主调用函数
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
 # 以下为自定义符号
