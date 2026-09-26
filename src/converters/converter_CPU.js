@@ -10,25 +10,25 @@ export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by 
 const feature = 'CPU';
 
 export const devices = [
-    "IM151-8PN/DP",
-    "CPU31x-2PN/DP",
-    "CPU314C-2PN/DP",
-    "CPU317-2PN/DP",
-    "IM154-8PN/DP",
-    "CPU319-3PN/DP",
-    "CPU315T-3PN/DP",
-    "CPU317T-3PN/DP",
-    "CPU317TF-3PN/DP",
-    "CPU412-2PN",
-    "CPU414-3PN/DP",
-    "CPU416-3PN/DP",
+    "IM151-8_PN/DP",
+    "CPU31x-2_PN/DP",
+    "CPU314C-2_PN/DP",
+    "CPU317-2_PN/DP",
+    "IM154-8_PN/DP",
+    "CPU319-3_PN/DP",
+    "CPU315T-3_PN/DP",
+    "CPU317T-3_PN/DP",
+    "CPU317TF-3_PN/DP",
+    "CPU412-2_PN",
+    "CPU414-3_PN/DP",
+    "CPU416-3_PN/DP",
     "CPU412-5H_PN/DP",
     "CPU414-5H_PN/DP",
     "CPU416-5H_PN/DP",
     "CPU417-5H_PN/DP",
     "CPU410-5H",
 ];
-const DEFAULT_DEVICE = "CPU31x-2PN/DP";
+const DEFAULT_DEVICE = "CPU31x-2_PN/DP";
 
 export function is_feature(name) {
     return name.toUpperCase() === feature;
