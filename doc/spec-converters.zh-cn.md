@@ -105,8 +105,13 @@
 - 平台：仅 `step7`。
 - 别名：`modbusTCP`。
 - 连接级关键键：`DB`（连接实例 DB，类型为 `MT_Poll`）、`host`（点分四段
-  IP 字符串或 4 元素数组）、`port`、`rack`/`XSlot`（用于查找 CPU 的通信
-  设备 ID 以供 `TCON` 使用）、`$interval_time`/`interval_time`。
+  IP 字符串或 4 元素数组）、`port`、`local_device_id`/`device`/`rack`/`xslot`
+  （确定供 `TCON` 使用的通信设备 ID）、`$interval_time`/`interval_time`。
+- 通信设备 ID 优先级：连接的 `local_device_id`（SCL 字节字面量，如
+  `B#16#02`，原样使用）；否则取连接的 `device`，缺省时取 CPU 文档的
+  `device`，再配合 `rack`/`xslot` 查内置表（组合不存在则报错）。查表按
+  `device`/`rack`/`xslot` 完整组合精确匹配：表中有缺省项时 `rack`/`xslot`
+  可省略，为不需要的型号填写 `rack`/`xslot` 会报错。
 - 每条轮询的关键键：要么是 `send_DB` + `send_start`（轮询报文位于外部
   管理的 DB 中），要么是 `unit_ID` + `func_code` + `address`/`started_addr`
   + `data`/`length`（功能码 15/16 另加 `extra_data`），由生成器自行构建

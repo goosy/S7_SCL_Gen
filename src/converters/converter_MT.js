@@ -17,7 +17,8 @@ export const TRY_TIMES = 10;
 const feature = 'modbusTCP';
 
 const DEFAULT_DEVICE_ID = "B#16#02"; // Default device number
-const device_id = { // Just fill in the device model
+const device_id = {
+    // Just fill in the device model
     "IM151-8_PN/DP": "B#16#01",
     "CPU31x-2_PN/DP": "B#16#02",
     "CPU314C-2_PN/DP": "B#16#02",
@@ -28,8 +29,8 @@ const device_id = { // Just fill in the device model
     "CPU412-2_PN": "B#16#05",
     "CPU414-3_PN/DP": "B#16#05",
     "CPU416-3_PN/DP": "B#16#05",
-}
-const device_X_id = { // You may need to fill in the slot number
+
+    // You may need to fill in the slot number
     //['', 'X2', 'X4']
     "CPU317-2_PN/DP": "B#16#02",
     "CPU317-2_PN/DP_X2": "B#16#02",
@@ -38,8 +39,8 @@ const device_X_id = { // You may need to fill in the slot number
     "CPU319-3_PN/DP": "B#16#03",
     "CPU319-3_PN/DP_X3": "B#16#03",
     "CPU319-3_PN/DP_X4": "B#16#04",
-}
-const device_R_X_id = { // You may need to fill in the slot number and rack number
+
+    // You may need to fill in the slot number and rack number
     // ['', 'R0', 'R1'] × ['', 'X5']
     // 412-5H
     "CPU412-5H_PN/DP": "B#16#05",
@@ -87,20 +88,9 @@ export function is_feature(name) {
 }
 
 function get_device_id(device, R, X) {
-    let id = device_id[device];
-    if (id) return id; // device is valid
-    const device_paras = [device];
-    if (R) {
-        device_paras.push(R);
-    }
-    if (X) {
-        id = device_X_id[`${device}_${X}`];
-        if (id) return id; // device_X is valid
-        device_paras.push(X);
-    }
-    id = device_R_X_id[device_paras.join('_')]
-    if (id) return id; // device_R_X is valid
-    return null; // No corresponding device number
+    // Exact match only: a rack or slot that the model does not take is an error
+    const key = [device, R, X].filter(Boolean).join('_');
+    return device_id[key] ?? null;
 }
 
 /**
@@ -159,8 +149,18 @@ export function initialize_list(area) {
             assert(ip.value < 256, new SyntaxError(`配置项"host: ${host}"的IP地址越界!`));
             return ip;
         });
+        // local_device_id takes precedence over device, rack and xslot
+        const local_device_id = nullable_value(STRING, node.get('local_device_id'))?.value;
+        if (local_device_id != null) {
+            assert(
+                /^B#16#[0-9A-F]{1,2}$/i.test(local_device_id),
+                new SyntaxError(`配置项"local_device_id: ${local_device_id}"有误，必须是 SCL 字节字面量，如 B#16#02!`)
+            );
+            conn.local_device_id = local_device_id;
+        }
+        conn.device = nullable_value(STRING, node.get('device'))?.value;
         const R = nullable_value(PINT, node.get('rack'));
-        const X = nullable_value(PINT, node.get('XSlot'));
+        const X = nullable_value(PINT, node.get('xslot') ?? node.get('XSlot'));
         conn.R = R ? `R${R}` : '';
         conn.X = X ? `X${X}` : '';
         conn.$interval_time = nullable_value(TIME, node.get('$interval_time'));
@@ -278,7 +278,7 @@ export function build_list(MT) {
         const port = conn.port.value;
 
         // The specified device does not have a corresponding communication device number.
-        if (local_device_id === null && conn.device) elog(new SyntaxError(`指定的通信设备号"${conn.device} rack${conn.rack} xslot${conn.XSlot}"不存在！`));
+        if (local_device_id === null && conn.device) elog(new SyntaxError(`指定的通信设备号"${[conn.device, conn.R, conn.X].filter(Boolean).join(' ')}"不存在！`));
         // If device is not specified, the default device number is used.
         conn.local_device_id = local_device_id ?? DEFAULT_DEVICE_ID;
 

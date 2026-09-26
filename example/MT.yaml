@@ -60,8 +60,8 @@ list : # modbus TCP 连接列表
   port: 502
 
   # 用于通信的设备号，见 https://support.industry.siemens.com/cs/document/51339682/使用fb65-tcon-建立以太网的开放式用户通信连接时，如何参数化-loc
-  # 本参数优先级最高，会忽略 local_device rack XSlot 3个参数
-  # 建议不要填写本参数，采用直观的 local_device rack XSlot 参数
+  # 本参数优先级最高，会忽略 device rack xslot 3个参数
+  # 建议不要填写本参数，采用直观的 device rack xslot 参数
   #local_device_id: B#16#02
 
   # 由于local_device_id不直观，建议用下面三个参数进行直观配置，同时程序自动检验
@@ -69,12 +69,12 @@ list : # modbus TCP 连接列表
   #   device  设备名称            见 CPU 文档中的定义
   #           类型: 字符串        如果在CPU文档已设置了device，可以省略本参数
   #   rack    机架号              可以在Step7硬件配置里看到，通常为0或1，除了冗余机型外，大多情况下本参数可省略
-  #           类型: 正整数        仅 CPU412-5H_PN/DP CPU414-5H_PN/DP CPU416-5H_PN/DP CPU417-5H_PN/DP CPU410-5H 需要设置本参数值
-  #   XSlot   通信接号扩展插槽号   可以在Step7硬件配置里的通信接口名称中看到，比如"X2"则XSlot值就是2
-  #           类型: 正整数         仅 CPU319-3 PN/DP CPU317-2 PN/DP CPU410-5H 需要设置本参数值
+  #           类型: 正整数        仅 CPU412-5H_PN/DP CPU414-5H_PN/DP CPU416-5H_PN/DP CPU417-5H_PN/DP CPU410-5H 可以设置本参数值，其它型号填写会报错
+  #   xslot   通信接号扩展插槽号   可以在Step7硬件配置里的通信接口名称中看到，比如"X2"则xslot值就是2
+  #           类型: 正整数         仅 CPU319-3_PN/DP CPU317-2_PN/DP CPU4xx-5H_PN/DP CPU410-5H 可以设置本参数值，其它型号填写会报错
   device: ~                       # 设备名称 省略时采用CPU文档中的定义，如果CPU文档也无定义，则local_device_id会默认为B#16#02
   rack: 1                         # 机架号  部分CPU可省略
-  XSlot: 8                        # 插槽号  非多IF可省略
+  xslot: 8                        # 插槽号  非多IF可省略
 
 
   polls:  # 该连接下的轮询定义，至少要有一个查询

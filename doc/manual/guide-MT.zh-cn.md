@@ -52,7 +52,7 @@ list:
 | `local_device_id` | 否 | SCL 字节字面量 | 直接指定通信设备号，如 `B#16#02`；优先级最高，见第 4 节 |
 | `device` | 否 | 字符串 | 本连接使用的 CPU 型号，省略时取 CPU 文档的 `device`，见第 4 节 |
 | `rack` | 否 | 正整数 | 机架号，冗余 CPU 使用，见第 4 节 |
-| `XSlot` | 否 | 正整数 | 通信接口插槽号，如接口名为 "X2" 则填 2，见第 4 节 |
+| `xslot` | 否 | 正整数 | 通信接口插槽号，如接口名为 "X2" 则填 2，见第 4 节 |
 | `$interval_time` | 否 | TIME \| 整数毫秒 | 轮询间隔初始值，FB 默认 200 毫秒 |
 | `interval_time` | 否 | S7符号定义 \| S7符号引用 \| SCL表达式 | 运行期间的轮询间隔，DINT 毫秒（不能写 TIME 字面量） |
 | `comment` | 否 | 字符串 | 注释 |
@@ -61,18 +61,18 @@ list:
 - 每个连接的 `DB` 必须不同。
 - 同一 CPU 内 `host:port` 组合不能重复。
 
-## 4. 通信设备号：device、rack、XSlot
+## 4. 通信设备号：device、rack、xslot
 
 `TCON` 需要知道本地通信接口的设备号，按以下优先级确定：
 
-1. 连接的 `local_device_id`：直接使用该值，忽略 `device`、`rack`、`XSlot`；
-2. 连接的 `device`，配合 `rack`、`XSlot` 查下表；
-3. CPU 文档的 `device`，配合 `rack`、`XSlot` 查下表；
+1. 连接的 `local_device_id`：直接使用该值，忽略 `device`、`rack`、`xslot`；
+2. 连接的 `device`，配合 `rack`、`xslot` 查下表；
+3. CPU 文档的 `device`，配合 `rack`、`xslot` 查下表；
 4. 都没有时，设备号为 `B#16#02`。
 
-建议不写 `local_device_id`，使用直观的 `device`、`rack`、`XSlot`，由生成器查表并校验。`device` 必须与下表**完全一致**，否则报错 `指定的通信设备号"..."不存在！`。
+建议不写 `local_device_id`，使用直观的 `device`、`rack`、`xslot`，由生成器查表并校验。`device` 必须与下表**完全一致**，`rack`、`xslot` 也必须是表中列出的取值；表中为"—"的参数不能填写（例如 `CPU317-2_PN/DP` 填了 `rack: 0`），否则报错 `指定的通信设备号"..."不存在！`。
 
-| device | rack | XSlot | 设备号 |
+| device | rack | xslot | 设备号 |
 |---|---|---|---|
 | `IM151-8_PN/DP` | — | — | 01 |
 | `CPU31x-2_PN/DP`、`CPU314C-2_PN/DP`、`IM154-8_PN/DP` | — | — | 02 |
@@ -83,7 +83,7 @@ list:
 | `CPU412-5H_PN/DP`、`CPU414-5H_PN/DP`、`CPU416-5H_PN/DP`、`CPU417-5H_PN/DP` | 省略或 0 / 1 | 省略或 5 | 05 / 15 |
 | `CPU410-5H` | 省略或 0 / 1 | 省略、5 或 8 | rack 0：05（X8 为 08）；rack 1：15（X8 为 18） |
 
-`rack`、`XSlot` 在 Step 7 硬件组态中可以看到。
+`rack`、`xslot` 在 Step 7 硬件组态中可以看到。
 
 ## 5. 轮询（polls 项）属性
 
@@ -156,7 +156,7 @@ list:
   host: [192, 168, 10, 10]
   port: 502
   rack: 1
-  XSlot: 8
+  xslot: 8
   $interval_time: 1000
   polls:
   - comment: 读取过程值
@@ -189,5 +189,5 @@ list:
 | `配置项"polls"必须为数组且个数大于0!` | 缺少 `polls` |
 | `配置项 send_DB 或 unit_ID 必须有一个!` | 轮询既没有外部发送块也没有请求参数 |
 | `When the function code is 15 or 16, the extra_data ...` | 15/16 功能码缺少 `extra_data` |
-| `指定的通信设备号"..."不存在！` | `device`/`rack`/`XSlot` 组合不在第 4 节的表中 |
+| `指定的通信设备号"..."不存在！` | `device`/`rack`/`xslot` 组合不在第 4 节的表中 |
 | `DB "..." is called repeatedly!` | 多个轮询对同一背景块使用了 `extra_code: FB` |

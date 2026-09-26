@@ -115,9 +115,17 @@ Modbus polls, backed by `MT_Poll`.
 - Platforms: `step7` only.
 - Aliases: `modbusTCP`.
 - Key connection-level keys: `DB` (connection instance DB, type `MT_Poll`),
-  `host` (dotted-quad IP string or 4-element array), `port`, `rack`/`XSlot`
-  (used to look up the CPU's communication-device ID for `TCON`),
-  `$interval_time`/`interval_time`.
+  `host` (dotted-quad IP string or 4-element array), `port`,
+  `local_device_id`/`device`/`rack`/`xslot` (the communication-device ID for
+  `TCON`), `$interval_time`/`interval_time`.
+- Communication-device ID priority: the connection's `local_device_id` (an
+  SCL byte literal such as `B#16#02`, used as-is); otherwise the connection's
+  `device`, falling back to the CPU document's `device`, looked up together
+  with `rack`/`xslot` in the built-in table (an unknown combination is an
+  error). The lookup is an exact match on the full `device`/`rack`/`xslot`
+  combination: `rack`/`xslot` may be omitted where the table has a default
+  entry, and supplying one the model does not take is an error.
+  The legacy key `XSlot` is still accepted as an alias of `xslot`.
 - Key per-poll keys: either `send_DB` + `send_start` (poll frame lives in an
   externally managed DB) or `unit_ID` + `func_code` + `address`/`started_addr`
   + `data`/`length` (+ `extra_data` for function codes 15/16) to have the
