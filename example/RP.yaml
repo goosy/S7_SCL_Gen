@@ -26,7 +26,7 @@ list:
   type: offDelay
   input: OFAlarm                 # 溢出报警
   $time: TIME#1h                 # 延时1小时关闭风扇
-  output: [FanRun, Q22.1]        # 风扇控制
+  output: [FanStop, Q22.1]        # 风扇控制
 - comment: 烘干延时
   DB: [drywork, DB+]
   type: onPulse
@@ -83,7 +83,7 @@ list:
   type: offDelay
   input: OFAlarm                 # 溢出报警
   $time: TIME#1h                 # 延时1小时关闭风扇
-  output: [FanRun, Q22.1]        # 风扇控制
+  output: [FanStop, Q22.1]       # 风扇控制
 - comment: 烘干延时
   DB: [drywork, DB+]
   type: onPulse

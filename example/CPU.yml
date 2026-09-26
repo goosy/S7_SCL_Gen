@@ -57,7 +57,7 @@ includes:       # includes 用来包含到该类型转换后的输出文件中�
 - PE.scl        # 另一个要包含的文件
 
 files:          # files 仅仅是复制该文件到输出文件夹中
-- ..//README.md # 复制说明文件，也可以复件其它的手工代码的SCL、AWL文件
+- ..//README.zh-cn.md # 复制说明文件，也可以复件其它的手工代码的SCL、AWL文件
 
 # reference_symbols部分是CPU中比较特殊的符号
 # 主要用于已在step7项目中已经存在的符号，比如涉及 step7 库中的符号

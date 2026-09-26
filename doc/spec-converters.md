@@ -160,6 +160,10 @@ backed by `PI_Proc`.
 - Key `list` item keys: `DB`, `type` (one of `onDelay`, `offDelay`,
   `onPulse`, `onDPulse`, `changePulse`, `changeDPulse` — maps to the FB
   used), `input`, `output`, `$time` (pulse/delay duration, `TIME` literal).
+- `output` (optional): an assignable `BOOL` — a symbol definition, symbol
+  reference or single variable, never a constant or compound expression
+  (rejected at conversion). When present, `RP_Loop` assigns
+  `<output> := <DB>.Q;` right after the item's FB call.
 - Library files: `CP.scl`, `DP.scl` (from `RP_Trigger`); `TON`/`TOF`/`TP`
   come from the CPU's built-in `SFB` library, not a copied file.
 

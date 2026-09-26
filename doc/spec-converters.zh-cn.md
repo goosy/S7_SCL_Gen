@@ -145,6 +145,9 @@
 - 关键 `list` 条目键：`DB`、`type`（`onDelay`、`offDelay`、`onPulse`、
   `onDPulse`、`changePulse`、`changeDPulse` 之一——决定使用哪个 FB）、
   `input`、`output`、`$time`（脉冲/延时时长，`TIME` 字面量）。
+- `output`（可选）：可赋值的 `BOOL`——符号定义、符号引用或单个变量，
+  不能是常量或复合表达式（转换时报错）。配置后，`RP_Loop` 在该项 FB
+  调用之后紧接着生成 `<output> := <DB>.Q;`。
 - 库文件：`CP.scl`、`DP.scl`（来自 `RP_Trigger`）；`TON`/`TOF`/`TP` 来自
   CPU 内置的 `SFB` 库，而非复制的文件。
 

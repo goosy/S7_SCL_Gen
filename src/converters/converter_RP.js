@@ -63,7 +63,7 @@ export function initialize_list(area) {
                 s7_expr_desc: `RP ${comment} input`,
             },
         ).then(symbol => {
-            RP.IN = symbol;
+            RP.input = symbol;
         });
         make_s7_expression(
             node.get('output'),
@@ -74,7 +74,7 @@ export function initialize_list(area) {
                 s7_expr_desc: `RP ${comment} output`,
             },
         ).then(symbol => {
-            RP.Q = symbol;
+            RP.output = symbol;
         });
         if (RP.type.value === 'onDPulse' || RP.type.value === 'changeDPulse') {
             RP.IncludeFallingEdge = RP.type.value === 'changeDPulse';
@@ -85,6 +85,29 @@ export function initialize_list(area) {
 
         return RP;
     });
+}
+
+/**
+ * Second scan: validate that each output is assignable
+ * @param {Area} area
+ * @returns {void}
+ */
+export function build_list({ document, list }) {
+    for (const RP of list) {
+        const output = RP.output;
+        // biome-ignore lint/suspicious/noDoubleEquals: may be null
+        if (output == undefined || output.type !== 'ref') continue; // no output or S7 symbol
+        // A non-symbol output must be a single assignable variable,
+        // not a literal constant or a compound SCL expression.
+        const value = output.value;
+        if (
+            typeof value !== 'string'
+            || output.isExpress
+            || /^\s*(true|false)\s*$/i.test(value)
+        ) {
+            elog(new SyntaxError(`${document.CPU.name}:RP (${RP.comment.value}) 的 output "${value}" 必须是可赋值的 BOOL 变量，不能是常量或表达式`));
+        }
+    }
 }
 
 export function gen({ document, options = {} }) {

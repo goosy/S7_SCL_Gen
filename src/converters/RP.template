@@ -40,8 +40,11 @@ BEGIN
 
 {{for RP in list}}
   {{_if platform == 'step7' || platform == 'pcs7'}}"{{RP.FB}}".{{endif // platform}}_
-{{RP.DB.value}}(IN := {{RP.IN.value}}_
+    {{_RP.DB.value}}(IN := {{RP.input.value}}_
   {{_if RP.PT != undefined}}, PT := {{RP.PT}}{{endif}}); // {{RP.comment}}
+  {{_if RP.output}}_
+    {{_RP.output.value}} := {{RP.DB.value}}.Q;
+  {{_endif // RP.output}}_
 {{endfor // RP}}_
 
 {{if loop_end}}
