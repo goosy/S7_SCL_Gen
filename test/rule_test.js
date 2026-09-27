@@ -260,30 +260,30 @@ suite('rule test', () => {
         strictEqual(
             output.content,
             'NO,eventtag,location,event,PV1\n' +
-            '1,distProgram/TIT101.AH_flag,,高高报警,distProgram/TIT101.AH_PV\n' +
-            '2,distProgram/TIT101.WH_flag,,高警告,distProgram/TIT101.WH_PV\n' +
-            '3,distProgram/TIT101.AL_flag,,低低报警,distProgram/TIT101.AL_PV\n'
+            '1,distProgram/TIT101.HH_flag,,高高报警,distProgram/TIT101.HH_PV\n' +
+            '2,distProgram/TIT101.H_flag,,高警告,distProgram/TIT101.H_PV\n' +
+            '3,distProgram/TIT101.LL_flag,,低低报警,distProgram/TIT101.LL_PV\n'
         );
         deepStrictEqual(output.tags.list, [
             {
-                tagname: 'distProgram/TIT101.AH_flag',
+                tagname: 'distProgram/TIT101.HH_flag',
                 location: '',
                 event: '高高报警',
-                PV1: 'distProgram/TIT101.AH_PV',
+                PV1: 'distProgram/TIT101.HH_PV',
                 oo: '000000',
             },
             {
-                tagname: 'distProgram/TIT101.WH_flag',
+                tagname: 'distProgram/TIT101.H_flag',
                 location: '',
                 event: '高警告',
-                PV1: 'distProgram/TIT101.WH_PV',
+                PV1: 'distProgram/TIT101.H_PV',
                 oo: '000000',
             },
             {
-                tagname: 'distProgram/TIT101.AL_flag',
+                tagname: 'distProgram/TIT101.LL_flag',
                 location: '',
                 event: '低低报警',
-                PV1: 'distProgram/TIT101.AL_PV',
+                PV1: 'distProgram/TIT101.LL_PV',
                 oo: '000000',
             },
         ]);

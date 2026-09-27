@@ -65,6 +65,12 @@ received over serial/Modbus), backed by `Alarm_Proc`.
   `enable_AH`/`enable_WH`/`enable_WL`/`enable_AL` and their `$enable_*`
   initial-value counterparts, `$dead_zone`, `$FT_time`). Limits must satisfy
   `AL <= WL <= WH <= AH`; violating this is a configuration error.
+- GCL key to generated SCL member mapping: `AH`/`WH`/`WL`/`AL` are written to
+  the `HH`/`H`/`L`/`LL` members of the instance DB (e.g. `$AH_limit` →
+  `HH_limit`, `enable_WL` → `enable_L`). The instance DB outputs are
+  `HH_flag`/`H_flag`/`L_flag`/`LL_flag`, `HH_PV`/`H_PV`/`L_PV`/`LL_PV` and
+  `no_limit`, indicating limit exceedance rather than alarms. The same applies
+  to `AI`.
 - Library file name: `Alarm_Proc(<platform>).scl`.
 
 ## interlock

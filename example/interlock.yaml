@@ -168,7 +168,7 @@ list:
   - test                       # data项名称作为输入项，与 `{value: test}` 等效
   - DI02-11                    # 符号引用作为输入项，与 `{value: DI02-11}` 等效
   - [DI02-14, I5.5]            # 符号定义作为输入项，与 `{value: [DI02-14, I5.5]}` 等效
-  - '"PIT-1201".AH_Flag'       # SCL表达式作为该输入项，与 `{value: '"PIT-1201".AH_Flag'}` 等效
+  - '"PIT-1201".HH_flag'       # SCL表达式作为该输入项，与 `{value: '"PIT-1201".HH_flag'}` 等效
   - IL_pump.temperature > 100  # SCL表达式作为输入项，与 `{value: IL_pump.temperature > 100}` 等效
   # 编译器会自动转换为完整的输入项对象，并应用默认的 rising 触发类型。
 
@@ -190,8 +190,8 @@ list:
     trigger: off
     value: 'PowerReady'
   - and:               # 来油罐液位低
-    - LIT0205A.AL_flag # 1#罐液位低
-    - LIT0205B.AL_flag # 2#罐液位低
+    - LIT0205A.LL_flag # 1#罐液位低
+    - LIT0205B.LL_flag # 2#罐液位低
   ############################################################
 
   ############################################################
@@ -395,7 +395,7 @@ list:
   - test                       # data项名称作为输入项，与 `{value: test}` 等效
   - DI02-11                    # 符号引用作为输入项，与 `{value: DI02-11}` 等效
   - [DI02-14, I5.5]            # 符号定义作为输入项，与 `{value: [DI02-14, I5.5]}` 等效
-  - '"PIT-1201".AH_Flag'       # SCL表达式作为该输入项，与 `{value: '"PIT-1201".AH_Flag'}` 等效
+  - '"PIT-1201".HH_flag'       # SCL表达式作为该输入项，与 `{value: '"PIT-1201".HH_flag'}` 等效
   - IL_pump.temperature > 100  # SCL表达式作为输入项，与 `{value: IL_pump.temperature > 100}` 等效
 
   - comment: 外输泵润滑系统
@@ -414,8 +414,8 @@ list:
     trigger: off
     value: 'PowerReady'
   - and:               # 来油罐液位低
-    - LIT0205A.AL_flag # 1#罐液位低
-    - LIT0205B.AL_flag # 2#罐液位低
+    - LIT0205A.LL_flag # 1#罐液位低
+    - LIT0205B.LL_flag # 2#罐液位低
 
   reset:
   - reset              # data项名称 这里用来人工确认

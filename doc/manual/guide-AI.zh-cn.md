@@ -95,12 +95,12 @@ $underflow_SP: -500
 | 字段 | 说明 |
 |---|---|
 | `PV` | 工程值 |
-| `AH_flag` / `WH_flag` / `WL_flag` / `AL_flag` | 各级报警标志 |
+| `HH_flag` / `H_flag` / `L_flag` / `LL_flag` | 各级超限标志（对应 GCL 的 AH / WH / WL / AL） |
 | `invalid` / `AI_error` / `overflow` / `underflow` | 见第 4 节 |
 | `SP_error` | 限值设置错误 |
-| `AH_PV` … `AL_PV` | 最近一次触发该级报警时的工程值 |
+| `HH_PV` / `H_PV` / `L_PV` / `LL_PV` | 最近一次该级超限时的工程值 |
 
-所有字段都带 `S7_m_c` 属性。在其它配置中引用示例：`'"PIT001".PV > 1.5'`、`'"PIT001".AH_flag'`。
+所有字段都带 `S7_m_c` 属性。在其它配置中引用示例：`'"PIT001".PV > 1.5'`、`'"PIT001".HH_flag'`。
 
 ## 6. 示例：复用参数与运行期间使能
 

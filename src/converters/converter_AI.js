@@ -77,10 +77,10 @@ export function build_list({ list }) {
     for (const AI of list) { // Process configuration to form complete data
         const input_paras = [
             ['input', 'AI'],
-            ['enable_AH'],
-            ['enable_WH'],
-            ['enable_WL'],
-            ['enable_AL'],
+            ['enable_AH', 'enable_HH'],
+            ['enable_WH', 'enable_H'],
+            ['enable_WL', 'enable_L'],
+            ['enable_AL', 'enable_LL'],
         ].flatMap(input_para => {
             const para_name = input_para[0];
             const para_SCL = input_para[1] ?? para_name;

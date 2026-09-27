@@ -15,10 +15,10 @@ AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-    enable_AH := {{AI.$enable_AH}};
-    enable_WH := {{AI.$enable_WH}};
-    enable_WL := {{AI.$enable_WL}};
-    enable_AL := {{AI.$enable_AL}};
+    enable_HH := {{AI.$enable_AH}};
+    enable_H := {{AI.$enable_WH}};
+    enable_L := {{AI.$enable_WL}};
+    enable_LL := {{AI.$enable_AL}};
     {{_if AI.$zero_raw !== undefined}}_
     zero_raw := {{AI.$zero_raw}};
     {{_endif}}_
@@ -38,16 +38,16 @@ BEGIN
     span := {{AI.$span}};
     {{_endif}}_
     {{_if AI.$AH_limit !== undefined}}_
-    AH_limit := {{AI.$AH_limit}};
+    HH_limit := {{AI.$AH_limit}};
     {{_endif}}_
     {{_if AI.$WH_limit !== undefined}}_
-    WH_limit := {{AI.$WH_limit}};
+    H_limit := {{AI.$WH_limit}};
     {{_endif}}_
     {{_if AI.$WL_limit !== undefined}}_
-    WL_limit := {{AI.$WL_limit}};
+    L_limit := {{AI.$WL_limit}};
     {{_endif}}_
     {{_if AI.$AL_limit !== undefined}}_
-    AL_limit := {{AI.$AL_limit}};
+    LL_limit := {{AI.$AL_limit}};
     {{_endif}}_
     {{_if AI.$dead_zone !== undefined}}_
     dead_zone := {{AI.$dead_zone}};

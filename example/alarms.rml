@@ -172,10 +172,10 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: '{{$.link_name}}Program/{{$.DB.name}}.AH_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.HH_flag'
         location: '{{$.location}}'
         event: '{{$.type}}高高报警'
-        PV1: '{{$.link_name}}Program/{{$.DB.name}}.AH_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.HH_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_WH: {value: true}
@@ -183,10 +183,10 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: '{{$.link_name}}Program/{{$.DB.name}}.WH_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.H_flag'
         location: '{{$.location}}'
         event: '{{$.type}}高警告'
-        PV1: '{{$.link_name}}Program/{{$.DB.name}}.WH_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.H_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_WL: {value: true}
@@ -194,10 +194,10 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: '{{$.link_name}}Program/{{$.DB.name}}.WL_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.L_flag'
         location: '{{$.location}}'
         event: '{{$.type}}低警告'
-        PV1: '{{$.link_name}}Program/{{$.DB.name}}.WL_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.L_PV'
         oo: '{{$.__original_index}}'
     - pattern:
         $enable_AL: {value: true}
@@ -205,10 +205,10 @@ rules:  # 在这里定义全局规则列表
       actions:
       - action_type: add
         action_scope: matched
-        tagname: '{{$.link_name}}Program/{{$.DB.name}}.AL_flag'
+        tagname: '{{$.link_name}}Program/{{$.DB.name}}.LL_flag'
         location: '{{$.location}}'
         event: '{{$.type}}低低报警'
-        PV1: '{{$.link_name}}Program/{{$.DB.name}}.AL_PV'
+        PV1: '{{$.link_name}}Program/{{$.DB.name}}.LL_PV'
         oo: '{{$.__original_index}}'
     - pattern: '*'
       scope: origin

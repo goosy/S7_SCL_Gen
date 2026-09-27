@@ -334,7 +334,7 @@ In most cases string values can be written without quotes; see YAML syntax for d
 
 The literal form is the same as a string, but its content must be a standard SCL expression; SCL syntax is the authority on the exact requirements.
 
-If the literal contains double quotes, wrap the expression in single quotes as YAML syntax requires, e.g. `'NOT "TIT001".AL_Flag'`
+If the literal contains double quotes, wrap the expression in single quotes as YAML syntax requires, e.g. `'NOT "TIT001".LL_flag'`
 
 ### 4.5 S7 symbol definition
 

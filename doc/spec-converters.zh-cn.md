@@ -60,6 +60,10 @@
   `enable_AH`/`enable_WH`/`enable_WL`/`enable_AL` 及其对应的 `$enable_*`
   初始值、`$dead_zone`、`$FT_time`）。限值必须满足
   `AL <= WL <= WH <= AH`；违反即为配置错误。
+- GCL 键与生成的 SCL 成员的对应：`AH`/`WH`/`WL`/`AL` 分别写入实例 DB 的
+  `HH`/`H`/`L`/`LL` 系列成员（如 `$AH_limit` → `HH_limit`、`enable_WL` →
+  `enable_L`）。实例 DB 的输出为 `HH_flag`/`H_flag`/`L_flag`/`LL_flag`、
+  `HH_PV`/`H_PV`/`L_PV`/`LL_PV` 与 `no_limit`，表示超限而非报警。`AI` 同样适用。
 - 库文件名：`Alarm_Proc(<platform>).scl`。
 
 ## interlock

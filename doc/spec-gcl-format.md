@@ -147,7 +147,7 @@ disambiguate from another type, or to include special characters).
 Same literal form as a string, but its content must be a valid SCL
 expression (validity is the author's responsibility — the generator does
 not check SCL syntax). If the expression contains a double quote, wrap the
-whole value in single quotes per YAML rules, e.g. `'NOT "TIT001".AL_Flag'`.
+whole value in single quotes per YAML rules, e.g. `'NOT "TIT001".LL_flag'`.
 
 ### 3.5 S7 symbol definition
 

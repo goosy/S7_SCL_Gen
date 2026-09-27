@@ -88,7 +88,7 @@ DB 块的注释取自符号定义的第 4 项；未提供时取该 DB 第一个�
 | data 项名称 | `EBTN` | `"IL_ESDBTN".EBTN` |
 | S7 符号引用 | `DI02-11` | `"DI02-11"` |
 | S7 符号定义 | `[DI02-14, I5.5]` | `"DI02-14"`（同时定义该符号） |
-| SCL 表达式 | `'"PIT-1201".AH_Flag'` | `"PIT-1201".AH_Flag` |
+| SCL 表达式 | `'"PIT-1201".HH_flag'` | `"PIT-1201".HH_flag` |
 
 判定顺序：先查本 DB 的 data 项名称，再查已定义的符号，都不匹配时**原样**作为 SCL 表达式输出。
 
@@ -139,7 +139,7 @@ input:
 - test                       # data 项名称
 - DI02-11                    # 符号引用
 - [DI02-14, I5.5]            # 符号定义
-- '"PIT-1201".AH_Flag'       # SCL 表达式
+- '"PIT-1201".HH_flag'       # SCL 表达式
 ```
 
 完整形式：
@@ -170,8 +170,8 @@ input:
 - value: PowerReady           # 高压失电期间持续触发
   trigger: off
 - and:                        # 两个罐液位都低时触发
-  - LIT0205A.AL_flag
-  - LIT0205B.AL_flag
+  - LIT0205A.LL_flag
+  - LIT0205B.LL_flag
 ```
 
 边沿类（`rising`/`falling`/`change`）输入会在 DB 中生成追随变量 `b_<n>_fo`，其中 `<n>` 是该项在本 DB 输入中的序号。

@@ -116,9 +116,9 @@ enable_AL: '"pump1".run_state'   # 泵运行时才启用低低报
 
 | 字段 | 说明 |
 |---|---|
-| `AH_flag` / `WH_flag` / `WL_flag` / `AL_flag` | 各级报警标志 |
-| `AH_PV` … `AL_PV` | 最近一次触发该级报警时的过程值 |
-| `no_alarm` | 四级报警都未启用 |
+| `HH_flag` / `H_flag` / `L_flag` / `LL_flag` | 各级超限标志（对应 GCL 的 AH / WH / WL / AL） |
+| `HH_PV` / `H_PV` / `L_PV` / `LL_PV` | 最近一次该级超限时的过程值 |
+| `no_limit` | 四级超限判断都未启用 |
 | `SP_error` | 限值设置错误 |
 
 alarm 独有的输出：
@@ -128,7 +128,7 @@ alarm 独有的输出：
 | `input_ok` | `NOT invalid` |
 | `overflow` / `underflow` | PV 超出量程上/下限 2% |
 
-所有字段都带 `S7_m_c` 属性，HMI 可直接访问。例如在联锁中使用：`'"LIT001".AH_flag'`。
+所有字段都带 `S7_m_c` 属性，HMI 可直接访问。例如在联锁中使用：`'"LIT001".HH_flag'`。
 
 ## 5. 常见错误
 
