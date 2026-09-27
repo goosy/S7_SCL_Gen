@@ -102,10 +102,6 @@ export class GCL {
     get source() {
         return this.#source;
     }
-    #scl = '';
-    get scl() {
-        return this.#scl;
-    }
     #yaml;
     #line_counter;
     get_pos_data(start, end) {
@@ -171,15 +167,11 @@ export class GCL {
         this.#line_counter = new LineCounter();
         this.#yaml = yaml;
         const {
-            CPU,
-            feature,
             filename = '',
             source = yaml,
-            scl = '',
         } = options;
         this.#file = filename;
         this.#source = source;
-        this.#scl = scl;
         this.#MD5 = createHash('md5').update(this.#source).digest('hex');
         this.parse_documents();
     }
