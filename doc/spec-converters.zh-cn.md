@@ -41,9 +41,9 @@
 - 平台：`step7`、`portal`、`pcs7`。
 - 别名：无（必须为 `AI`）。
 - 关键 `list` 条目键：`DB`（实例 DB）、`input`（源 WORD，如某个 `PIW`
-  通道），以及 [alarm](#alarm) 下记述的共享报警/量程键（`$zero`、`$span`、
+  通道），以及 [alarm](#alarm) 下记述的共享超限判断/量程键（`$zero`、`$span`、
   `$zero_raw`、`$span_raw`、`$overflow_SP`、`$underflow_SP`、
-  `$AH_limit`/`$WH_limit`/`$WL_limit`/`$AL_limit` 及其对应的
+  `$HH_limit`/`$H_limit`/`$L_limit`/`$LL_limit` 及其对应的
   `enable_*`/`$enable_*`、`$dead_zone`、`$FT_time`）。
 - 库文件名：`AI_Proc(<platform>).scl`。
 
@@ -55,15 +55,14 @@
 - 平台：`step7`、`portal`、`pcs7`。
 - 别名：`pv_alarm`、`pv`、`pvalarm`。
 - 关键 `list` 条目键：`DB`、`input`（REAL 工程单位值，而非原始计数值）、
-  `invalid`（可选的质量/有效性位），以及共享报警键（`$zero`、`$span`、
-  `$AH_limit`/`$WH_limit`/`$WL_limit`/`$AL_limit`、
-  `enable_AH`/`enable_WH`/`enable_WL`/`enable_AL` 及其对应的 `$enable_*`
+  `invalid`（可选的质量/有效性位），以及共享超限判断键（`$zero`、`$span`、
+  `$HH_limit`/`$H_limit`/`$L_limit`/`$LL_limit`、
+  `enable_HH`/`enable_H`/`enable_L`/`enable_LL` 及其对应的 `$enable_*`
   初始值、`$dead_zone`、`$FT_time`）。限值必须满足
-  `AL <= WL <= WH <= AH`；违反即为配置错误。
-- GCL 键与生成的 SCL 成员的对应：`AH`/`WH`/`WL`/`AL` 分别写入实例 DB 的
-  `HH`/`H`/`L`/`LL` 系列成员（如 `$AH_limit` → `HH_limit`、`enable_WL` →
-  `enable_L`）。实例 DB 的输出为 `HH_flag`/`H_flag`/`L_flag`/`LL_flag`、
-  `HH_PV`/`H_PV`/`L_PV`/`LL_PV` 与 `no_limit`，表示超限而非报警。`AI` 同样适用。
+  `LL <= L <= H <= HH`；违反即为配置错误。
+- 上述 GCL 键写入实例 DB 的同名成员。实例 DB 的输出为
+  `HH_flag`/`H_flag`/`L_flag`/`LL_flag`、`HH_PV`/`H_PV`/`L_PV`/`LL_PV` 与
+  `no_limit`，表示超限而非报警。`AI` 同样适用。
 - 库文件名：`Alarm_Proc(<platform>).scl`。
 
 ## interlock

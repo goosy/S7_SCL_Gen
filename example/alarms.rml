@@ -167,7 +167,7 @@ rules:  # 在这里定义全局规则列表
     # 这里省略了 action_type: inner_rules，因为有 rules 属性
     rules:  # rules 是 inner_rules 动作的必须属性
     - pattern:
-        $enable_AH: {value: true}
+        $enable_HH: {value: true}
       scope: origin
       actions:
       - action_type: add
@@ -178,7 +178,7 @@ rules:  # 在这里定义全局规则列表
         PV1: '{{$.link_name}}Program/{{$.DB.name}}.HH_PV'
         oo: '{{$.__original_index}}'
     - pattern:
-        $enable_WH: {value: true}
+        $enable_H: {value: true}
       scope: origin
       actions:
       - action_type: add
@@ -189,7 +189,7 @@ rules:  # 在这里定义全局规则列表
         PV1: '{{$.link_name}}Program/{{$.DB.name}}.H_PV'
         oo: '{{$.__original_index}}'
     - pattern:
-        $enable_WL: {value: true}
+        $enable_L: {value: true}
       scope: origin
       actions:
       - action_type: add
@@ -200,7 +200,7 @@ rules:  # 在这里定义全局规则列表
         PV1: '{{$.link_name}}Program/{{$.DB.name}}.L_PV'
         oo: '{{$.__original_index}}'
     - pattern:
-        $enable_AL: {value: true}
+        $enable_LL: {value: true}
       scope: origin
       actions:
       - action_type: add

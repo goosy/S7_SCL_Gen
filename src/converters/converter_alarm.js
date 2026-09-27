@@ -89,10 +89,10 @@ export function build_list({ list }) {
         const input_paras = [
             ['input', 'PV'],
             ['invalid'],
-            ['enable_AH', 'enable_HH'],
-            ['enable_WH', 'enable_H'],
-            ['enable_WL', 'enable_L'],
-            ['enable_AL', 'enable_LL'],
+            ['enable_HH'],
+            ['enable_H'],
+            ['enable_L'],
+            ['enable_LL'],
         ].flatMap(_para => {
             const para_name = _para[0];
             const para_SCL = _para[1] ?? para_name;

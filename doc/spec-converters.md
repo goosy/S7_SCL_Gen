@@ -44,10 +44,10 @@ by the `AI_Proc` FB.
 - Platforms: `step7`, `portal`, `pcs7`.
 - Aliases: none (must be `AI`).
 - Key `list` item keys: `DB` (instance DB), `input` (source WORD, e.g. a
-  `PIW` channel), plus the shared alarm/scaling keys documented under
+  `PIW` channel), plus the shared limit-check/scaling keys documented under
   [alarm](#alarm) (`$zero`, `$span`, `$zero_raw`, `$span_raw`,
-  `$overflow_SP`, `$underflow_SP`, `$AH_limit`/`$WH_limit`/`$WL_limit`/
-  `$AL_limit` and their `enable_*`/`$enable_*` counterparts, `$dead_zone`,
+  `$overflow_SP`, `$underflow_SP`, `$HH_limit`/`$H_limit`/`$L_limit`/
+  `$LL_limit` and their `enable_*`/`$enable_*` counterparts, `$dead_zone`,
   `$FT_time`).
 - Library file name: `AI_Proc(<platform>).scl`.
 
@@ -60,17 +60,15 @@ received over serial/Modbus), backed by `Alarm_Proc`.
 - Platforms: `step7`, `portal`, `pcs7`.
 - Aliases: `pv_alarm`, `pv`, `pvalarm`.
 - Key `list` item keys: `DB`, `input` (a REAL engineering-unit value, not raw
-  counts), `invalid` (optional quality/validity bit), and the shared alarm
-  keys (`$zero`, `$span`, `$AH_limit`/`$WH_limit`/`$WL_limit`/`$AL_limit`,
-  `enable_AH`/`enable_WH`/`enable_WL`/`enable_AL` and their `$enable_*`
+  counts), `invalid` (optional quality/validity bit), and the shared
+  limit-check keys (`$zero`, `$span`, `$HH_limit`/`$H_limit`/`$L_limit`/`$LL_limit`,
+  `enable_HH`/`enable_H`/`enable_L`/`enable_LL` and their `$enable_*`
   initial-value counterparts, `$dead_zone`, `$FT_time`). Limits must satisfy
-  `AL <= WL <= WH <= AH`; violating this is a configuration error.
-- GCL key to generated SCL member mapping: `AH`/`WH`/`WL`/`AL` are written to
-  the `HH`/`H`/`L`/`LL` members of the instance DB (e.g. `$AH_limit` →
-  `HH_limit`, `enable_WL` → `enable_L`). The instance DB outputs are
-  `HH_flag`/`H_flag`/`L_flag`/`LL_flag`, `HH_PV`/`H_PV`/`L_PV`/`LL_PV` and
-  `no_limit`, indicating limit exceedance rather than alarms. The same applies
-  to `AI`.
+  `LL <= L <= H <= HH`; violating this is a configuration error.
+- The GCL keys above are written to the same-named members of the instance
+  DB. The instance DB outputs are `HH_flag`/`H_flag`/`L_flag`/`LL_flag`,
+  `HH_PV`/`H_PV`/`L_PV`/`LL_PV` and `no_limit`, indicating limit exceedance
+  rather than alarms. The same applies to `AI`.
 - Library file name: `Alarm_Proc(<platform>).scl`.
 
 ## interlock

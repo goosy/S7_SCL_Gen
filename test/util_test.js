@@ -17,10 +17,10 @@ const test_template = `# 联校调试记录
  | {{if has_span}}{{ (AI.$zero.value + diff).toFixed(3) }}{{endif}}_
  | {{if has_span}}{{ (AI.$zero.value / 2 + AI.$span.value / 2 + diff).toFixed(3) }}{{endif}}_
  | {{if has_span}}{{ (AI.$span.value - diff).toFixed(3) }}{{endif}}_
- | {{if AI.$AH_limit !== undefined}}AH: {{AI.$AH_limit}} {{endif}}_
-{{if AI.$WH_limit !== undefined}}WH: {{AI.$WH_limit}} {{endif}}_
-{{if AI.$WL_limit !== undefined}}WL: {{AI.$WL_limit}} {{endif}}_
-{{if AI.$AL_limit !== undefined}}AL: {{AI.$AL_limit}} {{endif}}_
+ | {{if AI.$HH_limit !== undefined}}HH: {{AI.$HH_limit}} {{endif}}_
+{{if AI.$H_limit !== undefined}}H: {{AI.$H_limit}} {{endif}}_
+{{if AI.$L_limit !== undefined}}L: {{AI.$L_limit}} {{endif}}_
+{{if AI.$LL_limit !== undefined}}LL: {{AI.$LL_limit}} {{endif}}_
 | 合格 |
 {{endif // AI.DB}}{{endfor}}
 调试单位: __________________________ 专业工程师: ________ 质量检查员: ________ 施工班组长: ________

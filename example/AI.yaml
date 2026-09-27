@@ -21,10 +21,10 @@ template:
 - &tubepress       # 设置引用锚点，该锚点表示 & 符号位置所在的值（即右侧或下侧的value）可以在其它地方被引用
   $zero: -0.2
   $span: 2.6
-  $AH_limit: 2.5
-  $WH_limit: 2.0
-  $WL_limit: -0.05
-  $AL_limit: -0.1
+  $HH_limit: 2.5
+  $H_limit: 2.0
+  $L_limit: -0.05
+  $LL_limit: -0.1
   $dead_zone: 0.01
 
 list: # 模拟量列表
@@ -60,12 +60,12 @@ list: # 模拟量列表
 
   # 超限值初始值，可省略
   # 类型: null | 浮点数字面量
-  # 省略或赋值为fasle时，代表该超限报警不启用。
-  # 以下默认了相关超限报警都允许
-  $AH_limit: 2.5
-  $WH_limit: 2.0
-  $WL_limit: -0.05
-  $AL_limit: -0.1
+  # 省略或赋值为fasle时，代表该级超限判断不启用。
+  # 以下默认了相关超限判断都允许
+  $HH_limit: 2.5
+  $H_limit: 2.0
+  $L_limit: -0.05
+  $LL_limit: -0.1
 
   # 死区初始值
   # 类型: null | 浮点数字面量
@@ -81,22 +81,22 @@ list: # 模拟量列表
   DB: [PIT002, DB101]
   input: [AI01-01, PIW512]
 
-  # 报警便能初始值
+  # 超限判断使能初始值
   # 类型: null | Bool字面量
-  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
-  # $enable_AH 高高报警值
-  $enable_AH: true   # 代表初始时允许AH报警，这时必须定义 $AH_limit
-  # $enable_WH 高警告值
-  $enable_WH: true   # 代表初始时允许WH报警，这时必须定义 $WH_limit
-  # $enable_WL 低警告值
-  $enable_WL: ~      # 相当于省略，这时由 $WL_limit 决定初始时是否允许WL报警
-  # $enable_AL 低低报警值
-  $enable_AL: false  # 代表初始时不允许AL报警，可以省略定义 $AL_limit
+  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示超限判断启用状态
+  # $enable_HH 高高限判断使能
+  $enable_HH: true   # 代表初始时允许HH超限判断，这时必须定义 $HH_limit
+  # $enable_H 高限判断使能
+  $enable_H: true   # 代表初始时允许H超限判断，这时必须定义 $H_limit
+  # $enable_L 低限判断使能
+  $enable_L: ~      # 相当于省略，这时由 $L_limit 决定初始时是否允许L超限判断
+  # $enable_LL 低低限判断使能
+  $enable_LL: false  # 代表初始时不允许LL超限判断，可以省略定义 $LL_limit
 
-  # 报警初始值
+  # 超限限值初始值
   # 以下相当于把模板tubepress的部分数据进行更改
-  $AL_limit: ~       # 引用对象无法删除某个属性，但可以将该属性设置为 null 达到等效作用
-  $WH_limit: 2.0     # 修改$WH_limit模板的值
+  $LL_limit: ~       # 引用对象无法删除某个属性，但可以将该属性设置为 null 达到等效作用
+  $H_limit: 2.0     # 修改$H_limit模板的值
 
   # yaml语法"<<: *anchor" 表示将锚点anchor的内容合并在这里
   <<: *tubepress
@@ -107,19 +107,19 @@ list: # 模拟量列表
   input: [AI01-03, PIW516]   # AI通道
   $zero: -40.0
   $span: 80.0
-  $AL_limit: 25.0
-  # enable_AH,enable_WH,enable_WL,enable_AL 4个参数用于运行期间的赋值
+  $LL_limit: 25.0
+  # enable_HH,enable_H,enable_L,enable_LL 4个参数用于运行期间的赋值
   # 非$符号开头的参数，约定为运行期间的配置
   # 类型:  S7符号定义 | S7符号引用 | S7表达式
-  # 以下例子为运行期间(根据泵运行状态)动态设置是否允许低低报警
-  enable_AL: 'pump1.run_state'
+  # 以下例子为运行期间(根据泵运行状态)动态设置是否允许低低超限判断
+  enable_LL: 'pump1.run_state'
   $FT_time: TIME#3M         # TIME字面量
 
 - location: 气温
   type: 温度
   DB: [TIT002, DB+]
   input: [M485-1, MW100]    # M区域
-  # 这里取消了所有报警
+  # 这里取消了所有超限判断
 
   # 以下几项为整数SCL表达式，只能用于初始值
   $zero_raw: 0
@@ -137,10 +137,10 @@ list: # 模拟量列表
   # 在有DB块的情况下，会生成AI数据块
   # 在有DB参数的情况下，有以下其它参数之一，则产生运行期间的AI调用
   # - input
-  # - enable_AH
-  # - enable_WH
-  # - enable_WL
-  # - enable_AL 
+  # - enable_HH
+  # - enable_H
+  # - enable_L
+  # - enable_LL 
   # 没有 DB 则只输出注释，不会生成AI数据块和运行期间的AI调用
   DB: [LIT0102, DB+]
 
@@ -174,10 +174,10 @@ template:
 - &tubepress       # 设置引用锚点，该锚点表示 & 符号位置所在的值（即右侧或下侧的value）可以在其它地方被引用
   $zero: -0.2
   $span: 2.6
-  $AH_limit: 2.5
-  $WH_limit: 2.0
-  $WL_limit: -0.05
-  $AL_limit: -0.1
+  $HH_limit: 2.5
+  $H_limit: 2.0
+  $L_limit: -0.05
+  $LL_limit: -0.1
   $dead_zone: 0.01
 
 list: # 模拟量列表
@@ -213,12 +213,12 @@ list: # 模拟量列表
 
   # 超限值初始值，可省略
   # 类型: null | 浮点数字面量
-  # 省略或赋值为fasle时，代表该超限报警不启用。
-  # 以下默认了相关超限报警都允许
-  $AH_limit: 2.5
-  $WH_limit: 2.0
-  $WL_limit: -0.05
-  $AL_limit: -0.1
+  # 省略或赋值为fasle时，代表该级超限判断不启用。
+  # 以下默认了相关超限判断都允许
+  $HH_limit: 2.5
+  $H_limit: 2.0
+  $L_limit: -0.05
+  $LL_limit: -0.1
 
   # 死区初始值
   # 类型: null | 浮点数字面量
@@ -234,22 +234,22 @@ list: # 模拟量列表
   DB: [PIT002, DB101]
   input: [AI01-01, PIW512]
 
-  # 报警便能初始值
+  # 超限判断使能初始值
   # 类型: null | Bool字面量
-  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
-  # $enable_AH 高高报警值
-  $enable_AH: true   # 代表初始时允许AH报警，这时必须定义 $AH_limit
-  # $enable_WH 高警告值
-  $enable_WH: true   # 代表初始时允许WH报警，这时必须定义 $WH_limit
-  # $enable_WL 低警告值
-  $enable_WL: ~      # 相当于省略，这时由 $WL_limit 决定初始时是否允许WL报警
-  # $enable_AL 低低报警值
-  $enable_AL: false  # 代表初始时不允许AL报警，可以省略定义 $AL_limit
+  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示超限判断启用状态
+  # $enable_HH 高高限判断使能
+  $enable_HH: true   # 代表初始时允许HH超限判断，这时必须定义 $HH_limit
+  # $enable_H 高限判断使能
+  $enable_H: true   # 代表初始时允许H超限判断，这时必须定义 $H_limit
+  # $enable_L 低限判断使能
+  $enable_L: ~      # 相当于省略，这时由 $L_limit 决定初始时是否允许L超限判断
+  # $enable_LL 低低限判断使能
+  $enable_LL: false  # 代表初始时不允许LL超限判断，可以省略定义 $LL_limit
 
-  # 报警初始值
+  # 超限限值初始值
   # 以下相当于把模板tubepress的部分数据进行更改
-  $AL_limit: ~       # 引用对象无法删除某个属性，但可以将该属性设置为 null 达到等效作用
-  $WH_limit: 2.0     # 修改$WH_limit模板的值
+  $LL_limit: ~       # 引用对象无法删除某个属性，但可以将该属性设置为 null 达到等效作用
+  $H_limit: 2.0     # 修改$H_limit模板的值
 
   # yaml语法"<<: *anchor" 表示将锚点anchor的内容合并在这里
   <<: *tubepress
@@ -260,19 +260,19 @@ list: # 模拟量列表
   input: [AI01-03, PIW516]   # AI通道
   $zero: -40.0
   $span: 80.0
-  $AL_limit: 25.0
-  # enable_AH,enable_WH,enable_WL,enable_AL 4个参数用于运行期间的赋值
+  $LL_limit: 25.0
+  # enable_HH,enable_H,enable_L,enable_LL 4个参数用于运行期间的赋值
   # 非$符号开头的参数，约定为运行期间的配置
   # 类型:  S7符号定义 | S7符号引用 | S7表达式
-  # 以下例子为运行期间(根据泵运行状态)动态设置是否允许低低报警
-  enable_AL: 'pump1.run_state'
+  # 以下例子为运行期间(根据泵运行状态)动态设置是否允许低低超限判断
+  enable_LL: 'pump1.run_state'
   $FT_time: TIME#3M         # TIME字面量
 
 - location: 气温
   type: 温度
   DB: [TIT002, DB+]
   input: [M485-1, MW100]    # M区域
-  # 这里取消了所有报警
+  # 这里取消了所有超限判断
 
   # 以下几项为整数SCL表达式，只能用于初始值
   $zero_raw: 0
@@ -290,10 +290,10 @@ list: # 模拟量列表
   # 在有DB块的情况下，会生成AI数据块
   # 在有DB参数的情况下，有以下其它参数之一，则产生运行期间的AI调用
   # - input
-  # - enable_AH
-  # - enable_WH
-  # - enable_WL
-  # - enable_AL 
+  # - enable_HH
+  # - enable_H
+  # - enable_L
+  # - enable_LL 
   # 没有 DB 则只输出注释，不会生成AI数据块和运行期间的AI调用
   DB: [LIT0102, DB+]
 

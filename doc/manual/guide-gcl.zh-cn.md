@@ -96,7 +96,7 @@ files:
 | S7 符号定义 | `[PIT001, DB100]` | 见第 4 节 |
 | S7 符号引用 | `PIT001` | 引用已定义的符号，允许向前引用 |
 
-以 `$` 开头的属性（如 `$zero`、`$enable`）约定为**初始值**，写入 DB 的初始值，运行中可由 HMI 修改；同名但不带 `$` 的属性（如 `enable_AH`）约定为**运行期间的赋值**，每个周期都会覆盖。
+以 `$` 开头的属性（如 `$zero`、`$enable`）约定为**初始值**，写入 DB 的初始值，运行中可由 HMI 修改；同名但不带 `$` 的属性（如 `enable_HH`）约定为**运行期间的赋值**，每个周期都会覆盖。
 
 ## 4. 符号
 
@@ -139,13 +139,13 @@ template:
 - &tubepress
   $zero: -0.2
   $span: 2.6
-  $AH_limit: 2.5
+  $HH_limit: 2.5
 
 list:
 - DB: [PIT002, DB101]
   input: [AI01-01, PIW512]
-  $AH_limit: 2.4       # 覆盖锚点中的值
-  $AL_limit: ~         # 设为 null 相当于删除
+  $HH_limit: 2.4       # 覆盖锚点中的值
+  $LL_limit: ~         # 设为 null 相当于删除
   <<: *tubepress
 ```
 

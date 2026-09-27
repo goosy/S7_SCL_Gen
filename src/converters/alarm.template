@@ -15,27 +15,27 @@ AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-    enable_HH := {{alarm.$enable_AH}};
-    enable_H := {{alarm.$enable_WH}};
-    enable_L := {{alarm.$enable_WL}};
-    enable_LL := {{alarm.$enable_AL}};
+    enable_HH := {{alarm.$enable_HH}};
+    enable_H := {{alarm.$enable_H}};
+    enable_L := {{alarm.$enable_L}};
+    enable_LL := {{alarm.$enable_LL}};
     {{_if alarm.$zero !== undefined}}_
     zero := {{alarm.$zero}};
     {{_endif}}_
     {{_if alarm.$span !== undefined}}_
     span := {{alarm.$span}};
     {{_endif}}_
-    {{_if alarm.$AH_limit != null}}_
-    HH_limit := {{alarm.$AH_limit}};
+    {{_if alarm.$HH_limit != null}}_
+    HH_limit := {{alarm.$HH_limit}};
     {{_endif}}_
-    {{_if alarm.$WH_limit != null}}_
-    H_limit := {{alarm.$WH_limit}};
+    {{_if alarm.$H_limit != null}}_
+    H_limit := {{alarm.$H_limit}};
     {{_endif}}_
-    {{_if alarm.$WL_limit != null}}_
-    L_limit := {{alarm.$WL_limit}};
+    {{_if alarm.$L_limit != null}}_
+    L_limit := {{alarm.$L_limit}};
     {{_endif}}_
-    {{_if alarm.$AL_limit != null}}_
-    LL_limit := {{alarm.$AL_limit}};
+    {{_if alarm.$LL_limit != null}}_
+    LL_limit := {{alarm.$LL_limit}};
     {{_endif}}_
     {{_if alarm.$dead_zone != null}}_
     dead_zone := {{alarm.$dead_zone}};

@@ -15,10 +15,10 @@ AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-    enable_HH := {{AI.$enable_AH}};
-    enable_H := {{AI.$enable_WH}};
-    enable_L := {{AI.$enable_WL}};
-    enable_LL := {{AI.$enable_AL}};
+    enable_HH := {{AI.$enable_HH}};
+    enable_H := {{AI.$enable_H}};
+    enable_L := {{AI.$enable_L}};
+    enable_LL := {{AI.$enable_LL}};
     {{_if AI.$zero_raw !== undefined}}_
     zero_raw := {{AI.$zero_raw}};
     {{_endif}}_
@@ -37,17 +37,17 @@ BEGIN
     {{_if AI.$span !== undefined}}_
     span := {{AI.$span}};
     {{_endif}}_
-    {{_if AI.$AH_limit !== undefined}}_
-    HH_limit := {{AI.$AH_limit}};
+    {{_if AI.$HH_limit !== undefined}}_
+    HH_limit := {{AI.$HH_limit}};
     {{_endif}}_
-    {{_if AI.$WH_limit !== undefined}}_
-    H_limit := {{AI.$WH_limit}};
+    {{_if AI.$H_limit !== undefined}}_
+    H_limit := {{AI.$H_limit}};
     {{_endif}}_
-    {{_if AI.$WL_limit !== undefined}}_
-    L_limit := {{AI.$WL_limit}};
+    {{_if AI.$L_limit !== undefined}}_
+    L_limit := {{AI.$L_limit}};
     {{_endif}}_
-    {{_if AI.$AL_limit !== undefined}}_
-    LL_limit := {{AI.$AL_limit}};
+    {{_if AI.$LL_limit !== undefined}}_
+    LL_limit := {{AI.$LL_limit}};
     {{_endif}}_
     {{_if AI.$dead_zone !== undefined}}_
     dead_zone := {{AI.$dead_zone}};

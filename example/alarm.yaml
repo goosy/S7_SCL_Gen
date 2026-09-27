@@ -11,7 +11,7 @@ includes: ~
 
 symbols: 
 # alarm文档已有2个内置符号，其内容由本程序自动生成：
-# - [Alarm_Proc, FB519]  过程值报警主处理函数
+# - [Alarm_Proc, FB519]  过程值超限判断主处理函数
 # - [Alarm_Loop, FC519]  主循环调用FC，将这个加入OB1中
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
@@ -39,28 +39,28 @@ list: # 过程量列表
   $span: 14.0
 
   # 指示过程值是否有效
-  # 在485通讯等情况下，可以避免无效报警
+  # 在485通讯等情况下，可以避免无效的超限判断
   # 类型: null | S7符号定义 | S7符号引用 | SCL表达式
   # 值: BOOL
   invalid: '"tank485".invalid'
 
-  # 允许报警初始值
-  # $enable_AH $enable_WH $enable_WH $enable_WH 
+  # 允许超限判断初始值
+  # $enable_HH $enable_H $enable_L $enable_LL 
   # 类型: null | Bool字面量
-  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
-  $enable_AH: true   # 代表初始时允许AH报警，这时必须定义 $AH_limit
-  $enable_WH: true   # 代表初始时允许WH报警，这时必须定义 $WH_limit
-  $enable_WL: false  # 代表初始时不允许WL报警，可以省略定义 $WL_limit
-  $enable_AL: ~      # 相当于省略，这时由 $AL_limit 决定初始时是否允许AL报警
+  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示超限判断启用状态
+  $enable_HH: true   # 代表初始时允许HH超限判断，这时必须定义 $HH_limit
+  $enable_H: true   # 代表初始时允许H超限判断，这时必须定义 $H_limit
+  $enable_L: false  # 代表初始时不允许L超限判断，可以省略定义 $L_limit
+  $enable_LL: ~      # 相当于省略，这时由 $LL_limit 决定初始时是否允许LL超限判断
 
   # 超限值初始值
   # 类型: null | 浮点数字面量
-  # 省略或赋值为fasle时，代表该超限报警不启用。
-  # 以下默认了相关超限报警都允许
-  $AH_limit: 12.5    # AH超限初始值为12.5
-  $WH_limit: 12      # WH超限初始值为12
-  $WL_limit: ~       # 没有超限值，等同于省略该项
-  $AL_limit: 3.0     # AL超限初始值为3.0，因上方的设置，这里同时也代表初始允许AL报警
+  # 省略或赋值为fasle时，代表该级超限判断不启用。
+  # 以下默认了相关超限判断都允许
+  $HH_limit: 12.5    # HH超限初始值为12.5
+  $H_limit: 12      # H超限初始值为12
+  $L_limit: ~       # 没有超限值，等同于省略该项
+  $LL_limit: 3.0     # LL超限初始值为3.0，因上方的设置，这里同时也代表初始允许LL超限判断
 
   # 死区初始值
   # 类型: null | 浮点数字面量
@@ -76,15 +76,15 @@ list: # 过程量列表
   DB: [TIT0102, DB+] 
   input: [TIT0102_R, PID256]
 
-  # 以下定义了初始时不允许AH报警，但设定了AH初始超限值
-  $AL_limit: 0.2
-  $enable_AL: false
+  # 以下定义了初始时不允许HH超限判断，但设定了HH初始超限值
+  $LL_limit: 0.2
+  $enable_LL: false
 
-  # (没有$打头的) enable_AH enable_WH enable_WH enable_WH 用于运行期间的允许报警赋值
+  # (没有$打头的) enable_HH enable_H enable_L enable_LL 用于运行期间的允许超限判断赋值
   # 类型:  null | S7符号定义 | S7符号引用 | S7表达式
   # 值: BOOL
-  enable_AH: '"pump485".run_state' # 代表在运行期间，由泵的运行状态决定是否允许AH报警
-  # 其余的 enable_WH enable_WH enable_WH 没有定义，代表这3项使能在运行中不改变
+  enable_HH: '"pump485".run_state' # 代表在运行期间，由泵的运行状态决定是否允许HH超限判断
+  # 其余的 enable_H enable_L enable_LL 没有定义，代表这3项使能在运行中不改变
   # 一般情况下以上2个只保留一个
 
 - comment: 保留
@@ -112,7 +112,7 @@ includes: ~
 
 symbols: 
 # alarm文档已有2个内置符号，其内容由本程序自动生成：
-# - [Alarm_Proc, FB519]  过程值报警主处理函数
+# - [Alarm_Proc, FB519]  过程值超限判断主处理函数
 # - [Alarm_Loop, FC519]  主循环调用FC，将这个加入OB1中
 # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
 
@@ -140,28 +140,28 @@ list: # 过程量列表
   $span: 14.0
 
   # 指示过程值是否有效
-  # 在485通讯等情况下，可以避免无效报警
+  # 在485通讯等情况下，可以避免无效的超限判断
   # 类型: null | S7符号定义 | S7符号引用 | SCL表达式
   # 值: BOOL
   invalid: '"tank485".invalid'
 
-  # 允许报警初始值
-  # $enable_AH $enable_WH $enable_WH $enable_WH 
+  # 允许超限判断初始值
+  # $enable_HH $enable_H $enable_L $enable_LL 
   # 类型: null | Bool字面量
-  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示报警启用状态
-  $enable_AH: true   # 代表初始时允许AH报警，这时必须定义 $AH_limit
-  $enable_WH: true   # 代表初始时允许WH报警，这时必须定义 $WH_limit
-  $enable_WL: false  # 代表初始时不允许WL报警，可以省略定义 $WL_limit
-  $enable_AL: ~      # 相当于省略，这时由 $AL_limit 决定初始时是否允许AL报警
+  # 通常情况下省略，因为对应 $XX_limit 的值在大部分情况下可指示超限判断启用状态
+  $enable_HH: true   # 代表初始时允许HH超限判断，这时必须定义 $HH_limit
+  $enable_H: true   # 代表初始时允许H超限判断，这时必须定义 $H_limit
+  $enable_L: false  # 代表初始时不允许L超限判断，可以省略定义 $L_limit
+  $enable_LL: ~      # 相当于省略，这时由 $LL_limit 决定初始时是否允许LL超限判断
 
   # 超限值初始值
   # 类型: null | 浮点数字面量
-  # 省略或赋值为fasle时，代表该超限报警不启用。
-  # 以下默认了相关超限报警都允许
-  $AH_limit: 12.5    # AH超限初始值为12.5
-  $WH_limit: 12      # WH超限初始值为12
-  $WL_limit: ~       # 没有超限值，等同于省略该项
-  $AL_limit: 3.0     # AL超限初始值为3.0，因上方的设置，这里同时也代表初始允许AL报警
+  # 省略或赋值为fasle时，代表该级超限判断不启用。
+  # 以下默认了相关超限判断都允许
+  $HH_limit: 12.5    # HH超限初始值为12.5
+  $H_limit: 12      # H超限初始值为12
+  $L_limit: ~       # 没有超限值，等同于省略该项
+  $LL_limit: 3.0     # LL超限初始值为3.0，因上方的设置，这里同时也代表初始允许LL超限判断
 
   # 死区初始值
   # 类型: null | 浮点数字面量
@@ -177,15 +177,15 @@ list: # 过程量列表
   DB: [TIT0102, DB+] 
   input: [TIT0102_R, PID256]
 
-  # 以下定义了初始时不允许AH报警，但设定了AH初始超限值
-  $AL_limit: 0.2
-  $enable_AL: false
+  # 以下定义了初始时不允许HH超限判断，但设定了HH初始超限值
+  $LL_limit: 0.2
+  $enable_LL: false
 
-  # (没有$打头的) enable_AH enable_WH enable_WH enable_WH 用于运行期间的允许报警赋值
+  # (没有$打头的) enable_HH enable_H enable_L enable_LL 用于运行期间的允许超限判断赋值
   # 类型:  null | S7符号定义 | S7符号引用 | S7表达式
   # 值: BOOL
-  enable_AH: '"pump485".run_state' # 代表在运行期间，由泵的运行状态决定是否允许AH报警
-  # 其余的 enable_WH enable_WH enable_WH 没有定义，代表这3项使能在运行中不改变
+  enable_HH: '"pump485".run_state' # 代表在运行期间，由泵的运行状态决定是否允许HH超限判断
+  # 其余的 enable_H enable_L enable_LL 没有定义，代表这3项使能在运行中不改变
   # 一般情况下以上2个只保留一个
 
 - comment: 保留

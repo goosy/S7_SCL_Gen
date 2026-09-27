@@ -117,7 +117,7 @@ rules:
   - action_scope: matched
     rules: # 即默认了 `action_type: inner_rules`
     - pattern:
-        $enable_AH: {value: true}
+        $enable_HH: {value: true}
       scope: origin
       actions:
       - action_type: add
@@ -128,7 +128,7 @@ rules:
         PV1: '{{$.cpu_name}}Program/{{$.DB.name}}.HH_PV'
         oo: '{{$.__original_index}}'
     - pattern:
-        $enable_WH: {value: true}
+        $enable_H: {value: true}
       scope: origin
       actions:
       - action_type: add
@@ -139,7 +139,7 @@ rules:
         PV1: '{{$.cpu_name}}Program/{{$.DB.name}}.H_PV'
         oo: '{{$.__original_index}}'
     - pattern:
-        $enable_WL: {value: true}
+        $enable_L: {value: true}
       scope: origin
       actions:
       - action_type: add
@@ -150,7 +150,7 @@ rules:
         PV1: '{{$.cpu_name}}Program/{{$.DB.name}}.L_PV'
         oo: '{{$.__original_index}}'
     - pattern:
-        $enable_AL: {value: true}
+        $enable_LL: {value: true}
       scope: origin
       actions:
       - action_type: add
