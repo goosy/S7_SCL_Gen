@@ -39,6 +39,9 @@ export function make_fake_DB(item) {
  * - enable_LL: bool value, whether to enable the low low limit check
  * - $LL_limit: the low low limit initial value
  * - LL_limit: the low low limit value
+ * - $enable_AH / $enable_WH / $enable_WL / $enable_AL: bool, whether the
+ *   HH / H / L / LL limit exceedance raises an alarm on the upper system,
+ *   defaults to true; used by rules only
  * - $dead_zone: the dead zone initial value of the analog value
  * - $FT_time: the fault tolerance time initial value
  * @param {object} item
@@ -69,6 +72,12 @@ export function make_alarms(item, node, document) {
         ).then(ret => {
             item[enable_str] = ret;
         });
+    }
+    // Alarm switches, extracted by rules only, never written to the PLC
+    for (const alarm of ['AH', 'WH', 'WL', 'AL']) {
+        const $enable_str = `$enable_${alarm}`;
+        // as ex: item.$enable_AH
+        item[$enable_str] = ensure_value(BOOL, node.get($enable_str) ?? true);
     }
     // limitation validity check
     const HH = item.$HH_limit ?? item.$H_limit ?? item.$L_limit ?? item.$LL_limit;

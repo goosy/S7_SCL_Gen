@@ -76,8 +76,9 @@ list:
 | `enable_HH` … `enable_LL` | S7符号定义 \| S7符号引用 \| SCL表达式 | 各级超限判断使能的运行期间赋值 |
 | `$dead_zone` | 浮点数 | 超限恢复死区初始值，FB 默认 `0.5` |
 | `$FT_time` | TIME \| 整数毫秒 | 容错时间初始值，默认 0（不延时） |
+| `$enable_AH` / `$enable_WH` / `$enable_WL` / `$enable_AL` | 布尔 | HH / H / L / LL 超限时上位机是否报警，默认 `true`；只供 rules 提取（如生成 WinCC 报警列表），不写入背景 DB |
 
-带 `$` 的属性写入背景 DB 的初始值，运行中可由 HMI 修改；`enable_XX` 则每个周期都从指定信号赋值，会覆盖 HMI 的修改。
+除 `$enable_AH` … `$enable_AL` 外，带 `$` 的属性写入背景 DB 的初始值，运行中可由 HMI 修改；`enable_XX` 则每个周期都从指定信号赋值，会覆盖 HMI 的修改。
 
 ### 4.2 超限判断使能
 

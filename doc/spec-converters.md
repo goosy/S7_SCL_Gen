@@ -65,8 +65,13 @@ received over serial/Modbus), backed by `Alarm_Proc`.
   `enable_HH`/`enable_H`/`enable_L`/`enable_LL` and their `$enable_*`
   initial-value counterparts, `$dead_zone`, `$FT_time`). Limits must satisfy
   `LL <= L <= H <= HH`; violating this is a configuration error.
-- The GCL keys above are written to the same-named members of the instance
-  DB. The instance DB outputs are `HH_flag`/`H_flag`/`L_flag`/`LL_flag`,
+- Alarm switches `$enable_AH`/`$enable_WH`/`$enable_WL`/`$enable_AL`: BOOL,
+  default `true`, telling whether an HH/H/L/LL limit exceedance raises an
+  alarm on the upper system. They are not written to the PLC and are only
+  extracted by rules (e.g. to generate the upper-system alarm list). The same
+  applies to `AI`.
+- The limit-check GCL keys above are written to the same-named members of the
+  instance DB. The instance DB outputs are `HH_flag`/`H_flag`/`L_flag`/`LL_flag`,
   `HH_PV`/`H_PV`/`L_PV`/`LL_PV` and `no_limit`, indicating limit exceedance
   rather than alarms. The same applies to `AI`.
 - Library file name: `Alarm_Proc(<platform>).scl`.

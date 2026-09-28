@@ -60,7 +60,10 @@
   `enable_HH`/`enable_H`/`enable_L`/`enable_LL` 及其对应的 `$enable_*`
   初始值、`$dead_zone`、`$FT_time`）。限值必须满足
   `LL <= L <= H <= HH`；违反即为配置错误。
-- 上述 GCL 键写入实例 DB 的同名成员。实例 DB 的输出为
+- 报警开关 `$enable_AH`/`$enable_WH`/`$enable_WL`/`$enable_AL`：布尔，
+  默认 `true`，分别表示 HH/H/L/LL 超限时上位机是否报警。它们不写入 PLC，
+  只供 rules 提取（如生成上位机报警列表）。`AI` 同样适用。
+- 上述超限判断 GCL 键写入实例 DB 的同名成员。实例 DB 的输出为
   `HH_flag`/`H_flag`/`L_flag`/`LL_flag`、`HH_PV`/`H_PV`/`L_PV`/`LL_PV` 与
   `no_limit`，表示超限而非报警。`AI` 同样适用。
 - 库文件名：`Alarm_Proc(<platform>).scl`。
