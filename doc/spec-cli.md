@@ -33,13 +33,11 @@ s7scl [subcommand] [path] [options]
 | `--no-convert` | — | Skip writing generated SCL files (still runs the full pipeline and reports diagnostics). |
 | `--no-copy` | — | Skip the file-copy step (`includes`/`files`/library sources). |
 | `--silent` | `-s`, `-S` | Suppress progress/diagnostic console output. |
-| `--line-ending` | — | Force output line endings: `CRLF` (default) or `LF`. |
-| `--OE` | — | Output file encoding, e.g. `gbk` (default) or `utf8`. |
 | `--rules` | — | Path to a rules YAML file (see [design-rules-engine.md](design-rules-engine.md)). When set, `path` is ignored: the rules file itself specifies, per task, which folder to convert and which rules to apply. |
 
 Flags map directly onto the shared `context` object (`src/util.js`); anything
-not overridden by a flag falls back to `context`'s defaults (`OE: 'gbk'`,
-`line_ending: 'CRLF'`, `IE: 'utf8'`, `silent: false`, etc.).
+not overridden by a flag falls back to `context`'s defaults
+(`IE: 'utf8'`, `silent: false`, etc.).
 
 ## 4. Exit behavior
 

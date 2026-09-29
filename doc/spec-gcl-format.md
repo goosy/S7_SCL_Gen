@@ -60,8 +60,25 @@ list of supported features and their aliases (e.g. `MT`/`modbusTCP`,
 
 A map of extra settings. Currently recognized keys include
 `output_file` (override the generated file's base name) and, on the `CPU`
-document only, `output_dir` (override the CPU's output folder, itself
-template-substitutable with `cpu_name`/`platform`/`device`).
+document only:
+
+- `output_dir`: override the CPU's output folder, itself
+  template-substitutable with `cpu_name`/`platform`/`device`.
+- `OE`: the default output encoding for the output files of this CPU.
+  When omitted, the platform default applies: `gbk` for `step7`/`pcs7`,
+  `utf8bom` for `portal`. Valid values are the encoding names supported by
+  `iconv-lite` (e.g. `gbk`, `utf8`), plus `utf8bom` (alias `utf8-bom`)
+  meaning "UTF-8 with BOM".
+
+  Every output file of the CPU — feature library copies, feature-generated
+  SCL files, the symbol table, and `files` copies that are re-encoded —
+  uses this value unless it specifies its own OE; `files` entries copied
+  byte-for-byte involve no encoding (see [`files`](#files) below).
+- `line_ending`: the default line ending for the output files of this CPU,
+  `LF` or `CRLF`. When omitted it is `LF` (on every platform). It applies
+  to the same files as `OE`: every output file that does not specify its
+  own line ending uses this value; `files` entries copied byte-for-byte
+  involve no line ending.
 
 #### `symbols`
 
@@ -102,10 +119,23 @@ directory using `/` as the separator (never `\`). Rules:
 - A folder entry copies the whole folder (recursively) to
   `<output_dir>/<foldername>`.
 - Glob patterns (`*`, `**`) are supported, matched with `globby`.
-- A bare-filename entry is copied byte-for-byte (no encoding conversion). An
-  object form `{ filename, encoding }` (or the equivalent flow map
-  `{filename: ..., encoding: ...}`) re-encodes the file to the run's output
-  encoding (GBK by default) — use this for Step 7 import compatibility.
+- An entry is either a string (the path above) or an object
+  `{ filename, IE, OE, line_ending }`, where `filename` is the path above
+  and the other keys are optional:
+  - `IE`: encoding of the source file.
+  - `OE`: encoding of the target file; accepts the same values as
+    [`options.OE`](#options).
+  - `line_ending`: line ending of the target file, `LF` or `CRLF`; defaults
+    to the owning CPU's [`options.line_ending`](#options).
+- String entries, and object entries with neither `IE` nor `OE`, are not
+  converted but copied byte-for-byte. `line_ending` then has no effect; if
+  such an object entry specifies `line_ending`, the generator emits a
+  warning saying the entry is copied verbatim and `line_ending` is ignored.
+- When at least one of `IE`/`OE` is present, the file is converted: decoded
+  with `IE`, then written with `OE` and `line_ending`. `IE` defaults to
+  `utf8`; `OE` defaults to the owning CPU's [`options.OE`](#options) (the
+  platform default when unset). For example, `IE: utf8` alone on a step7
+  CPU yields GBK output.
 - The generator does not parse or validate copied file contents.
 
 ### 1.3 Other optional directives

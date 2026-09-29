@@ -16,8 +16,8 @@
 | `platforms` | 是 | `string[]` | 该功能支持 `step7`/`portal`/`pcs7` 中的哪些；若文档所属 CPU 的平台不在此列表中，`parse_doc` 会跳过该文档（并发出警告）。 |
 | `is_feature(name)` | 是 | `(string) => boolean` | 与文档的 `feature` 指令做不区分大小写的匹配，包括所有别名（如 `MT`/`modbusTCP`、`SC`/`MB`、`interlock`/`il`）。 |
 | `initialize_list(area)` | 是 | `(Area) => void` | 第 1 遍：就地将 `area.list` 从原始 YAML 节点改写为普通对象；通过 `make_s7_expression`/`add_symbol` 注册/解析符号。 |
-| `gen(area)` | 是 | `(Area) => ConvertDescriptor[]` | 返回零个或多个 `{ distance, output_dir, tags, template }` 描述符，描述生成的输出文件。`template` 是生成的 `templates` 映射表（§2）中的键名，按惯例为 `<feature>.template`。 |
-| `gen_copy_list(area)` | 是 | `(Area) => CopyDescriptor[]` | 返回零个或多个 `{ source, input_dir, distance, output_dir, IE }` 描述符，用于复制静态库文件（见 [spec.zh-cn.md §5](spec.zh-cn.md#5-外部依赖)）。 |
+| `gen(area)` | 是 | `(Area) => ConvertDescriptor[]` | 返回零个或多个 `{ distance, output_dir, tags, template, OE?, line_ending? }` 描述符，描述生成的输出文件。可选的 `OE`/`line_ending` 覆盖所属 CPU 的默认值（见 [design-pipeline.zh-cn.md §4.1](design-pipeline.zh-cn.md#41-输出编码)、[§4.2](design-pipeline.zh-cn.md#42-输出行尾)）。`template` 是生成的 `templates` 映射表（§2）中的键名，按惯例为 `<feature>.template`。 |
+| `gen_copy_list(area)` | 是 | `(Area) => CopyDescriptor[]` | 返回零个或多个 `{ source, input_dir, distance, output_dir, IE, OE?, line_ending? }` 描述符，用于复制静态库文件（见 [spec.zh-cn.md §5](spec.zh-cn.md#5-外部依赖)）。可选的 `OE`/`line_ending` 同上。 |
 | `build_list(area)` | 否 | `(Area) => void` | 第 2 遍，在所有 CPU 的符号完全解析后运行（见 [design-pipeline.zh-cn.md §3](design-pipeline.zh-cn.md#3-两遍处理)）；仅当功能有跨条目或跨符号的派生数据时才需要。 |
 | `<feature>.yaml` | 否 | — | 该功能的内置符号声明，见 [design-symbols.zh-cn.md §3](design-symbols.zh-cn.md#3-内置符号)。 |
 | `<feature>.template` | 按惯例必需 | — | `gen()` 的描述符按名称引用的 gooplate 模板。 |
@@ -88,7 +88,11 @@ Promise 都已完成（见
 - **`CPU`**：`list` 条目是原始的 `OB`/`FC` 块（`block` + `code`），而非
   每条目一个 DB 的模式；`build_list` 会校验 `block.block_name` 为 `OB` 或
   `FC`。它还会从 `Clock_Byte` 内置符号派生标准时钟位符号，并解析
-  `options.output_dir`（流水线其余部分将其作为 `CPU.output_dir` 读取）。
+  `options.output_dir`（流水线其余部分将其作为 `CPU.output_dir` 读取），
+  `options.OE`（未指定时取平台默认值，作为 `CPU.OE` 读取，见
+  [design-pipeline.zh-cn.md §4.1](design-pipeline.zh-cn.md#41-输出编码)），以及
+  `options.line_ending`（未指定时为 `LF`，作为 `CPU.line_ending` 读取，见
+  [design-pipeline.zh-cn.md §4.2](design-pipeline.zh-cn.md#42-输出行尾)）。
 - **`AI`/`alarm`**：通过 `src/converters/alarm_common.js` 中的
   `make_alarms()`/`make_fake_DB()` 共享限值/量程字段的解析，而不是各自
   重复实现——完整字段列表见该文件自身的文档注释。`make_fake_DB` 使模板

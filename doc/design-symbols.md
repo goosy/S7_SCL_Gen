@@ -124,4 +124,6 @@ whichever text format the target tool expects:
   written as `symbols.sdf`. `OB`/`FB`/`FC`/`SFB`/`SFC`/`UDT` symbols are
   omitted from the Portal export (they aren't tag-table entries).
 
-Only symbols with `exportable !== false` are included in either format.
+Only symbols with `exportable !== false` are included in either format. The
+symbol-table file is written in the owning CPU's `cpu.OE` encoding (see
+[design-pipeline.md §4.1](design-pipeline.md#41-output-encoding)).

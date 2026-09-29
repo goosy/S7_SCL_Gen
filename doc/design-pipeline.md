@@ -22,7 +22,9 @@ library gets the same `convert` function from `src/index.js`.
 ## 2. Core data model (`src/gen_data.js`)
 
 - **`CPU`**: one per distinct CPU name. Holds `platform`, `device`,
-  `output_dir`, a private `#areas` map keyed by feature name (one `Area` per
+  `output_dir`, `OE` (the default encoding of the CPU's output files, see
+  [§4.1](#41-output-encoding)), `line_ending` (the default line ending of
+  the CPU's output files, see [§4.2](#42-output-line-ending)), a private `#areas` map keyed by feature name (one `Area` per
   feature), the CPU-wide `S7SymbolEmitter` (`symbols`), pending
   `async_symbols` promises, `non_symbols` (values that could not be resolved
   to a real symbol and are passed through as raw SCL expressions, reported
@@ -83,9 +85,11 @@ For every `(CPU, feature, Area)` triple, `gen_list()`:
   input_dir, distance, output_dir, IE, OE, line_ending, ... }`), resolving
   globs and the `//`-split path-preservation syntax.
 - Calls the converter's `gen_copy_list(area)` for feature-library files
-  (e.g. `AI_Proc(step7).scl`) and appends those as `copy` entries too.
+  (e.g. `AI_Proc(step7).scl`) and appends those as `copy` entries too;
+  fields given in the descriptor (including optional `OE`/`line_ending`)
+  override the common fields.
 - Calls the converter's `gen(area)`, which returns one or more `{ distance,
-  output_dir, tags, template }` descriptors; `gen_list` merges in common
+  output_dir, tags, template, OE?, line_ending? }` descriptors; `gen_list` merges in common
   tags (`context`, `gcl`, string-padding helpers, `cpu_name`/`feature`/
   `platform`, and everything on `area` itself — `includes`, `list`,
   `loop_begin`, `loop_end`, `options`) and looks the named template string up
@@ -100,7 +104,70 @@ The result is a flat list of `copy` and `convert` task objects — this is the
 list the rules engine operates on (see
 [design-rules-engine.md](design-rules-engine.md)) before `index.js`'s
 `process()` actually renders templates (via `gooplate`'s `convert()`) and
-writes files with the configured encoding/line-ending.
+writes files with each entry's `OE`/`line_ending`.
+
+### 4.1 Output encoding
+
+`copy` entries expanded from `files`:
+
+- A string entry, or an object entry with neither `IE` nor `OE`: `IE` is
+  set to `null`, which makes `process()` copy the file byte-for-byte. If
+  such an object entry specifies `line_ending`, `gen_list` emits a warning
+  while expanding it (`console.error`, naming the GCL file and the entry's
+  `filename`) that `line_ending` is ignored.
+- At least one of `IE`/`OE` present: `IE` defaults to `utf8` and `OE` to
+  `cpu.OE`; the file is decoded with `IE` and written with `OE`.
+
+The `OE` of entries produced by a converter's `gen_copy_list`/`gen`, and of
+the symbol-table entry, is determined by this priority:
+
+1. The `OE` field of the converter's descriptor (the symbol-table entry has
+   none).
+2. The owning CPU's `cpu.OE`.
+
+Re-encoded `files` entries and feature-library copy entries (descriptors
+with `IE: 'utf8'` and no `OE`) thus follow one rule: when converting, `OE`
+defaults to `cpu.OE`.
+
+`cpu.OE` is resolved by the `CPU` converter's `build_list` from the CPU
+document's `options.OE` (at the same point as `options.output_dir` →
+`cpu.output_dir`); when unset it takes the platform default: `gbk` for
+`step7`/`pcs7`, `utf8bom` for `portal`. A synthesized blank CPU document
+has platform `step7` and therefore `gbk`. `gen_list` takes `cpu.OE` for
+the common fields of every entry and for the symbol-table entry.
+
+`utf8bom` (alias `utf8-bom`) is not an `iconv-lite` encoding name; it is
+recognized by `write_file`, which encodes as `utf8` and prepends a BOM
+(`iconv.encode(..., 'utf8', { addBOM: true })`). On read, `iconv-lite`
+strips a source file's BOM by default, so copying a BOM-bearing source does
+not produce a doubled BOM.
+
+The rules engine can modify or add entries (see
+[design-rules-engine.md](design-rules-engine.md)), so an entry reaching
+`process()` may lack an `OE` (e.g. one created by `add` without an `OE`).
+Such an entry is written by `write_file` as `utf8`. This is deliberate: the
+fallback does not guess a platform; when another encoding is needed, the
+rule must set `OE` explicitly.
+
+### 4.2 Output line ending
+
+The `line_ending` of every entry that writes text (re-encoded `copy`
+entries and all `convert` entries) is determined by this priority:
+
+1. The entry's own line ending: the `line_ending` key of an object-form
+   `files` entry, or the `line_ending` field of a converter's
+   `gen_copy_list`/`gen` descriptor (the symbol-table entry has none).
+2. The owning CPU's `cpu.line_ending`.
+
+`cpu.line_ending` is resolved by the `CPU` converter's `build_list` from
+the CPU document's `options.line_ending` (at the same point as
+`options.OE`); when unset it is `LF` on every platform. `gen_list` takes
+`cpu.line_ending` for the common fields of every entry and for the
+symbol-table entry. `files` entries copied byte-for-byte involve no line
+ending (see [§4.1](#41-output-encoding)).
+
+As with `OE`, an entry reaching `process()` may lack a `line_ending` (e.g.
+one created by a rules `add` without it); `write_file` writes it with `LF`.
 
 ## 5. Build-time self-generation
 
@@ -136,5 +203,8 @@ A single mutable module-level object holding cross-cutting run state:
 `module_path` (package root, used to locate templates and library
 submodules), `work_path` (current GCL folder, mutated by the CLI on `chdir`),
 `version`, and the I/O defaults (`output_zyml`, `no_convert`, `no_copy`,
-`silent`, `IE`, `OE`, `line_ending`). CLI flags mutate it directly; library
+`silent`, `IE`). `context` holds no `OE` or `line_ending`: the output
+encoding and line ending come only from entries and CPUs (see
+[§4.1](#41-output-encoding), [§4.2](#42-output-line-ending)).
+CLI flags mutate it directly; library
 consumers of `src/index.js` can do the same before calling `convert()`.

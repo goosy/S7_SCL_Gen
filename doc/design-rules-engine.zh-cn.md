@@ -82,7 +82,7 @@ rules:
 | `replace` | `matched`/`merged`/`new` | 用动作的属性覆盖目标的属性（包括整个数组，例如 `files`）。 |
 | `join` | 同上 | 合并而非覆盖：对象属性逐键合并，数组属性追加。 |
 | `merge` | 仅 `matched`，仅 `convert` 条目 | 把多个匹配到的 `convert` 任务合并为**一个新**任务（加入 `merged`），分两个阶段：阶段 1 将每个匹配条目的 `tags`/`template`/`distance`/`output_dir`/`cpu_name`/`feature`/`platform`/`OE`/`line_ending` 折叠进新条目（不一致的非 tag 字段分别归为 `''`/`'utf8'`/`'LF'`；不一致的 `template`/`distance`/`output_dir` 会取消整个合并）；阶段 2 在其上应用动作自身的属性（以动作的值为准）。原条目保持不变——若不应再单独输出它们，请搭配一个 `delete`。 |
-| `add` | 无需（即使 `pattern: null` 也可用） | 为每个源条目创建一个新条目（无 pattern 时以 `{}` 为源创建一个条目），通过一次**全新**的 `replace` 式应用完成（在 `action_type: 'add'` 下，模板表达式中的 `$` 指源条目，而在其他所有动作类型下指目标条目）。 |
+| `add` | 无需（即使 `pattern: null` 也可用） | 为每个源条目创建一个新条目（无 pattern 时以 `{}` 为源创建一个条目），通过一次**全新**的 `replace` 式应用完成（在 `action_type: 'add'` 下，模板表达式中的 `$` 指源条目，而在其他所有动作类型下指目标条目）。新条目不继承源条目的字段；未指定 `OE`、`line_ending` 时分别按 `utf8`、`LF` 写出（见 [design-pipeline.zh-cn.md §4.1](design-pipeline.zh-cn.md#41-输出编码)、[§4.2](design-pipeline.zh-cn.md#42-输出行尾)）。 |
 | `delete` | 仅 `matched` | 从任务列表中彻底移除匹配到的条目；必须是其规则中唯一/最后一个动作（同一规则中其后的动作会被丢弃并发出警告），并会取消同一规则中所有 `action_scope: matched` 的 `replace`/`join`/`inner_rules` 动作。 |
 | `inner_rules` | 规则自身的动作目标，即 `tags.list` 本身是嵌套逐条目列表的 `convert` 条目（见下文） | 将嵌套的规则数组作为**文档规则**（见 §4）递归应用到 `target.tags.list`。 |
 

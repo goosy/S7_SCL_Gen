@@ -57,8 +57,21 @@ list:
 #### `options`
 
 额外设置的映射表。目前可识别的键包括 `output_file`（覆盖生成文件的基本
-名称），以及仅在 `CPU` 文档中有效的 `output_dir`（覆盖该 CPU 的输出
-目录，其本身可使用 `cpu_name`/`platform`/`device` 进行模板替换）。
+名称），以及仅在 `CPU` 文档中有效的：
+
+- `output_dir`：覆盖该 CPU 的输出目录，其本身可使用
+  `cpu_name`/`platform`/`device` 进行模板替换。
+- `OE`：该 CPU 输出文件的默认输出编码。省略时取平台默认值：
+  `step7`/`pcs7` 为 `gbk`，`portal` 为 `utf8bom`。可用的值为 `iconv-lite`
+  支持的编码名（如 `gbk`、`utf8`），以及表示"UTF-8 带 BOM"的 `utf8bom`
+  （别名 `utf8-bom`）。
+
+  该 CPU 的每个输出文件——功能库复制项、功能生成的 SCL 文件、符号表，以及
+  需要转换编码的 `files` 复制项——若自身没有指定 OE，都使用这个值；按字节
+  原样复制的 `files` 条目不涉及编码（见下文 [`files`](#files)）。
+- `line_ending`：该 CPU 输出文件的默认行尾，`LF` 或 `CRLF`。省略时为
+  `LF`（所有平台相同）。适用范围与 `OE` 相同：若输出文件自身没有指定行尾，
+  都使用这个值；按字节原样复制的 `files` 条目不涉及行尾。
 
 #### `symbols`
 
@@ -91,10 +104,20 @@ list:
   `os/ab/c.scl` 复制到 `<output_dir>/ab/c.scl`。
 - 文件夹条目会将整个文件夹（递归）复制到 `<output_dir>/<foldername>`。
 - 支持 glob 模式（`*`、`**`），使用 `globby` 匹配。
-- 纯文件名条目按字节原样复制（不做编码转换）。对象形式
-  `{ filename, encoding }`（或等价的流式映射
-  `{filename: ..., encoding: ...}`）会将文件重新编码为本次运行的输出编码
-  （默认 GBK）——为兼容 Step 7 导入时请使用此形式。
+- 条目可以是字符串（即上述路径），也可以是对象
+  `{ filename, IE, OE, line_ending }`，其中 `filename` 为上述路径，其余
+  键均可选：
+  - `IE`：源文件的编码。
+  - `OE`：目标文件的编码，可用的值同 [`options.OE`](#options)。
+  - `line_ending`：目标文件的行尾，`LF` 或 `CRLF`，省略时取所属 CPU 的
+    [`options.line_ending`](#options)。
+- 字符串条目，以及 `IE`、`OE` 都不存在的对象条目，不转换，按字节原样
+  复制。此时 `line_ending` 不起作用；若对象条目写了 `line_ending`，生成器
+  会输出一条警告，指明该条目被原样复制、`line_ending` 被忽略。
+- `IE`、`OE` 至少存在一个时进行转换：按 `IE` 解码，再按 `OE` 和
+  `line_ending` 写出。`IE` 省略时为 `utf8`；`OE` 省略时取所属 CPU 的
+  [`options.OE`](#options)（未设置时为平台默认值）。例如在 step7 CPU 下
+  只写 `IE: utf8`，就会得到 GBK 输出。
 - 生成器不解析也不校验被复制文件的内容。
 
 ### 1.3 其他可选指令

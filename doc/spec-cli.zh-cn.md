@@ -35,13 +35,10 @@ s7scl [subcommand] [path] [options]
 | `--no-convert` | — | 不写出生成的 SCL 文件（仍完整运行流水线并报告诊断信息）。 |
 | `--no-copy` | — | 跳过文件复制步骤（`includes`/`files`/库源文件）。 |
 | `--silent` | `-s`、`-S` | 抑制进度/诊断控制台输出。 |
-| `--line-ending` | — | 强制输出行尾：`CRLF`（默认）或 `LF`。 |
-| `--OE` | — | 输出文件编码，如 `gbk`（默认）或 `utf8`。 |
 | `--rules` | — | 规则 YAML 文件路径（见 [design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md)）。设置后 `path` 被忽略：由规则文件本身按任务指定要转换的目录和要应用的规则。 |
 
 这些标志直接映射到共享的 `context` 对象（`src/util.js`）；未被标志覆盖的
-项回退到 `context` 的默认值（`OE: 'gbk'`、`line_ending: 'CRLF'`、
-`IE: 'utf8'`、`silent: false` 等）。
+项回退到 `context` 的默认值（`IE: 'utf8'`、`silent: false` 等）。
 
 ## 4. 退出行为
 

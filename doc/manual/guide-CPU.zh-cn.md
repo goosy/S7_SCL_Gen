@@ -42,6 +42,8 @@ options:
 | `reference_symbols` | 否 | 项目中已存在的符号，见第 4 节 |
 | `options.output_dir` | 否 | 该 CPU 所有生成文件的输出目录，默认为 CPU 名 |
 | `options.output_file` | 否 | CPU 文档自身生成的文件名，默认 `CPU.scl` |
+| `options.OE` | 否 | 该 CPU 输出文件的编码（`files` 中原样复制的文件除外），默认 step7、pcs7 为 `gbk`，portal 为 `utf8bom`（UTF-8 带 BOM） |
+| `options.line_ending` | 否 | 该 CPU 输出文件的换行符（`files` 中原样复制的文件除外），`LF` 或 `CRLF`，默认 `LF` |
 | `list` | 否 | 自定义 OB/FC 块，见第 6 节 |
 
 在非 CPU 文档中写 `platform` 会产生警告，并被忽略。

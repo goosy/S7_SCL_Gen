@@ -114,4 +114,6 @@ YAML 片段，通过 `GCL.get_pos_info` 获取）。
   写为 `symbols.sdf`。`OB`/`FB`/`FC`/`SFB`/`SFC`/`UDT` 符号不包含在
   Portal 导出中（它们不属于变量表条目）。
 
-两种格式都只包含 `exportable !== false` 的符号。
+两种格式都只包含 `exportable !== false` 的符号。符号表文件按所属 CPU 的
+`cpu.OE` 编码写出（见
+[design-pipeline.zh-cn.md §4.1](design-pipeline.zh-cn.md#41-输出编码)）。

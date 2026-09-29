@@ -52,7 +52,7 @@ CPU 名必须以字母开头、只含字母数字和下划线；feature 不区�
 | `loop_begin` / `loop_end` | 插入到主循环函数开头/末尾的 SCL 代码 |
 | `options.output_file` | 修改生成文件名，可使用 `{{cpu_name}}` 占位符 |
 
-`platform`、`device`、`options.output_dir` 只在 CPU 文档中有效，见 [guide-CPU](guide-CPU.zh-cn.md)。
+`platform`、`device`、`options.output_dir`、`options.OE`、`options.line_ending` 只在 CPU 文档中有效，见 [guide-CPU](guide-CPU.zh-cn.md)。
 
 ### 2.3 includes
 
@@ -78,11 +78,15 @@ files:
 - README.md                       # 复制到 <输出目录>/README.md
 - os//ab/c.scl                    # 复制到 <输出目录>/ab/c.scl，// 标记保留路径的起点
 - lib/*.scl                       # 支持 glob
-- {filename: legacy.awl, IE: gbk} # 转换编码
+- {filename: legacy.awl, IE: gbk} # 转换编码：GBK -> CPU 的输出编码
+- {filename: new.scl, OE: gbk}    # 转换编码：UTF-8 -> GBK
 ```
 
 - 路径分隔符必须用 `/`。
-- 字符串形式按字节原样复制；对象形式会转换编码（`IE` 输入编码、`OE` 输出编码、`line_ending` 换行符）。
+- 字符串形式按字节原样复制。
+- 对象形式可写 `IE` 输入编码、`OE` 输出编码、`line_ending` 换行符：
+  - `IE`、`OE` 都不写时，按字节原样复制，`line_ending` 不起作用（写了会有警告）。
+  - `IE`、`OE` 至少写一个时转换编码：`IE` 默认为 `utf8`，`OE` 默认为 CPU 的输出编码（CPU 文档的 `options.OE`，见第 6 节），`line_ending` 默认为 CPU 的换行符（CPU 文档的 `options.line_ending`，见第 6 节）。
 
 ## 3. 值的类型
 
@@ -152,5 +156,7 @@ list:
 ## 6. 生成结果
 
 - 所有文件输出到 CPU 的输出目录，默认为 CPU 名，可在 CPU 文档中用 `options.output_dir` 修改。
+- 输出文件（生成的 SCL、复制的库文件、符号表，以及需要转换编码的 files）的编码默认为：step7、pcs7 平台 `gbk`，portal 平台 `utf8bom`（UTF-8 带 BOM）。可在 CPU 文档中用 `options.OE` 修改，可选值如 `gbk`、`utf8`、`utf8bom`（也可写作 `utf8-bom`）。需要单独调整某些文件的编码时，`files` 字段指明 `OE`，或用规则文件（`--rules`）修改。
+- 输出文件的换行符默认为 `LF`（所有平台）。可在 CPU 文档中用 `options.line_ending` 改为 `CRLF`；若组态电脑上的软件不支持 `LF`，请这样设置，或用其它工具转换。需要单独调整某些文件时，`files` 字段指明 `line_ending`，或用规则文件修改。
 - 每个 feature 通常生成 `<Feature>_Loop.scl`（背景 DB + 主循环 FC），并复制对应的库文件 `<Feature>_Proc.scl`。
 - 需要在 OB 中调用各 feature 的主循环 FC，可以直接在 CPU 文档的 `list` 中写，见 [guide-CPU](guide-CPU.zh-cn.md)。

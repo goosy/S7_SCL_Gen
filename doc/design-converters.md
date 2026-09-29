@@ -15,8 +15,8 @@ details that don't belong in the behavioral spec.
 | `platforms` | yes | `string[]` | Which of `step7`/`portal`/`pcs7` this feature supports; `parse_doc` skips (with a warning) any document whose CPU's platform isn't in this list. |
 | `is_feature(name)` | yes | `(string) => boolean` | Case-insensitive match against the document's `feature` directive, including any aliases (e.g. `MT`/`modbusTCP`, `SC`/`MB`, `interlock`/`il`). |
 | `initialize_list(area)` | yes | `(Area) => void` | Pass-1: mutates `area.list` in place from raw YAML nodes to plain objects; registers/resolves symbols via `make_s7_expression`/`add_symbol`. |
-| `gen(area)` | yes | `(Area) => ConvertDescriptor[]` | Returns zero or more `{ distance, output_dir, tags, template }` descriptors describing generated output file(s). `template` names a key in the generated `templates` map (§2), conventionally `<feature>.template`. |
-| `gen_copy_list(area)` | yes | `(Area) => CopyDescriptor[]` | Returns zero or more `{ source, input_dir, distance, output_dir, IE }` descriptors for static library files to copy (see [spec.md §5](spec.md#5-external-dependencies)). |
+| `gen(area)` | yes | `(Area) => ConvertDescriptor[]` | Returns zero or more `{ distance, output_dir, tags, template, OE?, line_ending? }` descriptors describing generated output file(s). The optional `OE`/`line_ending` override the owning CPU's defaults (see [design-pipeline.md §4.1](design-pipeline.md#41-output-encoding), [§4.2](design-pipeline.md#42-output-line-ending)). `template` names a key in the generated `templates` map (§2), conventionally `<feature>.template`. |
+| `gen_copy_list(area)` | yes | `(Area) => CopyDescriptor[]` | Returns zero or more `{ source, input_dir, distance, output_dir, IE, OE?, line_ending? }` descriptors for static library files to copy (see [spec.md §5](spec.md#5-external-dependencies)). The optional `OE`/`line_ending` behave as above. |
 | `build_list(area)` | no | `(Area) => void` | Pass-2, run after all CPUs' symbols are fully resolved (see [design-pipeline.md §3](design-pipeline.md#3-two-pass-processing)); only needed if the feature has cross-item or cross-symbol derived data. |
 | `<feature>.yaml` | no | — | Built-in symbol declarations for this feature, see [design-symbols.md §3](design-symbols.md#3-built-in-symbols). |
 | `<feature>.template` | conventionally required | — | The gooplate template `gen()`'s descriptor(s) reference by name. |
@@ -92,7 +92,11 @@ synchronously right after calling it** — only from within pass 2
   DB-per-item pattern; `build_list` validates `block.block_name` is `OB` or
   `FC`. It also derives the standard clock-bit symbols from a `Clock_Byte`
   built-in symbol, and resolves `options.output_dir` (which the rest of the
-  pipeline reads as `CPU.output_dir`).
+  pipeline reads as `CPU.output_dir`), `options.OE` (platform default
+  when unset; read as `CPU.OE`, see
+  [design-pipeline.md §4.1](design-pipeline.md#41-output-encoding)), and
+  `options.line_ending` (`LF` when unset; read as `CPU.line_ending`, see
+  [design-pipeline.md §4.2](design-pipeline.md#42-output-line-ending)).
 - **`AI`/`alarm`**: share their limit/scaling-field parsing via
   `make_alarms()`/`make_fake_DB()` in `src/converters/alarm_common.js`
   rather than duplicating it — see that file's own docstring for the full

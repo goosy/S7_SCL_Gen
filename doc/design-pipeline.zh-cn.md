@@ -25,7 +25,9 @@ GCL YAML 文件
 ## 2. 核心数据模型 (`src/gen_data.js`)
 
 - **`CPU`**：每个不同的 CPU 名称对应一个。持有 `platform`、`device`、
-  `output_dir`、以功能名为键的私有 `#areas` 映射（每个功能一个 `Area`）、
+  `output_dir`、`OE`（该 CPU 输出文件的默认编码，见
+  [§4.1](#41-输出编码)）、`line_ending`（该 CPU 输出文件的默认行尾，见
+  [§4.2](#42-输出行尾)）、以功能名为键的私有 `#areas` 映射（每个功能一个 `Area`）、
   CPU 级的 `S7SymbolEmitter`（`symbols`）、挂起的 `async_symbols` Promise、
   `non_symbols`（无法解析为真实符号、按原始 SCL 表达式透传并作为警告报告
   的值），以及 CPU 级的地址分配器（`conn_ID_list`、`conn_host_list`，供
@@ -77,9 +79,10 @@ GCL YAML 文件
   distance, output_dir, IE, OE, line_ending, ... }`），解析 glob 以及
   `//` 分割的路径保留语法。
 - 调用转换器的 `gen_copy_list(area)` 获取功能库文件（如
-  `AI_Proc(step7).scl`），同样追加为 `copy` 条目。
+  `AI_Proc(step7).scl`），同样追加为 `copy` 条目；描述符中给出的字段
+  （包括可选的 `OE`/`line_ending`）覆盖通用字段。
 - 调用转换器的 `gen(area)`，它返回一个或多个 `{ distance, output_dir,
-  tags, template }` 描述符；`gen_list` 合并通用 tags（`context`、`gcl`、
+  tags, template, OE?, line_ending? }` 描述符；`gen_list` 合并通用 tags（`context`、`gcl`、
   字符串填充辅助函数、`cpu_name`/`feature`/`platform`，以及 `area` 自身的
   全部内容——`includes`、`list`、`loop_begin`、`loop_end`、`options`），
   并在生成的 `templates` 映射表中查找所命名的模板字符串（见
@@ -92,7 +95,62 @@ GCL YAML 文件
 结果是一个由 `copy` 与 `convert` 任务对象组成的扁平列表——规则引擎正是在
 这个列表上操作（见 [design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md)），
 之后 `index.js` 的 `process()` 才真正渲染模板（通过 `gooplate` 的
-`convert()`），并按配置的编码/行尾写出文件。
+`convert()`），并按每个条目的 `OE`/`line_ending` 写出文件。
+
+### 4.1 输出编码
+
+`files` 展开的 `copy` 条目：
+
+- 字符串条目，或 `IE`、`OE` 都不存在的对象条目：`IE` 置为 `null`，
+  `process()` 据此按字节原样复制。若该对象条目写了 `line_ending`，
+  `gen_list` 在展开时输出一条警告（`console.error`，含 GCL 文件名与条目
+  `filename`），说明 `line_ending` 被忽略。
+- `IE`、`OE` 至少存在一个：`IE` 缺省取 `utf8`，`OE` 缺省取 `cpu.OE`；按
+  `IE` 解码、按 `OE` 写出。
+
+转换器 `gen_copy_list`/`gen` 产生的条目以及符号表条目的 `OE` 按以下优先级
+确定：
+
+1. 转换器描述符中的 `OE` 字段（符号表条目没有）。
+2. 所属 CPU 的 `cpu.OE`。
+
+因此，需要转换编码的 `files` 条目与功能库复制条目（描述符为 `IE: 'utf8'`、
+不带 `OE`）遵循同一条规则：转换时 `OE` 缺省取 `cpu.OE`。
+
+`cpu.OE` 由 `CPU` 转换器的 `build_list` 从 CPU 文档的 `options.OE` 解析
+（与 `options.output_dir` → `cpu.output_dir` 相同的时机）；未指定时取平台
+默认值：`step7`/`pcs7` 为 `gbk`，`portal` 为 `utf8bom`。合成的空白 CPU
+文档平台为 `step7`，因此为 `gbk`。`gen_list` 中所有条目的通用字段以及
+符号表条目都取 `cpu.OE`。
+
+`utf8bom`（别名 `utf8-bom`）不是 `iconv-lite` 的编码名，由 `write_file`
+识别，按 `utf8` 编码并加上 BOM（`iconv.encode(..., 'utf8', { addBOM:
+true })`）。读取时 `iconv-lite` 默认会剥离源文件的 BOM，因此复制带 BOM 的
+源文件不会产生重复 BOM。
+
+规则引擎可以修改或新增条目（见
+[design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md)），因此到达
+`process()` 的条目可能没有 `OE`（例如 `add` 新建且未指定 `OE` 的条目）。
+这类条目由 `write_file` 按 `utf8` 写出。这是有意的选择：兜底不猜测平台，
+需要其他编码时由规则显式指定 `OE`。
+
+### 4.2 输出行尾
+
+每个需要写出文本的条目（转换编码的 `copy` 条目以及所有 `convert` 条目）
+的 `line_ending` 按以下优先级确定：
+
+1. 条目自身指定的行尾：`files` 对象条目的 `line_ending` 键，或转换器
+   `gen_copy_list`/`gen` 描述符中的 `line_ending` 字段（符号表条目没有）。
+2. 所属 CPU 的 `cpu.line_ending`。
+
+`cpu.line_ending` 由 `CPU` 转换器的 `build_list` 从 CPU 文档的
+`options.line_ending` 解析（与 `options.OE` 相同的时机）；未指定时为
+`LF`，所有平台相同。`gen_list` 中所有条目的通用字段以及符号表条目都取
+`cpu.line_ending`。按字节原样复制的 `files` 条目不涉及行尾（见
+[§4.1](#41-输出编码)）。
+
+与 `OE` 相同，到达 `process()` 的条目可能没有 `line_ending`（例如规则
+`add` 新建且未指定的条目），由 `write_file` 按 `LF` 写出。
 
 ## 5. 构建时自生成
 
@@ -124,5 +182,7 @@ GCL YAML 文件
 一个可变的模块级单例对象，保存横切的运行状态：`module_path`（包根目录，
 用于定位模板和库子模块）、`work_path`（当前 GCL 目录，CLI 在 `chdir` 时
 修改它）、`version`，以及 I/O 默认值（`output_zyml`、`no_convert`、
-`no_copy`、`silent`、`IE`、`OE`、`line_ending`）。CLI 标志直接修改它；
+`no_copy`、`silent`、`IE`）。`context` 不含 `OE` 与 `line_ending`：输出
+编码与行尾只来自条目和 CPU（见 [§4.1](#41-输出编码)、
+[§4.2](#42-输出行尾)）。CLI 标志直接修改它；
 使用 `src/index.js` 的库调用方也可以在调用 `convert()` 之前做同样的修改。
