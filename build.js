@@ -10,7 +10,7 @@ const mainInputOptions = {
     input: './src/index.js',
     platform: 'node',
     plugins: [],
-    external: [...builtinModules, 'iconv-lite'],
+    external: [...builtinModules],
 };
 
 const mainOutputOptionsList = [{
@@ -22,7 +22,8 @@ const CLIInputOptions = {
     input: './src/cli.js',
     platform: 'node',
     plugins: [],
-    external: [...builtinModules, 'iconv-lite', 'nodemon', './index.js'],
+    external: [...builtinModules, 'nodemon', './index.js'],
+    treeshake: { moduleSideEffects: [{ test: /iconv-lite/, sideEffects: false }] },
 };
 
 const CLIOutputOptionsList = [{

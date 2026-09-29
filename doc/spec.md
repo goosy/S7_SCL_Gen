@@ -73,7 +73,8 @@ point, resolve the ambiguity with the maintainer before writing code.
   - `gooplate` — the template engine used both for SCL templates and for
     `build.js`'s own code generation.
   - `iconv-lite` — GBK/UTF-8 encoding conversion for SCL output (Step 7
-    tooling expects GBK).
+    tooling expects GBK). Bundled into `lib/` at build time, not a runtime
+    dependency.
   - `globby`, `matcher`, `mri`, `nodemon`, `rimraf`, `rolldown` — build/CLI
     plumbing.
 - **Build**: `node build.js` (aliased as `pnpm build`) bundles `src/index.js`

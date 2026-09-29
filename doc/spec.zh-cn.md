@@ -71,7 +71,7 @@ TIA Portal 或 PCS7 的 SCL（Structured Control Language，结构化控制语�
   - `gooplate` —— 模板引擎，既用于 SCL 模板，也用于 `build.js` 自身的
     代码生成。
   - `iconv-lite` —— SCL 输出的 GBK/UTF-8 编码转换（Step 7 工具链要求
-    GBK）。
+    GBK）。构建时打包进 `lib/`，不是运行时依赖。
   - `globby`、`matcher`、`mri`、`nodemon`、`rimraf`、`rolldown` —— 构建/
     CLI 基础设施。
 - **构建**：`node build.js`（别名 `pnpm build`）通过 rolldown 将
