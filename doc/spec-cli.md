@@ -19,7 +19,7 @@ s7scl [subcommand] [path] [options]
 | Subcommand | Aliases | Behavior |
 |---|---|---|
 | `convert` | `conv` | Reads every `*.yaml`/`*.yml` file directly under `path`, generates SCL/symbol-table output, and (unless disabled) copies static files. This is the default. |
-| `watch` | `monitor` | Runs the built CLI under `nodemon`, watching `*.yaml` and `*.scl` under `path`, re-running `convert` on change. Supports the `rs` restart keystroke. |
+| `watch` | `monitor` | Runs the built CLI via the `nodemon` command invoked through the shell (installed globally by the user; if missing, the shell reports the error and the non-zero exit code is passed on), watching `*.yaml` and `*.yml` under `path`, re-running `convert` on change (`*.scl` is not watched, since the conversion itself writes SCL files and would restart endlessly). Supports the `rs` restart keystroke. |
 | `gcl` | `init`, `template` | Scaffolds a new GCL folder: copies the packaged `example/` directory and `README.md` to `path` (default `./GCL`) so a new user has sample configs to edit. |
 | `help` | — | Prints usage text. Also triggered by `--help`/`-H`, or as the fallback for any unrecognized subcommand. |
 

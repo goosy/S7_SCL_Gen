@@ -22,7 +22,7 @@ const CLIInputOptions = {
     input: './src/cli.js',
     platform: 'node',
     plugins: [],
-    external: [...builtinModules, 'nodemon', './index.js'],
+    external: [...builtinModules, './index.js'],
     treeshake: { moduleSideEffects: [{ test: /iconv-lite/, sideEffects: false }] },
 };
 

@@ -21,7 +21,7 @@ s7scl [subcommand] [path] [options]
 | 子命令 | 别名 | 行为 |
 |---|---|---|
 | `convert` | `conv` | 读取 `path` 下（仅直接子项）的所有 `*.yaml`/`*.yml` 文件，生成 SCL/符号表输出，并（除非禁用）复制静态文件。这是默认子命令。 |
-| `watch` | `monitor` | 在 `nodemon` 下运行构建后的 CLI，监视 `path` 下的 `*.yaml` 和 `*.scl`，变更时重新执行 `convert`。支持 `rs` 重启按键。 |
+| `watch` | `monitor` | 通过 shell 调用 `nodemon` 命令（需用户自行全局安装；找不到时由 shell 报错，并以非 0 退出码退出）运行构建后的 CLI，监视 `path` 下的 `*.yaml` 和 `*.yml`，变更时重新执行 `convert`（不监视 `*.scl`，因为转换本身会写出 SCL 文件，会导致无限重启）。支持 `rs` 重启按键。 |
 | `gcl` | `init`、`template` | 搭建新的 GCL 目录：将包内附带的 `example/` 目录和 `README.md` 复制到 `path`（默认 `./GCL`），让新用户有可编辑的示例配置。 |
 | `help` | — | 打印用法说明。`--help`/`-H` 也会触发，且是任何无法识别的子命令的回退行为。 |
 

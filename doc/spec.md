@@ -77,6 +77,10 @@ point, resolve the ambiguity with the maintainer before writing code.
     dependency.
   - `globby`, `matcher`, `mri`, `nodemon`, `rimraf`, `rolldown` — build/CLI
     plumbing.
+  - All of the above are dev dependencies; whatever is needed at runtime is
+    bundled into `lib/`, so the published package has no runtime
+    dependencies. The `watch` subcommand invokes the `nodemon` command that
+    the user installs globally.
 - **Build**: `node build.js` (aliased as `pnpm build`) bundles `src/index.js`
   and `src/cli.js` into `lib/` via rolldown, and — before bundling —
   regenerates `src/converter.js` and `src/symbols_buildin.yaml` from the

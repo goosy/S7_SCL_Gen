@@ -1,6 +1,6 @@
 import mri from 'mri';
+import { spawn } from 'node:child_process';
 import { posix } from 'node:path';
-import nodemon from 'nodemon';
 import { context, convert, get_rules } from './index.js';
 import { copy_file } from './util.js';
 
@@ -85,20 +85,13 @@ if (argv.version) {
     no_convert || silent || console.log("\nAll GCL files have been converted to SCL files! 所有GCL文件已转换成SCL文件。");
 } else if (cmd === 'watch' || cmd === 'monitor') {
     process.chdir(path ?? '.');
-    nodemon({
-        restartable: "rs",
-        verbose: !silent,
-        script: posix.join(context.module_path, 'lib', 'cli.js'),
-        ext: 'yaml,scl'
-    });
-    nodemon.on('start', () => {
-        console.log('s7-scl-gen has started');
-    }).on('quit', () => {
-        console.log('s7-scl-gen has quit');
-        process.exit();
-    }).on('restart', (files) => {
-        console.log('s7-scl-gen restarted due to: ', files);
-    });
+    const script = posix.join(context.module_path, 'lib', 'cli.js');
+    // Run through the shell, so the globally installed nodemon is found just like typing it;
+    // if it is missing, the shell reports the error and the non-zero exit code is passed on
+    const child = spawn(`nodemon --ext yaml,yml${silent ? '' : ' --verbose'} "${script}"`, { stdio: 'inherit', shell: true });
+    // Ctrl+C reaches nodemon too; let it shut down and then exit with its code
+    process.on('SIGINT', () => { });
+    child.on('exit', (code) => process.exit(code ?? 0));
 } else if (cmd === 'gcl' || cmd === 'init' || cmd === 'template') {
     const distance = posix.join(context.work_path, path ?? 'GCL');
     await copy_file(posix.join(context.module_path, 'example'), distance);

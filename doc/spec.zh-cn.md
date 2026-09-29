@@ -74,6 +74,8 @@ TIA Portal 或 PCS7 的 SCL（Structured Control Language，结构化控制语�
     GBK）。构建时打包进 `lib/`，不是运行时依赖。
   - `globby`、`matcher`、`mri`、`nodemon`、`rimraf`、`rolldown` —— 构建/
     CLI 基础设施。
+  - 以上均为开发依赖，运行时用到的都由构建打包进 `lib/`，发布的包没有运行时
+    依赖。`watch` 子命令调用的是用户自行全局安装的 `nodemon` 命令。
 - **构建**：`node build.js`（别名 `pnpm build`）通过 rolldown 将
   `src/index.js` 和 `src/cli.js` 打包到 `lib/`；在打包之前，会根据
   `src/converters/` 的内容重新生成 `src/converter.js` 和

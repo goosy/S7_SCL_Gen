@@ -54,7 +54,9 @@ s7scl
 s7scl watch [GCL文件夹路径]
 ```
 
-用于持续转换，在GCL文件夹中对GCL的任何修改，都会触发转换器生成新的SCL文件。
+用于持续转换，在GCL文件夹中对GCL的任何修改，都会触发转换器生成新的SCL文件。只监视 `.yaml` 和 `.yml` 文件；修改被复制或合并的 SCL 源文件不会触发转换，需要时可输入 `rs` 回车手动重新转换。
+
+该功能需要先全局安装 [nodemon](https://www.npmjs.com/package/nodemon)，例如 `npm install -g nodemon` 或 `pnpm add -g nodemon`。
 
 ## 3. 配置文档语法
 

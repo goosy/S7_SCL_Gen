@@ -54,7 +54,9 @@ Run `s7scl help` to view the generator's command help.
 s7scl watch [GCL folder path]
 ```
 
-Used for continuous conversion: any change to the GCL in the GCL folder triggers the converter to generate new SCL files.
+Used for continuous conversion: any change to the GCL in the GCL folder triggers the converter to generate new SCL files. Only `.yaml` and `.yml` files are watched; changes to SCL source files that are copied or merged do not trigger a conversion, so type `rs` and Enter to re-run it manually when needed.
+
+This feature requires [nodemon](https://www.npmjs.com/package/nodemon) to be installed globally first, e.g. `npm install -g nodemon` or `pnpm add -g nodemon`.
 
 ## 3. Configuration document syntax
 
