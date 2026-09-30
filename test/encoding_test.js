@@ -21,6 +21,7 @@ files:
 - {filename: test.yaml, line_ending: LF}
 - {filename: test.yaml, IE: gbk}
 - {filename: test.yaml, OE: utf8}
+- {filename: test.yaml, IE: utf8, line_ending: CRLF}
 ---
 name: TPCPU-CPU
 platform: portal
@@ -31,6 +32,7 @@ name: OECPU-CPU
 platform: portal
 options:
   OE: gbk
+  line_ending: CRLF
 ---
 name: OECPU-timer
 list:
@@ -85,6 +87,29 @@ suite('output encoding', () => {
     });
 });
 
+suite('output line ending', () => {
+    test('CPU.line_ending defaults to LF', () => {
+        const [symbol] = match_all(list, { type: 'convert', cpu_name: 'S7CPU', feature: 'symbol' });
+        strictEqual(symbol.line_ending, 'LF');
+        const [, , ie_only] = copies_of('S7CPU');
+        strictEqual(ie_only.line_ending, 'LF');
+    });
+
+    test('options.line_ending overrides the default', () => {
+        for (const feature of ['symbol', 'timer']) {
+            const [item] = match_all(list, { type: 'convert', cpu_name: 'OECPU', feature });
+            strictEqual(item.line_ending, 'CRLF');
+        }
+        const [lib] = match_all(list, { type: 'copy', cpu_name: 'OECPU', feature: 'timer' });
+        strictEqual(lib.line_ending, 'CRLF');
+    });
+
+    test('files entry line_ending takes precedence', () => {
+        const [, , , , own] = copies_of('S7CPU');
+        strictEqual(own.line_ending, 'CRLF');
+    });
+});
+
 suite('write_file encoding', () => {
     const dir = posix.join(context.work_path, 'dist_encoding');
     const content = 'A中';
@@ -103,6 +128,14 @@ suite('write_file encoding', () => {
         await write_file(filename, content, { line_ending: 'LF' });
         const buff = await readFile(filename);
         deepStrictEqual([...buff], [0x41, 0xE4, 0xB8, 0xAD]);
+    });
+
+    test('line ending defaults to LF', async () => {
+        const filename = posix.join(dir, 'line_ending.txt');
+        await write_file(filename, 'a\r\nb\n');
+        strictEqual((await readFile(filename)).toString('latin1'), 'a\nb\n');
+        await write_file(filename, 'a\nb\n', { line_ending: 'CRLF' });
+        strictEqual((await readFile(filename)).toString('latin1'), 'a\r\nb\r\n');
         await rm(dir, { recursive: true, force: true });
     });
 });

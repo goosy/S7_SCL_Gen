@@ -24,7 +24,6 @@ const context = {
     no_copy: false,
     silent: false,
     IE: 'utf8',
-    line_ending: 'CRLF',
 };
 
 // Output encoding names that mean "UTF-8 with BOM"
@@ -121,11 +120,11 @@ function CRLF2LF(str) {
  * @param {string} content
  * @param {object} [options]
  * @param {string} [options.encoding='utf8'] - iconv-lite encoding name, or 'utf8bom'/'utf8-bom' for UTF-8 with BOM
- * @param {string} [options.line_ending] - 'CRLF' or 'LF', defaults to context.line_ending
+ * @param {string} [options.line_ending='LF'] - 'CRLF' or 'LF'
  */
 async function write_file(filename, content, { encoding, line_ending } = {}) {
     encoding ??= 'utf8';
-    line_ending ??= context.line_ending;
+    line_ending ??= 'LF';
     await prepare_dir(dirname(filename));
     const text = line_ending === "CRLF" ? LF2CRLF(content) : CRLF2LF(content);
     const add_BOM = UTF8_BOM_NAMES.includes(encoding.toLowerCase());

@@ -105,6 +105,7 @@ export function build_list({ document, list, options }) {
         }, options.output_dir);
     }
     if (options.OE) CPU.OE = options.OE;
+    if (options.line_ending) CPU.line_ending = options.line_ending;
 }
 
 export function gen({ document, includes, list, options = {} }) {

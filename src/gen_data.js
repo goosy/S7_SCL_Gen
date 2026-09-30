@@ -96,6 +96,9 @@ export class CPU {
         this.#OE = encoding;
     }
 
+    /** @type {string} */
+    line_ending = 'LF';                    // default line ending, set by CPU options.line_ending
+
     /** @type {S7SymbolEmitter} */
     symbols = new S7SymbolEmitter();       // Symbol dispatch center
     /** @type {Promise.<S7Symbol>[]} */
@@ -443,7 +446,7 @@ async function gen_list(cpu_list) {
                 feature,
                 platform,
                 OE: cpu.OE,
-                line_ending: context.line_ending,
+                line_ending: cpu.line_ending,
             };
 
             for (const file of area.files) {
@@ -460,7 +463,7 @@ async function gen_list(cpu_list) {
                 /** @type {string|null} */
                 const IE = verbatim ? null : file.IE ?? 'utf8';
                 const OE = file.OE ?? cpu.OE;
-                const line_ending = file.line_ending ?? context.line_ending;
+                const line_ending = file.line_ending ?? cpu.line_ending;
                 const type = 'copy';
                 if (/\\/.test(source)) elog(new SyntaxError('Use "/" as the path separator!'));
                 let [dir, base] = source.split('//');
@@ -519,7 +522,7 @@ async function gen_list(cpu_list) {
         const item = gen_symbols(cpu);
         item.type = 'convert';
         item.OE = cpu.OE;
-        item.line_ending = context.line_ending;
+        item.line_ending = cpu.line_ending;
         convert_list.push(item);
     }
     return [...copy_list, ...convert_list];
