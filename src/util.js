@@ -24,9 +24,11 @@ const context = {
     no_copy: false,
     silent: false,
     IE: 'utf8',
-    OE: 'gbk',
     line_ending: 'CRLF',
 };
+
+// Output encoding names that mean "UTF-8 with BOM"
+const UTF8_BOM_NAMES = ['utf8bom', 'utf8-bom'];
 
 const templates_cache = new Map();
 /**
@@ -113,11 +115,23 @@ function CRLF2LF(str) {
     return str.split('\r\n').join('\n');
 }
 
+/**
+ * Write content to a file with the given encoding and line ending
+ * @param {string} filename
+ * @param {string} content
+ * @param {object} [options]
+ * @param {string} [options.encoding='utf8'] - iconv-lite encoding name, or 'utf8bom'/'utf8-bom' for UTF-8 with BOM
+ * @param {string} [options.line_ending] - 'CRLF' or 'LF', defaults to context.line_ending
+ */
 async function write_file(filename, content, { encoding, line_ending } = {}) {
-    encoding ??= context.OE;
+    encoding ??= 'utf8';
     line_ending ??= context.line_ending;
     await prepare_dir(dirname(filename));
-    const buff = iconv.encode(line_ending === "CRLF" ? LF2CRLF(content) : CRLF2LF(content), encoding);
+    const text = line_ending === "CRLF" ? LF2CRLF(content) : CRLF2LF(content);
+    const add_BOM = UTF8_BOM_NAMES.includes(encoding.toLowerCase());
+    const buff = add_BOM
+        ? iconv.encode(text, 'utf8', { addBOM: true })
+        : iconv.encode(text, encoding);
     await writeFile(filename, buff);
 }
 

@@ -82,6 +82,20 @@ export class CPU {
     /** @type {string} */
     output_dir;                            // output folder
 
+    /** @type {string|undefined} */
+    #OE;                                   // output encoding set by CPU options.OE
+    /**
+     * Default output encoding of the CPU's output files.
+     * Falls back to the platform default when options.OE is not set.
+     * @type {string}
+     */
+    get OE() {
+        return this.#OE ?? (this.platform === 'portal' ? 'utf8bom' : 'gbk');
+    }
+    set OE(encoding) {
+        this.#OE = encoding;
+    }
+
     /** @type {S7SymbolEmitter} */
     symbols = new S7SymbolEmitter();       // Symbol dispatch center
     /** @type {Promise.<S7Symbol>[]} */
@@ -428,17 +442,25 @@ async function gen_list(cpu_list) {
                 cpu_name,
                 feature,
                 platform,
-                OE: context.OE,
+                OE: cpu.OE,
                 line_ending: context.line_ending,
             };
 
             for (const file of area.files) {
-                /** @type string | undinfied */
-                const IE = file.IE;
-                const line_ending = file.line_ending ?? context.line_ending;
-                const OE = file.OE ?? context.OE;
                 const is_filename = typeof file === 'string';
                 const source = is_filename ? file : file.filename;
+                // Without IE and OE the file is copied verbatim (IE = null)
+                const verbatim = is_filename || (file.IE == null && file.OE == null);
+                if (verbatim && !is_filename && file.line_ending != null) {
+                    console.error(`warning: 警告：
+        info 信息: line_ending is ignored because neither IE nor OE is given, the file is copied verbatim. 未指定 IE 或 OE，文件原样复制，line_ending 被忽略
+        file 文件:"${area.document.gcl.file}"
+        filename 条目:${source}`);
+                }
+                /** @type {string|null} */
+                const IE = verbatim ? null : file.IE ?? 'utf8';
+                const OE = file.OE ?? cpu.OE;
+                const line_ending = file.line_ending ?? context.line_ending;
                 const type = 'copy';
                 if (/\\/.test(source)) elog(new SyntaxError('Use "/" as the path separator!'));
                 let [dir, base] = source.split('//');
@@ -482,15 +504,21 @@ async function gen_list(cpu_list) {
                 }
                 const type = 'convert';
                 const template = templates[item.template];
+                const OE = item.OE ?? common_options.OE;
+                const line_ending = item.line_ending ?? common_options.line_ending;
                 // { cpu_name, feature, platform, OE, line_ending, type, tags, template, distance, output_dir }
-                convert_list.push({ ...common_options, type, tags, template, distance, output_dir });
+                convert_list.push({
+                    ...common_options,
+                    OE, line_ending,
+                    type, tags, template, distance, output_dir,
+                });
             }
         }
     }
     for (const cpu of cpu_list) {
         const item = gen_symbols(cpu);
         item.type = 'convert';
-        item.OE = context.OE;
+        item.OE = cpu.OE;
         item.line_ending = context.line_ending;
         convert_list.push(item);
     }

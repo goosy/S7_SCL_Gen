@@ -104,6 +104,7 @@ export function build_list({ document, list, options }) {
             device: CPU.device
         }, options.output_dir);
     }
+    if (options.OE) CPU.OE = options.OE;
 }
 
 export function gen({ document, includes, list, options = {} }) {

@@ -25,9 +25,8 @@ async function process(list) {
             if (IE == null) { // copy directly without specifying encoding
                 await copy_file(src_file, dst_file);
             } else {
-                const content = await read_file(src_file, { encoding: IE });
-                item.content = OE === 'gbk' && content.charCodeAt(0) === 0xFEFF
-                    ? content.substring(1) : content;
+                // iconv-lite strips the source BOM on decoding
+                item.content = await read_file(src_file, { encoding: IE });
                 await write_file(dst_file, item.content, { encoding: OE, line_ending });
             }
             silent || console.log(`\t${dst_file}`)

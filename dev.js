@@ -18,8 +18,6 @@ const no_copy = argv['no-copy'];
 if (no_copy) context.no_copy = no_copy;
 const silent = argv.silent;
 if (silent) context.silent = silent;
-const encoding = argv.OE;
-if (encoding) context.OE = encoding;
 const line_ending = argv['line-ending'];
 if (line_ending) context.line_ending = line_ending;
 process.chdir('./example');

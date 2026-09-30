@@ -26,7 +26,6 @@ options:
 --no-copy                    不进行文件复制
 --silent      | -s | -S      不输出过程信息
 --line-ending                输出文件的换行符: CRLF LF
---OE                         输出文件的编码: gbk utf8 等
 --rules                      指定依照规则转换，后面跟规则文件的路径。这时 path 参数将被忽略
 
 例子:
@@ -56,8 +55,6 @@ const no_copy = argv['no-copy'];
 if (no_copy) context.no_copy = no_copy;
 const silent = argv.silent;
 if (silent) context.silent = silent;
-const encoding = argv.OE;
-if (encoding) context.OE = encoding;
 const line_ending = argv['line-ending'];
 if (line_ending) context.line_ending = line_ending;
 const rules_file = argv.rules;
