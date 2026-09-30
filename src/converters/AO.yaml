@@ -1,0 +1,4 @@
+name: BUILDIN
+symbols: 
+- [{{NAME}}, FB515, {{NAME}}, AO main FB]
+- [{{LOOP_NAME}}, FC515, {{LOOP_NAME}}, main AO cyclic call function]

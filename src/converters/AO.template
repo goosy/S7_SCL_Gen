@@ -1,0 +1,68 @@
+// 本代码由 S7_SCL_SRC_GEN 自动生成。author: goosy.jo@gmail.com
+// 配置文件: {{gcl.file}}
+// 摘要: {{gcl.MD5}}
+{{if includes}}
+  {{_includes}}
+{{endif}}_
+{{for AO in list}}_
+  {{_if AO.DB}}
+// AO背景块: {{AO.comment}}
+DATA_BLOCK {{AO.DB.value}}
+    {{_if platform == 'portal'}}_
+{ S7_Optimized_Access := 'FALSE' }
+    {{_endif // portal}}_
+AUTHOR : Goosy
+FAMILY : GooLib
+"{{NAME}}"
+BEGIN
+    {{_if AO.$PV !== undefined}}_
+    PV := {{AO.$PV}};
+    {{_endif}}_
+    {{_if AO.$zero !== undefined}}_
+    zero := {{AO.$zero}};
+    {{_endif}}_
+    {{_if AO.$span !== undefined}}_
+    span := {{AO.$span}};
+    {{_endif}}_
+    {{_if AO.$overflow_SP !== undefined}}_
+    overflow_SP := {{AO.$overflow_SP}};
+    {{_endif}}_
+    {{_if AO.$underflow_SP !== undefined}}_
+    underflow_SP := {{AO.$underflow_SP}};
+    {{_endif}}_
+END_DATA_BLOCK
+  {{_endif // AO.DB}}_
+{{endfor // AO}}
+
+// 主循环调用
+FUNCTION "{{LOOP_NAME}}" : VOID
+{{if platform == 'portal'}}_
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+{{endif // platform}}_
+BEGIN
+{{if loop_begin}}_
+  {{_loop_begin}}
+{{endif}}_
+{{for AO in list}}_
+  {{_if AO.DB}}
+// {{AO.comment}}
+    {{_if AO.PV}}_
+{{AO.DB.value}}.PV := {{AO.PV.value}};
+    {{_endif // PV}}_
+    {{_if AO.extra_code}}_
+{{AO.extra_code}}
+    {{_endif // extra_code}}_
+    {{_if platform == 'step7' || platform == 'pcs7'}}_
+"{{NAME}}".{{//非博途必须有FB块名}}_
+    {{_endif // platform}}_
+{{AO.DB.value}}();
+    {{_if AO.output}}_
+{{AO.output.value}} := {{AO.DB.value}}.AO;
+    {{_endif // output}}_
+  {{_endif // AO.DB}}_
+{{endfor // AO}}_
+{{if loop_end}}
+  {{_loop_end}}
+{{endif}}_
+END_FUNCTION

@@ -25,3 +25,6 @@
 [submodule "RP_Trigger"]
 	path = RP_Trigger
 	url = git@github.com:goosy/RP_Trigger.git
+[submodule "AO_Proc"]
+	path = AO_Proc
+	url = git@github.com:goosy/AO_Proc.git
