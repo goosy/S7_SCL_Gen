@@ -37,7 +37,7 @@ s7scl [subcommand] [path] [options]
 
 Flags map directly onto the shared `context` object (`src/util.js`); anything
 not overridden by a flag falls back to `context`'s defaults
-(`IE: 'utf8'`, `silent: false`, etc.).
+(`silent: false`, etc.).
 
 ## 4. Exit behavior
 

@@ -23,7 +23,6 @@ const context = {
     no_convert: false,
     no_copy: false,
     silent: false,
-    IE: 'utf8',
 };
 
 // Output encoding names that mean "UTF-8 with BOM"
@@ -93,7 +92,7 @@ async function copy_file(src, dst) {
 }
 
 async function read_file(filename, options = {}) {
-    const encoding = options.encoding ?? context.IE;
+    const encoding = options.encoding ?? 'utf8';
     let exist = true;
     await access(filename).catch(() => {
         exist = false;

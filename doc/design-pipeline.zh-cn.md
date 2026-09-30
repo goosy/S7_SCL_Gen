@@ -182,7 +182,5 @@ true })`）。读取时 `iconv-lite` 默认会剥离源文件的 BOM，因此复
 一个可变的模块级单例对象，保存横切的运行状态：`module_path`（包根目录，
 用于定位模板和库子模块）、`work_path`（当前 GCL 目录，CLI 在 `chdir` 时
 修改它）、`version`，以及 I/O 默认值（`output_zyml`、`no_convert`、
-`no_copy`、`silent`、`IE`）。`context` 不含 `OE` 与 `line_ending`：输出
-编码与行尾只来自条目和 CPU（见 [§4.1](#41-输出编码)、
-[§4.2](#42-输出行尾)）。CLI 标志直接修改它；
-使用 `src/index.js` 的库调用方也可以在调用 `convert()` 之前做同样的修改。
+`no_copy`、`silent`）。CLI 标志直接修改它；使用 `src/index.js` 的库调用方
+也可以在调用 `convert()` 之前做同样的修改。

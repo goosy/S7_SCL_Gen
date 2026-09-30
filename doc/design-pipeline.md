@@ -203,8 +203,5 @@ A single mutable module-level object holding cross-cutting run state:
 `module_path` (package root, used to locate templates and library
 submodules), `work_path` (current GCL folder, mutated by the CLI on `chdir`),
 `version`, and the I/O defaults (`output_zyml`, `no_convert`, `no_copy`,
-`silent`, `IE`). `context` holds no `OE` or `line_ending`: the output
-encoding and line ending come only from entries and CPUs (see
-[§4.1](#41-output-encoding), [§4.2](#42-output-line-ending)).
-CLI flags mutate it directly; library
-consumers of `src/index.js` can do the same before calling `convert()`.
+`silent`). CLI flags mutate it directly; library consumers of `src/index.js`
+can do the same before calling `convert()`.

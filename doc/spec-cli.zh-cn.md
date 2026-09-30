@@ -38,7 +38,7 @@ s7scl [subcommand] [path] [options]
 | `--rules` | — | 规则 YAML 文件路径（见 [design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md)）。设置后 `path` 被忽略：由规则文件本身按任务指定要转换的目录和要应用的规则。 |
 
 这些标志直接映射到共享的 `context` 对象（`src/util.js`）；未被标志覆盖的
-项回退到 `context` 的默认值（`IE: 'utf8'`、`silent: false` 等）。
+项回退到 `context` 的默认值（`silent: false` 等）。
 
 ## 4. 退出行为
 
