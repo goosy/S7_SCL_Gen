@@ -511,6 +511,21 @@ function ref(item) {
     return ret;
 }
 
+/**
+ * Whether an expression made by make_s7_expression can be the target of an
+ * assignment: an S7 symbol always can; a non-symbol reference must be a single
+ * variable, not a literal constant or a compound SCL expression.
+ * @param {object} expr symbol or reference returned by make_s7_expression
+ * @returns {boolean}
+ */
+export function is_assignable(expr) {
+    if (expr.type !== 'ref') return true;
+    const value = expr.value;
+    return typeof value === 'string'
+        && !expr.isExpress
+        && !/^\s*(true|false)\s*$/i.test(value);
+}
+
 function throw_type_incompatible(symbol, type) {
     console.error('\n\nsymbol type incompatible! 符号类型不兼容!');
     console.error(`current symbol information 当前符号信息: ${get_msg(symbol)}

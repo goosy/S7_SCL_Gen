@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import { make_s7_expression } from '../symbols.js';
+import { is_assignable, make_s7_expression } from '../symbols.js';
 import { context, elog } from '../util.js';
 import { STRING, ensure_value, TIME } from '../s7data.js';
 
@@ -96,16 +96,9 @@ export function build_list({ document, list }) {
     for (const RP of list) {
         const output = RP.output;
         // biome-ignore lint/suspicious/noDoubleEquals: may be null
-        if (output == undefined || output.type !== 'ref') continue; // no output or S7 symbol
-        // A non-symbol output must be a single assignable variable,
-        // not a literal constant or a compound SCL expression.
-        const value = output.value;
-        if (
-            typeof value !== 'string'
-            || output.isExpress
-            || /^\s*(true|false)\s*$/i.test(value)
-        ) {
-            elog(new SyntaxError(`${document.CPU.name}:RP (${RP.comment.value}) 的 output "${value}" 必须是可赋值的 BOOL 变量，不能是常量或表达式`));
+        if (output == undefined) continue; // no output
+        if (!is_assignable(output)) {
+            elog(new SyntaxError(`${document.CPU.name}:RP (${RP.comment.value}) 的 output "${output.value}" 必须是可赋值的 BOOL 变量，不能是常量或表达式`));
         }
     }
 }
