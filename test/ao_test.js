@@ -93,58 +93,51 @@ list:
 });
 
 suite('AO instance DB', () => {
+    /** The BEGIN section of the first instance DB as `key value` lines */
+    async function db_init(item, platform) {
+        const scl = await render([item], platform);
+        const begin = scl.match(/BEGIN\n([\s\S]*?)END_DATA_BLOCK/)[1];
+        return begin.trim().split('\n').map(line => line.trim().replace(/ := /, ' ').replace(/;$/, '')).join(', ');
+    }
+
+    test('defaults are written when the $ keys are omitted', async () => {
+        strictEqual(await db_init(''), 'PV 0.0, mode 0, zero 0.0, span 100.0, overflow_SP 28000, underflow_SP -500');
+    });
+
+    test('the underflow_SP default depends on the mode', async () => {
+        match(await db_init('$mode: 0-10V'), /underflow_SP 0$/);
+        match(await db_init('$mode: 1-5V'), /underflow_SP -500$/);
+        match(await db_init('$mode: +-10V'), /underflow_SP -28000$/);
+    });
+
     test('$PV defaults to $zero for unipolar modes', async () => {
-        match(await render(['$zero: 4.0, $span: 20.0']), /BEGIN\n {4}PV := 4\.0;\n {4}zero := 4\.0;\n {4}span := 20\.0;\nEND_DATA_BLOCK/);
-        match(await render(['$mode: 0-10V, $zero: 20.0, $span: 50.0']), /BEGIN\n {4}PV := 20\.0;\n/);
-        match(await render(['$zero: 4.0, $span: 20.0, $PV: 8.0']), /BEGIN\n {4}PV := 8\.0;\n/);
+        strictEqual(await db_init('$zero: 4.0, $span: 20.0'), 'PV 4.0, mode 0, zero 4.0, span 20.0, overflow_SP 28000, underflow_SP -500');
+        match(await db_init('$mode: 0-10V, $zero: 20.0, $span: 50.0'), /^PV 20\.0,/);
+        match(await db_init('$zero: 4.0, $span: 20.0, $PV: 8.0'), /^PV 8\.0,/);
     });
 
     test('$PV defaults to the range midpoint for bipolar modes', async () => {
-        match(await render(['$mode: +-10V, $zero: 0.0, $span: 100.0']), /BEGIN\n {4}PV := 50\.0;\n {4}mode := 4;\n/);
-        match(await render(['$mode: +-20mA, $zero: -20.0, $span: 100.0']), /BEGIN\n {4}PV := 40\.0;\n/);
-        match(await render(['$mode: +-10V']), /BEGIN\n {4}PV := 50\.0;\n/); // FB defaults 0.0 ~ 100.0
-    });
-
-    test('a default $PV equal to the FB default 0.0 is not written', async () => {
-        doesNotMatch(await render(['$mode: +-10V, $zero: -100.0, $span: 100.0']), /PV :=/);
-        doesNotMatch(await render(['$mode: 0-20mA, $span: 50.0']), /PV :=/);
-        doesNotMatch(await render(['']), /PV :=/);
-        match(await render(['$PV: 0.0']), /BEGIN\n {4}PV := 0\.0;\n/); // explicit is always written
+        match(await db_init('$mode: +-10V, $zero: 0.0, $span: 100.0'), /^PV 50\.0, mode 4,/);
+        match(await db_init('$mode: +-20mA, $zero: -20.0, $span: 100.0'), /^PV 40\.0,/);
+        match(await db_init('$mode: +-10V, $zero: -100.0, $span: 100.0'), /^PV 0\.0,/);
+        match(await db_init('$mode: +-10V'), /^PV 50\.0,/); // default range 0.0 ~ 100.0
     });
 
     test('clamp limits are written as raw values', async () => {
-        match(
-            await render(['$overflow_SP: 29500, $underflow_SP: -500']),
-            /BEGIN\n {4}overflow_SP := 29500;\n {4}underflow_SP := -500;\nEND_DATA_BLOCK/,
-        );
+        match(await db_init('$overflow_SP: 29500, $underflow_SP: -800'), /overflow_SP 29500, underflow_SP -800$/);
     });
 
     test('percentage clamp limits are converted against 27648', async () => {
-        match(
-            await render(['$overflow_SP: 105%, $underflow_SP: \'-5 %\'']),
-            /BEGIN\n {4}overflow_SP := 29030;\n {4}underflow_SP := -1382;\nEND_DATA_BLOCK/,
-        );
-        match(
-            await render(['$overflow_SP: 90%, $underflow_SP: 10.5%']),
-            /BEGIN\n {4}overflow_SP := 24883;\n {4}underflow_SP := 2903;\nEND_DATA_BLOCK/,
-        );
+        match(await db_init("$overflow_SP: 105%, $underflow_SP: '-5 %'"), /overflow_SP 29030, underflow_SP -1382$/);
+        match(await db_init('$overflow_SP: 90%, $underflow_SP: 10.5%'), /overflow_SP 24883, underflow_SP 2903$/);
+        match(await db_init('$mode: +-10V, $overflow_SP: 105%, $underflow_SP: -105%'), /overflow_SP 29030, underflow_SP -29030$/);
     });
 
     test('$mode is written as an integer, from a number or a name', async () => {
-        match(await render(['$mode: 2']), /BEGIN\n {4}mode := 2;\nEND_DATA_BLOCK/);
-        match(await render(['$mode: 0-10V']), /BEGIN\n {4}mode := 2;\nEND_DATA_BLOCK/);
-        match(await render(['$mode: +-10v']), /\n {4}mode := 4;\nEND_DATA_BLOCK/); // preceded by the default PV
-        match(await render(["$mode: ' 4-20MA '"]), /BEGIN\n {4}mode := 0;\nEND_DATA_BLOCK/);
-    });
-
-    test('an omitted $underflow_SP is not written for any mode', async () => {
-        for (const mode of ['4-20mA', '0-10V', '+-10V']) {
-            doesNotMatch(await render([`$mode: ${mode}`]), /underflow_SP :=/, mode);
-        }
-    });
-
-    test('nothing is written when the $ keys are omitted', async () => {
-        match(await render(['']), /BEGIN\nEND_DATA_BLOCK/);
+        match(await db_init('$mode: 2'), /, mode 2,/);
+        match(await db_init('$mode: 0-10V'), /, mode 2,/);
+        match(await db_init('$mode: +-10v'), /, mode 4,/);
+        match(await db_init("$mode: ' 4-20MA '"), /, mode 0,/);
     });
 
     test('portal DB is not optimized', async () => {

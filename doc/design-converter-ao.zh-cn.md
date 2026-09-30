@@ -13,6 +13,7 @@
 | `src/converters/converter_AO.js` | `platforms = ['step7', 'portal', 'pcs7']`；`NAME = 'AO_Proc'`、`LOOP_NAME = 'AO_Loop'`；`is_feature` 对 `AO` 做不区分大小写匹配 |
 | `src/converters/AO.yaml` | 内置符号 `[{{NAME}}, FB515, ...]`、`[{{LOOP_NAME}}, FC515, ...]` |
 | `src/converters/AO.template` | 实例 DB 与 `AO_Loop` 函数 |
+| `src/converters/analog_common.js` | 与 `AI` 共用：原始值常量（`S7_*`）、默认值常量（`DEFAULT_*`）、`raw_SP` |
 | `AO_Proc/`（子模块） | `AO_Proc(<platform>).scl` |
 
 ## 2. `initialize_list`
@@ -26,26 +27,30 @@
 - `PV`：`make_s7_expression`，`force: { type: 'REAL' }`，允许 SCL 表达式；
   `AO.PV` 可能为 `undefined`。
 - `output`：`make_s7_expression`，`force: { type: 'WORD' }`。
-- `$zero`/`$span`/`$PV`：`nullable_value(REAL, ...)`。记录
-  `AO.explicit_PV`（`$PV` 是否显式配置）供范围检查使用。`$PV` 缺省时在
-  解析 `$mode` 之后计算原始值 `0` 对应的工程值
+- 默认值：`$mode`/`$zero`/`$span`/`$overflow_SP`/`$underflow_SP`/`$PV` 在
+  此处补齐默认值（`DEFAULT_MODE`、`DEFAULT_ZERO`、`DEFAULT_SPAN`、
+  `DEFAULT_OVERFLOW_SP`、`AO.cat.def_low`、原始值 `0` 对应的工程值，即
+  `0`/`0.0`/`100.0`/`28000`/按类别/见下），此后总有值，模板总是写出，
+  `build_list` 直接读取。实例 DB 因此不依赖 `AO_Proc` 声明中的默认值——
+  包括 `underflow_SP` 的哨兵值 `-32768`，生成的代码不会用到它。
+- `$mode`：由本模块的 `mode_of(value)` 转换为 `INT`——整数须为 `MODES`
+  的下标 `0`–`5`，字符串按名称不区分大小写查 `MODES`，否则 `elog`。随后
+  记录 `AO.cat = MODES[$mode]` 供后续默认值与校验使用。
+- `$zero`/`$span`：`new REAL(...)`。
+- `$overflow_SP`/`$underflow_SP`：由与 `AI` 共用的
+  `src/converters/analog_common.js` 的 `raw_SP(value, desc)` 转换为
+  `INT`，不传 `zero_raw`/`span_raw`（即 `0`/`27648`），所以 `%` 字符串取
+  `Math.round(27648 * pct / 100)`，双极性下同样成立。格式与 INT 范围校验
+  见 [design-converter-ai.zh-cn.md §2.1](design-converter-ai.zh-cn.md#21-raw_sp)。
+- `$PV`：`nullable_value(REAL, ...)`，并记录 `AO.explicit_PV`（`$PV` 是否
+  显式配置）供范围检查使用。缺省时取原始值 `0` 对应的工程值
   `zero + (0 - cat.raw_zero) * (span - zero) / (27648 - cat.raw_zero)`
-  （`zero`/`span`/`cat` 省略时按 FB 默认值，此处完成，因为都是静态值；
-  双极性时即 `(zero + span) / 2`）；结果为 `0.0` 时 `AO.$PV` 保持
-  `undefined`，模板因而不写入。
-- `$overflow_SP`/`$underflow_SP`：由本模块的 `raw_SP(value)` 转换为
-  `INT`——字符串匹配 `/^\s*([+-]?\d+(\.\d+)?)\s*%\s*$/` 时取
-  `Math.round(27648 * pct / 100)`，其余字符串 `elog`；数字直接
-  `new INT(value)`。必须先识别 `%`，因为 `Integer` 用 `parseInt` 会把
-  `'105%'` 静默解析为 `105`。将来 `AI` 支持 `%` 写法时，`raw_SP` 移到
-  共享模块。
-- `$mode`：由本模块的 `mode_of(value)` 转换为 `INT`——整数须为
-  `MODES` 的下标 `0`–`5`，字符串按名称不区分大小写查 `MODES`，否则
-  `elog`。省略时为 `undefined`。
+  （此处完成，因为都是静态值；双极性时即 `(zero + span) / 2`）。
 - `extra_code`：`nullable_value(STRING, ...)?.value`，与 `interlock` 相同。
 
 `MODES` 是本模块按 `mode` 下标排列的表，每项为
-`{ name, raw_zero, raw_min, def_low }`，取值与 `AO_Proc` 0.2 的常量一致
+`{ name, raw_zero, raw_min, def_low }`，取值与 `AO_Proc` 0.2 的常量一致，
+`def_low` 是省略 `$underflow_SP` 时写入的默认值
 （名称 `4-20mA`、`0-20mA`、`0-10V`、`1-5V`、`+-10V`、`+-20mA`）：
 
 | 类别 | `raw_zero` | `raw_min` | `def_low` |
@@ -58,14 +63,11 @@
 
 - `output` 可赋值性：调用 `src/symbols.js` 导出的 `is_assignable(expr)`
   （由 RP 的原有判断抽取而来，RP 与 AO 共用），不可赋值时 `elog`。
-- 量程检查：`zero = $zero?.value ?? 0.0`、`span = $span?.value ?? 100.0`
-  （FB 默认值），`zero === span` 时 `elog`。
-- 类别：`cat = MODES[$mode?.value ?? 0]`（FB 默认 `mode` 为 `0`）。
-- 限幅上下限：`high = $overflow_SP?.value ?? 28000`、
-  `low = $underflow_SP?.value ?? cat.def_low`（FB 默认值与类别默认值）。
-  显式配置的值不在 `[cat.raw_min, 32511]` 内时 `elog`；`high <= low` 时
-  `elog`。由于已校验范围，无需再模拟 FB 对硬件上下限的约束。省略的
-  `$underflow_SP` 不写入 DB，由 FB 的哨兵值 `-32768` 按 `mode` 取默认值。
+- 量程检查：`zero = $zero.value`、`span = $span.value`，`zero === span`
+  时 `elog`。
+- 限幅上下限：`high = $overflow_SP.value`、`low = $underflow_SP.value`，
+  不在 `[AO.cat.raw_min, 32511]` 内时 `elog`；`high <= low` 时 `elog`。由于
+  已校验范围，无需再模拟 FB 对硬件上下限的约束。
 - 转换方向：`AO_Proc` 的公式为
   `raw_zero + (PV - zero) * (27648 - raw_zero) / (span - zero)`，恒有
   `zero` → `raw_zero`、`span` → `27648`。生成器原样写入 `$zero`/`$span`，
@@ -81,7 +83,7 @@
 ## 4. 模板
 
 - 每个有 `DB` 的条目一个 `DATA_BLOCK {{AO.DB.value}}`，Portal 上加
-  `{ S7_Optimized_Access := 'FALSE' }`；`BEGIN` 段仅写出已定义的
+  `{ S7_Optimized_Access := 'FALSE' }`；`BEGIN` 段总是写出
   `PV`/`mode`/`zero`/`span`/`overflow_SP`/`underflow_SP` 初值。
 - `AO_Loop` 支持 `loop_begin`/`loop_end`；每个条目按规格中的固定顺序输出：
   `{{AO.DB.value}}.PV := {{AO.PV.value}};`（若 `AO.PV`）→

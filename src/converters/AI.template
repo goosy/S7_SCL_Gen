@@ -19,24 +19,12 @@ BEGIN
     enable_H := {{AI.$enable_H}};
     enable_L := {{AI.$enable_L}};
     enable_LL := {{AI.$enable_LL}};
-    {{_if AI.$zero_raw !== undefined}}_
     zero_raw := {{AI.$zero_raw}};
-    {{_endif}}_
-    {{_if AI.$span_raw !== undefined}}_
     span_raw := {{AI.$span_raw}};
-    {{_endif}}_
-    {{_if AI.$overflow_SP !== undefined}}_
     overflow_SP := {{AI.$overflow_SP}};
-    {{_endif}}_
-    {{_if AI.$underflow_SP !== undefined}}_
     underflow_SP := {{AI.$underflow_SP}};
-    {{_endif}}_
-    {{_if AI.$zero !== undefined}}_
     zero := {{AI.$zero}};
-    {{_endif}}_
-    {{_if AI.$span !== undefined}}_
     span := {{AI.$span}};
-    {{_endif}}_
     {{_if AI.$HH_limit !== undefined}}_
     HH_limit := {{AI.$HH_limit}};
     {{_endif}}_

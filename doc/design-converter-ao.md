@@ -11,6 +11,7 @@ shared by all converters see [design-converters.md](design-converters.md).
 | `src/converters/converter_AO.js` | `platforms = ['step7', 'portal', 'pcs7']`; `NAME = 'AO_Proc'`, `LOOP_NAME = 'AO_Loop'`; `is_feature` matches `AO` case-insensitively |
 | `src/converters/AO.yaml` | Built-in symbols `[{{NAME}}, FB515, ...]`, `[{{LOOP_NAME}}, FC515, ...]` |
 | `src/converters/AO.template` | Instance DBs and the `AO_Loop` function |
+| `src/converters/analog_common.js` | Shared with `AI`: raw-value constants (`S7_*`), default constants (`DEFAULT_*`), `raw_SP` |
 | `AO_Proc/` (submodule) | `AO_Proc(<platform>).scl` |
 
 ## 2. `initialize_list`
@@ -25,30 +26,37 @@ each YAML item becomes one `AO` object:
 - `PV`: `make_s7_expression` with `force: { type: 'REAL' }`, SCL expressions
   allowed; `AO.PV` may be `undefined`.
 - `output`: `make_s7_expression` with `force: { type: 'WORD' }`.
-- `$zero`/`$span`/`$PV`: `nullable_value(REAL, ...)`. `AO.explicit_PV`
-  (whether `$PV` was configured explicitly) is recorded for the range check.
-  When `$PV` is omitted, the engineering value that raw `0` maps to,
-  `zero + (0 - cat.raw_zero) * (span - zero) / (27648 - cat.raw_zero)`, is
-  computed after `$mode` is parsed (`zero`/`span`/`cat` taking the FB
-  defaults when omitted; done here, since all are static values;
-  `(zero + span) / 2` for bipolar); when the result is `0.0`, `AO.$PV` stays
-  `undefined` so the template does not write it.
-- `$overflow_SP`/`$underflow_SP`: converted to `INT` by the module's
-  `raw_SP(value)` — a string matching
-  `/^\s*([+-]?\d+(\.\d+)?)\s*%\s*$/` becomes
-  `Math.round(27648 * pct / 100)`, any other string is an `elog`; a number
-  becomes `new INT(value)`. The `%` must be recognized first, because
-  `Integer`'s `parseInt` would silently read `'105%'` as `105`. When `AI`
-  later supports the `%` form, `raw_SP` moves to a shared module.
+- Defaults: `$mode`/`$zero`/`$span`/`$overflow_SP`/`$underflow_SP`/`$PV`
+  get their defaults here (`DEFAULT_MODE`, `DEFAULT_ZERO`, `DEFAULT_SPAN`,
+  `DEFAULT_OVERFLOW_SP`, `AO.cat.def_low`, the engineering value of raw `0`,
+  i.e. `0`/`0.0`/`100.0`/`28000`/by category/see below), so they always have
+  a value, the template always writes them and `build_list` reads them
+  directly. The instance DB therefore never depends on the defaults declared
+  in `AO_Proc` — including the `underflow_SP` sentinel `-32768`, which the
+  generated code never uses.
 - `$mode`: converted to `INT` by the module's `mode_of(value)` — an integer
   must be an index `0`–`5` of `MODES`, a string is looked up by name in
-  `MODES` case-insensitively, anything else is an `elog`. `undefined` when
-  omitted.
+  `MODES` case-insensitively, anything else is an `elog`. Then
+  `AO.cat = MODES[$mode]` is recorded for the later defaults and checks.
+- `$zero`/`$span`: `new REAL(...)`.
+- `$overflow_SP`/`$underflow_SP`: converted to `INT` by
+  `raw_SP(value, desc)` of `src/converters/analog_common.js`, shared with
+  `AI`, without `zero_raw`/`span_raw` (i.e. `0`/`27648`), so a `%` string
+  becomes `Math.round(27648 * pct / 100)`, bipolar included. For the format
+  and INT range checks see
+  [design-converter-ai.md §2.1](design-converter-ai.md#21-raw_sp).
+- `$PV`: `nullable_value(REAL, ...)`, and `AO.explicit_PV` (whether `$PV`
+  was configured explicitly) is recorded for the range check. When omitted
+  it is the engineering value of raw `0`,
+  `zero + (0 - cat.raw_zero) * (span - zero) / (27648 - cat.raw_zero)`
+  (done here, since all are static values; `(zero + span) / 2` for
+  bipolar).
 - `extra_code`: `nullable_value(STRING, ...)?.value`, as in `interlock`.
 
 `MODES` is the module's table indexed by `mode`, each entry being
 `{ name, raw_zero, raw_min, def_low }`, with values matching the constants of
-`AO_Proc` 0.2 (names `4-20mA`, `0-20mA`, `0-10V`, `1-5V`, `+-10V`,
+`AO_Proc` 0.2, `def_low` being the default written when `$underflow_SP` is
+omitted (names `4-20mA`, `0-20mA`, `0-10V`, `1-5V`, `+-10V`,
 `+-20mA`):
 
 | Category | `raw_zero` | `raw_min` | `def_low` |
@@ -62,16 +70,12 @@ each YAML item becomes one `AO` object:
 - `output` assignability: calls `is_assignable(expr)` exported from
   `src/symbols.js` (extracted from RP's original check, shared by RP and AO);
   `elog` when not assignable.
-- Range check: `zero = $zero?.value ?? 0.0`, `span = $span?.value ?? 100.0`
-  (the FB defaults); `zero === span` is an `elog`.
-- Category: `cat = MODES[$mode?.value ?? 0]` (the FB default `mode` is `0`).
-- Clamp limits: `high = $overflow_SP?.value ?? 28000`,
-  `low = $underflow_SP?.value ?? cat.def_low` (the FB default and the
-  category default). An explicitly configured value outside
-  `[cat.raw_min, 32511]` is an `elog`; `high <= low` is an `elog`. Since the
-  range is validated, the FB's hardware limit bounding need not be modeled.
-  An omitted `$underflow_SP` is not written to the DB; the FB's sentinel
-  `-32768` takes the default from `mode`.
+- Range check: `zero = $zero.value`, `span = $span.value`; `zero === span`
+  is an `elog`.
+- Clamp limits: `high = $overflow_SP.value`, `low = $underflow_SP.value`;
+  a value outside `[AO.cat.raw_min, 32511]` is an `elog`; `high <= low` is
+  an `elog`. Since the range is validated, the FB's hardware limit bounding
+  need not be modeled.
 - Conversion direction: `AO_Proc` computes
   `raw_zero + (PV - zero) * (27648 - raw_zero) / (span - zero)`, so `zero`
   always maps to `raw_zero` and `span` to `27648`. The generator writes
@@ -91,8 +95,8 @@ template.
 ## 4. Template
 
 - One `DATA_BLOCK {{AO.DB.value}}` per item with a `DB`, with
-  `{ S7_Optimized_Access := 'FALSE' }` on Portal; the `BEGIN` section writes
-  only the defined `PV`/`mode`/`zero`/`span`/`overflow_SP`/`underflow_SP` initial
+  `{ S7_Optimized_Access := 'FALSE' }` on Portal; the `BEGIN` section always
+  writes the `PV`/`mode`/`zero`/`span`/`overflow_SP`/`underflow_SP` initial
   values.
 - `AO_Loop` supports `loop_begin`/`loop_end`; each item is emitted in the
   fixed order of the spec: `{{AO.DB.value}}.PV := {{AO.PV.value}};` (if

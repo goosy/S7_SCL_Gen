@@ -1,8 +1,28 @@
 import { make_s7_expression } from "../symbols.js";
-import { BOOL, REAL, TIME, ensure_value, nullable_value } from '../s7data.js';
+import { BOOL, INT, REAL, TIME, ensure_value, nullable_value } from '../s7data.js';
 import { isString } from '../gcl.js';
 import { isSeq } from 'yaml';
 import { elog } from '../util.js';
+
+// Raw values of the nominal range of S7 analog modules
+export const S7_ZERO = 0;
+export const S7_SPAN = 27648;
+// Raw values reserved by AI_Proc as non-measurement markers (e.g. wire break)
+export const S7_AI_MIN = -32768;
+export const S7_AI_MAX = 32767;
+// Hardware high limit of all AO_Proc output modes; the low limit depends on
+// the mode, see MODES in converter_AO.js
+export const S7_AO_MAX = 32511;
+
+// Defaults written to the instance DB when the $ keys are omitted, so the
+// conversion-time checks never depend on the defaults declared in the FBs
+export const DEFAULT_ZERO = 0.0;
+export const DEFAULT_SPAN = 100.0;
+export const DEFAULT_ZERO_RAW = S7_ZERO;
+export const DEFAULT_SPAN_RAW = S7_SPAN;
+export const DEFAULT_OVERFLOW_SP = 28000;
+// AI only; the AO default depends on the mode, see MODES in converter_AO.js
+export const DEFAULT_UNDERFLOW_SP = -500;
 
 function get_name(item) {
     if (typeof item === 'string') return item;
@@ -51,8 +71,8 @@ export function make_fake_DB(item) {
  */
 export function make_alarms(item, node, document) {
     const info = document.gcl.get_pos_info(...node.range);
-    item.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(0);
-    item.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(100);
+    item.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(DEFAULT_ZERO);
+    item.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(DEFAULT_SPAN);
     for (const limit of ['HH', 'H', 'L', 'LL']) {
         const enable_str = `enable_${limit}`;
         const $enable_str = `$${enable_str}`;
@@ -88,4 +108,32 @@ export function make_alarms(item, node, document) {
         elog(`the values of limitation were wrong 定义的限制值有错误\n${info}`);
     item.$dead_zone = nullable_value(REAL, node.get('$dead_zone'));
     item.$FT_time = nullable_value(TIME, node.get('$FT_time'));
+}
+
+const PERCENT_RE = /^\s*([+-]?\d+(\.\d+)?)\s*%\s*$/;
+
+/**
+ * Convert a raw limit setpoint ($overflow_SP / $underflow_SP) to an INT:
+ * a number is the raw value itself, a '<n>%' string is a percentage of the
+ * raw range, zero_raw being 0% and span_raw 100%.
+ * The '%' must be recognized first, since Integer's parseInt would
+ * silently read '105%' as 105.
+ * @param {*} value GCL value of the setpoint
+ * @param {string} desc description used in error messages
+ * @param {number} [zero_raw=S7_ZERO] raw value of 0%
+ * @param {number} [span_raw=S7_SPAN] raw value of 100%
+ * @returns {INT|undefined}
+ */
+export function raw_SP(value, desc, zero_raw = S7_ZERO, span_raw = S7_SPAN) {
+    if (value === undefined || value === null) return undefined;
+    const format_error = new SyntaxError(`${desc} "${value}" 必须是整数原始值或百分比字符串（如 '105%'）`);
+    let raw = value;
+    if (typeof value === 'string') {
+        const match = value.match(PERCENT_RE);
+        if (!match) elog(format_error);
+        raw = Math.round(zero_raw + Number(match[1]) * (span_raw - zero_raw) / 100);
+    } else if (!Number.isInteger(value)) {
+        elog(format_error);
+    }
+    return ensure_value(INT, raw, new SyntaxError(`${desc} "${value}" 超出 INT 范围`));
 }

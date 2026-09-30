@@ -100,12 +100,15 @@ synchronously right after calling it** — only from within pass 2
   `options.line_ending` (`LF` when unset; read as `CPU.line_ending`, see
   [design-pipeline.md §4.2](design-pipeline.md#42-output-line-ending)).
 - **`AI`/`alarm`**: share their limit/scaling-field parsing via
-  `make_alarms()`/`make_fake_DB()` in `src/converters/alarm_common.js`
+  `make_alarms()`/`make_fake_DB()` in `src/converters/analog_common.js`
   rather than duplicating it — see that file's own docstring for the full
   field list. `make_fake_DB` lets templates render a placeholder `AI.DB`
   even before the real symbol promise resolves (needed because `gen()` can
-  run before all promises settle for informational rendering paths).
-- **`AO`**: see [design-converter-ao.md](design-converter-ao.md).
+  run before all promises settle for informational rendering paths). For
+  the `AI` details see [design-converter-ai.md](design-converter-ai.md).
+- **`AO`**: see [design-converter-ao.md](design-converter-ao.md). `AI` and
+  `AO` share the raw setpoint conversion (`raw_SP`, including the `%` form)
+  in `src/converters/analog_common.js`.
 - **`interlock`**: the only feature whose `area.list` is re-shaped in
   `initialize_list` from "one entry per YAML list item" to "one entry per
   distinct `DB`" (via `create_DB_set`/`get_or_create`), because multiple
