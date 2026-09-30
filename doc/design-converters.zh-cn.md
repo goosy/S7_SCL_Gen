@@ -94,13 +94,16 @@ Promise 都已完成（见
   [design-pipeline.zh-cn.md §4.1](design-pipeline.zh-cn.md#41-输出编码)），以及
   `options.line_ending`（未指定时为 `LF`，作为 `CPU.line_ending` 读取，见
   [design-pipeline.zh-cn.md §4.2](design-pipeline.zh-cn.md#42-输出行尾)）。
-- **`AI`/`alarm`**：通过 `src/converters/alarm_common.js` 中的
+- **`AI`/`alarm`**：通过 `src/converters/analog_common.js` 中的
   `make_alarms()`/`make_fake_DB()` 共享限值/量程字段的解析，而不是各自
   重复实现——完整字段列表见该文件自身的文档注释。`make_fake_DB` 使模板
   在真实符号 Promise 完成之前也能渲染一个占位的 `AI.DB`（这是必要的，
   因为在某些仅用于信息展示的渲染路径中，`gen()` 可能在所有 Promise
-  完成之前就运行）。
+  完成之前就运行）。`AI` 的细节见
+  [design-converter-ai.zh-cn.md](design-converter-ai.zh-cn.md)。
 - **`AO`**：见 [design-converter-ao.zh-cn.md](design-converter-ao.zh-cn.md)。
+  `AI` 与 `AO` 共用 `src/converters/analog_common.js` 中的原始值设定转换
+  （`raw_SP`，含 `%` 写法）。
 - **`interlock`**：唯一一个在 `initialize_list` 中把 `area.list` 从
   "每个 YAML 列表条目一项"重塑为"每个不同 `DB` 一项"的功能（通过
   `create_DB_set`/`get_or_create`），因为多个 YAML `list` 条目可以指向

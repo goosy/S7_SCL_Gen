@@ -13,6 +13,7 @@
 | `src/converters/converter_AO.js` | `platforms = ['step7', 'portal', 'pcs7']`；`NAME = 'AO_Proc'`、`LOOP_NAME = 'AO_Loop'`；`is_feature` 对 `AO` 做不区分大小写匹配 |
 | `src/converters/AO.yaml` | 内置符号 `[{{NAME}}, FB515, ...]`、`[{{LOOP_NAME}}, FC515, ...]` |
 | `src/converters/AO.template` | 实例 DB 与 `AO_Loop` 函数 |
+| `src/converters/analog_common.js` | 与 `AI` 共用：原始值常量（`S7_*`）、默认值常量（`DEFAULT_*`）、`raw_SP` |
 | `AO_Proc/`（子模块） | `AO_Proc(<platform>).scl` |
 
 ## 2. `initialize_list`
@@ -26,26 +27,28 @@
 - `PV`：`make_s7_expression`，`force: { type: 'REAL' }`，允许 SCL 表达式；
   `AO.PV` 可能为 `undefined`。
 - `output`：`make_s7_expression`，`force: { type: 'WORD' }`。
-- `$zero`/`$span`/`$PV`：`nullable_value(REAL, ...)`。`$PV` 缺省时取
-  `$zero`（此处完成，因为二者都是静态值），并记录 `AO.explicit_PV`
-  （`$PV` 是否显式配置）供范围检查使用。
-- `$overflow_SP`/`$underflow_SP`：由本模块的 `raw_SP(value)` 转换为
-  `INT`——字符串匹配 `/^\s*([+-]?\d+(\.\d+)?)\s*%\s*$/` 时取
-  `Math.round(27648 * pct / 100)`，其余字符串 `elog`；数字直接
-  `new INT(value)`。必须先识别 `%`，因为 `Integer` 用 `parseInt` 会把
-  `'105%'` 静默解析为 `105`。将来 `AI` 支持 `%` 写法时，`raw_SP` 移到
-  共享模块。
+- 默认值：`$zero`/`$span`/`$PV`/`$overflow_SP`/`$underflow_SP` 在此处补齐
+  默认值（`DEFAULT_ZERO`、`DEFAULT_SPAN`、`$zero`、`DEFAULT_OVERFLOW_SP`、
+  `DEFAULT_UNDERFLOW_SP`，即 `0.0`/`100.0`/`$zero`/`28000`/`-500`），此后
+  总有值，模板总是写出，`build_list` 直接读取。实例 DB 因此不依赖
+  `AO_Proc` 声明中的默认值。
+- `$zero`/`$span`：`new REAL(...)`。`$PV`：`nullable_value(REAL, ...)`，缺省
+  取 `$zero`，并记录 `AO.explicit_PV`（`$PV` 是否显式配置）供范围检查使用。
+- `$overflow_SP`/`$underflow_SP`：由与 `AI` 共用的
+  `src/converters/analog_common.js` 的 `raw_SP(value, desc)` 转换为
+  `INT`，不传 `zero_raw`/`span_raw`（即 `0`/`27648`），所以 `%` 字符串取
+  `Math.round(27648 * pct / 100)`。格式与 INT 范围校验见
+  [design-converter-ai.zh-cn.md §2.1](design-converter-ai.zh-cn.md#21-raw_sp)。
 - `extra_code`：`nullable_value(STRING, ...)?.value`，与 `interlock` 相同。
 
 ## 3. `build_list`
 
 - `output` 可赋值性：调用 `src/symbols.js` 导出的 `is_assignable(expr)`
   （由 RP 的原有判断抽取而来，RP 与 AO 共用），不可赋值时 `elog`。
-- 量程检查：`zero = $zero?.value ?? 0.0`、`span = $span?.value ?? 100.0`
-  （FB 默认值），`zero === span` 时 `elog`。
-- 限幅上下限：`high = $overflow_SP?.value ?? 28000`、
-  `low = $underflow_SP?.value ?? -500`（FB 默认值）。显式配置的值不在
-  `[-6912, 32511]` 内时 `elog`；`high <= low` 时 `elog`。由于已校验范围，
+- 量程检查：`zero = $zero.value`、`span = $span.value`，`zero === span`
+  时 `elog`。
+- 限幅上下限：`high = $overflow_SP.value`、`low = $underflow_SP.value`，
+  不在 `[-6912, 32511]` 内时 `elog`；`high <= low` 时 `elog`。由于已校验范围，
   无需再模拟 FB 对 `S7_AO_MIN`/`S7_AO_MAX` 的约束。
 - 转换方向：`AO_Proc` 的公式为
   `(PV - zero) * 27648 / (span - zero)`，恒有 `zero` → `0`、
@@ -62,7 +65,7 @@
 ## 4. 模板
 
 - 每个有 `DB` 的条目一个 `DATA_BLOCK {{AO.DB.value}}`，Portal 上加
-  `{ S7_Optimized_Access := 'FALSE' }`；`BEGIN` 段仅写出已定义的
+  `{ S7_Optimized_Access := 'FALSE' }`；`BEGIN` 段总是写出
   `PV`/`zero`/`span`/`overflow_SP`/`underflow_SP` 初值。
 - `AO_Loop` 支持 `loop_begin`/`loop_end`；每个条目按规格中的固定顺序输出：
   `{{AO.DB.value}}.PV := {{AO.PV.value}};`（若 `AO.PV`）→

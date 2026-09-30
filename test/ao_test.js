@@ -94,30 +94,33 @@ list:
 
 suite('AO instance DB', () => {
     test('$PV defaults to $zero', async () => {
-        match(await render(['$zero: 4.0, $span: 20.0']), /BEGIN\n {4}PV := 4\.0;\n {4}zero := 4\.0;\n {4}span := 20\.0;\nEND_DATA_BLOCK/);
+        match(await render(['$zero: 4.0, $span: 20.0']), /BEGIN\n {4}PV := 4\.0;\n {4}zero := 4\.0;\n {4}span := 20\.0;\n/);
         match(await render(['$zero: 4.0, $span: 20.0, $PV: 8.0']), /BEGIN\n {4}PV := 8\.0;\n/);
     });
 
     test('clamp limits are written as raw values', async () => {
         match(
-            await render(['$overflow_SP: 29500, $underflow_SP: -500']),
-            /BEGIN\n {4}overflow_SP := 29500;\n {4}underflow_SP := -500;\nEND_DATA_BLOCK/,
+            await render(['$overflow_SP: 29500, $underflow_SP: -800']),
+            /\n {4}overflow_SP := 29500;\n {4}underflow_SP := -800;\nEND_DATA_BLOCK/,
         );
     });
 
     test('percentage clamp limits are converted against 27648', async () => {
         match(
             await render(['$overflow_SP: 105%, $underflow_SP: \'-5 %\'']),
-            /BEGIN\n {4}overflow_SP := 29030;\n {4}underflow_SP := -1382;\nEND_DATA_BLOCK/,
+            /\n {4}overflow_SP := 29030;\n {4}underflow_SP := -1382;\nEND_DATA_BLOCK/,
         );
         match(
             await render(['$overflow_SP: 90%, $underflow_SP: 10.5%']),
-            /BEGIN\n {4}overflow_SP := 24883;\n {4}underflow_SP := 2903;\nEND_DATA_BLOCK/,
+            /\n {4}overflow_SP := 24883;\n {4}underflow_SP := 2903;\nEND_DATA_BLOCK/,
         );
     });
 
-    test('nothing is written when the $ keys are omitted', async () => {
-        match(await render(['']), /BEGIN\nEND_DATA_BLOCK/);
+    test('defaults are written when the $ keys are omitted', async () => {
+        match(
+            await render(['']),
+            /BEGIN\n {4}PV := 0\.0;\n {4}zero := 0\.0;\n {4}span := 100\.0;\n {4}overflow_SP := 28000;\n {4}underflow_SP := -500;\nEND_DATA_BLOCK/,
+        );
     });
 
     test('portal DB is not optimized', async () => {
@@ -143,7 +146,7 @@ suite('AO checks', () => {
         }
     });
 
-    test('zero and span must differ, FB defaults included', async () => {
+    test('zero and span must differ, defaults included', async () => {
         for (const item of ['$zero: 5.0, $span: 5.0', '$span: 0.0', '$zero: 100.0']) {
             await rejects(
                 render([item]),
@@ -179,7 +182,7 @@ suite('AO checks', () => {
         await render(['$overflow_SP: 32511, $underflow_SP: -6912']); // bounds are allowed
     });
 
-    test('clamp high limit must be above the low limit, FB defaults included', async () => {
+    test('clamp high limit must be above the low limit, defaults included', async () => {
         for (const item of [
             '$overflow_SP: 10000, $underflow_SP: 20000',
             '$overflow_SP: 50%, $underflow_SP: 50%',

@@ -15,21 +15,11 @@ AUTHOR : Goosy
 FAMILY : GooLib
 "{{NAME}}"
 BEGIN
-    {{_if AO.$PV !== undefined}}_
     PV := {{AO.$PV}};
-    {{_endif}}_
-    {{_if AO.$zero !== undefined}}_
     zero := {{AO.$zero}};
-    {{_endif}}_
-    {{_if AO.$span !== undefined}}_
     span := {{AO.$span}};
-    {{_endif}}_
-    {{_if AO.$overflow_SP !== undefined}}_
     overflow_SP := {{AO.$overflow_SP}};
-    {{_endif}}_
-    {{_if AO.$underflow_SP !== undefined}}_
     underflow_SP := {{AO.$underflow_SP}};
-    {{_endif}}_
 END_DATA_BLOCK
   {{_endif // AO.DB}}_
 {{endfor // AO}}

@@ -47,6 +47,7 @@ list:
 | `extra_code` | 否 | 字符串 | 附加 SCL 代码，见第 5 节 |
 | `comment` | 否 | 字符串 | 注释 |
 
+- `$PV`、`$zero`、`$span`、`$overflow_SP`、`$underflow_SP` 总是写入背景 DB，省略时写入上表的默认值，与 `AO_Proc` 声明中的默认值无关。
 - `PV` 未配置时，由 HMI 直接写背景 DB 的 `PV`。
 - `output` 未配置时，原始值留在背景 DB 的 `AO` 字段，由其它程序取用。
 - `$span` 小于 `$zero` 即为反向输出：`zero` 永远对应 0，`span` 永远对应 27648。

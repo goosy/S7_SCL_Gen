@@ -1,8 +1,11 @@
 import { posix } from 'node:path';
 import { make_s7_expression } from "../symbols.js";
-import { INT, STRING, ensure_value, nullable_value } from '../s7data.js';
-import { context } from '../util.js';
-import { make_alarms, make_fake_DB } from './alarm_common.js';
+import { INT, STRING, ensure_value } from '../s7data.js';
+import { context, elog } from '../util.js';
+import {
+    DEFAULT_OVERFLOW_SP, DEFAULT_SPAN_RAW, DEFAULT_UNDERFLOW_SP, DEFAULT_ZERO_RAW, S7_AI_MAX, S7_AI_MIN,
+    make_alarms, make_fake_DB, raw_SP,
+} from './analog_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
 export const NAME = 'AI_Proc';
@@ -63,18 +66,48 @@ export function initialize_list(area) {
             },
         ).then(ret => { AI.input = ret; });
 
-        AI.$zero_raw = nullable_value(INT, node.get('$zero_raw'));
-        AI.$span_raw = nullable_value(INT, node.get('$span_raw'));
-        AI.$overflow_SP = nullable_value(INT, node.get('$overflow_SP'));
-        AI.$underflow_SP = nullable_value(INT, node.get('$underflow_SP'));
+        // Raw keys are always written to the instance DB, defaults included
+        AI.$zero_raw = new INT(node.get('$zero_raw') ?? DEFAULT_ZERO_RAW);
+        AI.$span_raw = new INT(node.get('$span_raw') ?? DEFAULT_SPAN_RAW);
+        // Percentages are relative to the raw range
+        const zero_raw = AI.$zero_raw.value;
+        const span_raw = AI.$span_raw.value;
+        AI.$overflow_SP = raw_SP(node.get('$overflow_SP') ?? DEFAULT_OVERFLOW_SP, `AI (${comment}) 的 $overflow_SP`, zero_raw, span_raw);
+        AI.$underflow_SP = raw_SP(node.get('$underflow_SP') ?? DEFAULT_UNDERFLOW_SP, `AI (${comment}) 的 $underflow_SP`, zero_raw, span_raw);
         make_alarms(AI, node, document);
 
         return AI;
     });
 }
 
-export function build_list({ list }) {
+/**
+ * Validate the raw range and the overflow / underflow setpoints
+ * @param {object} AI
+ * @param {string} CPU_name
+ * @returns {void}
+ */
+function check_raw(AI, CPU_name) {
+    const zero_raw = AI.$zero_raw.value;
+    const span_raw = AI.$span_raw.value;
+    if (zero_raw === span_raw) {
+        elog(new SyntaxError(`${CPU_name}:AI (${AI.comment}) 的 zero_raw 与 span_raw 不能相等 (${zero_raw})`));
+    }
+    for (const key of ['$overflow_SP', '$underflow_SP']) {
+        const raw = AI[key].value;
+        if (raw <= S7_AI_MIN || raw >= S7_AI_MAX) {
+            elog(new SyntaxError(`${CPU_name}:AI (${AI.comment}) 的 ${key} 原始值 ${raw} 超出范围 ${S7_AI_MIN + 1} ~ ${S7_AI_MAX - 1}`));
+        }
+    }
+    const high = AI.$overflow_SP.value;
+    const low = AI.$underflow_SP.value;
+    if (high <= low) {
+        elog(new SyntaxError(`${CPU_name}:AI (${AI.comment}) 的上溢出值 (overflow_SP ${high}) 必须大于下溢出值 (underflow_SP ${low})`));
+    }
+}
+
+export function build_list({ document, list }) {
     for (const AI of list) { // Process configuration to form complete data
+        if (AI.DB) check_raw(AI, document.CPU.name);
         const input_paras = [
             ['input', 'AI'],
             ['enable_HH'],

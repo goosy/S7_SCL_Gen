@@ -45,10 +45,33 @@ by the `AI_Proc` FB.
 - Aliases: none (must be `AI`).
 - Key `list` item keys: `DB` (instance DB), `input` (source WORD, e.g. a
   `PIW` channel), plus the shared limit-check/scaling keys documented under
-  [alarm](#alarm) (`$zero`, `$span`, `$zero_raw`, `$span_raw`,
-  `$overflow_SP`, `$underflow_SP`, `$HH_limit`/`$H_limit`/`$L_limit`/
+  [alarm](#alarm) (`$zero`, `$span`, `$HH_limit`/`$H_limit`/`$L_limit`/
   `$LL_limit` and their `enable_*`/`$enable_*` counterparts, `$dead_zone`,
   `$FT_time`).
+- Raw-value keys, always written to the same-named instance DB members,
+  with the defaults when omitted (as in [AO](#ao), independent of the
+  defaults declared in the FB):
+  - `$zero_raw`/`$span_raw`: integers, the channel raw values that
+    `$zero`/`$span` map to (defaults `0`/`27648`).
+  - `$overflow_SP`/`$underflow_SP`: the overflow/underflow thresholds; a raw
+    value beyond them sets `overflow`/`underflow` (defaults
+    `28000`/`-500`). As in AO, two forms are accepted:
+    - a number: the raw value itself, e.g. `28000`, `-500`;
+    - a string with `%`: a percentage of the raw range, `$zero_raw` being
+      `0%` and `$span_raw` `100%` (defaults when omitted), i.e.
+      `zero_raw + pct × (span_raw − zero_raw) / 100`, rounded to the raw
+      value. E.g. with the default range `'105%'` is `29030` and `'-5%'` is
+      `-1382`; with `$zero_raw: 5530`, `'-5%'` is `4424`.
+- Conversion-time checks (items with `DB` only):
+  - A malformed `%` string, or a number that is not an integer, for
+    `$overflow_SP`/`$underflow_SP` is a configuration error.
+  - A converted `$overflow_SP`/`$underflow_SP` raw value outside
+    `-32767`–`32766` is a configuration error — `-32768`/`32767` are the
+    non-measurement (wire break etc.) markers of `AI_Proc`.
+  - An overflow threshold not above the underflow threshold is a
+    configuration error (defaults when omitted).
+  - Equal `zero_raw` and `span_raw` are a configuration error (the FB would
+    divide by zero; defaults when omitted).
 - Library file name: `AI_Proc(<platform>).scl`.
 
 ## alarm
@@ -97,18 +120,18 @@ beyond the range given by `overflow_SP`/`underflow_SP`, backed by the
     engineering-unit value to output. When present, `<DB>.PV := <PV>;` is
     generated every cycle before the FB call; when omitted, the upper system
     (HMI) writes PV directly into the instance DB.
-  - `$PV` (optional): REAL, the initial value of `PV` in the instance DB.
-    Defaults to `$zero`; when both are omitted it is not written and the FB
-    default `0.0` applies.
+  - `$PV`/`$zero`/`$span`/`$overflow_SP`/`$underflow_SP` are always written
+    to the same-named instance DB members, with the defaults when omitted
+    (as in `AI`, independent of the defaults declared in the FB).
+  - `$PV` (optional): REAL, the initial value of `PV` in the instance DB,
+    defaulting to `$zero`.
   - `$zero`/`$span` (optional): REAL, the engineering values that raw
-    `0`/`27648` map to, written to the same-named instance DB members; when
-    omitted the FB defaults (`0.0`/`100.0`) apply. The conversion always maps
+    `0`/`27648` map to, defaulting to `0.0`/`100.0`. The conversion always maps
     `zero` to raw `0` and `span` to `27648`; `$span` below `$zero` therefore
     means reverse output and is allowed.
   - `$overflow_SP`/`$underflow_SP` (optional): the clamp high/low limits,
-    converted to channel raw values (INT) and written to the same-named
-    instance DB members; when omitted the FB defaults (`28000`/`-500`)
-    apply. Two forms are accepted:
+    converted to channel raw values (INT), defaulting to `28000`/`-500`.
+    Two forms are accepted:
     - a number: the raw value itself, e.g. `28000`, `-500`;
     - a string with `%`: a percentage of the nominal full scale, `27648`
       being `100%`, rounded to the raw value, e.g. `'105%'` is `29030` and
@@ -139,12 +162,12 @@ beyond the range given by `overflow_SP`/`underflow_SP`, backed by the
   cycle. This differs from `interlock`'s `extra_code` (placed after the
   logic).
 - Conversion-time checks:
-  - Equal `zero` and `span` (FB defaults when omitted) are a configuration
+  - Equal `zero` and `span` (defaults when omitted) are a configuration
     error (at run time the FB would only output `0` and set `invalid`).
   - A `$overflow_SP`/`$underflow_SP` raw value outside the output range, or
     a malformed `%` string, is a configuration error.
-  - An effective clamp high limit not above the low limit is a configuration
-    error (FB defaults when omitted).
+  - A clamp high limit not above the low limit is a configuration error
+    (defaults when omitted).
   - An explicitly configured `$PV` that would be clamped — i.e. outside the
     engineering-unit interval converted back from the clamp limits — raises
     a warning, not an error; the FB clamps it and sets
