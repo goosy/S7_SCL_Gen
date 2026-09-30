@@ -18,8 +18,8 @@ TIA Portal 或 PCS7 的 SCL（Structured Control Language，结构化控制语�
 
 范围之内：
 
-- 一种基于 YAML 的配置语言（GCL），涵盖 CPU 全局设置以及 11 种受支持的
-  "feature"（功能类别）：`CPU`、`AI`、`alarm`、`interlock`、`motor`、
+- 一种基于 YAML 的配置语言（GCL），涵盖 CPU 全局设置以及 12 种受支持的
+  "feature"（功能类别）：`CPU`、`AI`、`alarm`、`AO`、`interlock`、`motor`、
   `ModbusTCP`（`MT`）、`PI`、`RP`、`SC`、`timer`、`valve`。
 - S7 符号/地址管理：对属于同一 CPU 的所有文档进行解析、校验、自动分配
   和冲突检测。
@@ -38,9 +38,9 @@ TIA Portal 或 PCS7 的 SCL（Structured Control Language，结构化控制语�
 
 - 生成的 `.scl`/`.asc`/`.sdf` 文件的所有下游环节：导入 Step 7 /
   TIA Portal / PCS7、编译、下载到 PLC。
-- 各功能 SCL 功能块库（`AI_Proc`、`Alarm_Proc`、`CP_Poll`、`MT_Poll`、
-  `Motor_Proc`、`PI_Proc`、`RP_Trigger`、`Timer_Proc`、`Valve_Proc`）的
-  内部实现——它们在各自的仓库中另有文档。
+- 各功能 SCL 功能块库（`AI_Proc`、`Alarm_Proc`、`AO_Proc`、`CP_Poll`、
+  `MT_Poll`、`Motor_Proc`、`PI_Proc`、`RP_Trigger`、`Timer_Proc`、
+  `Valve_Proc`）的内部实现——它们在各自的仓库中另有文档。
 - 图形界面；本工具仅为 CLI/库。
 
 ## 3. 文档地图
@@ -50,11 +50,12 @@ TIA Portal 或 PCS7 的 SCL（Structured Control Language，结构化控制语�
 | `spec.zh-cn.md`（本文） | 目的、范围、工具，以及到其余文档的链接 |
 | [spec-gcl-format.zh-cn.md](spec-gcl-format.zh-cn.md) | GCL YAML 配置语言：文档、指令、值类型 |
 | [spec-cli.zh-cn.md](spec-cli.zh-cn.md) | `s7scl` 命令行接口及其选项 |
-| [spec-converters.zh-cn.md](spec-converters.zh-cn.md) | 11 种受支持功能各自的作用及生成内容 |
+| [spec-converters.zh-cn.md](spec-converters.zh-cn.md) | 12 种受支持功能各自的作用及生成内容 |
 | [design-pipeline.zh-cn.md](design-pipeline.zh-cn.md) | GCL 目录如何变成 SCL 输出目录：两遍处理流水线、CPU/Area 模型、符号解析时机、build.js 自生成 |
 | [design-symbols.zh-cn.md](design-symbols.zh-cn.md) | S7 地址/类型系统、分配、冲突检测、内置符号、符号表导出 |
 | [design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md) | 后处理规则引擎：模式匹配与动作 |
 | [design-converters.zh-cn.md](design-converters.zh-cn.md) | 转换器插件接口、模板引擎约定以及各功能的实现说明 |
+| `design-converter-<feature>.zh-cn.md` | 单个功能转换器的详细实现说明（按需提供，由 design-converters 的对应条目链接） |
 
 需求与行为属于 `spec*.md`；内部机制与算法属于 `design*.md`（见
 `d:/codes/AGENTS.md`）。代码生成只能依据这些文档——若文档对某一点有歧义
@@ -97,6 +98,7 @@ GCL 的输出目录：
 |---|---|
 | `AI_Proc` | `AI` |
 | `Alarm_Proc` | `alarm` |
+| `AO_Proc` | `AO` |
 | `CP_Poll` | `SC`（包含 `CP340_Poll.scl`、`CP341_Poll.scl`、`CRC16.awl`） |
 | `MT_Poll` | `MT`（ModbusTCP） |
 | `Motor_Proc` | `motor` |

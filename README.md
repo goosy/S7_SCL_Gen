@@ -115,7 +115,7 @@ Both directive values are strings. name is equivalent to the combination of the 
 
 Each document's name must be unique, i.e. there can be only one configuration document for a given combination of CPU and feature.
 
-Currently 11 types of configuration documents are implemented — the CPU document and 10 feature documents, indicated by the `feature` directive, case-insensitive. They are:
+Currently 12 types of configuration documents are implemented — the CPU document and 11 feature documents, indicated by the `feature` directive, case-insensitive. They are:
 
 * `CPU`          CPU document
   Indicates a CPU feature: the resources, information and directives shared by all other configuration documents that use this CPU.
@@ -124,6 +124,8 @@ Currently 11 types of configuration documents are implemented — the CPU docume
 * `AI`           Feature document for analog values of AI channels (including limit alarms)
 * `Alarm`        Feature document for process value limits and alarms
   Used for alarms on process values that do not come from AI channels, e.g. process values received over 485
+* `AO`           Feature document for analog output of AO channels
+  Linearly converts an engineering-unit value to the raw value of an AO module channel
 * `PI`           Feature document for pulse value conversion
 * `SC`           Feature document for serial polling
   Used in RS232 RS422 RS485 communication.

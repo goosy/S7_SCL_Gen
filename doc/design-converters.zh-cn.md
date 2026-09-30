@@ -7,7 +7,8 @@
 自动发现并组装（见
 [design-pipeline.zh-cn.md §5](design-pipeline.zh-cn.md#5-构建时自生成)）。
 本文涵盖每个转换器必须满足的接口契约、模板渲染约定，以及不属于行为规格的
-值得注意的各功能实现细节。
+值得注意的各功能实现细节。单个功能较完整的实现说明放在独立的
+`design-converter-<feature>.zh-cn.md` 中。
 
 ## 1. 必需的导出
 
@@ -99,6 +100,7 @@ Promise 都已完成（见
   在真实符号 Promise 完成之前也能渲染一个占位的 `AI.DB`（这是必要的，
   因为在某些仅用于信息展示的渲染路径中，`gen()` 可能在所有 Promise
   完成之前就运行）。
+- **`AO`**：见 [design-converter-ao.zh-cn.md](design-converter-ao.zh-cn.md)。
 - **`interlock`**：唯一一个在 `initialize_list` 中把 `area.list` 从
   "每个 YAML 列表条目一项"重塑为"每个不同 `DB` 一项"的功能（通过
   `create_DB_set`/`get_or_create`），因为多个 YAML `list` 条目可以指向
