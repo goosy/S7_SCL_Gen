@@ -1,7 +1,7 @@
 # Feature (Converter) Specification
 
 Each GCL document declares one **feature**. This document describes what
-each of the 11 supported features is for, its platform support, its key
+each of the 12 supported features is for, its platform support, its key
 `list`-item configuration keys, and what it generates. For the underlying
 mechanism common to all of them, see
 [design-converters.md](design-converters.md).
@@ -75,6 +75,81 @@ received over serial/Modbus), backed by `Alarm_Proc`.
   `HH_PV`/`H_PV`/`L_PV`/`LL_PV` and `no_limit`, indicating limit exceedance
   rather than alarms. The same applies to `AI`.
 - Library file name: `Alarm_Proc(<platform>).scl`.
+
+## AO
+
+**Purpose**: analog output channel processing — linear conversion of an
+engineering-unit value to the raw value of an AO module channel (`zero` maps
+to `0`, `span` to `27648`), clamped with `overflow`/`underflow` set when
+beyond the range given by `overflow_SP`/`underflow_SP`, backed by the
+`AO_Proc` FB.
+
+- Platforms: `step7`, `portal`, `pcs7`.
+- Aliases: none (must be `AO`).
+- Built-in symbols: `AO_Proc` (`FB515`), `AO_Loop` (`FC515`); their
+  addresses can be redefined in the document's `symbols`.
+- `list` item keys:
+  - `DB`: the instance DB, type pinned to `AO_Proc`. An item without `DB` is
+    not processed (as in `AI`).
+  - `comment` (optional): used for the DB comment and the item comment in the
+    loop.
+  - `PV` (optional): a REAL value (symbol, variable or SCL expression) — the
+    engineering-unit value to output. When present, `<DB>.PV := <PV>;` is
+    generated every cycle before the FB call; when omitted, the upper system
+    (HMI) writes PV directly into the instance DB.
+  - `$PV` (optional): REAL, the initial value of `PV` in the instance DB.
+    Defaults to `$zero`; when both are omitted it is not written and the FB
+    default `0.0` applies.
+  - `$zero`/`$span` (optional): REAL, the engineering values that raw
+    `0`/`27648` map to, written to the same-named instance DB members; when
+    omitted the FB defaults (`0.0`/`100.0`) apply. The conversion always maps
+    `zero` to raw `0` and `span` to `27648`; `$span` below `$zero` therefore
+    means reverse output and is allowed.
+  - `$overflow_SP`/`$underflow_SP` (optional): the clamp high/low limits,
+    converted to channel raw values (INT) and written to the same-named
+    instance DB members; when omitted the FB defaults (`28000`/`-500`)
+    apply. Two forms are accepted:
+    - a number: the raw value itself, e.g. `28000`, `-500`;
+    - a string with `%`: a percentage of the nominal full scale, `27648`
+      being `100%`, rounded to the raw value, e.g. `'105%'` is `29030` and
+      `'-5%'` is `-1382`.
+
+    The result must lie within the output range `-6912` (0 mA)–`32511` —
+    `AO_Proc` supports the 4–20 mA output only. A high limit below `27648` or
+    a low limit above `0` confines the output within the range (e.g. a
+    minimum drive frequency) and is allowed.
+  - `output` (optional): an assignable `WORD` — a symbol definition, symbol
+    reference or single variable, never a constant or compound expression
+    (rejected at conversion). Its main use is an AO module channel (a `PQW`
+    address or its symbol). When present, `<output> := <DB>.AO;` is generated
+    after the FB call.
+  - `extra_code` (optional): a string of SCL code inserted verbatim, for
+    additional per-item logic (e.g. making the setpoint track the feedback in
+    local mode).
+- Each item is generated in `AO_Loop` in this fixed order, skipping any step
+  that is not configured:
+  1. `<DB>.PV := <PV>;`
+  2. `extra_code`
+  3. the FB call (Step 7/PCS7: `"AO_Proc".<DB>();`, Portal: `<DB>();`),
+     without parameters — all inputs are passed through instance DB members.
+  4. `<output> := <DB>.AO;`
+
+  `extra_code` comes after the PV assignment and before the FB call, so it can
+  override the `PV` assignment and whatever it writes takes effect in the same
+  cycle. This differs from `interlock`'s `extra_code` (placed after the
+  logic).
+- Conversion-time checks:
+  - Equal `zero` and `span` (FB defaults when omitted) are a configuration
+    error (at run time the FB would only output `0` and set `invalid`).
+  - A `$overflow_SP`/`$underflow_SP` raw value outside the output range, or
+    a malformed `%` string, is a configuration error.
+  - An effective clamp high limit not above the low limit is a configuration
+    error (FB defaults when omitted).
+  - An explicitly configured `$PV` that would be clamped — i.e. outside the
+    engineering-unit interval converted back from the clamp limits — raises
+    a warning, not an error; the FB clamps it and sets
+    `overflow`/`underflow`/`invalid` at run time.
+- Library file name: `AO_Proc(<platform>).scl`, copied as `AO_Proc.scl`.
 
 ## interlock
 

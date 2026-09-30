@@ -18,8 +18,9 @@ contain hundreds of near-identical instances of the same function block.
 In scope:
 
 - A YAML-based configuration language (GCL) covering CPU-wide settings and
-  eleven supported "features" (function categories): `CPU`, `AI`, `alarm`,
-  `interlock`, `motor`, `ModbusTCP` (`MT`), `PI`, `RP`, `SC`, `timer`, `valve`.
+  twelve supported "features" (function categories): `CPU`, `AI`, `alarm`,
+  `AO`, `interlock`, `motor`, `ModbusTCP` (`MT`), `PI`, `RP`, `SC`, `timer`,
+  `valve`.
 - S7 symbol/address management: parsing, validation, automatic allocation,
   and conflict detection across all documents belonging to one CPU.
 - Generation of SCL source files (organization blocks, functions, data
@@ -39,9 +40,9 @@ Out of scope:
 - Anything downstream of the generated `.scl`/`.asc`/`.sdf` files: importing
   them into Step 7 / TIA Portal / PCS7, compiling, or downloading to a PLC.
 - The internal implementation of the per-feature SCL function block
-  libraries (`AI_Proc`, `Alarm_Proc`, `CP_Poll`, `MT_Poll`, `Motor_Proc`,
-  `PI_Proc`, `RP_Trigger`, `Timer_Proc`, `Valve_Proc`) — these are documented
-  in their own repositories.
+  libraries (`AI_Proc`, `Alarm_Proc`, `AO_Proc`, `CP_Poll`, `MT_Poll`,
+  `Motor_Proc`, `PI_Proc`, `RP_Trigger`, `Timer_Proc`, `Valve_Proc`) — these
+  are documented in their own repositories.
 - A GUI; this is a CLI/library tool only.
 
 ## 3. Document map
@@ -51,11 +52,12 @@ Out of scope:
 | `spec.md` (this file) | Purpose, scope, tooling, and links to the rest of the doc set |
 | [spec-gcl-format.md](spec-gcl-format.md) | The GCL YAML configuration language: documents, directives, value types |
 | [spec-cli.md](spec-cli.md) | The `s7scl` command-line interface and its options |
-| [spec-converters.md](spec-converters.md) | What each of the 11 supported features does and what it generates |
+| [spec-converters.md](spec-converters.md) | What each of the 12 supported features does and what it generates |
 | [design-pipeline.md](design-pipeline.md) | How a GCL folder becomes an SCL output folder: the two-pass pipeline, CPU/Area model, symbol resolution timing, build.js self-generation |
 | [design-symbols.md](design-symbols.md) | The S7 address/type system, allocation, conflict detection, built-in symbols, symbol table export |
 | [design-rules-engine.md](design-rules-engine.md) | The post-processing rules engine: pattern matching and actions |
 | [design-converters.md](design-converters.md) | The converter plugin interface, the template engine convention, and per-feature implementation notes |
+| `design-converter-<feature>.md` | Detailed implementation of a single feature converter (provided as needed, linked from the matching entry in design-converters) |
 
 Requirements and behavior belong in `spec*.md`; internal mechanics and
 algorithms belong in `design*.md` (see `d:/codes/AGENTS.md`). Code generation
@@ -104,6 +106,7 @@ relevant file(s) from these folders into the GCL's output directory:
 |---|---|
 | `AI_Proc` | `AI` |
 | `Alarm_Proc` | `alarm` |
+| `AO_Proc` | `AO` |
 | `CP_Poll` | `SC` (contains `CP340_Poll.scl`, `CP341_Poll.scl`, `CRC16.awl`) |
 | `MT_Poll` | `MT` (ModbusTCP) |
 | `Motor_Proc` | `motor` |

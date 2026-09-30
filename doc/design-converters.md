@@ -6,7 +6,9 @@ discovered and wired together automatically at build time (see
 [design-pipeline.md §5](design-pipeline.md#5-build-time-self-generation)).
 This document covers the interface contract every converter must satisfy,
 the template-rendering convention, and notable per-feature implementation
-details that don't belong in the behavioral spec.
+details that don't belong in the behavioral spec. A fuller implementation
+write-up for a single feature lives in its own
+`design-converter-<feature>.md`.
 
 ## 1. Required exports
 
@@ -103,6 +105,7 @@ synchronously right after calling it** — only from within pass 2
   field list. `make_fake_DB` lets templates render a placeholder `AI.DB`
   even before the real symbol promise resolves (needed because `gen()` can
   run before all promises settle for informational rendering paths).
+- **`AO`**: see [design-converter-ao.md](design-converter-ao.md).
 - **`interlock`**: the only feature whose `area.list` is re-shaped in
   `initialize_list` from "one entry per YAML list item" to "one entry per
   distinct `DB`" (via `create_DB_set`/`get_or_create`), because multiple
