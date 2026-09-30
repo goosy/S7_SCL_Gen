@@ -1,0 +1,136 @@
+---
+#CPU: AS1       # 指示属于哪一个CPU
+#feature: AO    # 指示本配置为生成 AO 代码
+
+name: AS1-AO    # 相当于上面2条被注释的指令
+
+# 关于AO
+# AO_Proc 把工程单位值 PV 线性转换为 AO 模块通道的原始值 AO：
+#   输出量程由 $mode 选择，须与硬件组态一致：
+#     0|4-20mA  1|0-20mA  2|0-10V  3|1-5V  4|+-10V  5|+-20mA
+#   zero 对应零点原始值（单极性 0，双极性 -27648），span 对应原始值 27648
+#   span 小于 zero 即为反向输出
+#   转换结果超出 overflow_SP/underflow_SP 确定的范围时限幅，
+#   并置 overflow/underflow 以及 invalid
+
+symbols:
+  # AO文档已有2个内置符号，其内容由本程序自动生成：
+  # - [AO_Proc, FB515]  模拟量输出主处理函数
+  # - [AO_Loop, FC515]  主循环调用FC，将这个加入OB1中
+  # 可以在对上述内置符号的地址进行更改，只要重新定义就可以了，注意保持名称一致
+
+list: # AO列表
+
+- comment: 1#外输泵频率控制   # 类型:字符串
+  # AO背景块
+  # 类型: S7符号定义 | S7符号引用
+  DB: [SC-0101, DB601]
+
+  # 输出通道，每周期在调用 AO_Proc 之后赋值为 AO 原始值
+  # 可赋值的 WORD，主要是 AO 模块的通道
+  # 类型: S7符号定义 | S7符号引用 | 单个变量
+  output: [AO01-01, PQW512]
+
+  # 输出量程，可写整数 0~5 或名称（不区分大小写），省略时为 FB 默认值 0（4-20mA）
+  $mode: 4-20mA
+
+  # 量程，写入背景块初值
+  # REAL 类型，省略时为 FB 默认值 0.0 和 100.0
+  $zero: 0.0
+  $span: 50.0
+
+  # 附加SCL代码，原样插入到调用 AO_Proc 之前
+  # 这里实现：就地时频率给定跟随实际频率
+  extra_code: |-
+    IF NOT "Pump1".remote THEN // 就地时频率跟随
+      "SC-0101".PV := "SIT-0101".PV;
+    END_IF;
+
+- comment: 调节阀开度控制
+  DB: [FV-0201, DB602]
+  output: [AO01-02, PQW514]
+
+  # 输出的工程值，每周期在调用 AO_Proc 之前赋给背景块 PV
+  # 省略时由 HMI 直接写背景块 PV
+  # REAL 类型: S7符号定义 | S7符号引用 | SCL表达式
+  PV: '"PID-0201".LMN'
+
+- comment: 反向输出示例
+  DB: [PV-0301, DB603]
+  output: [AO01-03, PQW516]
+  $zero: 100.0  # 工程值 100.0 对应原始值 0
+  $span: 0.0    # 工程值 0.0 对应原始值 27648
+  # 限幅上下限，通道原始值
+  # 省略上限时为 FB 默认值 28000；省略下限时由 FB 按 mode 取类别默认值（4-20mA 为 -500）
+  # 可写整数原始值，也可写百分比字符串（27648 为 100%），如 '105%' 即 29030
+  # 取值必须在该 mode 的硬件下限（4-20mA 为 -6912）与 32511 之间
+  # 这里把输出限制在量程的 10%~90% 之间
+  $overflow_SP: 90%
+  $underflow_SP: 10%
+  # PV 的初值，省略时取原始值 0 对应的工程值（单极性为 $zero，双极性为量程中点）
+  $PV: 50.0
+
+- comment: 仅由HMI操作
+  DB: [SC-0401, DB604]
+  # 没有 output，AO 原始值留在背景块中，由其它程序取用
+
+- comment: 双极性输出示例
+  DB: [SV-0501, DB605]
+  output: [AO01-05, PQW518]
+  $mode: +-10V   # 双极性：zero 对应原始值 -27648，span 对应 27648
+  $zero: -100.0
+  $span: 100.0
+  $overflow_SP: 105%    # 29030
+  $underflow_SP: -105%  # -29030，省略时为类别默认值 -28000
+  # 省略 $PV：取量程中点 0.0（输出 0 V），等于 FB 默认值，故不写入背景块
+
+# 用户自写SCL代码，放在循环的开始和结束处。
+loop_begin: |-
+  // 这里的代码将在 AO_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 AO_Loop 循环结束时执行
+
+---
+# 内容与 AS1-AO 相同，仅仅是CPU中的平台不一样。
+name: AS2-AO
+
+list:
+- comment: 1#外输泵频率控制
+  DB: [SC-0101, DB601]
+  output: [AO01-01, PQW512]
+  $mode: 4-20mA
+  $zero: 0.0
+  $span: 50.0
+  extra_code: |-
+    IF NOT "Pump1".remote THEN // 就地时频率跟随
+      "SC-0101".PV := "SIT-0101".PV;
+    END_IF;
+- comment: 调节阀开度控制
+  DB: [FV-0201, DB602]
+  output: [AO01-02, PQW514]
+  PV: '"PID-0201".LMN'
+- comment: 反向输出示例
+  DB: [PV-0301, DB603]
+  output: [AO01-03, PQW516]
+  $zero: 100.0
+  $span: 0.0
+  $overflow_SP: 90%
+  $underflow_SP: 10%
+  $PV: 50.0
+- comment: 仅由HMI操作
+  DB: [SC-0401, DB604]
+- comment: 双极性输出示例
+  DB: [SV-0501, DB605]
+  output: [AO01-05, PQW518]
+  $mode: +-10V
+  $zero: -100.0
+  $span: 100.0
+  $overflow_SP: 105%
+  $underflow_SP: -105%
+
+loop_begin: |-
+  // 这里的代码将在 AO_Loop 循环开始时执行
+loop_end: |-
+  // 这里的代码将在 AO_Loop 循环结束时执行
+
+...
