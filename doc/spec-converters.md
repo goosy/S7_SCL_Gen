@@ -38,14 +38,14 @@ plus a place to declare arbitrary custom `OB`/`FC` blocks built from raw SCL.
 ## AI
 
 **Purpose**: analog input channel processing — raw-to-engineering-unit
-scaling plus over/under-range and high/high-high/low/low-low alarms, backed
+scaling plus over/under-range and high/high-high/low/low-low limit checks, backed
 by the `AI_Proc` FB.
 
 - Platforms: `step7`, `portal`, `pcs7`.
 - Aliases: none (must be `AI`).
 - Key `list` item keys: `DB` (instance DB), `input` (source WORD, e.g. a
   `PIW` channel), plus the shared limit-check/scaling keys documented under
-  [alarm](#alarm) (`$zero`, `$span`, `$HH_limit`/`$H_limit`/`$L_limit`/
+  [limit](#limit) (`$zero`, `$span`, `$HH_limit`/`$H_limit`/`$L_limit`/
   `$LL_limit` and their `enable_*`/`$enable_*` counterparts, `$dead_zone`,
   `$FT_time`).
 - Raw-value keys, always written to the same-named instance DB members,
@@ -74,14 +74,19 @@ by the `AI_Proc` FB.
     divide by zero; defaults when omitted).
 - Library file name: `AI_Proc(<platform>).scl`.
 
-## alarm
+## limit
 
-**Purpose**: threshold alarming for a process value that does **not** come
+**Purpose**: limit checking for a process value that does **not** come
 from a raw AI channel already handled by an `AI` document (e.g. a value
-received over serial/Modbus), backed by `Alarm_Proc`.
+received over serial/Modbus), backed by `Limit_Proc`. Whether a limit
+exceedance becomes an alarm is decided by the upper system (see the alarm
+switches below), not by this feature.
 
 - Platforms: `step7`, `portal`, `pcs7`.
-- Aliases: `pv_alarm`, `pv`, `pvalarm`.
+- Aliases: `limitcheck`, `LC` (case-insensitive, as is `limit`). The former names
+  `alarm`, `pv_alarm`, `pv` and `pvalarm` are no longer accepted.
+- Built-in symbols: `Limit_Proc` (`FB519`), `Limit_Loop` (`FC519`); their
+  addresses can be redefined in the document's `symbols`.
 - Key `list` item keys: `DB`, `input` (a REAL engineering-unit value, not raw
   counts), `invalid` (optional quality/validity bit), and the shared
   limit-check keys (`$zero`, `$span`, `$HH_limit`/`$H_limit`/`$L_limit`/`$LL_limit`,
@@ -97,7 +102,8 @@ received over serial/Modbus), backed by `Alarm_Proc`.
   instance DB. The instance DB outputs are `HH_flag`/`H_flag`/`L_flag`/`LL_flag`,
   `HH_PV`/`H_PV`/`L_PV`/`LL_PV` and `no_limit`, indicating limit exceedance
   rather than alarms. The same applies to `AI`.
-- Library file name: `Alarm_Proc(<platform>).scl`.
+- Library file name: `Limit_Proc(<platform>).scl`.
+- Implementation: [design-converter-limit.md](design-converter-limit.md).
 
 ## AO
 

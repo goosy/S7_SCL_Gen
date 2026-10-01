@@ -121,9 +121,9 @@ Currently 12 types of configuration documents are implemented — the CPU docume
   Indicates a CPU feature: the resources, information and directives shared by all other configuration documents that use this CPU.
   For example, the platform the CPU belongs to, the output folder, shared symbols and includes, etc.
   When generating code, all configuration files belonging to the same CPU are checked together for resource conflicts, allocated resources together, and have their symbol tables merged automatically, to avoid occupying the same DB block, the same connection, etc.
-* `AI`           Feature document for analog values of AI channels (including limit alarms)
-* `Alarm`        Feature document for process value limits and alarms
-  Used for alarms on process values that do not come from AI channels, e.g. process values received over 485
+* `AI`           Feature document for analog values of AI channels (including limit checks)
+* `limit`        Feature document for process value limit checking, aliases `limitcheck`, `LC`
+  Used for limit checking of process values that do not come from AI channels, e.g. process values received over 485
 * `AO`           Feature document for analog output of AO channels
   Linearly converts an engineering-unit value to the raw value of an AO module channel
 * `PI`           Feature document for pulse value conversion

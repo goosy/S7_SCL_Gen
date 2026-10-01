@@ -13,7 +13,7 @@
 | `src/converters/converter_AI.js` | `platforms = ['step7', 'portal', 'pcs7']`；`NAME = 'AI_Proc'`、`LOOP_NAME = 'AI_Loop'`；`is_feature` 对 `AI` 做不区分大小写匹配 |
 | `src/converters/AI.yaml` | 内置符号 `[{{NAME}}, FB512, ...]`、`[{{LOOP_NAME}}, FC512, ...]` |
 | `src/converters/AI.template` | 实例 DB 与 `AI_Loop` 函数 |
-| `src/converters/analog_common.js` | 模拟量共用库：原始值常量（`S7_*`）与默认值常量（`DEFAULT_*`）；与 `alarm` 共用 `make_fake_DB`、`make_alarms`（超限判断与量程键），与 `AO` 共用 `raw_SP`（见 [§2.1](#21-raw_sp)） |
+| `src/converters/analog_common.js` | 模拟量共用库：原始值常量（`S7_*`）与默认值常量（`DEFAULT_*`）；与 `limit` 共用 `make_fake_DB`、`make_limit`（超限判断与量程键），与 `AO` 共用 `raw_SP`（见 [§2.1](#21-raw_sp)） |
 | `AI_Proc/`（子模块） | `AI_Proc(<platform>).scl` |
 
 ## 2. `initialize_list`
@@ -24,21 +24,21 @@
 - `location`/`type`/`comment` 为字符串，`comment` 缺省为
   `location + type`。
 - 既无 `DB` 也无 `input` 的条目原样返回、不做处理。
-- `DB`：先用 `make_fake_DB(DB)` 放一个占位 `{ name }`（`make_alarms` 的
+- `DB`：先用 `make_fake_DB(DB)` 放一个占位 `{ name }`（`make_limit` 的
   描述文字要用），再
   `make_s7_expression(DB, { disallow_s7express: true, force: { type: NAME } })`。
 - `input`：`make_s7_expression`，`force: { type: 'WORD' }`。
 - 默认值：`$zero_raw`/`$span_raw`/`$overflow_SP`/`$underflow_SP` 在此处
   补齐默认值（`DEFAULT_ZERO_RAW`、`DEFAULT_SPAN_RAW`、`DEFAULT_OVERFLOW_SP`、
   `DEFAULT_UNDERFLOW_SP`，即 `0`/`27648`/`28000`/`-500`），`$zero`/`$span`
-  由 `make_alarms` 补齐（`DEFAULT_ZERO`/`DEFAULT_SPAN`）。此后它们总有值，
+  由 `make_limit` 补齐（`DEFAULT_ZERO`/`DEFAULT_SPAN`）。此后它们总有值，
   模板总是写出，`build_list` 直接读取，实例 DB 不依赖 `AI_Proc` 声明中的
   默认值。
 - `$zero_raw`/`$span_raw`：`new INT(...)`。
 - `$overflow_SP`/`$underflow_SP`：`raw_SP(value, desc, zero_raw, span_raw)`，
   `zero_raw`/`span_raw` 取上面的结果。它们都是静态值，所以换算在这一遍
   完成，模板直接输出结果。
-- 其余超限判断键由 `make_alarms(AI, node, document)` 处理。
+- 其余超限判断键由 `make_limit(AI, node, document)` 处理。
 
 ### 2.1 `raw_SP`
 

@@ -1,20 +1,22 @@
-# alarm 使用指南
+# limit 使用指南
 
-alarm（别名 `pv`、`pv_alarm`、`pvalarm`）对一个 REAL 类型的过程值做四级超限判断。适用于不是来自 AI 通道的数值，例如通过 485/Modbus 读到的仪表值。
+limit（别名 `limitcheck`、`LC`）对一个 REAL 类型的过程值做四级超限判断。适用于不是来自 AI 通道的数值，例如通过 485/Modbus 读到的仪表值。
 
 AI 通道请用 [AI](guide-AI.zh-cn.md)，它在同样的超限判断功能之外还负责原始值到工程值的转换。
 
-- 支持平台：`step7`、`portal`、`pcs7`
-- 生成文件：`Alarm_Loop.scl`，内含各项的背景 DB 和主循环 `Alarm_Loop`；另外复制库文件 `Alarm_Proc.scl`
-- 使用方法：在 OB 中调用 `Alarm_Loop`，建议放在循环中断 OB（如 OB30、OB35）中。
+本功能原名 `alarm`（别名 `pv`、`pv_alarm`、`pvalarm`），库为 `Alarm_Proc`/`Alarm_Loop`。旧名已不再支持：文档名或 `feature` 须改为 `limit`（或别名 `limitcheck`、`LC`），rules 中的 `feature: alarm` 须改为 `feature: limit`，程序中引用的 `Alarm_Proc`/`Alarm_Loop` 须改为 `Limit_Proc`/`Limit_Loop`（块号不变）。
 
-通用指令见 [GCL 配置基础](guide-gcl.zh-cn.md)；完整示例见 [example/alarm.yaml](../../example/alarm.yaml)。
+- 支持平台：`step7`、`portal`、`pcs7`
+- 生成文件：`Limit_Loop.scl`，内含各项的背景 DB 和主循环 `Limit_Loop`；另外复制库文件 `Limit_Proc.scl`
+- 使用方法：在 OB 中调用 `Limit_Loop`，建议放在循环中断 OB（如 OB30、OB35）中。
+
+通用指令见 [GCL 配置基础](guide-gcl.zh-cn.md)；完整示例见 [example/limit.yaml](../../example/limit.yaml)。
 
 ## 1. 最小示例
 
 ```yaml
 ---
-name: AS1-alarm
+name: AS1-limit
 
 list:
 - location: 1#储罐
@@ -28,20 +30,20 @@ list:
 ...
 ```
 
-生成的调用：`"Alarm_Proc"."LIT001"(PV := "tank485".LIT001);`
+生成的调用：`"Limit_Proc"."LIT001"(PV := "tank485".LIT001);`
 
 ## 2. 内置符号
 
 | 符号 | 默认地址 | 说明 |
 |---|---|---|
-| `Alarm_Proc` | `FB519` | 超限判断 FB |
-| `Alarm_Loop` | `FC519` | 主循环函数 |
+| `Limit_Proc` | `FB519` | 超限判断 FB |
+| `Limit_Loop` | `FC519` | 主循环函数 |
 
 ## 3. list 项属性
 
 | 属性 | 必填 | 类型 | 说明 |
 |---|---|---|---|
-| `DB` | 是 | S7符号定义 \| S7符号引用 | 背景 DB，自动设为 `Alarm_Proc` 的背景块；没有 DB 时本项只输出注释 |
+| `DB` | 是 | S7符号定义 \| S7符号引用 | 背景 DB，自动设为 `Limit_Proc` 的背景块；没有 DB 时本项只输出注释 |
 | `input` | 否 | S7符号定义 \| S7符号引用 \| SCL表达式 | 过程值，REAL |
 | `invalid` | 否 | S7符号定义 \| S7符号引用 \| SCL表达式 | 过程值无效标志，BOOL；为真时取消所有超限判断 |
 | `location` | 否 | 字符串 | 仪表位置 |
@@ -53,7 +55,7 @@ list:
 
 ### 3.1 生成规则
 
-| 配置 | 背景 DB | `Alarm_Loop` 中的调用 |
+| 配置 | 背景 DB | `Limit_Loop` 中的调用 |
 |---|---|---|
 | 有 `DB` | 生成 | 生成；`input`、`invalid`、`enable_XX` 中配置了的项作为调用参数传入 |
 | 没有 `DB` | 不生成 | 不生成，只输出注释 |
@@ -129,7 +131,7 @@ enable_LL: '"pump1".run_state'   # 泵运行时才启用低低超限判断
 | `no_limit` | 四级超限判断都未启用 |
 | `SP_error` | 限值设置错误 |
 
-alarm 独有的输出：
+limit 独有的输出：
 
 | 字段 | 说明 |
 |---|---|

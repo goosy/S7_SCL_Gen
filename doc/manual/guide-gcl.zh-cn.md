@@ -6,7 +6,7 @@ GCL 是本工具使用的 YAML 配置格式。本文介绍所有 feature 共用�
 |---|---|---|---|
 | `CPU` | — | CPU 级公共设置、自定义 OB/FC | [guide-CPU](guide-CPU.zh-cn.md) |
 | `AI` | — | 模拟量通道转换与限值报警 | [guide-AI](guide-AI.zh-cn.md) |
-| `alarm` | `pv`、`pv_alarm`、`pvalarm` | 过程值（REAL）限值报警 | [guide-alarm](guide-alarm.zh-cn.md) |
+| `limit` | `limitcheck`、`LC` | 过程值（REAL）超限判断 | [guide-limit](guide-limit.zh-cn.md) |
 | `AO` | — | 模拟量输出通道转换 | [guide-AO](guide-AO.zh-cn.md) |
 | `interlock` | `IL` | 联锁与事件触发 | [guide-interlock](guide-interlock.zh-cn.md) |
 | `motor` | — | 电机控制 | [guide-motor](guide-motor.zh-cn.md) |

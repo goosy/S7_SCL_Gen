@@ -47,9 +47,9 @@ list:
 | `$span_raw` | 否 | 整数 | 原始满量程（20mA 对应值），默认 `27648` |
 | `$overflow_SP` | 否 | 整数 \| 百分比字符串 | 原始值上溢出阈值，默认 `28000`，见 [4.1](#41-溢出阈值的百分比写法) |
 | `$underflow_SP` | 否 | 整数 \| 百分比字符串 | 原始值下溢出阈值，默认 `-500`，见 [4.1](#41-溢出阈值的百分比写法) |
-| 超限判断属性 | 否 | — | `$zero`、`$span`、`$XX_limit`、`$enable_XX`、`enable_XX`、`$dead_zone`、`$FT_time`，见 [alarm 指南第 4 节](guide-alarm.zh-cn.md#4-超限判断)；限值须满足 `LL ≤ L ≤ H ≤ HH`，见 [alarm 指南 4.3](guide-alarm.zh-cn.md#43-限值必须有序) |
+| 超限判断属性 | 否 | — | `$zero`、`$span`、`$XX_limit`、`$enable_XX`、`enable_XX`、`$dead_zone`、`$FT_time`，见 [limit 指南第 4 节](guide-limit.zh-cn.md#4-超限判断)；限值须满足 `LL ≤ L ≤ H ≤ HH`，见 [limit 指南 4.3](guide-limit.zh-cn.md#43-限值必须有序) |
 
-`$zero_raw`、`$span_raw`、`$overflow_SP`、`$underflow_SP`、`$zero`、`$span` 总是写入背景 DB，省略时写入上表或 alarm 指南中的默认值，与 `AI_Proc` 声明中的默认值无关。
+`$zero_raw`、`$span_raw`、`$overflow_SP`、`$underflow_SP`、`$zero`、`$span` 总是写入背景 DB，省略时写入上表或 limit 指南中的默认值，与 `AI_Proc` 声明中的默认值无关。
 
 `input` 不一定是 PIW，也可以是 M 区或通讯 DB 中的原始计数值：
 
@@ -164,7 +164,7 @@ list:
 | 报错 / 现象 | 原因 |
 |---|---|
 | `必须是整数原始值或百分比字符串` / `超出范围` / `必须大于下溢出值` / `zero_raw 与 span_raw 不能相等` | 原始值设定有误，见 [4.1](#41-溢出阈值的百分比写法) |
-| `定义的限制值有错误` | 限值不满足 `LL ≤ L ≤ H ≤ HH`（见 [alarm 指南 4.3](guide-alarm.zh-cn.md#43-限值必须有序)） |
+| `定义的限制值有错误` | 限值不满足 `LL ≤ L ≤ H ≤ HH`（见 [limit 指南 4.3](guide-limit.zh-cn.md#43-限值必须有序)） |
 | `PV` 为 `-1000000.0` | 通道断线或原始值溢出，查看 `AI_error`/`overflow`/`underflow` |
 | 工程值比例不对 | 模块量程与 `$zero_raw`/`$span_raw` 不匹配 |
 | DB 已生成但数值不刷新 | 没有配置 `input`，`AI_Loop` 中不会调用该通道 |

@@ -11,7 +11,7 @@ shared by all converters see [design-converters.md](design-converters.md).
 | `src/converters/converter_AI.js` | `platforms = ['step7', 'portal', 'pcs7']`; `NAME = 'AI_Proc'`, `LOOP_NAME = 'AI_Loop'`; `is_feature` matches `AI` case-insensitively |
 | `src/converters/AI.yaml` | Built-in symbols `[{{NAME}}, FB512, ...]`, `[{{LOOP_NAME}}, FC512, ...]` |
 | `src/converters/AI.template` | Instance DBs and the `AI_Loop` function |
-| `src/converters/analog_common.js` | Analog shared library: raw-value constants (`S7_*`) and default constants (`DEFAULT_*`); `make_fake_DB`, `make_alarms` (limit-check and scaling keys) shared with `alarm`; `raw_SP` (see [§2.1](#21-raw_sp)) shared with `AO` |
+| `src/converters/analog_common.js` | Analog shared library: raw-value constants (`S7_*`) and default constants (`DEFAULT_*`); `make_fake_DB`, `make_limit` (limit-check and scaling keys) shared with `limit`; `raw_SP` (see [§2.1](#21-raw_sp)) shared with `AO` |
 | `AI_Proc/` (submodule) | `AI_Proc(<platform>).scl` |
 
 ## 2. `initialize_list`
@@ -24,13 +24,13 @@ each YAML item becomes one `AI` object:
   `location + type`.
 - An item with neither `DB` nor `input` is returned as is and not processed.
 - `DB`: a placeholder `{ name }` from `make_fake_DB(DB)` first (needed by the
-  descriptions in `make_alarms`), then
+  descriptions in `make_limit`), then
   `make_s7_expression(DB, { disallow_s7express: true, force: { type: NAME } })`.
 - `input`: `make_s7_expression` with `force: { type: 'WORD' }`.
 - Defaults: `$zero_raw`/`$span_raw`/`$overflow_SP`/`$underflow_SP` get their
   defaults here (`DEFAULT_ZERO_RAW`, `DEFAULT_SPAN_RAW`,
   `DEFAULT_OVERFLOW_SP`, `DEFAULT_UNDERFLOW_SP`, i.e.
-  `0`/`27648`/`28000`/`-500`); `$zero`/`$span` get theirs in `make_alarms`
+  `0`/`27648`/`28000`/`-500`); `$zero`/`$span` get theirs in `make_limit`
   (`DEFAULT_ZERO`/`DEFAULT_SPAN`). From then on they always have a value,
   the template always writes them and `build_list` reads them directly, so
   the instance DB never depends on the defaults declared in `AI_Proc`.
@@ -40,7 +40,7 @@ each YAML item becomes one `AI` object:
   values, so the conversion is done in this pass and the template prints the
   result directly.
 - The remaining limit-check keys are handled by
-  `make_alarms(AI, node, document)`.
+  `make_limit(AI, node, document)`.
 
 ### 2.1 `raw_SP`
 
