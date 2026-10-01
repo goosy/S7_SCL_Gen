@@ -1,9 +1,9 @@
 [submodule "AI_Proc"]
 	path = AI_Proc
 	url = git@github.com:goosy/AI_Proc.git
-[submodule "Alarm_Proc"]
-	path = Alarm_Proc
-	url = git@github.com:goosy/Alarm_Proc.git
+[submodule "Limit_Proc"]
+	path = Limit_Proc
+	url = git@github.com:goosy/Limit_Proc.git
 [submodule "CP_Poll"]
 	path = CP_Poll
 	url = git@github.com:goosy/CP_Poll.git

@@ -2,16 +2,16 @@ import { make_s7_expression } from "../symbols.js";
 import { context } from '../util.js';
 import { STRING, ensure_value } from '../s7data.js';
 import { posix } from 'node:path';
-import { make_alarms, make_fake_DB } from './analog_common.js';
+import { make_fake_DB, make_limit } from './analog_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
-export const NAME = 'Alarm_Proc';
-export const LOOP_NAME = 'Alarm_Loop';
-const feature = 'alarm';
+export const NAME = 'Limit_Proc';
+export const LOOP_NAME = 'Limit_Loop';
+const feature = 'limit';
 
 export function is_feature(name) {
     const f_name = name.toLowerCase();
-    return f_name === feature || f_name === 'pv_alarm' || f_name === 'pv' || f_name === 'pvalarm';
+    return f_name === feature || f_name === 'limitcheck' || f_name === 'lc';
 }
 
 /**
@@ -25,7 +25,7 @@ export function initialize_list(area) {
         const location = ensure_value(STRING, node.get('location') ?? '').value;
         const type = ensure_value(STRING, node.get('type') ?? '').value;
         const comment = ensure_value(STRING, node.get('comment') ?? location + type).value;
-        const alarm = {
+        const LC = {
             node,
             location,
             type,
@@ -41,9 +41,9 @@ export function initialize_list(area) {
         };
         const DB = node.get('DB');
         const input = node.get('input');
-        if (!DB && !input) return alarm; // Empty alarm is not processed
+        if (!DB && !input) return LC; // Empty item is not processed
 
-        alarm.DB = make_fake_DB(DB);
+        LC.DB = make_fake_DB(DB);
         make_s7_expression(
             DB,
             {
@@ -53,7 +53,7 @@ export function initialize_list(area) {
                 default: { comment },
             },
         ).then(ret => {
-            alarm.DB = ret;
+            LC.DB = ret;
         });
         make_s7_expression(
             input,
@@ -64,7 +64,7 @@ export function initialize_list(area) {
                 s7_expr_desc: `AI ${comment} input`,
             },
         ).then(ret => {
-            alarm.input = ret;
+            LC.input = ret;
         });
         const invalid = node.get('invalid');
         make_s7_expression(
@@ -76,16 +76,16 @@ export function initialize_list(area) {
                 s7_expr_desc: `AI ${comment} invalid`,
             },
         ).then(ret => {
-            alarm.invalid = ret;
+            LC.invalid = ret;
         });
-        make_alarms(alarm, node, document);
+        make_limit(LC, node, document);
 
-        return alarm;
+        return LC;
     });
 }
 
 export function build_list({ list }) {
-    for (const alarm of list) { // Process configuration to form complete data
+    for (const LC of list) { // Process configuration to form complete data
         const input_paras = [
             ['input', 'PV'],
             ['invalid'],
@@ -96,10 +96,10 @@ export function build_list({ list }) {
         ].flatMap(_para => {
             const para_name = _para[0];
             const para_SCL = _para[1] ?? para_name;
-            const para = alarm[para_name];
+            const para = LC[para_name];
             return para ? `${para_SCL} := ${para.value}` : [];
         });
-        alarm.input_paras = input_paras.join(', ');
+        LC.input_paras = input_paras.join(', ');
     }
 }
 
@@ -108,7 +108,7 @@ export function gen({ document, options = {} }) {
     const { output_file = `${LOOP_NAME}.scl` } = options;
     const distance = `${document.CPU.output_dir}/${output_file}`;
     const tags = { NAME, LOOP_NAME };
-    const template = 'alarm.template'; 
+    const template = 'limit.template'; 
     return [{ distance, tags, output_dir, template }];
 }
 

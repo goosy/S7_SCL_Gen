@@ -68,7 +68,7 @@ export function make_fake_DB(item) {
  * @param {import('yaml').Document} document
  * @returns {void}
  */
-export function make_alarms(item, node, document) {
+export function make_limit(item, node, document) {
     const info = document.gcl.get_pos_info(...node.range);
     item.$zero = nullable_value(REAL, node.get('$zero')) ?? new REAL(DEFAULT_ZERO);
     item.$span = nullable_value(REAL, node.get('$span')) ?? new REAL(DEFAULT_SPAN);

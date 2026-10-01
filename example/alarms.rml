@@ -58,7 +58,7 @@ rules:  # 在这里定义全局规则列表
 # 当 pattern 某个属性是一个字符串数组的话，表明这是一个多项匹配模式。
 # 最终结果是满足所有否定匹配并同时满足任意一个肯定匹配的项集合
 # - 肯定匹配是并集
-#   `feature: [AI, alarm]` 匹配 CPU 名为 AS1 或 AS2 的项
+#   `feature: [AI, limit]` 匹配 feature 为 AI 或 limit 的项
 # - 否定匹配取交集
 #   `cpu_name: ['!AS1', '!AS2']` 匹配 CPU 名不为 AS1 且不为 AS2 的项
 # - 同时有肯定和否定匹配时，结果为 (否定匹配并集 ⋂ 否定匹配交集)
@@ -114,9 +114,9 @@ rules:  # 在这里定义全局规则列表
 
 
 # 本 alarms 输出只示例 merge inner_rules delete 动作
-# 合并 AI alarm 为一个新文档内部项
+# 合并 AI 与 limit 为一个新文档内部项
 - pattern:
-    feature: [AI, alarm]
+    feature: [AI, limit]
     type: convert
 
   # scope 指定规则的应用范围

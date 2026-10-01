@@ -1,0 +1,4 @@
+name: BUILDIN
+symbols: 
+- [{{NAME}}, FB519, {{NAME}}, Limit_Proc main FB]
+- [{{LOOP_NAME}}, FC519, {{LOOP_NAME}}, main Limit_Proc cyclic call function]

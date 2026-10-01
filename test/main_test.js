@@ -67,7 +67,7 @@ suite('生成SCL测试', () => {
         }
         const do_copy = await checkAndDeleteFiles([
             `${context.work_path}/dist/AI_Proc.scl`,
-            `${context.work_path}/dist/Alarm_Proc.scl`,
+            `${context.work_path}/dist/Limit_Proc.scl`,
             `${context.work_path}/dist/test.yaml`,
         ])
         ok(!do_copy);
@@ -100,7 +100,7 @@ suite('生成SCL测试', () => {
         ok(output.length > 0);
         output = match_all(rules, {
             type: 'convert',
-            feature: 'alarm',
+            feature: 'limit',
             cpu_name: 'dist',
         });
         ok(output.length > 0);
