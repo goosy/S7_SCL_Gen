@@ -4,7 +4,7 @@ import { INT, STRING, ensure_value } from '../s7data.js';
 import { context, elog } from '../util.js';
 import {
     DEFAULT_OVERFLOW_SP, DEFAULT_SPAN_RAW, DEFAULT_UNDERFLOW_SP, DEFAULT_ZERO_RAW, S7_AI_MAX, S7_AI_MIN,
-    make_alarms, make_fake_DB, raw_SP,
+    make_fake_DB, make_limit, raw_SP,
 } from './analog_common.js';
 
 export const platforms = ['step7', 'portal', 'pcs7']; // platforms supported by this feature
@@ -74,7 +74,7 @@ export function initialize_list(area) {
         const span_raw = AI.$span_raw.value;
         AI.$overflow_SP = raw_SP(node.get('$overflow_SP') ?? DEFAULT_OVERFLOW_SP, `AI (${comment}) 的 $overflow_SP`, zero_raw, span_raw);
         AI.$underflow_SP = raw_SP(node.get('$underflow_SP') ?? DEFAULT_UNDERFLOW_SP, `AI (${comment}) 的 $underflow_SP`, zero_raw, span_raw);
-        make_alarms(AI, node, document);
+        make_limit(AI, node, document);
 
         return AI;
     });

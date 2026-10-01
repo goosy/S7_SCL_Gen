@@ -33,7 +33,7 @@ attributes:
 
 rules:
 - pattern:
-    feature: [AI, alarm]
+    feature: [AI, limit]
   scope: origin
   actions:
   - action_type: merge

@@ -288,7 +288,7 @@ const deletions = new Flag_Map();
  * When a pattern's attribute is a string array, it represents a multi-pattern matching mode.
  * The final result must satisfy all negative matches and at least one positive match
  * - Positive matches form a union
- *   `feature: [AI, alarm]` matches items with feature AI or alarm
+ *   `feature: [AI, limit]` matches items with feature AI or limit
  * - Negative matches form an intersection
  *   `cpu_name: ['!AS1', '!AS2']` matches items where CPU name is neither AS1 nor AS2
  * - When both positive and negative matches exist, result is (positive match union ⋂ negative match intersection)

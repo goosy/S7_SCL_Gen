@@ -18,15 +18,15 @@ list : # AI列表
   $enable_WL: false
 
 ---
-name: dist-alarm
+name: dist-limit
 
 files:
 
 symbols:
 - [LIT001, DB2]
 
-list : # alarm列表
-- comment: alarm test
+list : # limit列表
+- comment: limit test
   DB: LIT001
   input: tank485.LIT001
   $HH_limit: 2.5
