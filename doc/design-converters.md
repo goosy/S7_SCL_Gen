@@ -99,13 +99,15 @@ synchronously right after calling it** — only from within pass 2
   [design-pipeline.md §4.1](design-pipeline.md#41-output-encoding)), and
   `options.line_ending` (`LF` when unset; read as `CPU.line_ending`, see
   [design-pipeline.md §4.2](design-pipeline.md#42-output-line-ending)).
-- **`AI`/`alarm`**: share their limit/scaling-field parsing via
-  `make_alarms()`/`make_fake_DB()` in `src/converters/analog_common.js`
+- **`AI`/`limit`**: share their limit/scaling-field parsing via
+  `make_limit()`/`make_fake_DB()` in `src/converters/analog_common.js`
   rather than duplicating it — see that file's own docstring for the full
   field list. `make_fake_DB` lets templates render a placeholder `AI.DB`
   even before the real symbol promise resolves (needed because `gen()` can
   run before all promises settle for informational rendering paths). For
-  the `AI` details see [design-converter-ai.md](design-converter-ai.md).
+  the `AI` details see [design-converter-ai.md](design-converter-ai.md), for
+  the `limit` details
+  [design-converter-limit.md](design-converter-limit.md).
 - **`AO`**: see [design-converter-ao.md](design-converter-ao.md). `AI` and
   `AO` share the raw setpoint conversion (`raw_SP`, including the `%` form)
   in `src/converters/analog_common.js`.

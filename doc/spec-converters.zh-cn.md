@@ -36,12 +36,12 @@
 ## AI
 
 **用途**：模拟量输入通道处理——原始值到工程单位的量程转换，以及超上/下限
-和高高/高/低/低低报警，由 `AI_Proc` FB 支撑。
+和高高/高/低/低低超限判断，由 `AI_Proc` FB 支撑。
 
 - 平台：`step7`、`portal`、`pcs7`。
 - 别名：无（必须为 `AI`）。
 - 关键 `list` 条目键：`DB`（实例 DB）、`input`（源 WORD，如某个 `PIW`
-  通道），以及 [alarm](#alarm) 下记述的共享超限判断/量程键（`$zero`、`$span`、
+  通道），以及 [limit](#limit) 下记述的共享超限判断/量程键（`$zero`、`$span`、
   `$HH_limit`/`$H_limit`/`$L_limit`/`$LL_limit` 及其对应的
   `enable_*`/`$enable_*`、`$dead_zone`、`$FT_time`）。
 - 原始值键，总是写入实例 DB 的同名成员，省略时写入默认值（与 [AO](#ao)
@@ -66,13 +66,17 @@
   - `zero_raw` 与 `span_raw` 相等为配置错误（FB 会除以零；省略时按默认值计）。
 - 库文件名：`AI_Proc(<platform>).scl`。
 
-## alarm
+## limit
 
 **用途**：为**不是**来自已由 `AI` 文档处理的原始 AI 通道的过程值（例如
-经串口/Modbus 接收的值）做阈值报警，由 `Alarm_Proc` 支撑。
+经串口/Modbus 接收的值）做超限判断，由 `Limit_Proc` 支撑。超限是否成为
+报警由上位机决定（见下方报警开关），不属于本功能。
 
 - 平台：`step7`、`portal`、`pcs7`。
-- 别名：`pv_alarm`、`pv`、`pvalarm`。
+- 别名：`limitcheck`、`LC`（与 `limit` 一样不区分大小写）。原名 `alarm`、
+  `pv_alarm`、`pv`、`pvalarm` 不再支持。
+- 内置符号：`Limit_Proc`（`FB519`）、`Limit_Loop`（`FC519`），其地址可在
+  文档的 `symbols` 中重新定义。
 - 关键 `list` 条目键：`DB`、`input`（REAL 工程单位值，而非原始计数值）、
   `invalid`（可选的质量/有效性位），以及共享超限判断键（`$zero`、`$span`、
   `$HH_limit`/`$H_limit`/`$L_limit`/`$LL_limit`、
@@ -85,7 +89,8 @@
 - 上述超限判断 GCL 键写入实例 DB 的同名成员。实例 DB 的输出为
   `HH_flag`/`H_flag`/`L_flag`/`LL_flag`、`HH_PV`/`H_PV`/`L_PV`/`LL_PV` 与
   `no_limit`，表示超限而非报警。`AI` 同样适用。
-- 库文件名：`Alarm_Proc(<platform>).scl`。
+- 库文件名：`Limit_Proc(<platform>).scl`。
+- 实现：[design-converter-limit.zh-cn.md](design-converter-limit.zh-cn.md)。
 
 ## AO
 
