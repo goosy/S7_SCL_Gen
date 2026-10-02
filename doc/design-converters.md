@@ -111,11 +111,12 @@ synchronously right after calling it** — only from within pass 2
 - **`AO`**: see [design-converter-ao.md](design-converter-ao.md). `AI` and
   `AO` share the raw setpoint conversion (`raw_SP`, including the `%` form)
   in `src/converters/analog_common.js`.
-- **`interlock`**: the only feature whose `area.list` is re-shaped in
-  `initialize_list` from "one entry per YAML list item" to "one entry per
-  distinct `DB`" (via `create_DB_set`/`get_or_create`), because multiple
-  YAML `list` items can target the same instance DB and must accumulate into
-  one set of fields/interlocks. See [§5](#5-interlock-data-model).
+- **`interlock`**: the only feature that does not rely on an FB; the
+  converter writes all of the logic itself. Each `list` item is one
+  interlock DB (DB names must not repeat) holding one or more interlock
+  groups (`groups`, or the item itself as the single group), so each
+  `area.list` entry is a DB object rather than a single group. See
+  [design-converter-interlock.md](design-converter-interlock.md).
 - **`MT`/`SC`**: both pack multiple polls' request/response frames into a
   shared struct DB (`MT_polls_DB`/`SC_polls_DB`) with hand-computed byte
   offsets (`poll_index`, advanced by each poll's frame length, word-aligned)
@@ -131,38 +132,3 @@ synchronously right after calling it** — only from within pass 2
   in+out positional call; Step 7/PCS7: input-only call plus separate output
   assignment statements) rather than pushing the branching into the
   template — see each converter's `build_list`.
-
-## 5. `interlock` data model
-
-`interlock` accumulates potentially many YAML `list` items that reference
-the same `DB` name into one shared record per DB. In `initialize_list`, raw
-YAML items are bucketed by DB; each bucket becomes one generated item in
-`area.list`.
-
-Each DB-level item owns the shared field declarations and all interlock
-groups for that DB:
-
-- `fields`: DB-scoped `data`/`input`/`reset`/`output` fields.
-- `interlocks`: grouped input/reset/output rules parsed from the YAML items.
-- `edges`: edge-memory BOOL fields needed by non-level input triggers.
-- `declarations`/`read_list`/`write_list`: derived in `build_list` for the
-  generated `DATA_BLOCK` and loop function.
-
-Important implementation details in `converter_interlock.js`:
-
-- `DB.fields` is a dictionary-like object (name -> field) with a hidden
-  `push(item)` method that auto-assigns a `b_<n>` name if the item has none,
-  and rejects duplicate names.
-- An `Input`'s `trigger_type` (`rising` (default) | `falling` | `change` |
-  `on` | `off`) determines whether it needs an edge-memory field (`edges`,
-  rendered as `<name>_fo` BOOL fields in the DB) and how `build_list`
-  synthesizes its `trigger` SCL expression (e.g. rising:
-  `value AND NOT "DB".name_fo`).
-- An `Output`'s `inversion` flag swaps which boolean literal means
-  "activated" vs. "reset/default", and its optional `reset` is itself a
-  parsed reset expression that can mark a referenced `data` field
-  `resettable` (auto-cleared at the end of the DB's processing block).
-- `DB.declarations`/`read_list`/`write_list` (computed in `build_list`) are
-  the fields that actually need a `STRUCT` declaration line / a read
-  assignment / a write assignment in the generated `DATA_BLOCK` and loop
-  function respectively.

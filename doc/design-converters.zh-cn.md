@@ -106,10 +106,11 @@ Promise 都已完成（见
 - **`AO`**：见 [design-converter-ao.zh-cn.md](design-converter-ao.zh-cn.md)。
   `AI` 与 `AO` 共用 `src/converters/analog_common.js` 中的原始值设定转换
   （`raw_SP`，含 `%` 写法）。
-- **`interlock`**：唯一一个在 `initialize_list` 中把 `area.list` 从
-  "每个 YAML 列表条目一项"重塑为"每个不同 `DB` 一项"的功能（通过
-  `create_DB_set`/`get_or_create`），因为多个 YAML `list` 条目可以指向
-  同一个实例 DB，并且必须累积到同一组字段/联锁中。见 [§5](#5-interlock-数据模型)。
+- **`interlock`**：唯一一个不依托 FB、由转换器直接写出全部逻辑的功能。
+  每个 `list` 条目是一个联锁 DB（DB 名称不得重复），其下有一个或多个
+  联锁组（`groups`，或以条目本身作为唯一的组），`area.list` 的每一项是
+  一个 DB 对象而非单个组。见
+  [design-converter-interlock.zh-cn.md](design-converter-interlock.zh-cn.md)。
 - **`MT`/`SC`**：两者都把多条轮询的请求/响应报文打包进一个共享的结构体
   DB（`MT_polls_DB`/`SC_polls_DB`），字节偏移由程序手动计算
   （`poll_index`，按每条轮询的报文长度递增，并做字对齐）——这些簿记工作
@@ -123,32 +124,3 @@ Promise 都已完成（见
   `document.CPU.platform` 分支（Portal：一次输入+输出合并的位置参数调用；
   Step 7/PCS7：仅输入参数的调用加上单独的输出赋值语句），而不是把分支
   推给模板——见各转换器的 `build_list`。
-
-## 5. `interlock` 数据模型
-
-`interlock` 会把可能很多个引用同一 `DB` 名称的 YAML `list` 条目，累积为
-每个 DB 一条共享记录。在 `initialize_list` 中，原始 YAML 条目按 DB 分桶；
-每个桶成为 `area.list` 中的一个生成条目。
-
-每个 DB 级条目拥有该 DB 的共享字段声明和全部联锁组：
-
-- `fields`：DB 作用域的 `data`/`input`/`reset`/`output` 字段。
-- `interlocks`：从 YAML 条目解析出的、分组的输入/复位/输出规则。
-- `edges`：非电平输入触发器所需的边沿记忆 BOOL 字段。
-- `declarations`/`read_list`/`write_list`：在 `build_list` 中派生，用于
-  生成的 `DATA_BLOCK` 和循环函数。
-
-`converter_interlock.js` 中的重要实现细节：
-
-- `DB.fields` 是一个类字典对象（name -> field），带有一个隐藏的
-  `push(item)` 方法：条目无名称时自动分配 `b_<n>` 名称，并拒绝重名。
-- `Input` 的 `trigger_type`（`rising`（默认）| `falling` | `change` |
-  `on` | `off`）决定它是否需要一个边沿记忆字段（`edges`，在 DB 中渲染为
-  `<name>_fo` BOOL 字段），以及 `build_list` 如何合成它的 `trigger` SCL
-  表达式（例如 rising：`value AND NOT "DB".name_fo`）。
-- `Output` 的 `inversion` 标志会交换哪个布尔字面量表示"激活"、哪个表示
-  "复位/默认"；其可选的 `reset` 本身是一个已解析的复位表达式，可以把
-  所引用的 `data` 字段标记为 `resettable`（在该 DB 的处理块结尾自动清除）。
-- `DB.declarations`/`read_list`/`write_list`（在 `build_list` 中计算）
-  分别是在生成的 `DATA_BLOCK` 和循环函数中真正需要一行 `STRUCT` 声明 /
-  一条读取赋值 / 一条写入赋值的字段。

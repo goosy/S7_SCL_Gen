@@ -193,7 +193,7 @@ FB512 实例 DB100。`[length, M100, INT, length]` 定义了位于 `M100` 的 IN
 某些配置项可以互换地接受多种上述类型。两个常见例子：
 
 - `AI.DB` / `AI.input`（以及其他功能中的对应项）：符号定义或符号引用。
-- `interlock` 的 `input_list` 条目：对象、符号定义、符号引用或原始 SCL
+- `interlock` 的 `input` 条目：对象、符号定义、符号引用或原始 SCL
   表达式。
 
 各功能的转换器通过 `make_s7_expression` 完成这种分派（见
