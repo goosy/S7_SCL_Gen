@@ -1,34 +1,34 @@
 ---
 # interlock 实现根据信号状态触发输出，可以用于报警或联锁
-# 可以在本配置中定义多组联锁
+# list 的每一项是一个联锁 DB，一个 DB 下可以有一组或多组联锁
+# 每一个 DB 由以下几个指令组成：
+# - DB: 联锁使用的DB块，同一文档中不能重复
+# - comment: DB 的注释
+# - enable/$enable: 整个 DB 的使能，作用于其下所有联锁组
+# - data: 中转数据，每一项数据可以自动上传到HMI，即有S7_m_c属性，其下所有组都可以引用
+# - groups: 联锁组列表，省略时 DB 本身就是唯一的一组
 # 每一组联锁由以下几个指令组成：
-# - comment: 该组联锁的注释
-# - name: 该组联锁的名称
-# - DB: 该组联锁使用的DB块
-# - data: 该组联锁的中转数据，每一项数据可以自动上传到HMI，即有S7_m_c属性
+# - comment: 该组联锁的注释，省略时取 DB 的注释
 # - input: 触发该组联锁的输入列表，每一项输入都可以定义触发条件
+# - reset: 该组联锁的复位列表
 # - output: 该组联锁的输出列表
+# - extra_code: 该组联锁的附加代码
 
 # 转换程序会自动构造对应的DB块，大致内部结构为:
 #     DB.enable           允许联锁，默认为true，可省略，该项具有S7_m_c属性
 #
-#     DB.<data_1>         名称为第1组联锁 data 的对应项 name，该项具有S7_m_c属性
-#     DB.<data_2>         名称为第1组联锁 data 的对应项 name，该项具有S7_m_c属性
+#     DB.<data_1>         名称为 data 的对应项 name，该项具有S7_m_c属性
+#     DB.<data_2>         名称为 data 的对应项 name，该项具有S7_m_c属性
 #     ......
-#     DB.<data_n>         名称为第1组联锁 data 的对应项 name，该项具有S7_m_c属性
+#     DB.<data_n>         名称为 data 的对应项 name，该项具有S7_m_c属性
 #
 #     以下用于跟踪状态（用于类型为 rising falling change 的输入项）
-#     DB.b_1_fo           内部数据用于第1组联锁跟踪边沿
+#     DB.b_1_fo           内部数据用于跟踪边沿
 #     ......
-#     DB.b_n_fo           内部数据用于第1组联锁跟踪边沿，数量与边沿触发项对应
+#     DB.b_n_fo           内部数据用于跟踪边沿，数量与该 DB 所有组的边沿触发项对应
 #
-#     如果多组联锁共用该DB块，会在这里存储第2组以后联锁的数据结构
-# 
-# 可1组联锁使用1个DB块，也可以多组联锁共用1个DB块
-# 共用情况下，enable项只有一个
-# 注意：由上面的DB结构可知，同一DB所在的联锁中
-# data input reset output 四部分的每一小项的 name 值不能重复
-# 否则会造成DB字段重复，会报错。
+# 注意：由上面的DB结构可知，同一DB中 data 项的 name 不能重复，
+# 也不能是 enable，否则会造成DB字段重复，会报错。
 
 #CPU: AS1           # 指示属于哪一个CPU
 #feature: interlock # 指示本配置为生成联锁代码
@@ -122,7 +122,7 @@ list:
   #   write   本项写入至过程值目标，可省略
   #           类型:  S7符号定义 | S7符号引用 (不能是S7表达式)
   #   type    本项的 S7 类型，可省略，默认为 BOOL
-  #   init    本项的初始值，可省略
+  #   $value  本项的初始值，按 type 转换，可省略
   #   comment 该项的注释，可省略
   - comment: 启动声光报警器输出
     name: output
@@ -137,7 +137,7 @@ list:
     read: '"pump485".TIT-1201' # 读值为S7表达式 这里读485通讯块中的温度
     write: '"WCS".temperature' # 写值为S7表达式 这里转存温度到水冷系统DB块中
     type: INT                  # S7 类型为 INT
-    init: 10                   # 初始值为 10
+    $value: 10                 # 初始值为 10
     # 同时有 read 和 write 的项更多用于数值的运算后传递。
   - comment: 外输泵润滑系统工作状态
     name: lubrication_work
@@ -253,8 +253,7 @@ list:
 # === 例3
 # 以下展示2组联锁共用一个DB块的示例
 # 广播系统的启动和停止是2组联锁
-# 它们共用一个 DB ，共享 enable 项和 data 项
-# 注意： 由于共用，2组联锁的 data input reset output 项名称都不能重复
+# 它们写在同一个 DB 的 groups 中，共享 enable 项和 data 项
 # 同时这里也展示上方没展示的指令用法：
 # - 输入项的 and 属性
 # - 输出项的 inversion 属性
@@ -265,45 +264,52 @@ list:
   # boolean 字面量，值只能为true或false
   # 初始时是否允许报警连锁，可省略，默认为 true。
   # 非 false 值的其它输入会都视为 true
-  $enable: false  # 共用DB时， $enable enable 指令只能在其中一个联锁上设置，不允许重复设置
+  $enable: false  # enable $enable 是 DB 级的，作用于下方所有组
   data:
   - {name: play, write: DO04-04, comment: 广播设备播放}
   - {name: stop, write: [DO04-06, Q6.5],  comment: 广播设备停止}
   - {name: WCounter_signal, read: DI02-16, comment: 计件器检测}
   - {name: comfirm, read: DI02-20, comment: 人工确认}
   - {name: RSTSWT, read: DI02-19, comment: 人工停播旋钮}
-  input:
-  - WCounter_signal           # 计件器检测
-  # input项除了上方介绍的 value trigger comment 属性外
-  # 还有一个高级属性 and ，它指示 raad 属性是由多个项组成的数组
-  # 当 and 列表被设置时，value 值是由多个 and 项进行与运算形成
-  - and:                      # 每一项的类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
-    - comfirm                 # 人工确认
-    - '"WCounter".fix'        # 检测异常
-    trigger: on
-  output:
-  - play                      # 广播设备播放
-    
-  # 自定义代码，用于编写与该联锁相关的复杂自定义功能
-  # 这里的代码会加入到当前联锁逻辑之后
-  extra_code: |-
-    // 记录播报次数
-    IF IL_sound.output AND NOT "WCounter".follower THEN
-        "WCounter".count := "WCounter".count + 1;
-    ENDIF;
-    "WCounter".follower := IL_sound.output;
+  # 有 groups 时，不能在 DB 层写 input reset output extra_code
+  groups:
+  - comment: 广播启动
+    input:
+    - WCounter_signal           # 计件器检测
+    # input项除了上方介绍的 value trigger comment 属性外
+    # 还有一个高级属性 and ，它指示 raad 属性是由多个项组成的数组
+    # 当 and 列表被设置时，value 值是由多个 and 项进行与运算形成
+    - and:                      # 每一项的类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+      - comfirm                 # 人工确认
+      - '"WCounter".fix'        # 检测异常
+      trigger: on
+    output:
+    - play                      # 广播设备播放
 
-- DB: IL_sound
-  input:
-  - RSTSWT
-  output:
-  - value: stop
-    # 反相输出，代表断开时广播停止
-    # 注意，反相时如果非使能，将输出为 true
-    inversion: TRUE
-    # 当 enable 为 false 时，输出项的默认值
-    # 通常用于反相时，非使能时输出 false
-    default: FALSE
+    # 自定义代码，用于编写与该联锁相关的复杂自定义功能
+    # 这里的代码会加入到当前联锁逻辑之后
+    extra_code: |-
+      // 记录播报次数
+      IF "IL_sound".play AND NOT "WCounter".follower THEN
+          "WCounter".count := "WCounter".count + 1;
+      END_IF;
+      "WCounter".follower := "IL_sound".play;
+
+  - comment: 广播停止
+    input:
+    - RSTSWT
+    output:
+    - value: stop
+      # 反相输出，代表断开时广播停止
+      # 注意，反相时如果非使能，将输出为 true
+      inversion: TRUE
+      # 当 enable 为 false 时，输出项的默认值
+      # 通常用于反相时，非使能时输出 false
+      default: FALSE
+      # 单独复位：人工确认后撤销停止
+      # 反相输出没有复位条件时，一旦动作就回不到 true
+      # 注意不要用 play 这类输出项作复位条件，否则它会在每周期末被清零
+      reset: comfirm
 
 
 # 用户自写SCL代码，放在循环的开始和结束处。
@@ -384,7 +390,7 @@ list:
     read: '"pump485".TIT-1201' # 读值为S7表达式 这里读485通讯块中的温度
     write: '"WCS".temperature' # 写值为S7表达式 这里转存温度到水冷系统DB块中
     type: INT                  # S7 类型为 INT
-    init: 10                   # 初始值为 10
+    $value: 10                 # 初始值为 10
     # 同时有 read 和 write 的项更多用于数值的运算后传递。
   - comment: 外输泵润滑系统工作状态
     name: lubrication_work
@@ -433,7 +439,6 @@ list:
 # === 例3
 - DB: [IL_sound, DB123, ~, 事件播报]
   $enable: false
-  trigger:  on
 
   data:
   - {name: play, write: DO04-04, comment: 广播设备播放}
@@ -442,30 +447,33 @@ list:
   - {name: comfirm, read: DI02-20, comment: 人工确认}
   - {name: RSTSWT, read: DI02-19, comment: 人工停播旋钮}
 
-  input:
-  - WCounter_signal           # 计件器检测
-  - and:                      # 每一项的类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
-    - comfirm                 # 人工确认
-    - '"WCounter".fix'        # 检测异常
-    trigger: on
+  groups:
+  - comment: 广播启动
+    input:
+    - WCounter_signal           # 计件器检测
+    - and:                      # 每一项的类型为: data项名称 | S7符号定义 | S7符号引用 | SCL表达式
+      - comfirm                 # 人工确认
+      - '"WCounter".fix'        # 检测异常
+      trigger: on
 
-  output:
-  - play                      # 广播设备播放
+    output:
+    - play                      # 广播设备播放
 
-  extra_code: |-
-    // 记录播报次数
-    IF IL_sound.output AND NOT "WCounter".follower THEN
-        "WCounter".count := "WCounter".count + 1;
-    ENDIF;
-    "WCounter".follower := IL_sound.output;
+    extra_code: |-
+      // 记录播报次数
+      IF "IL_sound".play AND NOT "WCounter".follower THEN
+          "WCounter".count := "WCounter".count + 1;
+      END_IF;
+      "WCounter".follower := "IL_sound".play;
 
-- DB: IL_sound
-  input:
-  - RSTSWT
-  output:
-  - value: stop
-    inversion: TRUE
-    default: FALSE
+  - comment: 广播停止
+    input:
+    - RSTSWT
+    output:
+    - value: stop
+      inversion: TRUE
+      default: FALSE
+      reset: comfirm
 
 loop_begin: |-
   // 这里的代码将在 Interlock_Loop 循环开始时执行
