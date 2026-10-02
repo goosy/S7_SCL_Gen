@@ -40,7 +40,8 @@ BEGIN
   {{_loop_begin}}
 {{endif}}_
 {{for DB in list}}
-// DB "{{DB.name}}" 读入
+// ===== DB "{{DB.name}}"{{if DB.comment}}: {{DB.comment}}{{endif}}
+// 读入
   {{_for assign in DB.read_list}}_
     {{_assign.assign_read}}
   {{_endfor // assign}}_
@@ -106,7 +107,7 @@ END_IF;
       {{_field.expression}} := FALSE;
     {{_endif}}_
   {{_endfor // field}}_
-// DB "{{DB.name}}" 写出
+// 写出
   {{_for assign in DB.write_list}}_
     {{_assign.assign_write}}
   {{_endfor // assign}}_
