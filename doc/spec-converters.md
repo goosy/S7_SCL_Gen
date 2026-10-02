@@ -210,22 +210,41 @@ All three categories share the hardware high limit `32511` and the
 **Purpose**: the simplest protective-interlock pattern — one or more input
 conditions (with configurable rising/falling/change/level trigger type,
 optionally AND-combined) OR together to set one or more BOOL outputs, with
-optional reset conditions and an `enable` gate. Multiple `interlock` list
-items can target the same DB, accumulating fields into one shared instance
-DB per `DB` name.
+optional reset conditions and an `enable` gate.
 
 - Platforms: `step7`, `portal` only (no `pcs7`).
 - Aliases: `il`.
-- Key `list` item keys: `DB` (required, groups items), `enable`/`$enable`,
-  `data` (extra named fields the DB should carry, each with its own
-  `read`/`write` expression), `input`/`input_list` (required, ≥1 item; each
-  item is a data-field reference, symbol, SCL expression, or an object with
-  `trigger: rising|falling|change|on|off`, `and: [...]`, `value`, `comment`),
-  `reset`, `output` (each item may set `inversion`, `default`, and its own
-  `reset`).
-- See [design-converters.md](design-converters.md#5-interlock-data-model)
-  for the internal `DB`/`Interlock`/`Field` object model (migrated from the
-  former `interlock_class.md`).
+- Organization: each `list` item is one interlock DB holding one or more
+  interlock groups. The DB is the unit of enabling, data and HMI
+  visibility; the group is the unit of "inputs → outputs" logic. Related
+  interlocks (e.g. start the pump on high level, stop it on low level) go
+  under the same DB.
+- DB-level keys: `DB` (required; a global DB, whose symbol type is forced
+  to itself, a user-defined type such as an FB is corrected with a warning;
+  must not repeat within a document, a repeat is an error), `comment`,
+  `enable`/`$enable` (the DB's only enable, gating all of its groups;
+  `enable` must be an assignable address), `data` (named fields the DB
+  carries, with `S7_m_c`, each with optional `read`/`write` expressions and
+  an initial value `$value`, referable by name from all of its groups),
+  `groups`.
+- Group-level keys: `comment`, `input` (required, ≥1 item; each item is a
+  data-field reference, symbol, SCL expression, or an object with
+  `trigger: rising|falling|change|on|off`, `and: [...]`, `value`,
+  `comment`), `reset`, `output` (each item may set `inversion`, `default`,
+  and its own `reset`), `extra_code`.
+- `groups` is an array of groups (≥1 item). Shorthand: without `groups`,
+  the `list` item's own group-level keys form its single group. `groups`
+  and DB-level group keys (`input`/`reset`/`output`/`extra_code`) must not
+  appear together; doing so is an error.
+- Comments: the `list` item's `comment` is always the DB comment (also in
+  the shorthand form, whose single group then has no comment of its own).
+  The DB comment in the generated code is `comment`, else the DB symbol's
+  comment; a DB symbol without a comment takes that DB comment. A group
+  without a `comment` takes the DB comment.
+- There is no group-level enable. A group that needs to be enabled on its
+  own goes into a separate DB, or combines a data item with an `and` input.
+- See [design-converter-interlock.md](design-converter-interlock.md) for
+  the internal data model.
 - No external library file — the generated `Interlock_Loop.scl` is fully
   self-contained (no `Interlock_Proc` submodule).
 

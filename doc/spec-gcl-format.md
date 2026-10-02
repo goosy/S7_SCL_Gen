@@ -222,7 +222,7 @@ interchangeably. Two common examples:
 
 - `AI.DB` / `AI.input` (and their equivalents on other features): a symbol
   definition or a symbol reference.
-- `interlock`'s `input_list` items: an object, a symbol definition, a symbol
+- `interlock`'s `input` items: an object, a symbol definition, a symbol
   reference, or a raw SCL expression.
 
 The converter for each feature performs this dispatch via

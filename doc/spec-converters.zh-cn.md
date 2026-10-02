@@ -176,20 +176,33 @@
 
 **用途**：最简单的保护联锁模式——一个或多个输入条件（触发类型可配置为
 上升沿/下降沿/变化/电平，可选地进行 AND 组合）相 OR，置位一个或多个 BOOL
-输出，并支持可选的复位条件和 `enable` 使能门控。多个 `interlock` 列表
-条目可以指向同一个 DB，按 `DB` 名称把字段累积到同一个共享实例 DB 中。
+输出，并支持可选的复位条件和 `enable` 使能门控。
 
 - 平台：仅 `step7`、`portal`（不支持 `pcs7`）。
 - 别名：`il`。
-- 关键 `list` 条目键：`DB`（必需，用于分组条目）、`enable`/`$enable`、
-  `data`（DB 需要携带的额外命名字段，各自带有 `read`/`write` 表达式）、
-  `input`/`input_list`（必需，至少 1 项；每项可以是数据字段引用、符号、
-  SCL 表达式，或带有 `trigger: rising|falling|change|on|off`、
-  `and: [...]`、`value`、`comment` 的对象）、`reset`、`output`（每项可设置
-  `inversion`、`default` 以及自己的 `reset`）。
-- 内部的 `DB`/`Interlock`/`Field` 对象模型见
-  [design-converters.zh-cn.md](design-converters.zh-cn.md#5-interlock-数据模型)
-  （迁移自原先的 `interlock_class.md`）。
+- 组织方式：`list` 的每一项对应一个联锁 DB，该 DB 下有一个或多个联锁组。
+  DB 是使能、数据和 HMI 可见性的单元，组是"输入 → 输出"的逻辑单元；
+  几组相关的联锁（如液位高启泵、低停泵）放在同一个 DB 下。
+- DB 级键：`DB`（必需；为全局 DB，其符号类型被强制为它自己，用户定义的
+  其它类型如 FB 会被纠正并警告；在一个文档中不得重复，重复即报错）、`comment`、
+  `enable`/`$enable`（整个 DB 唯一的使能，作用于其下所有组；`enable` 必须
+  是可赋值的地址）、`data`（DB 携带的命名字段，带 `S7_m_c`，各自可带
+  `read`/`write` 表达式与初值 `$value`，可被其下所有组按名称引用）、`groups`。
+- 组级键：`comment`、`input`（必需，至少 1 项；每项可以是数据字段引用、
+  符号、SCL 表达式，或带有 `trigger: rising|falling|change|on|off`、
+  `and: [...]`、`value`、`comment` 的对象）、`reset`、`output`（每项可
+  设置 `inversion`、`default` 以及自己的 `reset`）、`extra_code`。
+- `groups` 为组的数组（至少 1 项）。简写：没有 `groups` 时，该 `list`
+  项本身的组级键构成唯一的一组。`groups` 与 DB 层的组级键（`input`/
+  `reset`/`output`/`extra_code`）不能同时出现，否则报错。
+- 注释：`list` 项的 `comment` 总是 DB 注释（简写形式下也是，此时那唯一
+  一组没有自己的注释）。生成代码中的 DB 注释取 `comment`，没有时取 DB
+  符号的注释；DB 符号没有注释时取上述 DB 注释。组没有 `comment` 时取 DB
+  注释。
+- 不设组级使能。某一组需要独立启停时，可放到单独的 DB；或用一个 data 项
+  与 `and` 输入组合出条件。
+- 内部数据模型见
+  [design-converter-interlock.zh-cn.md](design-converter-interlock.zh-cn.md)。
 - 无外部库文件——生成的 `Interlock_Loop.scl` 完全自包含（没有
   `Interlock_Proc` 子模块）。
 
