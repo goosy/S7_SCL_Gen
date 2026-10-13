@@ -145,12 +145,12 @@ true })`）。读取时 `iconv-lite` 默认会剥离源文件的 BOM，因此复
 
 `cpu.line_ending` 由 `CPU` 转换器的 `build_list` 从 CPU 文档的
 `options.line_ending` 解析（与 `options.OE` 相同的时机）；未指定时为
-`LF`，所有平台相同。`gen_list` 中所有条目的通用字段以及符号表条目都取
+`CRLF`，所有平台相同。`gen_list` 中所有条目的通用字段以及符号表条目都取
 `cpu.line_ending`。按字节原样复制的 `files` 条目不涉及行尾（见
 [§4.1](#41-输出编码)）。
 
 与 `OE` 相同，到达 `process()` 的条目可能没有 `line_ending`（例如规则
-`add` 新建且未指定的条目），由 `write_file` 按 `LF` 写出。
+`add` 新建且未指定的条目），由 `write_file` 按 `CRLF` 写出。
 
 ## 5. 构建时自生成
 

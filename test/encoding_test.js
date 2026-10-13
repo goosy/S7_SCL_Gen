@@ -88,11 +88,13 @@ suite('output encoding', () => {
 });
 
 suite('output line ending', () => {
-    test('CPU.line_ending defaults to LF', () => {
-        const [symbol] = match_all(list, { type: 'convert', cpu_name: 'S7CPU', feature: 'symbol' });
-        strictEqual(symbol.line_ending, 'LF');
+    test('CPU.line_ending defaults to CRLF on every platform', () => {
+        for (const cpu_name of ['S7CPU', 'TPCPU']) {
+            const [symbol] = match_all(list, { type: 'convert', cpu_name, feature: 'symbol' });
+            strictEqual(symbol.line_ending, 'CRLF');
+        }
         const [, , ie_only] = copies_of('S7CPU');
-        strictEqual(ie_only.line_ending, 'LF');
+        strictEqual(ie_only.line_ending, 'CRLF');
     });
 
     test('options.line_ending overrides the default', () => {
@@ -130,12 +132,12 @@ suite('write_file encoding', () => {
         deepStrictEqual([...buff], [0x41, 0xE4, 0xB8, 0xAD]);
     });
 
-    test('line ending defaults to LF', async () => {
+    test('line ending defaults to CRLF', async () => {
         const filename = posix.join(dir, 'line_ending.txt');
         await write_file(filename, 'a\r\nb\n');
-        strictEqual((await readFile(filename)).toString('latin1'), 'a\nb\n');
-        await write_file(filename, 'a\nb\n', { line_ending: 'CRLF' });
         strictEqual((await readFile(filename)).toString('latin1'), 'a\r\nb\r\n');
+        await write_file(filename, 'a\r\nb\n', { line_ending: 'LF' });
+        strictEqual((await readFile(filename)).toString('latin1'), 'a\nb\n');
         await rm(dir, { recursive: true, force: true });
     });
 });

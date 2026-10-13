@@ -97,7 +97,7 @@ export class CPU {
     }
 
     /** @type {string} */
-    line_ending = 'LF';                    // default line ending, set by CPU options.line_ending
+    line_ending = 'CRLF';                  // default line ending, set by CPU options.line_ending
 
     /** @type {S7SymbolEmitter} */
     symbols = new S7SymbolEmitter();       // Symbol dispatch center

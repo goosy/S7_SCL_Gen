@@ -92,7 +92,7 @@ Promise 都已完成（见
   `options.output_dir`（流水线其余部分将其作为 `CPU.output_dir` 读取），
   `options.OE`（未指定时取平台默认值，作为 `CPU.OE` 读取，见
   [design-pipeline.zh-cn.md §4.1](design-pipeline.zh-cn.md#41-输出编码)），以及
-  `options.line_ending`（未指定时为 `LF`，作为 `CPU.line_ending` 读取，见
+  `options.line_ending`（未指定时为 `CRLF`，作为 `CPU.line_ending` 读取，见
   [design-pipeline.zh-cn.md §4.2](design-pipeline.zh-cn.md#42-输出行尾)）。
 - **`AI`/`limit`**：通过 `src/converters/analog_common.js` 中的
   `make_limit()`/`make_fake_DB()` 共享限值/量程字段的解析，而不是各自

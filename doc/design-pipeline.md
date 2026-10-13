@@ -161,13 +161,13 @@ entries and all `convert` entries) is determined by this priority:
 
 `cpu.line_ending` is resolved by the `CPU` converter's `build_list` from
 the CPU document's `options.line_ending` (at the same point as
-`options.OE`); when unset it is `LF` on every platform. `gen_list` takes
+`options.OE`); when unset it is `CRLF` on every platform. `gen_list` takes
 `cpu.line_ending` for the common fields of every entry and for the
 symbol-table entry. `files` entries copied byte-for-byte involve no line
 ending (see [§4.1](#41-output-encoding)).
 
 As with `OE`, an entry reaching `process()` may lack a `line_ending` (e.g.
-one created by a rules `add` without it); `write_file` writes it with `LF`.
+one created by a rules `add` without it); `write_file` writes it with `CRLF`.
 
 ## 5. Build-time self-generation
 

@@ -119,11 +119,11 @@ function CRLF2LF(str) {
  * @param {string} content
  * @param {object} [options]
  * @param {string} [options.encoding='utf8'] - iconv-lite encoding name, or 'utf8bom'/'utf8-bom' for UTF-8 with BOM
- * @param {string} [options.line_ending='LF'] - 'CRLF' or 'LF'
+ * @param {string} [options.line_ending='CRLF'] - 'CRLF' or 'LF'
  */
 async function write_file(filename, content, { encoding, line_ending } = {}) {
     encoding ??= 'utf8';
-    line_ending ??= 'LF';
+    line_ending ??= 'CRLF';
     await prepare_dir(dirname(filename));
     const text = line_ending === "CRLF" ? LF2CRLF(content) : CRLF2LF(content);
     const add_BOM = UTF8_BOM_NAMES.includes(encoding.toLowerCase());

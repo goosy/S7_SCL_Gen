@@ -75,7 +75,8 @@ document only:
   uses this value unless it specifies its own OE; `files` entries copied
   byte-for-byte involve no encoding (see [`files`](#files) below).
 - `line_ending`: the default line ending for the output files of this CPU,
-  `LF` or `CRLF`. When omitted it is `LF` (on every platform). It applies
+  `LF` or `CRLF`. When omitted it is `CRLF` (on every platform, since Siemens software
+  runs on Windows). It applies
   to the same files as `OE`: every output file that does not specify its
   own line ending uses this value; `files` entries copied byte-for-byte
   involve no line ending.

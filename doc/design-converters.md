@@ -97,7 +97,7 @@ synchronously right after calling it** — only from within pass 2
   pipeline reads as `CPU.output_dir`), `options.OE` (platform default
   when unset; read as `CPU.OE`, see
   [design-pipeline.md §4.1](design-pipeline.md#41-output-encoding)), and
-  `options.line_ending` (`LF` when unset; read as `CPU.line_ending`, see
+  `options.line_ending` (`CRLF` when unset; read as `CPU.line_ending`, see
   [design-pipeline.md §4.2](design-pipeline.md#42-output-line-ending)).
 - **`AI`/`limit`**: share their limit/scaling-field parsing via
   `make_limit()`/`make_fake_DB()` in `src/converters/analog_common.js`

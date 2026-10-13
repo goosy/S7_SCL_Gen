@@ -88,7 +88,7 @@ async function modify_item(item, modification, { tags = {}, action_type = 'repla
  * - feature: when it is consistent, it is the original value, otherwise set it to empty string.
  * - platform: when it is consistent, it is the original value, otherwise set it to empty string.
  * - OE: when it is consistent, it is the original value, otherwise set it to 'utf8'
- * - line_ending: when is consistent, it will be the original value, otherwise set it to 'LF'
+ * - line_ending: when is consistent, it will be the original value, otherwise set it to 'CRLF'
  * - tags: merge item.tags to merged_item.tags. mainly merge attributes of files, list, includes and options
  * @param {object} merged_item
  * @param {object} item 
@@ -139,7 +139,7 @@ async function merge_item(merged_item, item) {
 
     merged_item.line_ending ??= item.line_ending;
     if (merged_item.line_ending !== item.line_ending) {
-        merged_item.line_ending = 'LF';
+        merged_item.line_ending = 'CRLF';
     }
 
     return true;
@@ -307,7 +307,7 @@ const deletions = new Flag_Map();
  *     - enable is set to true
  *     - For CPU\feature\platform: action value takes precedence, if consistent keep original value, if inconsistent use ''
  *     - For OE: action value takes precedence, if consistent keep original value, if inconsistent use 'utf8'
- *     - For line_ending: action value takes precedence, if consistent keep original value, if inconsistent use 'LF'
+ *     - For line_ending: action value takes precedence, if consistent keep original value, if inconsistent use 'CRLF'
  *     - For template: action value takes precedence, if consistent keep original value, if inconsistent cancel merge
  *     - For distance: action value takes precedence, if consistent keep original value, if inconsistent cancel merge
  *     - For output_dir: action value takes precedence, if consistent keep original value, if inconsistent cancel merge
