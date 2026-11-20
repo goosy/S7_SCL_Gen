@@ -99,7 +99,9 @@ GCL YAML 文件
 
 ### 4.1 输出编码
 
-`files` 展开的 `copy` 条目：
+`files` 展开的 `copy` 条目（某条目经 `globby` 展开后没有匹配路径时，
+`gen_list` 输出一条警告（`console.error`，含 GCL 文件名与条目
+`filename`），该条目不产生 `copy` 条目）：
 
 - 字符串条目，或 `IE`、`OE` 都不存在的对象条目：`IE` 置为 `null`，
   `process()` 据此按字节原样复制。若该对象条目写了 `line_ending`，

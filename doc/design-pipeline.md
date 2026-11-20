@@ -108,7 +108,9 @@ writes files with each entry's `OE`/`line_ending`.
 
 ### 4.1 Output encoding
 
-`copy` entries expanded from `files`:
+`copy` entries expanded from `files` (when an entry's `globby` expansion
+yields no path, `gen_list` emits a warning (`console.error`, naming the GCL
+file and the entry's `filename`) and the entry produces no `copy` entry):
 
 - A string entry, or an object entry with neither `IE` nor `OE`: `IE` is
   set to `null`, which makes `process()` copy the file byte-for-byte. If

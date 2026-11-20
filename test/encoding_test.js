@@ -27,6 +27,7 @@ name: TPCPU-CPU
 platform: portal
 files:
 - {filename: test.yaml, IE: gbk}
+- missing/no_such_file.scl
 ---
 name: OECPU-CPU
 platform: portal
@@ -84,6 +85,14 @@ suite('output encoding', () => {
         const hits = warnings.filter(msg => /line_ending/.test(msg));
         strictEqual(hits.length, 1);
         ok(hits[0].includes('test.yaml'));
+    });
+});
+
+suite('files source', () => {
+    test('an entry matching no source file emits a warning', () => {
+        const hits = warnings.filter(msg => /no source file/.test(msg));
+        strictEqual(hits.length, 1);
+        ok(hits[0].includes('missing/no_such_file.scl'));
     });
 });
 

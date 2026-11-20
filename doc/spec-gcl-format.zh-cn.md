@@ -104,6 +104,9 @@ list:
   `os/ab/c.scl` 复制到 `<output_dir>/ab/c.scl`。
 - 文件夹条目会将整个文件夹（递归）复制到 `<output_dir>/<foldername>`。
 - 支持 glob 模式（`*`、`**`），使用 `globby` 匹配。
+- 若某个条目没有匹配到任何源文件（路径不存在，或 glob 无匹配），生成器
+  输出一条警告，指明 GCL 文件和该条目，然后继续转换。使用 `--no-copy`
+  时同样警告。
 - 条目可以是字符串（即上述路径），也可以是对象
   `{ filename, IE, OE, line_ending }`，其中 `filename` 为上述路径，其余
   键均可选：

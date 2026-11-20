@@ -120,6 +120,9 @@ directory using `/` as the separator (never `\`). Rules:
 - A folder entry copies the whole folder (recursively) to
   `<output_dir>/<foldername>`.
 - Glob patterns (`*`, `**`) are supported, matched with `globby`.
+- If an entry matches no source file (the path does not exist, or the glob
+  matches nothing), the generator emits a warning naming the GCL file and
+  the entry, then continues. The warning is emitted under `--no-copy` too.
 - An entry is either a string (the path above) or an object
   `{ filename, IE, OE, line_ending }`, where `filename` is the path above
   and the other keys are optional:

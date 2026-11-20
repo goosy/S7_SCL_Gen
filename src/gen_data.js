@@ -472,7 +472,14 @@ async function gen_list(cpu_list) {
                     dir = posix.dirname(source);
                 }
                 const input_dir = posix.join(work_path, dir);
-                for (const path of await globby(posix.join(input_dir, base))) {
+                const paths = await globby(posix.join(input_dir, base));
+                if (paths.length === 0) {
+                    console.error(`warning: 警告：
+        info 信息: no source file matches this entry, nothing is copied. 该条目没有匹配到源文件，不复制任何文件
+        file 文件:"${area.document.gcl.file}"
+        filename 条目:${source}`);
+                }
+                for (const path of paths) {
                     const source = posix.relative(input_dir, path);
                     const distance = source;
                     copy_list.push({
