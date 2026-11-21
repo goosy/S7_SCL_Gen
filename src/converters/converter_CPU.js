@@ -69,7 +69,6 @@ export function initialize_list(area) {
         ];
         add_symbols(document, symbols);
     }
-    CPU.S7Program = nullable_value(STRING, document.get('S7Program'))?.value ?? 'S7Program';
     area.list = area.list.map(node => {
         const FN = { node, comment: new STRING(node.get('comment') ?? '') };
         const comment = FN.comment.value;
