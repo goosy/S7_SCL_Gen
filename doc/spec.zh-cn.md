@@ -30,7 +30,7 @@ TIA Portal 或 PCS7 的 SCL（Structured Control Language，结构化控制语�
   `includes` 和 `files`。
 - 一个后处理**规则引擎**，由外部规则 YAML 文件驱动，可在不改动 GCL 源的
   前提下改写生成的复制/转换任务列表（见
-  [design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md)）。
+  [spec-rules.zh-cn.md](spec-rules.zh-cn.md)）。
 - 一个命令行工具（`s7scl`），提供 `convert`、`watch` 以及
   `gcl`/`init`/`template` 子命令。
 
@@ -50,6 +50,7 @@ TIA Portal 或 PCS7 的 SCL（Structured Control Language，结构化控制语�
 | `spec.zh-cn.md`（本文） | 目的、范围、工具，以及到其余文档的链接 |
 | [spec-gcl-format.zh-cn.md](spec-gcl-format.zh-cn.md) | GCL YAML 配置语言：文档、指令、值类型 |
 | [spec-cli.zh-cn.md](spec-cli.zh-cn.md) | `s7scl` 命令行接口及其选项 |
+| [spec-rules.zh-cn.md](spec-rules.zh-cn.md) | 规则文件（`--rules`）：格式、模式、动作、模板变量 |
 | [spec-converters.zh-cn.md](spec-converters.zh-cn.md) | 12 种受支持功能各自的作用及生成内容 |
 | [design-pipeline.zh-cn.md](design-pipeline.zh-cn.md) | GCL 目录如何变成 SCL 输出目录：两遍处理流水线、CPU/Area 模型、符号解析时机、build.js 自生成 |
 | [design-symbols.zh-cn.md](design-symbols.zh-cn.md) | S7 地址/类型系统、分配、冲突检测、内置符号、符号表导出 |

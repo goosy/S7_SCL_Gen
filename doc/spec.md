@@ -30,7 +30,7 @@ In scope:
   git submodules, see [§5](#5-external-dependencies)) into each CPU's output
   folder, and copying/merging of user-supplied `includes` and `files`.
 - A post-processing **rules engine** that can rewrite the generated
-  copy/convert task list (see [design-rules-engine.md](design-rules-engine.md))
+  copy/convert task list (see [spec-rules.md](spec-rules.md))
   without touching the GCL source, driven by an external rules YAML file.
 - A CLI (`s7scl`) with `convert`, `watch`, and `gcl`/`init`/`template`
   subcommands.
@@ -52,6 +52,7 @@ Out of scope:
 | `spec.md` (this file) | Purpose, scope, tooling, and links to the rest of the doc set |
 | [spec-gcl-format.md](spec-gcl-format.md) | The GCL YAML configuration language: documents, directives, value types |
 | [spec-cli.md](spec-cli.md) | The `s7scl` command-line interface and its options |
+| [spec-rules.md](spec-rules.md) | Rule files (`--rules`): format, patterns, actions, template variables |
 | [spec-converters.md](spec-converters.md) | What each of the 12 supported features does and what it generates |
 | [design-pipeline.md](design-pipeline.md) | How a GCL folder becomes an SCL output folder: the two-pass pipeline, CPU/Area model, symbol resolution timing, build.js self-generation |
 | [design-symbols.md](design-symbols.md) | The S7 address/type system, allocation, conflict detection, built-in symbols, symbol table export |

@@ -7,7 +7,8 @@
 任务列表（见
 [design-pipeline.zh-cn.md §4](design-pipeline.zh-cn.md#4-从-area-到输出文件-gen_list)）——
 而是由通过 `--rules` 传入的独立规则 YAML 文件驱动（见
-[spec-cli.zh-cn.md §5](spec-cli.zh-cn.md#5---rules-模式与普通-convert-的区别)）。
+[spec-cli.zh-cn.md §5](spec-cli.zh-cn.md#5---rules-模式)；规则文件的格式和行为见
+[spec-rules.zh-cn.md](spec-rules.zh-cn.md)）。
 它的存在是为了让与部署相关的调整（把多个 CPU 的循环调用合并到一个文件、
 注入额外条目、丢弃不需要的输出）可以放在受版本管理的 GCL 配置之外。
 
@@ -116,7 +117,8 @@ AI 通道重新排序或过滤）的机制。
 
 - `merge` + `delete` 是将多个 CPU（或功能）的循环调用函数合并为一个新
   文件、同时屏蔽原文件的标准模式。
-- 由于 `sort_by` 的条目按栈的方式求值（`multi_sort` 内部使用
-  `Array.prototype.pop`），应把**主**排序键放在**最后**。
+- `multi_sort` 从末尾逐个弹出 `sort_by` 的条目，每个条目做一次稳定排序，
+  因此最后排序的、即列在**第一个**的条目是主排序键，符合
+  [spec-rules.zh-cn.md §3.3](spec-rules.zh-cn.md#33-排序) 的要求。
 - 所有属性值都会经过 gooplate 模板替换，因此包含 `{{`/`}}` 的普通字符串
   若不打算作为模板表达式，需要转义。

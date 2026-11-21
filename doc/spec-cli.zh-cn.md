@@ -35,7 +35,7 @@ s7scl [subcommand] [path] [options]
 | `--no-convert` | — | 不写出生成的 SCL 文件（仍完整运行流水线并报告诊断信息）。 |
 | `--no-copy` | — | 跳过文件复制步骤（`includes`/`files`/库源文件）。 |
 | `--silent` | `-s`、`-S` | 抑制进度/诊断控制台输出。 |
-| `--rules` | — | 规则 YAML 文件路径（见 [design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md)）。设置后 `path` 被忽略：由规则文件本身按任务指定要转换的目录和要应用的规则。 |
+| `--rules` | — | 规则文件路径，按规则文件转换，见 [§5](#5---rules-模式)。 |
 
 这些标志直接映射到共享的 `context` 对象（`src/util.js`）；未被标志覆盖的
 项回退到 `context` 的默认值（`silent: false` 等）。
@@ -48,11 +48,14 @@ s7scl [subcommand] [path] [options]
   `throw_type_incompatible`）。
 - `convert` 成功时打印一行确认信息，除非指定了 `--silent`/`--no-convert`。
 
-## 5. `--rules` 模式与普通 `convert` 的区别
+## 5. `--rules` 模式
 
-普通 `convert` 只处理一个 GCL 目录（`path`），且只使用内置转换器。
-`--rules <file>` 则从规则文件中读取一组 `{ path, rules }` 任务
-（`get_rules`，`src/rules/parse.js`）；对每个任务，CLI 先 `chdir` 到
-`path`，相应设置 `context.work_path`，然后运行 `convert({ rules })`，
-在写出文件之前将规则应用到生成的复制/转换列表上。这样一个规则文件即可
-驱动多个 GCL 目录，并为每个目录指定不同的后处理。
+```
+s7scl [convert] --rules <file> [options]
+```
+
+按规则文件转换。规则文件中的每个规则任务各自指定要转换的 GCL 目录和要应用
+的规则，命令行的 `path` 被忽略；各任务按文件中的顺序依次执行。一个规则文件
+可以驱动多个 GCL 目录，并为每个目录指定不同的后处理。其余选项照常生效。
+
+规则文件的格式和行为见 [spec-rules.zh-cn.md](spec-rules.zh-cn.md)。

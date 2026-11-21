@@ -33,7 +33,7 @@ s7scl [subcommand] [path] [options]
 | `--no-convert` | — | Skip writing generated SCL files (still runs the full pipeline and reports diagnostics). |
 | `--no-copy` | — | Skip the file-copy step (`includes`/`files`/library sources). |
 | `--silent` | `-s`, `-S` | Suppress progress/diagnostic console output. |
-| `--rules` | — | Path to a rules YAML file (see [design-rules-engine.md](design-rules-engine.md)). When set, `path` is ignored: the rules file itself specifies, per task, which folder to convert and which rules to apply. |
+| `--rules` | — | Path to a rule file; converts according to the rule file, see [§5](#5---rules-mode). |
 
 Flags map directly onto the shared `context` object (`src/util.js`); anything
 not overridden by a flag falls back to `context`'s defaults
@@ -48,12 +48,17 @@ not overridden by a flag falls back to `context`'s defaults
   `throw_type_incompatible` in `src/symbols.js`).
 - Successful `convert` prints a confirmation line unless `--silent`/`--no-convert`.
 
-## 5. `--rules` mode vs. plain `convert`
+## 5. `--rules` mode
 
-Plain `convert` processes exactly one GCL folder (`path`) using only the
-built-in converters. `--rules <file>` instead reads a list of `{ path, rules
-}` tasks from the rules file (`get_rules`, `src/rules/parse.js`); for each
-task the CLI `chdir`s into `path`, sets `context.work_path` accordingly, and
-runs `convert({ rules })`, which applies the rules to the generated
-copy/convert list before writing files. This allows one rules file to drive
-multiple GCL folders with different post-processing per folder.
+```
+s7scl [convert] --rules <file> [options]
+```
+
+Converts according to a rule file. Each rule task in the rule file specifies
+its own GCL folder to convert and the rules to apply, and the `path` on the
+command line is ignored; the tasks run one after another in the order of the
+file. One rule file can thus drive several GCL folders, with different
+post-processing for each. The other options take effect as usual.
+
+The format and behavior of rule files are specified in
+[spec-rules.md](spec-rules.md).

@@ -4,7 +4,8 @@ Implemented in `src/rules/` (`parse.js`, `match.js`, `apply.js`). This
 subsystem rewrites the flat `copy`/`convert` task list produced by
 `gen_data()` (see [design-pipeline.md §4](design-pipeline.md#4-from-area-to-output-files-gen_list))
 *without* touching the GCL source — driven instead by a separate rules YAML
-file passed via `--rules` (see [spec-cli.md §5](spec-cli.md#5---rules-mode-vs-plain-convert)).
+file passed via `--rules` (see [spec-cli.md §5](spec-cli.md#5---rules-mode); the format and behavior of
+rule files are specified in [spec-rules.md](spec-rules.md)).
 It exists to let deployment-specific tweaks (merge several CPUs' loop calls
 into one file, inject extra items, drop unwanted output) live outside the
 tracked GCL configuration.
@@ -124,8 +125,10 @@ GCL source.
 - `merge` + `delete` is the standard pattern for combining several CPUs'
   (or features') loop-call functions into a single new file while
   suppressing the originals.
-- Because `sort_by` entries are evaluated as a stack (`Array.prototype.pop`
-  inside `multi_sort`), list the **primary** sort key **last**.
+- `multi_sort` pops the `sort_by` entries from the end and runs one stable
+  sort per entry, so the entry sorted last, i.e. the **first** one listed, is
+  the primary key, as [spec-rules.md §3.3](spec-rules.md#33-sorting)
+  requires.
 - All property values run through gooplate template substitution, so plain
   strings containing `{{`/`}}` need escaping if they aren't meant as
   template expressions.
