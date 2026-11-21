@@ -363,3 +363,23 @@ rules:
         }
     });
 });
+
+suite('rules sort_by', () => {
+    test('one inner sort_by sorts the list of every outer item', async () => {
+        const make_item = (cpu_name) => ({
+            type: 'convert', cpu_name,
+            tags: { cpu_name, list: [{ n: 3 }, { n: 1 }, { n: 2 }], files: [] },
+        });
+        const [{ rules, attributes }] = parse_rules(`
+rules:
+- pattern: { type: convert }
+  actions:
+  - rules:
+    - sort_by: [ n ]
+`, '.');
+        const items = [...await apply_rules([make_item('A'), make_item('B')], rules, attributes)];
+        for (const item of items) {
+            deepStrictEqual(item.tags.list.map(element => element.n), [1, 2, 3], item.cpu_name);
+        }
+    });
+});

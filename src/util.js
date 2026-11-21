@@ -163,13 +163,15 @@ function get_object_prop(obj, path) {
 /**
  * Custom sort
  * @param {Array} list - list
- * @param {Array} sort - sort rules
+ * @param {Array} sort - sort rules, the first one is the primary key; left unchanged
  */
 function multi_sort(list, sort) {
     if (!Array.isArray(list)) return;
     if (!Array.isArray(sort)) return;
-    while (sort.length) {
-        const key = sort.pop();
+    // pop from a copy, so the caller's sort rules can be reused
+    const keys = [...sort];
+    while (keys.length) {
+        const key = keys.pop();
         const dec = key.startsWith('@');
         const path = dec ? key.slice(1) : key;
         list.sort((a, b) => compare(get_object_prop(a, path), get_object_prop(b, path), dec));

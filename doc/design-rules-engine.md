@@ -150,10 +150,11 @@ GCL source.
 - `merge` + `delete` is the standard pattern for combining several CPUs'
   (or features') loop-call functions into a single new file while
   suppressing the originals.
-- `multi_sort` pops the `sort_by` entries from the end and runs one stable
-  sort per entry, so the entry sorted last, i.e. the **first** one listed, is
-  the primary key, as [spec-rules.md §3.3](spec-rules.md#33-sorting)
-  requires.
+- `multi_sort` pops the entries from the end of a copy of `sort_by` (leaving
+  `sort_by` itself intact, so a sorting rule can be applied repeatedly) and
+  runs one stable sort per entry, so the entry sorted last, i.e. the
+  **first** one listed, is the primary key, as
+  [spec-rules.md §3.3](spec-rules.md#33-sorting) requires.
 - All property values run through gooplate template substitution, so plain
   strings containing `{{`/`}}` need escaping if they aren't meant as
   template expressions.
