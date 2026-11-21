@@ -16,7 +16,7 @@ A rules YAML file is one or more documents, each describing one **task**:
 
 ```yaml
 config_path: <relative path>   # optional, default '.'
-attributes: { ... }            # optional extra template tags
+attributes: { ... }            # optional template variables of this task
 rules:
   - pattern: { ... }
     scope: applied | origin    # optional, default 'applied'
@@ -24,10 +24,16 @@ rules:
   - sort_by: [ 'field', '@field' ]   # '@' prefix = descending
 ```
 
-`get_rules(filename)` reads the file and returns an array of `{ path, rules
-}` tasks — one per document — where `path` is `config_path` resolved against
-the rules file's own directory. The CLI runs `convert({ rules })` once per
-task, `chdir`-ing into `path` first.
+`get_rules(filename)` reads the file and returns an array of `{ path, rules,
+attributes }` tasks — one per document — where `path` is `config_path`
+resolved against the rules file's own directory. The CLI runs
+`convert({ rules, attributes })` once per task, `chdir`-ing into `path` first.
+
+`get_attributes` checks `attributes` at parse time: when it is not a plain
+object, a warning is emitted and `{}` is used; when it contains any of
+`cpu_name`, `feature` or `platform`, a `SyntaxError` naming the rules file and
+the key is thrown. The attributes are kept on the task only and are not copied
+into the actions.
 
 Each `rule.actions` entry is normalized (`regularize`) before use:
 
@@ -67,7 +73,9 @@ down to items where `match(item, pattern)` is true.
 
 ## 3. Actions (`apply.js`)
 
-`apply_rules(list, rules, parent_tags)` runs each rule against a working
+`apply_rules(list, rules, attributes)` calls the internal `run_rules` with
+`env = { attributes, parent_item: null }`; `run_rules(list, rules, env)` runs
+each rule against a working
 `Set` (`applied_list`, initialized from the input list so later rules see
 earlier rules' effects) in order, either applying `sort_by` (via
 `multi_sort`) or calling `apply_rule`.
@@ -93,9 +101,23 @@ Property values inside an action (aside from a handful of reserved keys:
 `action_type`, `action_scope`, `action_target`, `rules_path`, `tags`,
 `cpu_name`, `feature`, `platform`, `input_dir`, `output_dir`, `template`) are
 template-substituted via `gooplate`'s `convert(tags, value)` before being
-applied — `tags` includes the item's own template tags plus `$` (the item
-being read, useful in `add` actions to reference the matched source), and
-`{cpu_name, feature, platform}` set by the action itself if present.
+applied. `tags` is a context built for this action only and never written
+into any item:
+
+- Outer rules: `{ ...attributes, ...source.tags, cpu_name, feature, platform, $ }`,
+  where `source` is the item acted on (the source item in `add` actions,
+  otherwise the target) and `cpu_name`, `feature`, `platform` come from
+  `source`'s own properties; `$` is a copy of the source item in `add`
+  actions, otherwise the target. `cpu_name`/`feature`/`platform` set by the
+  action itself are substituted, written into the target and its `tags`, and
+  update the context for the later properties.
+- Inner rules: `{ ...attributes, ...parent_item.tags, $ }`.
+
+`layer_tags(attributes, tags, item)` lays the attributes under the tags: the
+tags win on a name clash, and each shadowed key is reported once per item
+(recorded in a `WeakMap`). An action's `tags` property is joined into the
+target's `tags` by `update_tags`, with `cpu_name`/`feature`/`platform`
+removed from it.
 `template`, if given as an action property, is read from a file (path
 resolved relative to the rules file, `action.rules_path`) via `get_template`
 and cached.
@@ -108,9 +130,9 @@ iterates over (e.g. an `AI` document's list of channels — see
 An `inner_rules` action applies a nested rules array to exactly that array,
 using the same `apply_rule`/`match`/action machinery, but:
 
-- `parent_tags` is set (the enclosing task's tags), and the template context
-  of nested actions is `{ ...parent_tags, $ }`, so `cpu_name`/`feature`/
-  `platform` come from the parent. These three values are not written into
+- `env.parent_item` is set to the enclosing item, and the template context
+  of nested actions is `{ ...attributes, ...parent_item.tags, $ }`, so
+  `cpu_name`/`feature`/`platform` come from the parent. These three values are not written into
   the inner element (`$`); `$.cpu_name` etc. have a value only when the
   element itself has those properties (see
   [spec-rules.md §5](spec-rules.md#5-template-substitution)).

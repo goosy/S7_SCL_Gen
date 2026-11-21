@@ -1,8 +1,10 @@
 import { dirname, posix } from 'node:path';
 import { parseAllDocuments } from 'yaml';
-import { is_plain_object, read_file } from '../util.js';
+import { elog, is_plain_object, read_file } from '../util.js';
 
-function regularize(action, rules_path, extra_tags, using_inner_rules) {
+const RESERVED_ATTRIBUTES = ['cpu_name', 'feature', 'platform'];
+
+function regularize(action, rules_path, using_inner_rules) {
     const action_type = action.action_type;
     // Document rules do not support "merge" or "inner_rules" action
     if (using_inner_rules && (action_type === 'merge' || action_type === 'inner_rules')) {
@@ -23,11 +25,10 @@ function regularize(action, rules_path, extra_tags, using_inner_rules) {
     if (ret.action_type === 'delete') return ret;
     ret.rules_path = posix.resolve(rules_path);
     if (!is_plain_object(ret.tags)) ret.tags = {};
-    if (is_plain_object(extra_tags)) Object.assign(ret.tags, extra_tags);
     return ret;
 }
 
-function _parse_rules(rules_raw, extra_tags, rules_path, using_inner_rules = false) {
+function _parse_rules(rules_raw, rules_path, using_inner_rules = false) {
     return rules_raw.flatMap(rule => {
         // Incorrect rule, returns empty
         if (!is_plain_object(rule)) return [];
@@ -68,7 +69,7 @@ function _parse_rules(rules_raw, extra_tags, rules_path, using_inner_rules = fal
                 console.warn('A "delete" action already exists, rest actions will be ignored');
                 return [];
             }
-            const action = regularize(_action, rules_path, extra_tags, using_inner_rules);
+            const action = regularize(_action, rules_path, using_inner_rules);
             if (action.action_type === 'delete') has_delete = true;
             if (action.action_type === 'inner_rules') has_inner_rules = true;
             return action;
@@ -86,7 +87,7 @@ function _parse_rules(rules_raw, extra_tags, rules_path, using_inner_rules = fal
             }
             const rules = action.rules;
             if (type === 'inner_rules' && Array.isArray(rules)) {
-                action.rules = _parse_rules(rules, extra_tags, rules_path, true);
+                action.rules = _parse_rules(rules, rules_path, true);
             }
             return action;
         });
@@ -96,21 +97,44 @@ function _parse_rules(rules_raw, extra_tags, rules_path, using_inner_rules = fal
     });
 }
 
-function parse_rules(yaml, rules_path) {
+/**
+ * Get the attributes of a rules task.
+ * They must be a plain object without the reserved keys.
+ * @param {*} attributes
+ * @param {string} filename - the rules file, for the error message
+ * @returns {object}
+ */
+function get_attributes(attributes, filename) {
+    if (attributes == null) return {};
+    if (!is_plain_object(attributes)) {
+        console.warn('attributes must be an object, ignored');
+        return {};
+    }
+    for (const key of RESERVED_ATTRIBUTES) {
+        if (Object.hasOwn(attributes, key)) {
+            elog(new SyntaxError(`attributes must not contain "${key}"! attributes 不得包含 "${key}"
+        file 文件:"${filename}"
+        key 键:${key}`));
+        }
+    }
+    return attributes;
+}
+
+function parse_rules(yaml, rules_path, filename = '') {
     const documents = parseAllDocuments(yaml, { version: '1.2' });
     return documents.flatMap(doc => {
         const js_object = doc.toJS();
         if (!is_plain_object(js_object)) return [];
         const config_path = (js_object.config_path ?? '.').replace(/\\/g, '/');
-        const extra_tags = js_object.attributes ?? {};
+        const attributes = get_attributes(js_object.attributes, filename);
 
         const _rules = js_object.rules ?? [];
         if (!Array.isArray(_rules)) return [];
-        const rules = _parse_rules(_rules, extra_tags, rules_path);
+        const rules = _parse_rules(_rules, rules_path);
         if (rules.length === 0) return [];
 
         const path = posix.join(rules_path, config_path);  // Relative to the current path, added to rules_path
-        return { path, rules }; // return a task
+        return { path, rules, attributes }; // return a task
     });
 }
 
@@ -118,6 +142,7 @@ function parse_rules(yaml, rules_path) {
  * @typedef {Object} Task
  * @property {string} Task.path
  * @property {Rule[]} Task.rules
+ * @property {object} Task.attributes
  */
 
 /**
@@ -132,7 +157,7 @@ async function get_rules(filename, options = {}) {
     const encoding = options.encoding ?? 'utf8';
     const yaml = await read_file(filename, { encoding });
     const rules_path = dirname(filename).replace(/\\/g, '/');
-    return parse_rules(yaml, rules_path);
+    return parse_rules(yaml, rules_path, filename);
 }
 
 export { get_rules, parse_rules };

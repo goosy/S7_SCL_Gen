@@ -103,8 +103,10 @@ For every `(CPU, feature, Area)` triple, `gen_list()`:
 The result is a flat list of `copy` and `convert` task objects — this is the
 list the rules engine operates on (see
 [design-rules-engine.md](design-rules-engine.md)) before `index.js`'s
-`process()` actually renders templates (via `gooplate`'s `convert()`) and
-writes files with each entry's `OE`/`line_ending`.
+`process()` actually renders templates (via `gooplate`'s `convert()`, with
+the context `layer_tags(attributes, item.tags, item)`, i.e. the rules task's
+`attributes` laid under the item tags; without a rules task it is the item
+tags) and writes files with each entry's `OE`/`line_ending`.
 
 ### 4.1 Output encoding
 

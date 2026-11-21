@@ -2,13 +2,13 @@ import { posix } from "node:path";
 import { convert as gc } from 'gooplate';
 import { converter, supported_features } from './converter.js';
 import { gen_data } from './gen_data.js';
-import { apply_rules } from './rules/index.js';
+import { apply_rules, layer_tags } from './rules/index.js';
 import { context, copy_file, read_file, write_file } from './util.js'
 
 export { apply_rules, get_rules } from './rules/index.js';
 export { convert, context, supported_features, converter };
 
-async function process(list) {
+async function process(list, attributes) {
     const { silent, no_copy, no_convert } = context;
 
     // Ensure it's iterable, such as Array or Set
@@ -37,7 +37,7 @@ async function process(list) {
             // Asynchronous sequential execution
             const { distance, output_dir, tags, template, OE, line_ending } = item;
             const filename = posix.join(output_dir, distance);
-            const content = gc(tags, template);
+            const content = gc(layer_tags(attributes, tags, item), template);
             item.content = content;
             // Whether to output is determined by the no_convert variable
             if (!no_convert) {
@@ -51,10 +51,10 @@ async function process(list) {
 
 async function convert(options = {}) {
     context.silent || console.log(`current conversion folder 当前转换文件夹: ${context.work_path}`);
-    const { rules, ...opts } = options;
+    const { rules, attributes, ...opts } = options;
     let list = await gen_data(opts);
     if (Array.isArray(rules) && rules.length) {
-        list = await apply_rules(list, rules);
+        list = await apply_rules(list, rules, attributes);
     }
-    return process(list);
+    return process(list, attributes);
 }

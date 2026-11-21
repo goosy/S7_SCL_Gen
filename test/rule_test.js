@@ -1,8 +1,8 @@
 import { ok, strictEqual, deepStrictEqual } from "node:assert/strict";
 import { posix } from 'node:path';
-import { suite, test } from 'node:test';
+import { mock, suite, test } from 'node:test';
 import { convert } from '../src/index.js';
-import { apply_action, get_rules, match, match_all, parse_rules } from '../src/rules/index.js';
+import { apply_action, apply_rules, get_rules, match, match_all, parse_rules } from '../src/rules/index.js';
 import { context, read_file } from '../src/util.js';
 
 // set up the main conversion environment
@@ -80,10 +80,10 @@ const tasks = await get_rules('./rules.rml');
 // generating for rulers
 const list = [];
 const template = await read_file('template.md');
-for (const { path, rules } of tasks) {
+for (const { path, rules, attributes } of tasks) {
     process.chdir(posix.join(base_path, path));
     context.work_path = process.cwd().replace(/\\/g, '/');
-    list.push(await convert({ rules }));
+    list.push(await convert({ rules, attributes }));
 }
 
 suite('rule test', () => {
@@ -297,5 +297,69 @@ suite('rule test', () => {
             feature: '!OS_alarms',
         });
         strictEqual(output.length, 0);
+    });
+});
+
+suite('rules attributes', () => {
+    const make_item = (cpu_name) => ({
+        type: 'convert', cpu_name, feature: 'AI', platform: 'step7',
+        distance: 'a.scl', output_dir: 'o',
+        tags: { cpu_name, feature: 'AI', platform: 'step7', k: 'tag', list: [{ id: 1 }], files: [] },
+    });
+    const run = async (yaml, items) => {
+        const [{ rules, attributes }] = parse_rules(yaml, '.');
+        return [...await apply_rules(items, rules, attributes)];
+    };
+
+    test('inner rules read attributes', async () => {
+        const [item] = await run(`
+attributes: { names: { GD1: CCProgram } }
+rules:
+- pattern: { type: convert }
+  actions:
+  - rules:
+    - pattern: '*'
+      actions: [{ v: '{{names[cpu_name]}}' }]
+`, [make_item('GD1')]);
+        strictEqual(item.tags.list[0].v, 'CCProgram');
+    });
+
+    test('attributes and $ are not written into items', async () => {
+        const [item] = await run(`
+attributes: { names: { GD1: CCProgram } }
+rules:
+- pattern: { type: convert }
+  actions: [{ v: '{{names[cpu_name]}}' }]
+`, [make_item('GD1')]);
+        strictEqual(item.v, 'CCProgram');
+        ok(!Object.hasOwn(item.tags, 'names'));
+        ok(!Object.hasOwn(item.tags, '$'));
+    });
+
+    test('item tags shadow attributes with one warning per key and item', async () => {
+        const warnings = [];
+        mock.method(console, 'error', (msg) => warnings.push(msg));
+        const [item] = await run(`
+attributes: { k: attr }
+rules:
+- pattern: { type: convert }
+  actions: [{ v: '{{k}}' }, { w: '{{k}}' }]
+`, [make_item('GD1')]);
+        mock.restoreAll();
+        deepStrictEqual([item.v, item.w], ['tag', 'tag']);
+        strictEqual(warnings.filter(msg => /shadowed/.test(msg)).length, 1);
+    });
+
+    test('reserved keys in attributes are rejected', () => {
+        for (const key of ['cpu_name', 'feature', 'platform']) {
+            const yaml = `attributes: { ${key}: x }\nrules:\n- pattern: '*'\n  actions: delete\n`;
+            try {
+                parse_rules(yaml, '.', 'bad.rml');
+                ok(false, 'no error thrown');
+            } catch (err) {
+                ok(err instanceof SyntaxError);
+                ok(err.message.includes(key) && err.message.includes('bad.rml'), err.message);
+            }
+        }
     });
 });

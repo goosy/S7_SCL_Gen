@@ -95,7 +95,9 @@ GCL YAML 文件
 结果是一个由 `copy` 与 `convert` 任务对象组成的扁平列表——规则引擎正是在
 这个列表上操作（见 [design-rules-engine.zh-cn.md](design-rules-engine.zh-cn.md)），
 之后 `index.js` 的 `process()` 才真正渲染模板（通过 `gooplate` 的
-`convert()`），并按每个条目的 `OE`/`line_ending` 写出文件。
+`convert()`，上下文为 `layer_tags(attributes, item.tags, item)`，即规则任务
+的 `attributes` 垫在条目 tags 之下；没有规则任务时就是条目 tags），并按每个
+条目的 `OE`/`line_ending` 写出文件。
 
 ### 4.1 输出编码
 

@@ -18,7 +18,7 @@
 
 ```yaml
 config_path: <relative path>   # 可选，默认 '.'
-attributes: { ... }            # 可选，额外的模板 tags
+attributes: { ... }            # 可选，本任务的模板变量
 rules:
   - pattern: { ... }
     scope: applied | origin    # 可选，默认 'applied'
@@ -26,10 +26,14 @@ rules:
   - sort_by: [ 'field', '@field' ]   # '@' 前缀 = 降序
 ```
 
-`get_rules(filename)` 读取该文件并返回一个 `{ path, rules }` 任务数组——
-每个文档一个——其中 `path` 是相对于规则文件自身所在目录解析的
-`config_path`。CLI 对每个任务运行一次 `convert({ rules })`，运行前先
-`chdir` 到 `path`。
+`get_rules(filename)` 读取该文件并返回一个 `{ path, rules, attributes }`
+任务数组——每个文档一个——其中 `path` 是相对于规则文件自身所在目录解析的
+`config_path`。CLI 对每个任务运行一次 `convert({ rules, attributes })`，
+运行前先 `chdir` 到 `path`。
+
+`attributes` 在解析时由 `get_attributes` 检查：不是普通对象时警告并按 `{}`
+处理；含 `cpu_name`、`feature`、`platform` 任一键时抛出 `SyntaxError`，
+指明规则文件和键名。它只保存在任务上，不复制进各动作。
 
 每个 `rule.actions` 条目在使用前都会被规范化（`regularize`）：
 
@@ -66,7 +70,8 @@ rules:
 
 ## 3. 动作 (`apply.js`)
 
-`apply_rules(list, rules, parent_tags)` 按顺序对一个工作用 `Set`
+`apply_rules(list, rules, attributes)` 以 `env = { attributes, parent_item: null }`
+调用内部的 `run_rules`；`run_rules(list, rules, env)` 按顺序对一个工作用 `Set`
 （`applied_list`，由输入列表初始化，使后面的规则能看到前面规则的效果）
 执行每条规则：要么应用 `sort_by`（通过 `multi_sort`），要么调用
 `apply_rule`。
@@ -90,9 +95,21 @@ rules:
 动作中的属性值（除少数保留键：`action_type`、`action_scope`、
 `action_target`、`rules_path`、`tags`、`cpu_name`、`feature`、`platform`、
 `input_dir`、`output_dir`、`template` 外）在应用前会通过 `gooplate` 的
-`convert(tags, value)` 进行模板替换——`tags` 包括条目自身的模板 tags，
-加上 `$`（正在读取的条目，在 `add` 动作中可用于引用匹配到的源条目），以及
-动作自身设置的 `{cpu_name, feature, platform}`（若有）。若以动作属性给出
+`convert(tags, value)` 进行模板替换。`tags` 是为本次动作临时构造的上下文，
+不写入任何条目：
+
+- 外层规则：`{ ...attributes, ...source.tags, cpu_name, feature, platform, $ }`，
+  其中 `source` 是作用条目（`add` 动作中为来源条目，否则为目标条目），
+  `cpu_name`、`feature`、`platform` 取自 `source` 自身的属性；`$` 在
+  `add` 动作中是来源条目的副本，否则是目标条目。动作自身设置的
+  `cpu_name`/`feature`/`platform` 替换后写入目标条目及其 `tags`，并更新
+  上下文，供后面的属性使用。
+- 内层规则：`{ ...attributes, ...parent_item.tags, $ }`。
+
+`attributes` 与 tags 的叠加由 `layer_tags(attributes, tags, item)` 完成：
+同名时 tags 优先；每个被遮蔽的键对每个条目只警告一次（用 `WeakMap` 记录）。
+动作的 `tags` 属性由 `update_tags` 以 join 方式并入目标条目的 `tags`，
+其中的 `cpu_name`/`feature`/`platform` 被剔除。若以动作属性给出
 `template`，则通过 `get_template` 从文件读取（路径相对于规则文件解析，即
 `action.rules_path`）并缓存。
 
@@ -104,8 +121,9 @@ rules:
 `inner_rules` 动作把嵌套的规则数组恰好应用到这个数组上，使用相同的
 `apply_rule`/`match`/动作机制，但：
 
-- 设置了 `parent_tags`（外层任务的 tags），嵌套动作的模板上下文为
-  `{ ...parent_tags, $ }`，`cpu_name`/`feature`/`platform` 由此取自父级。
+- `env.parent_item` 设为外层条目，嵌套动作的模板上下文为
+  `{ ...attributes, ...parent_item.tags, $ }`，`cpu_name`/`feature`/`platform`
+  由此取自父级。
   这三个值不写入内层元素（`$`），`$.cpu_name` 等只有元素自己带有这些属性
   时才有值（见 [spec-rules.zh-cn.md §5](spec-rules.zh-cn.md#5-模板替换)）。
 - `merge` 和更深一层的 `inner_rules` 动作在解析时即被拒绝。

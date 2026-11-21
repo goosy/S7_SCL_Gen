@@ -168,12 +168,58 @@ function get_modification(action) {
 
 let original_index = 0;
 
-export async function apply_action(item, action, parent_tags = null) {
+// keys already reported as shadowed, per item
+const shadow_reported = new WeakMap();
+
+function describe_item(item) {
+    const { type, cpu_name, feature, output_dir, distance } = item;
+    return `${type} ${cpu_name}-${feature} ${posix.join(output_dir ?? '', distance ?? '')}`;
+}
+
+/**
+ * Lay the task attributes under the item tags: on a name clash the tags win.
+ * Each attribute key shadowed by the tags of an item is reported once.
+ *
+ * @param {object} [attributes] - the task attributes
+ * @param {object} [tags] - the item tags
+ * @param {object} item - the item owning the tags, named in the warning
+ * @returns {object} the tags when there are no attributes, otherwise a new object
+ */
+export function layer_tags(attributes, tags, item) {
+    if (attributes == null || Object.keys(attributes).length === 0) return tags ?? {};
+    if (tags == null) return { ...attributes };
+    let reported = shadow_reported.get(item);
+    for (const key of Object.keys(attributes)) {
+        if (!Object.hasOwn(tags, key)) continue;
+        if (!reported) {
+            reported = new Set();
+            shadow_reported.set(item, reported);
+        }
+        if (reported.has(key)) continue;
+        reported.add(key);
+        console.error(`warning: 警告：
+        info 信息: the rules attribute is shadowed by the item tags. 规则 attributes 中的变量被条目的 tags 遮蔽
+        key 键:${key}
+        item 条目:${describe_item(item)}`);
+    }
+    return { ...attributes, ...tags };
+}
+
+/**
+ * Apply an action to an item.
+ *
+ * @param {object} item - the item the action acts on
+ * @param {object} action - the action, with its action_target
+ * @param {object} [env]
+ * @param {object} [env.attributes] - the task attributes
+ * @param {object} [env.parent_item] - the outer item, when in inner rules
+ */
+export async function apply_action(item, action, { attributes = {}, parent_item = null } = {}) {
     const target = action.action_target;
     const action_type = action.action_type;
     if (action_type === 'inner_rules') {
         // implies
-        ok(!parent_tags);
+        ok(!parent_item);
         ok(target === item);
         ok(target.tags);
 
@@ -182,7 +228,7 @@ export async function apply_action(item, action, parent_tags = null) {
             // save original order
             inner_item.__original_index = (original_index++).toString().padStart(6, '0');
         }
-        const list = await apply_rules(tags.list, action.rules, tags);
+        const list = await run_rules(tags.list, action.rules, { attributes, parent_item: target });
         // Ensure tags.list is an array, to meet the expectation of update_tags function
         tags.list = [...list];  // Set -> Array
         return { error: null };
@@ -191,7 +237,7 @@ export async function apply_action(item, action, parent_tags = null) {
     if (item !== target && action_type === 'merge') {
         // Only perform the first phase of a merge action
         let error = null;
-        if (!parent_tags) {
+        if (!parent_item) {
             const ret = await merge_item(target, item);
             // if the merge action failed
             if (ret === false) error = 'merge action failed';
@@ -203,12 +249,18 @@ export async function apply_action(item, action, parent_tags = null) {
     // If it's not the first phase of a merge action, continue to execute the action on the target
     // In the add action, $ must refer to item, otherwise, item and target are the same
     const $ = action_type === 'add' ? { ...item } : target;
+    // The template context is built for this action only and is never written into items
     let tags;
-    if (parent_tags) {
-        tags = { ...parent_tags, $ };
+    if (parent_item) {
+        tags = { ...layer_tags(attributes, parent_item.tags, parent_item), $ };
     } else {
         await update_tags(target, action.tags); // Ensure target has tags property
-        tags = target.tags;
+        // the item acted on: the source item in the add action, otherwise the target
+        const source = action_type === 'add' ? item : target;
+        tags = { ...layer_tags(attributes, source.tags, source) };
+        for (const prop of ['cpu_name', 'feature', 'platform']) {
+            if (source[prop] !== undefined) tags[prop] = source[prop];
+        }
         tags.$ = $;
 
         for (const prop of ['cpu_name', 'feature', 'platform']) {
@@ -216,6 +268,7 @@ export async function apply_action(item, action, parent_tags = null) {
             if (value == null) continue;
             const substituted_value = convert(tags, value);
             target[prop] = substituted_value;
+            target.tags[prop] = substituted_value;
             tags[prop] = substituted_value;
         }
         for (const prop of ['input_dir', 'output_dir']) {
@@ -328,13 +381,14 @@ const deletions = new Flag_Map();
  * @param {Set<Object>} applied_list The original list
  * @param {Object[]} list The list filtered by previous rules
  * @param {Object} rule The rule
- * @param {boolean} [parent_tags=null] Whether there is a parent tags, i.e. whether it is in the document rule.
+ * @param {object} env - the task attributes and, in the document rule, the outer item
  * @returns {Promise<void>}
  */
-async function apply_rule(applied_list, list, rule, parent_tags = null) {
+async function apply_rule(applied_list, list, rule, env) {
+    const parent_item = env.parent_item;
     // all items in gen_list are of the same type
     // only convertion items can be merged
-    if (!parent_tags) ok(list.length > 0, 'list must not be empty');
+    if (!parent_item) ok(list.length > 0, 'list must not be empty');
 
     // matched_items can be matched from list or applied_list generated by previous rules
     const source_items = rule.scope === 'origin' ? list : applied_list;
@@ -363,7 +417,7 @@ async function apply_rule(applied_list, list, rule, parent_tags = null) {
             }
         } else if (action_type === 'merge') { // merge scope
             // Only global convertion items can be merged.
-            if (parent_tags) continue;
+            if (parent_item) continue;
             const convert_items = matched_items.filter(item => item.type === 'convert');
             if (convert_items.length === 0) continue;
             // start merge
@@ -376,11 +430,11 @@ async function apply_rule(applied_list, list, rule, parent_tags = null) {
             const phase2_action = { ...action, action_target: merged_item };
             for (const item of convert_items) {
                 // The first phase: merge(merged_item, item)
-                const ret = await apply_action(item, phase1_action, parent_tags);
+                const ret = await apply_action(item, phase1_action, env);
                 if (ret.error) continue action_loop;
             }
             // The second phase: merge action attributes
-            const ret = await apply_action(merged_item, phase2_action, parent_tags);
+            const ret = await apply_action(merged_item, phase2_action, env);
             if (ret.error) continue;
             merged_items.push(merged_item);
             applied_list.add(merged_item);
@@ -392,14 +446,14 @@ async function apply_rule(applied_list, list, rule, parent_tags = null) {
                 const new_item = {};
                 new_items.push(new_item);
                 action.action_target = new_item;
-                const ret = await apply_action(item, action, parent_tags);
+                const ret = await apply_action(item, action, env);
                 if (!ret.error) applied_list.add(new_item);
             }
         } else if (action_type === 'replace' || action_type === 'join' || action_type === 'inner_rules') {
             // modification scope
             for (const item of scope) {
                 action.action_target = item;
-                const ret = await apply_action(item, action, parent_tags);
+                const ret = await apply_action(item, action, env);
                 if (deletions.get(item) || ret.error) continue;
                 applied_list.add(item);
             }
@@ -426,21 +480,37 @@ function apply_sort_criteria(applied_list, criteria) {
 }
 
 /**
- * Filter the original list according to rules and perform operations on matched items
+ * Apply rules to a list in order: a rule with sort_by sorts the list,
+ * any other rule is applied by apply_rule.
+ * Used by apply_rules for the task list and by inner_rules for tags.list.
  *
- * @param {Array|Set} list - List of data to convert
+ * @param {Array|Set} list - List of items to apply the rules to
  * @param {Object[]} rules - List of rules to apply
- * @param {boolean} [parent_tags=null] Whether there is a parent tags, i.e. whether it is in the document rule.
- * @returns {Promise<Set<Object>>} - A promise that resolves to a set of data after applying rules
+ * @param {object} env
+ * @param {object} env.attributes - The attributes of the rules task
+ * @param {object|null} env.parent_item - The outer item in inner rules, otherwise null
+ * @returns {Promise<Set<Object>>} - A promise that resolves to a set of items after applying rules
  */
-export async function apply_rules(list, rules, parent_tags = null) {
+async function run_rules(list, rules, env) {
     const original_list = [...list]; // Convert Set to Array if needed
     if (original_list.length === 0) return new Set();
     const applied_list = new Set(original_list);
     for (const rule of rules) {
         const criteria = rule.sort_by;
         if (criteria) apply_sort_criteria(applied_list, criteria);
-        else await apply_rule(applied_list, original_list, rule, parent_tags);
+        else await apply_rule(applied_list, original_list, rule, env);
     }
     return applied_list;
+}
+
+/**
+ * Filter the original list according to rules and perform operations on matched items
+ *
+ * @param {Array|Set} list - List of data to convert
+ * @param {Object[]} rules - List of rules to apply
+ * @param {object} [attributes={}] - The attributes of the rules task
+ * @returns {Promise<Set<Object>>} - A promise that resolves to a set of data after applying rules
+ */
+export async function apply_rules(list, rules, attributes = {}) {
+    return run_rules(list, rules, { attributes: attributes ?? {}, parent_item: null });
 }

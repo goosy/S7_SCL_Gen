@@ -64,10 +64,10 @@ if (argv.version) {
     const base_path = process.cwd().replace(/\\/g, '/');
     if (rules_file) {
         const tasks = await get_rules(rules_file);
-        for (const { path, rules } of tasks) {
+        for (const { path, rules, attributes } of tasks) {
             process.chdir(posix.join(base_path, path));
             context.work_path = process.cwd().replace(/\\/g, '/');
-            await convert({ rules });
+            await convert({ rules, attributes });
         }
     } else {
         if (path) {
