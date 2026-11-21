@@ -104,8 +104,10 @@ rules:
 `inner_rules` 动作把嵌套的规则数组恰好应用到这个数组上，使用相同的
 `apply_rule`/`match`/动作机制，但：
 
-- 设置了 `parent_tags`（外层任务的 tags），因此嵌套动作知道其
-  `cpu_name`/`feature`/`platform` 来自父级，而无需单独指定。
+- 设置了 `parent_tags`（外层任务的 tags），嵌套动作的模板上下文为
+  `{ ...parent_tags, $ }`，`cpu_name`/`feature`/`platform` 由此取自父级。
+  这三个值不写入内层元素（`$`），`$.cpu_name` 等只有元素自己带有这些属性
+  时才有值（见 [spec-rules.zh-cn.md §5](spec-rules.zh-cn.md#5-模板替换)）。
 - `merge` 和更深一层的 `inner_rules` 动作在解析时即被拒绝。
 - 每个内部条目会先被打上 `__original_index` 标记，在规则应用过程中保留
   原始顺序信息，以备后续需要。

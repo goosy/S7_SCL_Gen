@@ -108,9 +108,12 @@ iterates over (e.g. an `AI` document's list of channels — see
 An `inner_rules` action applies a nested rules array to exactly that array,
 using the same `apply_rule`/`match`/action machinery, but:
 
-- `parent_tags` is set (the enclosing task's tags), so nested actions know
-  their `cpu_name`/`feature`/`platform` come from the parent rather than
-  being independently specified.
+- `parent_tags` is set (the enclosing task's tags), and the template context
+  of nested actions is `{ ...parent_tags, $ }`, so `cpu_name`/`feature`/
+  `platform` come from the parent. These three values are not written into
+  the inner element (`$`); `$.cpu_name` etc. have a value only when the
+  element itself has those properties (see
+  [spec-rules.md §5](spec-rules.md#5-template-substitution)).
 - `merge` and further `inner_rules` actions are rejected during parsing.
 - Each inner item gets a `__original_index` stamped on it first, preserving
   original ordering information across rule application for later use if

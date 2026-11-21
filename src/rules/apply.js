@@ -205,10 +205,6 @@ export async function apply_action(item, action, parent_tags = null) {
     const $ = action_type === 'add' ? { ...item } : target;
     let tags;
     if (parent_tags) {
-        const { cpu_name, feature, platform } = parent_tags;
-        $.cpu_name = cpu_name;
-        $.feature = feature;
-        $.platform = platform;
         tags = { ...parent_tags, $ };
     } else {
         await update_tags(target, action.tags); // Ensure target has tags property
