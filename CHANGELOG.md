@@ -1,15 +1,15 @@
 # Changelog
 
-Notable changes of each release, starting from 2.0.1-beta.0. Each release
-lists the English notes first, followed by the Chinese notes.
+Notable changes of each release, starting from 2.0.1. Each release lists
+the English notes first, followed by the Chinese notes.
 
-本文件记录各版本的重要改动，从 2.0.1-beta.0 开始。每个版本先列英文说明，
-随后是中文说明。
+本文件记录各版本的重要改动，从 2.0.1 开始。每个版本先列英文说明，随后是
+中文说明。
 
-## 2.0.1-beta.0 - 2026-10-04
+## 2.0.1 - 2026-11-21
 
-This is the first release after 1.20.4. The version number 2.0.0 was never
-published; its changes are included here.
+This is the first official release after 1.20.4. The version number 2.0.0
+was never published; its changes are included here.
 
 ### Breaking changes
 
@@ -51,12 +51,11 @@ published; its changes are included here.
   for portal. The CLI `--OE` option is removed. Migration: portal output
   is now UTF-8 with BOM; set `options.OE` in the CPU document to keep
   another encoding.
-- **Line ending is set per CPU and defaults to LF.** The CPU document's
-  `options.line_ending` (`LF` or `CRLF`) sets the line ending of every
-  output file of that CPU. The CLI `--line-ending` option is removed.
-  Migration: output is now LF instead of CRLF; set
-  `options.line_ending: CRLF` in the CPU document if the configuration
-  software on the target PC needs CRLF.
+- **Line ending is set per CPU.** The CPU document's
+  `options.line_ending` (`CRLF` or `LF`) sets the line ending of every
+  output file of that CPU; the default stays `CRLF`. The CLI
+  `--line-ending` option is removed. Migration: replace `--line-ending LF`
+  with `options.line_ending: LF` in the CPU document.
 - **`files` entry syntax.** An object entry is
   `{ filename, IE, OE, line_ending }`; the documented
   `{ filename, encoding }` form was never honored. An entry with neither
@@ -65,13 +64,27 @@ published; its changes are included here.
   `line_ending` default to the CPU's settings. Migration: an entry that
   only sets `IE` is now written in the CPU's encoding.
 - **Rules output defaults.** An entry without `OE`/`line_ending`, such as
-  one created by a rules `add` action, is written as `utf8`/`LF`. A
+  one created by a rules `add` action, is written as `utf8`/`CRLF`. A
   `merge` of entries with different `OE` (e.g. step7 and portal CPUs) is
-  written as `utf8`. Migration: set `OE`/`line_ending` in the rule action
-  when another format is needed.
+  written as `utf8`, and one with different `line_ending` as `CRLF`.
+  Migration: set `OE`/`line_ending` in the rule action when another
+  format is needed.
+- **Inner rules no longer write `cpu_name`, `feature` and `platform` into
+  items.** These values are still available in inner rule templates as
+  `{{cpu_name}}`, `{{feature}}` and `{{platform}}`, taken from the outer
+  item. Migration: replace `{{$.cpu_name}}`, `{{$.feature}}` and
+  `{{$.platform}}` in inner rules with `{{cpu_name}}`, `{{feature}}` and
+  `{{platform}}`; to use pre-merge values after a merge, write them into
+  the elements explicitly before the merge.
+- **Rules `attributes` may not define `cpu_name`, `feature` or
+  `platform`.** Such a key is a parse error naming the rules file and the
+  key. Migration: set these values in a rule action instead.
 - **Library API.** `context.OE`, `context.line_ending` and `context.IE`
-  are removed. Migration: configure output in GCL or rules; pass an
-  encoding to `read_file` explicitly.
+  are removed. Rules attributes are no longer joined into item tags;
+  `convert()` takes them as the `attributes` option and `apply_rules()`
+  as its third argument. Migration: configure output in GCL or rules;
+  pass an encoding to `read_file` explicitly; pass the task's
+  `attributes` from `get_rules()` on to `convert()`/`apply_rules()`.
 
 ### Features
 
@@ -95,9 +108,19 @@ published; its changes are included here.
 - `$enable_AH/WH/WL/AL` alarm switches for rules: they decide whether a
   limit exceedance raises an alarm on the upper system. They default to
   `true` and are never written to the PLC.
+- A `files` entry that matches no source file (missing path, or a glob
+  that matches nothing) prints a warning naming the GCL file and the
+  entry, also under `--no-copy`.
 
 ### Fixes
 
+- Rules `attributes` can be read in every action of their task, inner
+  rules included, and in the output templates. They are the lowest lookup
+  layer: item tags win on a name clash, with a warning naming the key and
+  the item.
+- A rule's `sort_by` sorts on every application. It used to be emptied
+  after its first use, so inner rules sorted only the first item they
+  acted on.
 - `s7scl watch` runs the globally installed `nodemon` command, so the CLI
   no longer fails to load when nodemon is absent, and it watches only
   `.yaml`/`.yml` files, so its own `.scl` output no longer restarts the
@@ -107,6 +130,8 @@ published; its changes are included here.
 
 - iconv-lite is upgraded to 0.7 and bundled into `lib/`; it is no longer
   a runtime dependency.
+- The bundled library sources (`AI_Proc`, `AO_Proc`, `Limit_Proc`, ...)
+  are UTF-8 with LF line endings.
 
 ### 破坏性改动
 
@@ -140,21 +165,33 @@ published; its changes are included here.
   `utf8bom`（UTF-8 带 BOM）。删除 CLI 的 `--OE` 选项。迁移方法：portal
   输出现在是 UTF-8 带 BOM；需要其他编码时，在 CPU 文档中设置
   `options.OE`。
-- **行尾按 CPU 设置，默认 LF。** CPU 文档的 `options.line_ending`
-  （`LF` 或 `CRLF`）决定该 CPU 所有输出文件的行尾。删除 CLI 的
-  `--line-ending` 选项。迁移方法：输出现在是 LF 而不是 CRLF；若目标电脑
-  上的组态软件需要 CRLF，在 CPU 文档中设置 `options.line_ending: CRLF`。
+- **行尾按 CPU 设置。** CPU 文档的 `options.line_ending`（`CRLF` 或
+  `LF`）决定该 CPU 所有输出文件的行尾，默认仍为 `CRLF`。删除 CLI 的
+  `--line-ending` 选项。迁移方法：把 `--line-ending LF` 改为在 CPU 文档中
+  设置 `options.line_ending: LF`。
 - **`files` 条目语法。** 对象条目为 `{ filename, IE, OE, line_ending }`；
   原文档中的 `{ filename, encoding }` 写法实际从未生效。`IE`、`OE` 都不写
   的条目按字节原样复制（若写了 `line_ending` 会输出警告）。否则 `IE`
   默认为 `utf8`，`OE` 和 `line_ending` 默认取 CPU 的设置。迁移方法：只写
   `IE` 的条目现在按 CPU 的编码写出。
 - **规则输出的默认值。** 没有 `OE`/`line_ending` 的条目（例如规则 `add`
-  动作新建的条目）按 `utf8`/`LF` 写出。`merge` 合并 `OE` 不同的条目
-  （例如 step7 与 portal CPU 的条目）时按 `utf8` 写出。迁移方法：需要其他
-  格式时，在规则动作中设置 `OE`/`line_ending`。
+  动作新建的条目）按 `utf8`/`CRLF` 写出。`merge` 合并 `OE` 不同的条目
+  （例如 step7 与 portal CPU 的条目）时按 `utf8` 写出，合并 `line_ending`
+  不同的条目时按 `CRLF` 写出。迁移方法：需要其他格式时，在规则动作中设置
+  `OE`/`line_ending`。
+- **内层规则不再把 `cpu_name`、`feature`、`platform` 写入条目。** 内层
+  规则的模板中仍可用 `{{cpu_name}}`、`{{feature}}`、`{{platform}}` 取得
+  这些值，它们来自外层条目。迁移方法：把内层规则中的 `{{$.cpu_name}}`、
+  `{{$.feature}}`、`{{$.platform}}` 改为 `{{cpu_name}}`、`{{feature}}`、
+  `{{platform}}`；合并后要用合并前的值时，在合并前把它们显式写入元素。
+- **规则 `attributes` 不能定义 `cpu_name`、`feature`、`platform`。** 出现
+  这些键时解析报错，并指明规则文件和键名。迁移方法：改在规则动作中设置
+  这些值。
 - **库 API。** 删除 `context.OE`、`context.line_ending` 和 `context.IE`。
-  迁移方法：在 GCL 或规则中配置输出格式；调用 `read_file` 时显式传入编码。
+  规则 attributes 不再并入条目的 tags；`convert()` 通过 `attributes` 选项、
+  `apply_rules()` 通过第三个参数接收它们。迁移方法：在 GCL 或规则中配置
+  输出格式；调用 `read_file` 时显式传入编码；把 `get_rules()` 返回的任务
+  `attributes` 传给 `convert()`/`apply_rules()`。
 
 ### 新功能
 
@@ -173,9 +210,16 @@ published; its changes are included here.
   因此每个组都能引用任意数据项。
 - 供规则使用的 `$enable_AH/WH/WL/AL` 报警开关：决定超限时是否在上位系统
   报警。默认 `true`，不会写入 PLC。
+- `files` 条目没有匹配到源文件（路径不存在，或 glob 未匹配到任何文件）时
+  输出警告，指明 GCL 文件和条目；`--no-copy` 下同样输出。
 
 ### 修复
 
+- 规则 `attributes` 可在其任务的所有动作（包括内层规则）和输出模板中读取。
+  它是查找的最低层：与条目 tags 同名时以 tags 为准，并输出警告，指明键名和
+  条目。
+- 规则的 `sort_by` 每次应用都会排序。以前它在第一次使用后被清空，导致内层
+  规则只对第一个作用条目排序。
 - `s7scl watch` 改为调用全局安装的 `nodemon` 命令，未安装 nodemon 时 CLI
   不再加载失败；并且只监视 `.yaml`/`.yml` 文件，自身输出的 `.scl` 不再导致
   无限重启。
@@ -183,3 +227,5 @@ published; its changes are included here.
 ### 构建
 
 - iconv-lite 升级到 0.7 并打包进 `lib/`，不再是运行时依赖。
+- 随包提供的库源文件（`AI_Proc`、`AO_Proc`、`Limit_Proc` 等）为 UTF-8、
+  LF 行尾。
